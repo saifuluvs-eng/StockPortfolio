@@ -198,15 +198,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/ai/sentiment/:symbol', async (req, res) => {
+  app.get('/api/ai/sentiment/:symbol/:timeframe', async (req, res) => {
     try {
-      const { symbol } = req.params;
-      const { timeframe = '4h' } = req.query;
+      const { symbol, timeframe = '4h' } = req.params;
       
       // Get price data and technical analysis
       const klines = await binanceService.getKlineData(symbol, timeframe as string, 50);
       const priceData = klines.map(k => parseFloat(k.close));
-      const technicalData = await technicalIndicators.analyzeSymbol(symbol, timeframe as string);
+      const technicalData = await technicalIndicators.analyzeSymbol(symbol, timeframe);
       
       // Generate sentiment analysis
       const sentiment = await aiService.analyzeMarketSentiment(symbol, priceData, technicalData);
