@@ -101,13 +101,13 @@ export default function Home() {
           </div>
 
           {/* Dashboard Cards - Alternating A/B Pattern */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8 auto-rows-min">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-8 auto-rows-min">
             
             {/* Row 1: B-A-B-A-B Pattern */}
             
             {/* B CARD: Portfolio - Big size */}
             <Link href="/portfolio">
-              <Card className="md:col-span-1 h-48 cursor-pointer hover:shadow-xl transition-all duration-300 border-border bg-gradient-to-br from-primary/5 to-primary/15 hover:from-primary/10 hover:to-primary/20">
+              <Card className="md:col-span-1 h-64 cursor-pointer hover:shadow-xl transition-all duration-300 border-border bg-gradient-to-br from-primary/5 to-primary/15 hover:from-primary/10 hover:to-primary/20">
                 <CardContent className="p-6 h-full flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="w-14 h-14 bg-primary/20 rounded-lg flex items-center justify-center">
@@ -150,7 +150,7 @@ export default function Home() {
 
             {/* B CARD: High Potential - Big size */}
             <Link href="/high-potential">
-              <Card className="md:col-span-1 h-48 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
+              <Card className="md:col-span-1 h-64 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
                 <CardContent className="p-6 h-full flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="w-14 h-14 bg-red-500/20 rounded-lg flex items-center justify-center">
@@ -185,7 +185,7 @@ export default function Home() {
             </Link>
 
             {/* B CARD: Total P&L - Big size */}
-            <Card className="md:col-span-1 h-48 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
+            <Card className="md:col-span-1 h-64 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-emerald-500/20 rounded-lg flex items-center justify-center">
@@ -220,7 +220,7 @@ export default function Home() {
             </Card>
 
             {/* B CARD: Smart Alerts - Big size */}
-            <Card className="md:col-span-1 h-48 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-orange-500/5 to-orange-500/15" data-testid="card-alerts">
+            <Card className="md:col-span-1 h-64 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-orange-500/5 to-orange-500/15" data-testid="card-alerts">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-orange-500/20 rounded-lg flex items-center justify-center">
@@ -252,7 +252,7 @@ export default function Home() {
             </Card>
 
             {/* B CARD: AI Signals - Big size */}
-            <Card className="md:col-span-1 h-48 border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/15">
+            <Card className="md:col-span-1 h-64 border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/15">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-indigo-500/20 rounded-lg flex items-center justify-center">
