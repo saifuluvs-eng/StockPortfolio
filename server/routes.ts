@@ -198,6 +198,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Ticker data endpoint for charts
+  app.get('/api/market/ticker/:symbol', async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const ticker = await binanceService.getTickerData(symbol);
+      res.json(ticker);
+    } catch (error) {
+      console.error("Error fetching ticker data:", error);
+      res.status(500).json({ message: "Failed to fetch ticker data" });
+    }
+  });
+
   app.get('/api/ai/sentiment/:symbol/:timeframe', async (req, res) => {
     try {
       const { symbol, timeframe = '4h' } = req.params;
