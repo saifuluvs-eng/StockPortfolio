@@ -4,6 +4,9 @@ import {
   scanHistory,
   watchlist,
   aiAnalysis,
+  tradeTransactions,
+  portfolioAnalytics,
+  marketData,
   type User,
   type UpsertUser,
   type PortfolioPosition,
@@ -14,9 +17,15 @@ import {
   type InsertWatchlistItem,
   type AiAnalysis,
   type InsertAiAnalysis,
+  type TradeTransaction,
+  type InsertTradeTransaction,
+  type PortfolioAnalytics,
+  type InsertPortfolioAnalytics,
+  type MarketData,
+  type InsertMarketData,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - mandatory for Replit Auth
@@ -28,6 +37,20 @@ export interface IStorage {
   createPortfolioPosition(position: InsertPortfolioPosition): Promise<PortfolioPosition>;
   updatePortfolioPosition(id: string, userId: string, position: Partial<InsertPortfolioPosition>): Promise<PortfolioPosition | null>;
   deletePortfolioPosition(id: string, userId: string): Promise<boolean>;
+  
+  // Trade transaction operations
+  getTradeTransactions(userId: string, symbol?: string): Promise<TradeTransaction[]>;
+  createTradeTransaction(transaction: InsertTradeTransaction): Promise<TradeTransaction>;
+  getTradeTransactionsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<TradeTransaction[]>;
+  
+  // Portfolio analytics operations
+  getPortfolioAnalytics(userId: string, startDate?: Date, endDate?: Date): Promise<PortfolioAnalytics[]>;
+  createPortfolioAnalytics(analytics: InsertPortfolioAnalytics): Promise<PortfolioAnalytics>;
+  getLatestPortfolioAnalytics(userId: string): Promise<PortfolioAnalytics | null>;
+  
+  // Market data operations
+  getMarketData(symbols: string[]): Promise<MarketData[]>;
+  upsertMarketData(marketData: InsertMarketData): Promise<MarketData>;
   
   // Scan history operations
   createScanHistory(scan: InsertScanHistory): Promise<ScanHistory>;
@@ -152,6 +175,103 @@ export class DatabaseStorage implements IStorage {
         eq(watchlist.symbol, symbol)
       ));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Trade transaction operations
+  async getTradeTransactions(userId: string, symbol?: string): Promise<TradeTransaction[]> {
+    const conditions = [eq(tradeTransactions.userId, userId)];
+    if (symbol) {
+      conditions.push(eq(tradeTransactions.symbol, symbol));
+    }
+    
+    return await db
+      .select()
+      .from(tradeTransactions)
+      .where(and(...conditions))
+      .orderBy(desc(tradeTransactions.executedAt));
+  }
+
+  async createTradeTransaction(transaction: InsertTradeTransaction): Promise<TradeTransaction> {
+    const [newTransaction] = await db
+      .insert(tradeTransactions)
+      .values(transaction)
+      .returning();
+    return newTransaction;
+  }
+
+  async getTradeTransactionsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<TradeTransaction[]> {
+    return await db
+      .select()
+      .from(tradeTransactions)
+      .where(and(
+        eq(tradeTransactions.userId, userId),
+        gte(tradeTransactions.executedAt, startDate),
+        lte(tradeTransactions.executedAt, endDate)
+      ))
+      .orderBy(desc(tradeTransactions.executedAt));
+  }
+
+  // Portfolio analytics operations
+  async getPortfolioAnalytics(userId: string, startDate?: Date, endDate?: Date): Promise<PortfolioAnalytics[]> {
+    const conditions = [eq(portfolioAnalytics.userId, userId)];
+    
+    if (startDate) {
+      conditions.push(gte(portfolioAnalytics.date, startDate));
+    }
+    if (endDate) {
+      conditions.push(lte(portfolioAnalytics.date, endDate));
+    }
+    
+    return await db
+      .select()
+      .from(portfolioAnalytics)
+      .where(and(...conditions))
+      .orderBy(desc(portfolioAnalytics.date));
+  }
+
+  async createPortfolioAnalytics(analytics: InsertPortfolioAnalytics): Promise<PortfolioAnalytics> {
+    const [newAnalytics] = await db
+      .insert(portfolioAnalytics)
+      .values(analytics)
+      .returning();
+    return newAnalytics;
+  }
+
+  async getLatestPortfolioAnalytics(userId: string): Promise<PortfolioAnalytics | null> {
+    const [latest] = await db
+      .select()
+      .from(portfolioAnalytics)
+      .where(eq(portfolioAnalytics.userId, userId))
+      .orderBy(desc(portfolioAnalytics.date))
+      .limit(1);
+    return latest || null;
+  }
+
+  // Market data operations
+  async getMarketData(symbols: string[]): Promise<MarketData[]> {
+    return await db
+      .select()
+      .from(marketData)
+      .where(
+        symbols.length > 0 
+          ? eq(marketData.symbol, symbols[0]) // Simple implementation for now
+          : undefined
+      );
+  }
+
+  async upsertMarketData(data: InsertMarketData): Promise<MarketData> {
+    const [upsertedData] = await db
+      .insert(marketData)
+      .values(data)
+      .onConflictDoUpdate({
+        target: marketData.symbol,
+        set: {
+          ...data,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return upsertedData;
   }
 
   // AI Analysis operations
