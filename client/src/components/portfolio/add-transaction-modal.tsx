@@ -101,22 +101,18 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   };
 
   const handleSymbolChange = (value: string) => {
-    // Auto-append USDT if not already present
+    // Just set the symbol without auto-appending anything
     const symbol = value.toUpperCase();
-    if (symbol && !symbol.includes('USDT') && !symbol.includes('BTC') && !symbol.includes('ETH')) {
-      form.setValue('symbol', symbol + 'USDT');
-    } else {
-      form.setValue('symbol', symbol);
-    }
+    form.setValue('symbol', symbol);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Transaction</DialogTitle>
+          <DialogTitle>Add Coin</DialogTitle>
           <DialogDescription>
-            Record a buy or sell transaction to track your portfolio performance.
+            Record a buy or sell transaction for a cryptocurrency to track your portfolio performance.
           </DialogDescription>
         </DialogHeader>
         
@@ -126,7 +122,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
               <Label htmlFor="symbol">Symbol</Label>
               <Input
                 id="symbol"
-                placeholder="BTC, ETH, SOL..."
+                placeholder="BTCUSDT, ETHUSDT, SOLUSDT..."
                 {...form.register("symbol")}
                 onChange={(e) => handleSymbolChange(e.target.value)}
                 data-testid="input-symbol"
@@ -244,7 +240,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
               disabled={addTransactionMutation.isPending}
               data-testid="button-add-transaction"
             >
-              {addTransactionMutation.isPending ? "Adding..." : "Add Transaction"}
+              {addTransactionMutation.isPending ? "Adding..." : "Add Coin"}
             </Button>
           </DialogFooter>
         </form>

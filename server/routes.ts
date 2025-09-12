@@ -89,7 +89,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/portfolio/transactions', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertTradeTransactionSchema.parse(req.body);
+      const validatedData = insertTradeTransactionSchema.parse({
+        ...req.body,
+        userId
+      });
       const transaction = await portfolioService.addTransaction(userId, validatedData);
       res.json(transaction);
     } catch (error) {

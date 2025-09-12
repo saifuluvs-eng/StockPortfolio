@@ -144,7 +144,7 @@ export default function Portfolio() {
               data-testid="button-add-transaction"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Add Transaction
+              Add Coin
             </Button>
           </div>
 
@@ -378,7 +378,7 @@ export default function Portfolio() {
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-4">No positions found</p>
                     <Button onClick={() => setShowAddTransactionModal(true)} data-testid="button-add-first-transaction">
-                      Add Your First Transaction
+                      Add Your First Coin
                     </Button>
                   </div>
                 ) : (
