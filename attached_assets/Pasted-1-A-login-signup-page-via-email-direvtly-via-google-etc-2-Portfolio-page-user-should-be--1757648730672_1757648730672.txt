@@ -1,0 +1,237 @@
+1. A login / signup page (via email, direvtly via google,etc)
+
+
+
+2. Portfolio page - user should be able to add coins (quantity, entry price) using binance API we show all required details like P&L
+
+
+
+3. Custom scan page - this page will have alot of things like
+
+
+
+* Chart- tradingview - usdt pairs - spot-Binance
+
+
+
+*search bar - scan button - four timeframes ( 15min,1hr,4hr,1Day)
+
+
+
+*above chart - current rate,24hr change,today high,Low
+
+
+
+
+
+
+
+* technical indicators
+
+
+
+✗
+
+VWAP Bias - Tier 3
+
+▲
+
+(-1)
+
+Price ($115186.50000) is below VWAP ($115416.87300), indicating bearish control. Weighted score: -1/1 pt.
+
+✓
+
+Volatility: BB Squeeze
+
+▲
+
+(+1)
+
+Bollinger Bands are in a squeeze, indicating potential breakout.
+
+?
+
+Pattern: Consolidation
+
+▲
+
+(0)
+
+Price range is 2.56%, which is narrow for consolidation.
+
+✗
+
+Volume Spike - Tier 2
+
+▲
+
+(0)
+
+No significant volume spike (1.3x average). Weighted score: 0/4 pts.
+
+✓
+
+Momentum: RSI Divergence
+
+▲
+
+(+1)
+
+RSI (66.0) shows potential for momentum divergence.
+
+?
+
+Price Action: Candlestick
+
+▲
+
+(0)
+
+No significant candlestick pattern detected in the last two candles.
+
+✓
+
+Trend: EMA Crossover
+
+▲
+
+(+1)
+
+Short-term EMA (113441) is above long-term EMA (112251).
+
+?
+
+Structure: Support/Resistance
+
+▲
+
+(0)
+
+Price is approaching strong resistance at $115762.43250 (0.50% away). Support is at $114610.56750.
+
+✗
+
+Resistance: Order Book
+
+▲
+
+(-1)
+
+Significant sell wall detected at $115301.6865 (0.10% away).
+
+✗
+
+Volatility: ATR Check
+
+▲
+
+(-1)
+
+Low volatility (ATR: 2.56%). A 3% move is possible.
+
+✗
+
+RSI (14) - Tier 2
+
+▲
+
+(0)
+
+RSI is 66.0 (neutral). Weighted score: 0/4 pts.
+
+✓
+
+MACD (12, 26, 9) - Tier 1
+
+▲
+
+(+9)
+
+MACD line is above signal line - bullish momentum. Weighted score: 9/9 pts.
+
+✓
+
+EMAs (20, 50) - Tier 1
+
+▲
+
+(+9)
+
+EMA20 is above EMA50 - uptrend confirmed. Weighted score: 9/9 pts.
+
+✓
+
++DI / -DI (14) - Tier 2
+
+▲
+
+(+2)
+
++DI (23.5) is above -DI (18.2) indicating bullish momentum. Weighted score: +2/4 pts.
+
+✓
+
+ADX (14) - Tier 1
+
+▲
+
+(+3)
+
+ADX is 25 - trend strength is moderate. Weighted score: +3/6 pts.
+
+✗
+
+OBV (Confirmation) - Tier 2
+
+▼
+
+(0)
+
+
+
+4. High potential page
+
+
+
+Identifies coins with strong bullish momentum and confirmed uptrends.
+
+
+
+Bullish Criteria
+
+
+
+Price above EMA 20 & 50
+
+Volume above 24h average
+
+RSI between 40-70 (healthy)
+
+Positive MACD signal
+
+Strong ADX trend (25+)
+
+🎛️ Scan Filters
+
+
+
+Timeframe:
+
+Min Score:
+
+Min Volume:
+
+Exclude stablecoins:
+
+(These 4 filter)
+
+
+
+
+
+5.Gainers page
+
+
+
+Top 50 performing USDT pairs in the last 24 hours with quick analysis
