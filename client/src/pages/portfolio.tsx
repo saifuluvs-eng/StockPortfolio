@@ -252,104 +252,202 @@ export default function Portfolio() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <AssetAllocationChart data={assetAllocation} isLoading={allocationLoading} />
-                </div>
-                <div className="space-y-6">
-                  {/* Quick Stats Card */}
-                  <Card className="border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <BarChart3 className="w-5 h-5" />
-                        Quick Stats
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Best Performer</span>
-                          <div className="flex items-center gap-1">
-                            <ArrowUpRight className="w-4 h-4 text-accent" />
-                            <span className="font-medium text-accent">
-                              {portfolioSummary?.positions?.length ? 
-                                portfolioSummary.positions
-                                  .reduce((best, pos) => pos.unrealizedPnLPercent > best.unrealizedPnLPercent ? pos : best)
-                                  .symbol.replace('USDT', '')
-                                : 'N/A'
-                              }
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Worst Performer</span>
-                          <div className="flex items-center gap-1">
-                            <ArrowDownRight className="w-4 h-4 text-destructive" />
-                            <span className="font-medium text-destructive">
-                              {portfolioSummary?.positions?.length ? 
-                                portfolioSummary.positions
-                                  .reduce((worst, pos) => pos.unrealizedPnLPercent < worst.unrealizedPnLPercent ? pos : worst)
-                                  .symbol.replace('USDT', '')
-                                : 'N/A'
-                              }
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Total Positions</span>
-                          <span className="font-medium">
-                            {portfolioSummary?.positions?.length || 0}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Avg. Allocation</span>
-                          <span className="font-medium">
+              {/* Current Holdings - moved to main section */}
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wallet className="w-5 h-5" />
+                    Current Holdings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {portfolioLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-muted-foreground">Loading positions...</div>
+                    </div>
+                  ) : (!portfolioSummary?.positions || portfolioSummary.positions.length === 0) ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">No positions found</p>
+                      <Button onClick={() => setShowAddTransactionModal(true)} data-testid="button-add-first-transaction">
+                        Add Your First Coin
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-muted/50">
+                          <tr>
+                            <th className="text-left p-4 text-muted-foreground font-medium">Asset</th>
+                            <th className="text-right p-4 text-muted-foreground font-medium">Allocation</th>
+                            <th className="text-right p-4 text-muted-foreground font-medium">Quantity</th>
+                            <th className="text-right p-4 text-muted-foreground font-medium">Value</th>
+                            <th className="text-right p-4 text-muted-foreground font-medium">P&L</th>
+                            <th className="text-right p-4 text-muted-foreground font-medium">24h Change</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(portfolioSummary?.positions ?? [])
+                            .slice()
+                            .sort((a, b) => b.marketValue - a.marketValue)
+                            .map((position) => {
+                              const baseAsset = position.symbol.replace('USDT', '');
+                              
+                              return (
+                                <tr key={position.id} className="border-b border-border hover:bg-muted/20 transition-colors">
+                                  <td className="p-4">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                        <span className="text-xs font-bold text-primary-foreground">
+                                          {baseAsset.slice(0, 3)}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-foreground">{baseAsset}</p>
+                                        <p className="text-sm text-muted-foreground">${position.currentPrice.toFixed(2)}</p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className="flex flex-col items-end">
+                                      <span className="font-medium">{position.allocation.toFixed(1)}%</span>
+                                      <div className="w-16 h-2 bg-muted rounded-full mt-1">
+                                        <div 
+                                          className="h-full bg-primary rounded-full"
+                                          style={{ width: `${position.allocation}%` }}
+                                        ></div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right text-foreground" data-testid={`text-quantity-${position.id}`}>
+                                    {parseFloat(position.quantity).toFixed(8)}
+                                  </td>
+                                  <td className="p-4 text-right text-foreground">
+                                    ${position.marketValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className={position.unrealizedPnL >= 0 ? 'text-accent' : 'text-destructive'}>
+                                      <div className="font-medium" data-testid={`text-pnl-${position.id}`}>
+                                        {position.unrealizedPnL >= 0 ? '+' : ''}${position.unrealizedPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                      </div>
+                                      <div className="text-sm">
+                                        {position.unrealizedPnL >= 0 ? '+' : ''}{position.unrealizedPnLPercent.toFixed(2)}%
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="p-4 text-right">
+                                    <div className={position.dayChangePercent >= 0 ? 'text-accent' : 'text-destructive'}>
+                                      <div className="font-medium">
+                                        {position.dayChangePercent >= 0 ? '+' : ''}{position.dayChangePercent.toFixed(2)}%
+                                      </div>
+                                      <div className="text-sm">
+                                        {position.dayChangePercent >= 0 ? '+' : ''}${position.dayChange.toFixed(2)}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {/* Quick Stats and Top Performers - moved below Current Holdings */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Quick Stats Card */}
+                <Card className="border-border">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      Quick Stats
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Best Performer</span>
+                        <div className="flex items-center gap-1">
+                          <ArrowUpRight className="w-4 h-4 text-accent" />
+                          <span className="font-medium text-accent">
                             {portfolioSummary?.positions?.length ? 
-                              (100 / portfolioSummary.positions.length).toFixed(1) + '%'
+                              portfolioSummary.positions
+                                .reduce((best, pos) => pos.unrealizedPnLPercent > best.unrealizedPnLPercent ? pos : best)
+                                .symbol.replace('USDT', '')
                               : 'N/A'
                             }
                           </span>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Worst Performer</span>
+                        <div className="flex items-center gap-1">
+                          <ArrowDownRight className="w-4 h-4 text-destructive" />
+                          <span className="font-medium text-destructive">
+                            {portfolioSummary?.positions?.length ? 
+                              portfolioSummary.positions
+                                .reduce((worst, pos) => pos.unrealizedPnLPercent < worst.unrealizedPnLPercent ? pos : worst)
+                                .symbol.replace('USDT', '')
+                              : 'N/A'
+                            }
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Total Positions</span>
+                        <span className="font-medium">
+                          {portfolioSummary?.positions?.length || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Avg. Allocation</span>
+                        <span className="font-medium">
+                          {portfolioSummary?.positions?.length ? 
+                            (100 / portfolioSummary.positions.length).toFixed(1) + '%'
+                            : 'N/A'
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-                  {/* Top Performers Card */}
-                  <Card className="border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5" />
-                        Top Performers
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {(portfolioSummary?.positions ?? [])
-                          .slice()
-                          .sort((a, b) => b.unrealizedPnLPercent - a.unrealizedPnLPercent)
-                          .slice(0, 3)
-                          .map((position) => (
-                            <div key={position.id} className="flex justify-between items-center">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
-                                  <span className="text-xs font-bold text-primary-foreground">
-                                    {position.symbol.replace('USDT', '').slice(0, 2)}
-                                  </span>
-                                </div>
-                                <span className="font-medium">
-                                  {position.symbol.replace('USDT', '')}
+                {/* Top Performers Card */}
+                <Card className="border-border">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Top Performers
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {(portfolioSummary?.positions ?? [])
+                        .slice()
+                        .sort((a, b) => b.unrealizedPnLPercent - a.unrealizedPnLPercent)
+                        .slice(0, 3)
+                        .map((position) => (
+                          <div key={position.id} className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                                <span className="text-xs font-bold text-primary-foreground">
+                                  {position.symbol.replace('USDT', '').slice(0, 2)}
                                 </span>
                               </div>
-                              <div className={`text-sm font-medium ${position.unrealizedPnLPercent >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                                {position.unrealizedPnLPercent >= 0 ? '+' : ''}{position.unrealizedPnLPercent.toFixed(2)}%
-                              </div>
+                              <span className="font-medium">
+                                {position.symbol.replace('USDT', '')}
+                              </span>
                             </div>
-                          )) || []
-                        }
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                            <div className={`text-sm font-medium ${position.unrealizedPnLPercent >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                              {position.unrealizedPnLPercent >= 0 ? '+' : ''}{position.unrealizedPnLPercent.toFixed(2)}%
+                            </div>
+                          </div>
+                        )) || []
+                      }
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </TabsContent>
 
@@ -373,112 +471,6 @@ export default function Portfolio() {
               />
             </TabsContent>
           </Tabs>
-
-          {/* Holdings Overview - visible in overview tab */}
-          {selectedTab === "overview" && (
-            <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5" />
-                  Current Holdings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {portfolioLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="text-muted-foreground">Loading positions...</div>
-                  </div>
-                ) : (!portfolioSummary?.positions || portfolioSummary.positions.length === 0) ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">No positions found</p>
-                    <Button onClick={() => setShowAddTransactionModal(true)} data-testid="button-add-first-transaction">
-                      Add Your First Coin
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-muted/50">
-                        <tr>
-                          <th className="text-left p-4 text-muted-foreground font-medium">Asset</th>
-                          <th className="text-right p-4 text-muted-foreground font-medium">Allocation</th>
-                          <th className="text-right p-4 text-muted-foreground font-medium">Quantity</th>
-                          <th className="text-right p-4 text-muted-foreground font-medium">Value</th>
-                          <th className="text-right p-4 text-muted-foreground font-medium">P&L</th>
-                          <th className="text-right p-4 text-muted-foreground font-medium">24h Change</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(portfolioSummary?.positions ?? [])
-                          .slice()
-                          .sort((a, b) => b.marketValue - a.marketValue)
-                          .map((position) => {
-                            const baseAsset = position.symbol.replace('USDT', '');
-                            
-                            return (
-                              <tr key={position.id} className="border-b border-border hover:bg-muted/20 transition-colors">
-                                <td className="p-4">
-                                  <div className="flex items-center space-x-3">
-                                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                                      <span className="text-xs font-bold text-primary-foreground">
-                                        {baseAsset.slice(0, 3)}
-                                      </span>
-                                    </div>
-                                    <div>
-                                      <p className="font-medium text-foreground">{baseAsset}</p>
-                                      <p className="text-sm text-muted-foreground">${position.currentPrice.toFixed(2)}</p>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-4 text-right">
-                                  <div className="flex flex-col items-end">
-                                    <span className="font-medium">{position.allocation.toFixed(1)}%</span>
-                                    <div className="w-16 h-2 bg-muted rounded-full mt-1">
-                                      <div 
-                                        className="h-full bg-primary rounded-full"
-                                        style={{ width: `${position.allocation}%` }}
-                                      ></div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-4 text-right text-foreground" data-testid={`text-quantity-${position.id}`}>
-                                  {parseFloat(position.quantity).toFixed(8)}
-                                </td>
-                                <td className="p-4 text-right text-foreground">
-                                  ${position.marketValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                </td>
-                                <td className="p-4 text-right">
-                                  <div className={position.unrealizedPnL >= 0 ? 'text-accent' : 'text-destructive'}>
-                                    <div className="font-medium" data-testid={`text-pnl-${position.id}`}>
-                                      {position.unrealizedPnL >= 0 ? '+' : ''}${position.unrealizedPnL.toFixed(2)}
-                                    </div>
-                                    <div className="text-sm">
-                                      ({position.unrealizedPnLPercent >= 0 ? '+' : ''}{position.unrealizedPnLPercent.toFixed(2)}%)
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="p-4 text-right">
-                                  <div className={position.dayChange >= 0 ? 'text-accent' : 'text-destructive'}>
-                                    <div className="font-medium flex items-center justify-end gap-1">
-                                      {position.dayChange >= 0 ? 
-                                        <ArrowUpRight className="w-3 h-3" /> : 
-                                        <ArrowDownRight className="w-3 h-3" />
-                                      }
-                                      {position.dayChangePercent >= 0 ? '+' : ''}{position.dayChangePercent.toFixed(2)}%
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
 
