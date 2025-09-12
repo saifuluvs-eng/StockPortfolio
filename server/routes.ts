@@ -33,13 +33,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate P&L for each position
       const positionsWithPnL = await Promise.all(
         positions.map(async (position) => {
-          const currentPrice = await binanceService.getCurrentPrice(position.symbol);
+          let currentPrice: number;
           const entryPrice = parseFloat(position.entryPrice);
+          
+          try {
+            currentPrice = await binanceService.getCurrentPrice(position.symbol);
+          } catch (error) {
+            console.warn(`Failed to fetch current price for ${position.symbol}, using entry price as fallback:`, error);
+            currentPrice = entryPrice; // Fallback to entry price if API fails
+          }
+          
           const quantity = parseFloat(position.quantity);
           const currentValue = currentPrice * quantity;
           const entryValue = entryPrice * quantity;
           const pnl = currentValue - entryValue;
-          const pnlPercent = (pnl / entryValue) * 100;
+          const pnlPercent = entryValue > 0 ? (pnl / entryValue) * 100 : 0;
 
           return {
             ...position,
