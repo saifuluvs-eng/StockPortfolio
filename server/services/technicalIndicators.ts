@@ -267,10 +267,11 @@ class TechnicalIndicators {
       const binanceInterval = this.convertTimeframeToBinance(timeframe);
       
       let closes: number[], highs: number[], lows: number[], volumes: number[], currentPrice: number;
+      let klines: any[] = [];
       
       try {
         // Get candlestick data
-        const klines = await binanceService.getKlineData(symbol, binanceInterval, 100);
+        klines = await binanceService.getKlineData(symbol, binanceInterval, 100);
         
         closes = klines.map(k => parseFloat(k.close));
         highs = klines.map(k => parseFloat(k.high));
@@ -289,6 +290,10 @@ class TechnicalIndicators {
         currentPrice = closes[closes.length - 1];
       }
 
+      // Add timing info for accuracy
+      const calculationTimestamp = new Date().toISOString();
+      const latestCandleTime = klines?.length > 0 ? new Date(klines[klines.length - 1].closeTime).toISOString() : calculationTimestamp;
+      
       // Calculate indicators
       const rsi = this.calculateRSI(closes);
       const macd = this.calculateMACD(closes);
@@ -320,7 +325,7 @@ class TechnicalIndicators {
           signal: rsi > 30 && rsi < 70 ? 'neutral' : rsi >= 70 ? 'bearish' : 'bullish',
           score: rsi > 30 && rsi < 70 ? 0 : rsi >= 70 ? -2 : 2,
           tier: 2,
-          description: `RSI: ${rsi.toFixed(1)} - ${rsi > 70 ? 'Overbought' : rsi < 30 ? 'Oversold' : 'Normal'}`
+          description: `RSI: ${rsi.toFixed(1)} - ${rsi > 70 ? 'Overbought' : rsi < 30 ? 'Oversold' : 'Normal'} (as of ${new Date().toLocaleTimeString()})`
         },
         macd: {
           value: macd.macd,
@@ -431,7 +436,9 @@ class TechnicalIndicators {
         price: currentPrice,
         indicators,
         totalScore,
-        recommendation
+        recommendation,
+        calculationTimestamp,
+        latestDataTime: latestCandleTime
       };
 
     } catch (error) {
