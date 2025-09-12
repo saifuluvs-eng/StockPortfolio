@@ -215,6 +215,79 @@ export default function Charts() {
             </div>
           </div>
 
+          {/* Chart Settings - REPLACED CONTENT WITH SCANNER CONTROLS */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  Chart Settings
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={showTechnicals ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowTechnicals(!showTechnicals)}
+                    data-testid="toggle-indicators"
+                  >
+                    <Zap className="w-4 h-4 mr-1" />
+                    Technical Indicators
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* SCANNER CONTROLS REPLACING ORIGINAL CONTENT */}
+              <div className="flex flex-wrap items-center gap-4 mb-4">
+                <div className="flex-1 min-w-64">
+                  <div className="relative">
+                    <Input
+                      placeholder="Search symbol (e.g. BTCUSDT)"
+                      value={selectedSymbol}
+                      onChange={(e) => setSelectedSymbol(e.target.value.toUpperCase())}
+                      className="pl-10"
+                      data-testid="input-search-symbol"
+                    />
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <label className="text-sm font-medium text-foreground">Timeframe:</label>
+                  <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                    <SelectTrigger className="w-32" data-testid="select-timeframe">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15m">15min</SelectItem>
+                      <SelectItem value="60">1hr</SelectItem>
+                      <SelectItem value="240">4hr</SelectItem>
+                      <SelectItem value="1d">1Day</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <Button 
+                  onClick={handleScan}
+                  disabled={scanMutation.isPending}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  data-testid="button-scan"
+                >
+                  <Search className="w-4 h-4 mr-2" />
+                  {scanMutation.isPending ? "Scanning..." : "Scan"}
+                </Button>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Active features:</span>
+                <Badge variant="secondary">Real-time Updates</Badge>
+                <Badge variant="secondary">Professional Charts</Badge>
+                {showTechnicals && <Badge variant="secondary">Technical Analysis</Badge>}
+                <Badge variant="secondary">Multi-timeframes</Badge>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Current Symbol Display */}
           <div className="flex items-center justify-center mb-4">
             <Badge variant="secondary" className="text-lg px-4 py-2">
@@ -292,78 +365,6 @@ export default function Charts() {
             </Card>
           </div>
 
-          {/* Chart Settings - REPLACED CONTENT WITH SCANNER CONTROLS */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
-                  Chart Settings
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={showTechnicals ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowTechnicals(!showTechnicals)}
-                    data-testid="toggle-indicators"
-                  >
-                    <Zap className="w-4 h-4 mr-1" />
-                    Technical Indicators
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* SCANNER CONTROLS REPLACING ORIGINAL CONTENT */}
-              <div className="flex flex-wrap items-center gap-4 mb-4">
-                <div className="flex-1 min-w-64">
-                  <div className="relative">
-                    <Input
-                      placeholder="Search symbol (e.g. BTCUSDT)"
-                      value={selectedSymbol}
-                      onChange={(e) => setSelectedSymbol(e.target.value.toUpperCase())}
-                      className="pl-10"
-                      data-testid="input-search-symbol"
-                    />
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <label className="text-sm font-medium text-foreground">Timeframe:</label>
-                  <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                    <SelectTrigger className="w-32" data-testid="select-timeframe">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15m">15min</SelectItem>
-                      <SelectItem value="60">1hr</SelectItem>
-                      <SelectItem value="240">4hr</SelectItem>
-                      <SelectItem value="1d">1Day</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <Button 
-                  onClick={handleScan}
-                  disabled={scanMutation.isPending}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  data-testid="button-scan"
-                >
-                  <Search className="w-4 h-4 mr-2" />
-                  {scanMutation.isPending ? "Scanning..." : "Scan"}
-                </Button>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-muted-foreground">Active features:</span>
-                <Badge variant="secondary">Real-time Updates</Badge>
-                <Badge variant="secondary">Professional Charts</Badge>
-                {showTechnicals && <Badge variant="secondary">Technical Analysis</Badge>}
-                <Badge variant="secondary">Multi-timeframes</Badge>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Main Layout: Technical Indicators (Left) + Chart (Right) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
