@@ -100,185 +100,172 @@ export default function Home() {
             </Button>
           </div>
 
-          {/* Dashboard Cards - Alternating A/B Pattern */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-8 auto-rows-[7rem]">
+          {/* Dashboard Cards - Clean Grid Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
             
             {/* Row 1: B-A-B-A-B Pattern */}
             
-            {/* B CARD: Portfolio - Big size */}
+            {/* Portfolio Card */}
             <Link href="/portfolio">
-              <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-xl transition-all duration-300 border-border bg-gradient-to-br from-primary/5 to-primary/15 hover:from-primary/10 hover:to-primary/20">
-                <CardContent className="p-6 h-full flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-14 h-14 bg-primary/20 rounded-lg flex items-center justify-center">
-                      <BarChart3 className="w-7 h-7 text-primary" />
-                    </div>
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-primary/5 to-primary/10">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-bold text-foreground">Portfolio</h3>
-                      <p className="text-sm text-muted-foreground">Manage your positions</p>
+                      <h3 className="font-semibold text-foreground mb-1">Portfolio</h3>
+                      <p className="text-2xl font-bold text-foreground" data-testid="text-portfolio-value">
+                        ${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                      <div className="flex items-center space-x-1 mt-1">
+                        <TrendingUp className={`w-3 h-3 ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={`text-xs ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-portfolio-change">
+                          {portfolioPnLPercent >= 0 ? '+' : ''}{portfolioPnLPercent.toFixed(2)}%
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-portfolio-value">
-                      ${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <TrendingUp className={`w-4 h-4 ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                      <span className={`text-sm font-medium ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-portfolio-change">
-                        {portfolioPnLPercent >= 0 ? '+' : ''}{portfolioPnLPercent.toFixed(2)}%
-                      </span>
-                    </div>
+                    <BarChart3 className="w-8 h-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
-            {/* A CARD: Technical Scanner - Small size */}
+            {/* Scanner Card */}
             <Link href="/scanner">
-              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-accent/5 to-accent/10">
-                <CardContent className="p-3 h-full flex flex-col justify-center">
-                  <div className="text-center">
-                    <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
-                      <Search className="w-4 h-4 text-accent" />
-                    </div>
-                    <h3 className="text-xs font-semibold text-foreground mb-1">Technical Scanner</h3>
-                    <p className="text-xs text-muted-foreground">Advanced analysis</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            {/* B CARD: High Potential - Big size */}
-            <Link href="/high-potential">
-              <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
-                <CardContent className="p-6 h-full flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="w-14 h-14 bg-red-500/20 rounded-lg flex items-center justify-center">
-                      <Star className="w-7 h-7 text-red-500" />
-                    </div>
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-accent/5 to-accent/10">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-bold text-foreground">High Potential</h3>
+                      <h3 className="font-semibold text-foreground mb-1">Scanner</h3>
+                      <p className="text-sm text-muted-foreground">Technical analysis</p>
+                      <p className="text-lg font-bold text-foreground mt-2">15+</p>
+                      <p className="text-xs text-muted-foreground">Indicators</p>
+                    </div>
+                    <Search className="w-8 h-8 text-accent" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            {/* High Potential Card */}
+            <Link href="/high-potential">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/10">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-foreground mb-1">High Potential</h3>
                       <p className="text-sm text-muted-foreground">Top opportunities</p>
+                      <p className="text-lg font-bold text-foreground mt-2">5</p>
+                      <p className="text-xs text-muted-foreground">Active signals</p>
                     </div>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground">5</p>
-                    <p className="text-sm text-muted-foreground">Signals found</p>
+                    <Star className="w-8 h-8 text-red-500" />
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
-            {/* A CARD: Top Gainers - Small size */}
+            {/* Top Gainers Card */}
             <Link href="/gainers">
-              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-green-500/5 to-green-500/10">
-                <CardContent className="p-3 h-full flex flex-col justify-center">
-                  <div className="text-center">
-                    <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
-                      <Award className="w-4 h-4 text-green-500" />
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-green-500/5 to-green-500/10">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-foreground mb-1">Top Gainers</h3>
+                      <p className="text-sm text-muted-foreground">Market leaders</p>
+                      <p className="text-lg font-bold text-foreground mt-2">12</p>
+                      <p className="text-xs text-muted-foreground">Active</p>
                     </div>
-                    <h3 className="text-xs font-semibold text-foreground mb-1">Top Gainers</h3>
-                    <p className="text-xs text-muted-foreground">Market leaders</p>
+                    <Award className="w-8 h-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
-            {/* B CARD: Total P&L - Big size */}
-            <Card className="md:col-span-1 md:row-span-2 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
-              <CardContent className="p-6 h-full flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="w-14 h-14 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                    <Activity className="w-7 h-7 text-emerald-600" />
-                  </div>
+            {/* Total P&L Card */}
+            <Card className="border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/10">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-foreground">Total P&L</h3>
-                    <p className="text-sm text-muted-foreground">Last 24h performance</p>
+                    <h3 className="font-semibold text-foreground mb-1">Total P&L</h3>
+                    <p className={`text-2xl font-bold ${portfolioPnL >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-daily-pnl">
+                      {portfolioPnL >= 0 ? '+' : ''}${portfolioPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">24h performance</p>
                   </div>
-                </div>
-                <div>
-                  <p className={`text-2xl font-bold ${portfolioPnL >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-daily-pnl">
-                    {portfolioPnL >= 0 ? '+' : ''}${portfolioPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+                  <Activity className="w-8 h-8 text-emerald-600" />
                 </div>
               </CardContent>
             </Card>
 
-            {/* Row 2: Smart Alerts and AI Signals (B cards), then small cards */}
-            
-            {/* B CARD: Smart Alerts - Big size */}
-            <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-orange-500/5 to-orange-500/15" data-testid="card-alerts">
-              <CardContent className="p-6 h-full flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="w-14 h-14 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                    <Bell className="w-7 h-7 text-orange-500" />
-                  </div>
+            {/* Watchlist Card */}
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-foreground">Smart Alerts</h3>
+                    <h3 className="font-semibold text-foreground mb-1">Watchlist</h3>
+                    <p className="text-sm text-muted-foreground">Track favorites</p>
+                    <p className="text-lg font-bold text-foreground mt-2">8</p>
+                    <p className="text-xs text-muted-foreground">Coins tracked</p>
+                  </div>
+                  <Eye className="w-8 h-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Smart Alerts Card */}
+            <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-orange-500/5 to-orange-500/10" data-testid="card-alerts">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">Smart Alerts</h3>
                     <p className="text-sm text-muted-foreground">Price notifications</p>
+                    <p className="text-lg font-bold text-foreground mt-2">0</p>
+                    <p className="text-xs text-muted-foreground">Active alerts</p>
                   </div>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">0</p>
-                  <p className="text-sm text-muted-foreground">Active alerts</p>
+                  <Bell className="w-8 h-8 text-orange-500" />
                 </div>
               </CardContent>
             </Card>
 
-            {/* B CARD: AI Signals - Big size */}
-            <Card className="md:col-span-1 md:row-span-2 border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/15">
-              <CardContent className="p-6 h-full flex flex-col justify-between">
-                <div className="space-y-3">
-                  <div className="w-14 h-14 bg-indigo-500/20 rounded-lg flex items-center justify-center">
-                    <Brain className="w-7 h-7 text-indigo-500" />
-                  </div>
+            {/* Active Positions Card */}
+            <Card className="border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-bold text-foreground">AI Signals</h3>
+                    <h3 className="font-semibold text-foreground mb-1">Positions</h3>
+                    <p className="text-sm text-muted-foreground">Active holdings</p>
+                    <p className="text-lg font-bold text-foreground mt-2" data-testid="text-active-positions">{activePositions}</p>
+                    <p className="text-xs text-muted-foreground">Holdings</p>
+                  </div>
+                  <Target className="w-8 h-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* AI Signals Card */}
+            <Card className="border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/10">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
                     <p className="text-sm text-muted-foreground">Market analysis</p>
+                    <p className="text-lg font-bold text-foreground mt-2" data-testid="text-ai-signals">0</p>
+                    <p className="text-xs text-green-500">Active</p>
                   </div>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground" data-testid="text-ai-signals">0</p>
-                  <p className="text-sm text-green-500">Active</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* A CARD: Watchlist - Small size */}
-            <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist">
-              <CardContent className="p-3 h-full flex flex-col justify-center">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <Eye className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <h3 className="text-xs font-semibold text-foreground mb-1">Watchlist</h3>
-                  <p className="text-xs text-muted-foreground">Track favorites</p>
+                  <Brain className="w-8 h-8 text-indigo-500" />
                 </div>
               </CardContent>
             </Card>
 
-            {/* A CARD: Active Positions - Small size */}
-            <Card className="md:col-span-1 border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
-              <CardContent className="p-3 h-full flex flex-col justify-center">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <Target className="w-4 h-4 text-purple-500" />
+            {/* Market Status Card */}
+            <Card className="border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">Market Status</h3>
+                    <p className="text-sm text-muted-foreground">Current state</p>
+                    <p className="text-lg font-bold text-green-500 mt-2">Open</p>
+                    <p className="text-xs text-muted-foreground">Trading active</p>
                   </div>
-                  <h3 className="text-xs font-semibold text-foreground mb-1">Positions</h3>
-                  <p className="text-sm font-bold text-foreground" data-testid="text-active-positions">{activePositions}</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* A CARD: Market Status - Small size */}
-            <Card className="md:col-span-1 border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
-              <CardContent className="p-3 h-full flex flex-col justify-center">
-                <div className="text-center">
-                  <div className="w-8 h-8 bg-slate-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
-                    <Activity className="w-4 h-4 text-slate-500" />
-                  </div>
-                  <h3 className="text-xs font-semibold text-foreground mb-1">Market Status</h3>
-                  <p className="text-xs text-green-500">Open</p>
+                  <Activity className="w-8 h-8 text-slate-500" />
                 </div>
               </CardContent>
             </Card>
