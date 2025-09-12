@@ -101,13 +101,13 @@ export default function Home() {
           </div>
 
           {/* Dashboard Cards - Alternating A/B Pattern */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-8 auto-rows-min">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-8 auto-rows-[7rem]">
             
             {/* Row 1: B-A-B-A-B Pattern */}
             
             {/* B CARD: Portfolio - Big size */}
             <Link href="/portfolio">
-              <Card className="md:col-span-1 h-64 cursor-pointer hover:shadow-xl transition-all duration-300 border-border bg-gradient-to-br from-primary/5 to-primary/15 hover:from-primary/10 hover:to-primary/20">
+              <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-xl transition-all duration-300 border-border bg-gradient-to-br from-primary/5 to-primary/15 hover:from-primary/10 hover:to-primary/20">
                 <CardContent className="p-6 h-full flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="w-14 h-14 bg-primary/20 rounded-lg flex items-center justify-center">
@@ -135,7 +135,7 @@ export default function Home() {
 
             {/* A CARD: Technical Scanner - Small size */}
             <Link href="/scanner">
-              <Card className="md:col-span-1 h-28 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-accent/5 to-accent/10">
+              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-accent/5 to-accent/10">
                 <CardContent className="p-3 h-full flex flex-col justify-center">
                   <div className="text-center">
                     <div className="w-8 h-8 bg-accent/20 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -150,7 +150,7 @@ export default function Home() {
 
             {/* B CARD: High Potential - Big size */}
             <Link href="/high-potential">
-              <Card className="md:col-span-1 h-64 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
+              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
                 <CardContent className="p-6 h-full flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="w-14 h-14 bg-red-500/20 rounded-lg flex items-center justify-center">
@@ -171,7 +171,7 @@ export default function Home() {
 
             {/* A CARD: Top Gainers - Small size */}
             <Link href="/gainers">
-              <Card className="md:col-span-1 h-28 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-green-500/5 to-green-500/10">
+              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-green-500/5 to-green-500/10">
                 <CardContent className="p-3 h-full flex flex-col justify-center">
                   <div className="text-center">
                     <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -185,7 +185,7 @@ export default function Home() {
             </Link>
 
             {/* B CARD: Total P&L - Big size */}
-            <Card className="md:col-span-1 h-64 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-emerald-500/20 rounded-lg flex items-center justify-center">
@@ -207,7 +207,7 @@ export default function Home() {
             {/* Row 2: A-B-A-B-A Pattern */}
             
             {/* A CARD: Watchlist - Small size */}
-            <Card className="md:col-span-1 h-28 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist">
+            <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist">
               <CardContent className="p-3 h-full flex flex-col justify-center">
                 <div className="text-center">
                   <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -220,7 +220,7 @@ export default function Home() {
             </Card>
 
             {/* B CARD: Smart Alerts - Big size */}
-            <Card className="md:col-span-1 h-64 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-orange-500/5 to-orange-500/15" data-testid="card-alerts">
+            <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-orange-500/5 to-orange-500/15" data-testid="card-alerts">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-orange-500/20 rounded-lg flex items-center justify-center">
@@ -239,7 +239,7 @@ export default function Home() {
             </Card>
 
             {/* A CARD: Active Positions - Small size */}
-            <Card className="md:col-span-1 h-28 border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
               <CardContent className="p-3 h-full flex flex-col justify-center">
                 <div className="text-center">
                   <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -252,7 +252,7 @@ export default function Home() {
             </Card>
 
             {/* B CARD: AI Signals - Big size */}
-            <Card className="md:col-span-1 h-64 border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/15">
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/15">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-indigo-500/20 rounded-lg flex items-center justify-center">
@@ -271,7 +271,7 @@ export default function Home() {
             </Card>
 
             {/* A CARD: Market Status - Small size */}
-            <Card className="md:col-span-1 h-28 border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
               <CardContent className="p-3 h-full flex flex-col justify-center">
                 <div className="text-center">
                   <div className="w-8 h-8 bg-slate-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
