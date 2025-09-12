@@ -129,87 +129,89 @@ export default function TradingViewChart({
 
   return (
     <div className="w-full" data-testid="trading-chart">
-      {/* Chart Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">
-              {symbol.replace('USDT', '/USDT')} Chart
-            </h2>
-            <Badge variant="outline" className="text-xs">
-              Live
-            </Badge>
+      {/* All Chart Content in One Card */}
+      <Card className="border-border">
+        {/* Chart Header */}
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-border">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">
+                {symbol.replace('USDT', '/USDT')} Chart
+              </h2>
+              <Badge variant="outline" className="text-xs">
+                Live
+              </Badge>
+            </div>
+            
+            {/* Price Info */}
+            <div className="hidden md:flex items-center gap-3 text-sm">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="w-4 h-4 text-green-500" />
+                <span className="text-muted-foreground">Live Price Updates</span>
+              </div>
+            </div>
           </div>
-          
-          {/* Price Info Placeholder */}
-          <div className="hidden md:flex items-center gap-3 text-sm">
+
+          {/* Timeframe Selector */}
+          <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
-              <TrendingUp className="w-4 h-4 text-green-500" />
-              <span className="text-muted-foreground">Live Price Updates</span>
+              {TIMEFRAMES.map((tf) => (
+                <Button
+                  key={tf.value}
+                  variant={timeframe === tf.value ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => onTimeframeChange(tf.value)}
+                  className="h-8 px-3"
+                  data-testid={`timeframe-${tf.value}`}
+                >
+                  {tf.display}
+                </Button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Timeframe Selector */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            {TIMEFRAMES.map((tf) => (
-              <Button
-                key={tf.value}
-                variant={timeframe === tf.value ? "default" : "outline"}
-                size="sm"
-                onClick={() => onTimeframeChange(tf.value)}
-                className="h-8 px-3"
-                data-testid={`timeframe-${tf.value}`}
-              >
-                {tf.display}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-
-      {/* Professional Black TradingView Chart */}
-      <Card className="p-0 border-border overflow-hidden bg-[#131722] border-gray-800">
-        <div 
-          ref={containerRef}
-          className="tradingview-widget-container bg-[#131722]"
-          style={{ height: `${height}px` }}
-          id={`tradingview-chart-${symbol}-${timeframe}`}
-        />
-        
-        {/* Loading State */}
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#131722]/80 backdrop-blur-sm z-10">
-            <div className="flex items-center gap-2 text-white">
-              <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Loading {symbol} chart...</span>
+        {/* Professional Black TradingView Chart */}
+        <div className="p-0 bg-[#131722] overflow-hidden relative">
+          <div 
+            ref={containerRef}
+            className="tradingview-widget-container bg-[#131722]"
+            style={{ height: `${height}px` }}
+            id={`tradingview-chart-${symbol}-${timeframe}`}
+          />
+          
+          {/* Loading State */}
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#131722]/80 backdrop-blur-sm z-10">
+              <div className="flex items-center gap-2 text-white">
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                <span>Loading {symbol} chart...</span>
+              </div>
             </div>
-          </div>
-        )}
-      </Card>
-
-      {/* Chart Footer */}
-      <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <span>Powered by TradingView</span>
-          <span>•</span>
-          <span>Real-time data from Binance</span>
-          {showIndicators && (
-            <>
-              <span>•</span>
-              <span className="text-purple-400">RSI & Volume Indicators Active</span>
-            </>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <span>Timeframe: {currentTimeframe?.label}</span>
-          <span>•</span>
-          <span className="text-green-400">● Live</span>
+
+        {/* Chart Footer */}
+        <div className="flex items-center justify-between p-4 pt-3 border-t border-border/50 text-xs text-muted-foreground bg-background">
+          <div className="flex items-center gap-4">
+            <span>Powered by TradingView</span>
+            <span>•</span>
+            <span>Real-time data from Binance</span>
+            {showIndicators && (
+              <>
+                <span>•</span>
+                <span className="text-purple-400">RSI & Volume Indicators Active</span>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span>Timeframe: {currentTimeframe?.label}</span>
+            <span>•</span>
+            <span className="text-green-400">● Live</span>
+          </div>
         </div>
-      </div>
+      </Card>
     </div>
   );
 }
