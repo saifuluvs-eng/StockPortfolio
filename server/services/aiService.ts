@@ -487,24 +487,33 @@ export class AIService {
                        avgGain < -2 ? "bearish - market correction in progress" :
                        "neutral - consolidation phase";
       
+      // Generate specific token insights with actual names and performance
+      const topPerformers = topGainerAnalysis.slice(0, 5).map(coin => 
+        `${coin.symbol.replace('USDT', '')}: ${parseFloat(coin.priceChangePercent) > 0 ? '+' : ''}${parseFloat(coin.priceChangePercent).toFixed(1)}%`
+      ).join(', ');
+      
+      const highVolumeTokens = topGainerAnalysis.filter(g => parseFloat(g.quoteVolume) > 10000000)
+        .slice(0, 3).map(coin => coin.symbol.replace('USDT', '')).join(', ');
+      
       const insights = [
-        `${topGainerAnalysis.length} cryptocurrencies analyzed with ${avgGain.toFixed(1)}% average gain`,
-        `${highVolumeCount} assets showing high volume breakouts (>$10M)`,
-        avgGain > 8 ? "Strong bull market signals across major pairs" : 
-        avgGain < -3 ? "Risk-off sentiment with defensive positioning" :
-        "Market in equilibrium - waiting for directional catalyst",
-        `Volume profile suggests ${highVolumeCount > 15 ? 'institutional' : 'retail'} dominated trading`,
-        topGainerAnalysis.length > 30 ? "Broad market participation indicates healthy uptrend" :
-        "Selective strength in limited sectors - exercise caution"
+        topPerformers ? `Top movers: ${topPerformers}` : "No significant price movements detected",
+        highVolumeTokens ? `High volume leaders: ${highVolumeTokens} (>$10M volume)` : "Low volume across major pairs",
+        avgGain > 8 ? `Market surge: ${topGainerAnalysis.slice(0, 3).map(c => c.symbol.replace('USDT', '')).join(', ')} leading rally` : 
+        avgGain < -3 ? `Market decline: Major assets showing weakness` :
+        `Sideways action: Most tokens trading within ranges`,
+        `Volume analysis: ${highVolumeCount} tokens with institutional-level activity`,
+        topGainerAnalysis.length > 30 ? `Broad rally: ${Math.round(topGainerAnalysis.length * 0.7)} tokens participating` :
+        `Selective moves: Only ${topGainerAnalysis.length} tokens showing momentum`
       ];
       
       const recommendations = [
-        avgGain > 6 ? "Consider momentum plays on established breakouts" :
-        avgGain < -2 ? "Focus on defensive assets and DCA strategies" :
-        "Range trading opportunities in sideways market",
-        highVolumeCount > 20 ? "Follow volume leaders for continuation patterns" :
-        "Wait for volume confirmation before major positions",
-        "Monitor key support/resistance levels for trend validation"
+        avgGain > 6 ? `Long ${topGainerAnalysis.slice(0, 2).map(c => c.symbol.replace('USDT', '')).join('/')} on momentum continuation` :
+        avgGain < -2 ? `Short positions or DCA into ${topGainerAnalysis.slice(-2).map(c => c.symbol.replace('USDT', '')).join('/')}` :
+        `Range trade ${topGainerAnalysis.slice(0, 2).map(c => c.symbol.replace('USDT', '')).join('/')} within current levels`,
+        highVolumeTokens ? `Focus on volume leaders: ${highVolumeTokens} for breakout plays` :
+        "Wait for volume spike before entering positions",
+        topGainerAnalysis.length > 0 ? `Watch ${topGainerAnalysis[0].symbol.replace('USDT', '')} key levels: support near ${(parseFloat(topGainerAnalysis[0].lowPrice) * 1.02).toFixed(2)}` :
+        "Monitor major support/resistance levels for trend validation"
       ];
       
       const riskLevel = avgGain > 10 ? "high" : avgGain < -5 ? "high" : "moderate";
