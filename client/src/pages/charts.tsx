@@ -27,7 +27,7 @@ import {
 
 interface PriceData {
   symbol: string;
-  price: string;
+  lastPrice: string; // Binance uses 'lastPrice' not 'price'
   priceChange: string;
   priceChangePercent: string;
   volume: string;
@@ -110,7 +110,6 @@ export default function Charts() {
 
   // Force refetch when symbol changes
   useEffect(() => {
-    console.log('🔄 Symbol changed, refetching price data for:', selectedSymbol);
     refetch();
   }, [selectedSymbol, refetch]);
 
@@ -331,7 +330,7 @@ export default function Charts() {
                   <div>
                     <p className="text-sm text-muted-foreground">Current Price</p>
                     <p className="text-lg font-bold text-foreground" data-testid="current-price">
-                      {isPriceLoading ? "..." : formatPrice(priceData?.price || "0")}
+                      {isPriceLoading ? "..." : formatPrice(priceData?.lastPrice || "0")}
                     </p>
                   </div>
                   <DollarSign className="w-5 h-5 text-primary" />

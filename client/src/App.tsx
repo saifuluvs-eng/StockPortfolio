@@ -33,6 +33,7 @@ function Router() {
       <Route path="/gainers" component={Protected(Gainers)} />
       <Route path="/ai-insights" component={Protected(AIInsights)} />
       <Route path="/charts" component={Protected(Charts)} />
+      <Route path="/scan" component={Protected(Charts)} />
       <Route component={NotFound} />
     </Switch>
   );

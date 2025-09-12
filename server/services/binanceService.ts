@@ -1,6 +1,6 @@
 interface TickerData {
   symbol: string;
-  price: string;
+  lastPrice: string; // Binance uses 'lastPrice' not 'price'
   priceChange: string;
   priceChangePercent: string;
   highPrice: string;
@@ -29,7 +29,7 @@ class BinanceService {
         throw new Error(`Failed to fetch price for ${symbol}`);
       }
       const data = await response.json();
-      return parseFloat(data.price);
+      return parseFloat(data.price); // This endpoint actually returns 'price' not 'lastPrice'
     } catch (error) {
       console.error(`Error fetching price for ${symbol}:`, error);
       throw error;
@@ -99,7 +99,7 @@ class BinanceService {
       
       return {
         symbol,
-        price: basePrice.toFixed(4),
+        lastPrice: basePrice.toFixed(4),
         priceChange: change.toFixed(4),
         priceChangePercent: changePercent.toFixed(2),
         highPrice: (basePrice + change * 1.2).toFixed(4),
