@@ -215,28 +215,9 @@ export default function Charts() {
             </div>
           </div>
 
-          {/* Chart Settings - REPLACED CONTENT WITH SCANNER CONTROLS */}
+          {/* Scanner Controls */}
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="w-5 h-5" />
-                  Chart Settings
-                </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={showTechnicals ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setShowTechnicals(!showTechnicals)}
-                    data-testid="toggle-indicators"
-                  >
-                    <Zap className="w-4 h-4 mr-1" />
-                    Technical Indicators
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {/* SCANNER CONTROLS REPLACING ORIGINAL CONTENT */}
               <div className="flex flex-wrap items-center gap-4 mb-4">
                 <div className="flex-1 min-w-64">
@@ -276,14 +257,6 @@ export default function Charts() {
                   <Search className="w-4 h-4 mr-2" />
                   {scanMutation.isPending ? "Scanning..." : "Scan"}
                 </Button>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-muted-foreground">Active features:</span>
-                <Badge variant="secondary">Real-time Updates</Badge>
-                <Badge variant="secondary">Professional Charts</Badge>
-                {showTechnicals && <Badge variant="secondary">Technical Analysis</Badge>}
-                <Badge variant="secondary">Multi-timeframes</Badge>
               </div>
             </CardContent>
           </Card>
