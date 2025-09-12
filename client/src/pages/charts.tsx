@@ -100,10 +100,19 @@ export default function Charts() {
   }
 
   // Fetch current price data for the selected symbol
-  const { data: priceData, isLoading: isPriceLoading } = useQuery<PriceData>({
+  const { data: priceData, isLoading: isPriceLoading, refetch } = useQuery<PriceData>({
     queryKey: ['/api/market/ticker', selectedSymbol],
     refetchInterval: 5000, // Update every 5 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Consider data immediately stale
   });
+
+  // Force refetch when symbol changes
+  useEffect(() => {
+    console.log('🔄 Symbol changed, refetching price data for:', selectedSymbol);
+    refetch();
+  }, [selectedSymbol, refetch]);
 
   const scanMutation = useMutation({
     mutationFn: async () => {
