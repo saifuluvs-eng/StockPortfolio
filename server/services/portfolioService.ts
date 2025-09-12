@@ -272,8 +272,17 @@ export class PortfolioService {
    * Get latest market prices for symbols
    */
   private async getLatestPrices(symbols: string[]): Promise<MarketData[]> {
+    // Convert base symbols to trading pairs (BTC -> BTCUSDT, ETH -> ETHUSDT)
+    const tradingPairs = symbols.map(symbol => {
+      // If already a trading pair, use as is
+      if (symbol.includes('USDT') || symbol.includes('BTC') || symbol.includes('ETH')) {
+        return symbol.endsWith('USDT') ? symbol : symbol + 'USDT';
+      }
+      return symbol + 'USDT';
+    });
+    
     // Try to get from cache first
-    const cachedData = await storage.getMarketData(symbols);
+    const cachedData = await storage.getMarketData(tradingPairs);
     
     // In a real implementation, you would fetch from Binance API here
     // For now, we'll use cached data or mock data
@@ -281,12 +290,31 @@ export class PortfolioService {
       // Fetch from Binance API and cache
       const marketData: MarketData[] = [];
       
-      for (const symbol of symbols) {
+      for (let i = 0; i < tradingPairs.length; i++) {
+        const tradingPair = tradingPairs[i];
+        const baseSymbol = symbols[i]; // Original symbol for mapping
+        
         try {
-          const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+          const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${tradingPair}`);
           
           if (!response.ok) {
-            console.error(`Binance API error for ${symbol}:`, response.status);
+            console.error(`Binance API error for ${tradingPair}:`, response.status);
+            // Create fallback data using entry price if available
+            const fallbackPrice = await this.getFallbackPrice(baseSymbol);
+            if (fallbackPrice > 0) {
+              const fallbackData = {
+                symbol: baseSymbol, // Use base symbol for mapping
+                price: fallbackPrice,
+                volume24h: 0,
+                priceChange24h: 0,
+                priceChangePercent24h: 0,
+                high24h: fallbackPrice,
+                low24h: fallbackPrice,
+                marketCap: null,
+              };
+              const cached = await storage.upsertMarketData(fallbackData);
+              marketData.push(cached);
+            }
             continue;
           }
           
@@ -294,12 +322,12 @@ export class PortfolioService {
           
           // Validate that we have the required data
           if (!data.symbol || !data.lastPrice) {
-            console.error(`Invalid data from Binance for ${symbol}:`, data);
+            console.error(`Invalid data from Binance for ${tradingPair}:`, data);
             continue;
           }
           
           const marketDataEntry = {
-            symbol: data.symbol,
+            symbol: baseSymbol, // Use base symbol for consistency
             price: parseFloat(data.lastPrice) || 0,
             volume24h: parseFloat(data.volume) || 0,
             priceChange24h: parseFloat(data.priceChange) || 0,
@@ -321,6 +349,20 @@ export class PortfolioService {
     }
     
     return cachedData;
+  }
+
+  /**
+   * Get fallback price from portfolio positions (entry price)
+   */
+  private async getFallbackPrice(symbol: string): Promise<number> {
+    try {
+      const positions = await storage.getPortfolioPositions(''); // Get all positions
+      const position = positions.find(p => p.symbol === symbol);
+      return position ? parseFloat(position.entryPrice) : 0;
+    } catch (error) {
+      console.error(`Error getting fallback price for ${symbol}:`, error);
+      return 0;
+    }
   }
 
   /**
