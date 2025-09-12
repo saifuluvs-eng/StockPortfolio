@@ -100,166 +100,158 @@ export default function Home() {
             </Button>
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-8">
+          {/* Dynamic Dashboard Cards - Varying Sizes */}
+          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8 auto-rows-min">
+            
+            {/* BIG CARD: Portfolio - spans 2 columns and 2 rows */}
             <Link href="/portfolio">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <BarChart3 className="w-6 h-6 text-primary" />
+              <Card className="md:col-span-2 md:row-span-2 cursor-pointer hover:shadow-xl transition-all duration-300 border-border bg-gradient-to-br from-primary/5 to-primary/15 hover:from-primary/10 hover:to-primary/20">
+                <CardContent className="p-8 h-full flex flex-col justify-center">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-primary/20 rounded-xl flex items-center justify-center">
+                        <BarChart3 className="w-8 h-8 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-foreground">Portfolio</h3>
+                        <p className="text-sm text-muted-foreground">Manage your positions</p>
+                      </div>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-foreground">Portfolio</h3>
-                      <p className="text-sm text-muted-foreground">Manage positions</p>
+                      <p className="text-3xl font-bold text-foreground" data-testid="text-portfolio-value">
+                        ${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <TrendingUp className={`w-4 h-4 ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                        <span className={`text-sm font-medium ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-portfolio-change">
+                          {portfolioPnLPercent >= 0 ? '+' : ''}{portfolioPnLPercent.toFixed(2)}%
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
+            {/* MEDIUM CARD: Scanner - spans 2 columns */}
             <Link href="/scanner">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border">
+              <Card className="md:col-span-2 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-accent/5 to-accent/10">
                 <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-accent/10 rounded-lg flex items-center justify-center">
-                      <Search className="w-6 h-6 text-accent" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 bg-accent/20 rounded-lg flex items-center justify-center">
+                        <Search className="w-7 h-7 text-accent" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-foreground">Technical Scanner</h3>
+                        <p className="text-sm text-muted-foreground">Advanced market analysis</p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">Scanner</h3>
-                      <p className="text-sm text-muted-foreground">Technical analysis</p>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-foreground">15+</p>
+                      <p className="text-xs text-muted-foreground">Indicators</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
+            {/* SMALL CARDS: High Potential and Top Gainers */}
             <Link href="/high-potential">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-destructive/10 rounded-lg flex items-center justify-center">
-                      <Star className="w-6 h-6 text-destructive" />
+              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/10">
+                <CardContent className="p-5">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                      <Star className="w-6 h-6 text-red-500" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">High Potential</h3>
-                      <p className="text-sm text-muted-foreground">Top opportunities</p>
-                    </div>
+                    <h3 className="font-semibold text-foreground mb-1">High Potential</h3>
+                    <p className="text-xs text-muted-foreground">Top opportunities</p>
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
             <Link href="/gainers">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center">
+              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-green-500/5 to-green-500/10">
+                <CardContent className="p-5">
+                  <div className="text-center">
+                    <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
                       <Award className="w-6 h-6 text-green-500" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">Top Gainers</h3>
-                      <p className="text-sm text-muted-foreground">Market leaders</p>
-                    </div>
+                    <h3 className="font-semibold text-foreground mb-1">Top Gainers</h3>
+                    <p className="text-xs text-muted-foreground">Market leaders</p>
                   </div>
                 </CardContent>
               </Card>
             </Link>
 
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border" data-testid="card-watchlist">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                    <Eye className="w-6 h-6 text-blue-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Watchlist</h3>
-                    <p className="text-sm text-muted-foreground">Track favorites</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border" data-testid="card-alerts">
-              <CardContent className="p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-orange-500/10 rounded-lg flex items-center justify-center">
-                    <Bell className="w-6 h-6 text-orange-500" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">Smart Alerts</h3>
-                    <p className="text-sm text-muted-foreground">Price notifications</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Portfolio Performance */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="border-border">
+            {/* MEDIUM CARD: Total P&L - spans 2 columns */}
+            <Card className="md:col-span-2 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Total Portfolio</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-portfolio-value">
-                      ${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-primary" />
-                </div>
-                <div className="mt-2 flex items-center space-x-1">
-                  <TrendingUp className={`w-4 h-4 ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} />
-                  <span className={`text-sm ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-portfolio-change">
-                    {portfolioPnLPercent >= 0 ? '+' : ''}{portfolioPnLPercent.toFixed(2)}%
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total P&L</p>
-                    <p className={`text-2xl font-bold ${portfolioPnL >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-daily-pnl">
+                    <p className="text-sm text-muted-foreground mb-2">Total P&L</p>
+                    <p className={`text-3xl font-bold ${portfolioPnL >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-daily-pnl">
                       {portfolioPnL >= 0 ? '+' : ''}${portfolioPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
+                    <p className="text-sm text-muted-foreground mt-1">Last 24h performance</p>
                   </div>
-                  <Activity className="w-8 h-8 text-accent" />
-                </div>
-                <div className="mt-2 flex items-center space-x-1">
-                  <span className="text-sm text-muted-foreground">Last 24h</span>
+                  <div className="w-14 h-14 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                    <Activity className="w-8 h-8 text-emerald-600" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Positions</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-active-positions">{activePositions}</p>
+            {/* SMALL CARDS: Watchlist and Smart Alerts */}
+            <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist">
+              <CardContent className="p-5">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <Eye className="w-6 h-6 text-blue-500" />
                   </div>
-                  <Target className="w-8 h-8 text-secondary" />
-                </div>
-                <div className="mt-2 flex items-center space-x-1">
-                  <span className="text-sm text-muted-foreground">Holdings</span>
+                  <h3 className="font-semibold text-foreground mb-1">Watchlist</h3>
+                  <p className="text-xs text-muted-foreground">Track favorites</p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">AI Signals</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-ai-signals">0</p>
+            <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-orange-500/5 to-orange-500/10" data-testid="card-alerts">
+              <CardContent className="p-5">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <Bell className="w-6 h-6 text-orange-500" />
                   </div>
-                  <Brain className="w-8 h-8 text-purple-500" />
+                  <h3 className="font-semibold text-foreground mb-1">Smart Alerts</h3>
+                  <p className="text-xs text-muted-foreground">Price notifications</p>
                 </div>
-                <div className="mt-2 flex items-center space-x-1">
-                  <span className="text-sm text-green-500">Active</span>
+              </CardContent>
+            </Card>
+
+            {/* SMALL CARD: Active Positions */}
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+              <CardContent className="p-5">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <Target className="w-6 h-6 text-purple-500" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1">Positions</h3>
+                  <p className="text-2xl font-bold text-foreground" data-testid="text-active-positions">{activePositions}</p>
+                  <p className="text-xs text-muted-foreground">Active holdings</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* SMALL CARD: AI Signals */}
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/10">
+              <CardContent className="p-5">
+                <div className="text-center">
+                  <div className="w-12 h-12 bg-indigo-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <Brain className="w-6 h-6 text-indigo-500" />
+                  </div>
+                  <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
+                  <p className="text-2xl font-bold text-foreground" data-testid="text-ai-signals">0</p>
+                  <p className="text-xs text-green-500">Active</p>
                 </div>
               </CardContent>
             </Card>
