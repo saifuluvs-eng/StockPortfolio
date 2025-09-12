@@ -34,6 +34,19 @@ const TIMEFRAMES = [
   { value: "W", label: "1 week", display: "1W" },
 ];
 
+// Map from our internal timeframes to TradingView intervals
+const mapTimeframeToInterval = (timeframe: string): string => {
+  const mapping: { [key: string]: string } = {
+    "15m": "15",
+    "60": "60",
+    "240": "240", 
+    "1d": "D",
+    "1h": "60",
+    "4h": "240"
+  };
+  return mapping[timeframe] || timeframe;
+};
+
 const TECHNICAL_INDICATORS = [
   { id: "RSI", name: "RSI", color: "#FF6B35" },
   { id: "MACD", name: "MACD", color: "#4ECDC4" },
@@ -58,13 +71,20 @@ export default function TradingViewChart({
     if (!containerRef.current) return;
 
     setIsLoading(true);
+    
+    const container = containerRef.current;
+    
+    // Completely clear container to force fresh widget
+    container.innerHTML = '';
+    
+    // Create official TradingView widget structure
+    const widgetContainer = document.createElement('div');
+    widgetContainer.className = 'tradingview-widget-container__widget';
+    widgetContainer.id = `tradingview-chart-${symbol}-${timeframe}-${Date.now()}`;
+    
+    container.appendChild(widgetContainer);
 
-    // Clear previous widget
-    if (widgetRef.current) {
-      containerRef.current.innerHTML = '';
-    }
-
-    // Create TradingView widget
+    // Create TradingView script with simplified configuration
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.type = 'text/javascript';
@@ -75,70 +95,33 @@ export default function TradingViewChart({
       setTimeout(() => setIsLoading(false), 2000); // Give TradingView time to fully render
     };
     
-    script.innerHTML = JSON.stringify({
+    // Use supported configuration only
+    const config = {
       autosize: false,
       width: "100%",
       height: height,
       symbol: `BINANCE:${symbol}`,
-      interval: timeframe,
+      interval: mapTimeframeToInterval(timeframe),
       timezone: "Etc/UTC",
-      theme: "dark", // Force dark theme to match screenshot
-      style: "1", // Candles
+      theme: "dark",
+      style: "1",
       locale: "en",
       enable_publishing: false,
       allow_symbol_change: false,
-      container_id: `tradingview-chart-${symbol}-${timeframe}`,
-      // Professional features matching screenshot
+      backgroundColor: "#131722", // Force black background
+      gridColor: "#363c4e",
       studies: showIndicators ? [
         "RSI@tv-basicstudies",
         "Volume@tv-basicstudies"
       ] : [],
-      // Chart settings for professional black look like screenshot
-      details: true,
-      hotlist: false,
-      calendar: false,
-      hide_side_toolbar: false,
-      studies_overrides: {
-        // RSI styling to match screenshot
-        "RSI.plot.color": "#E040FB", // Purple RSI line like in screenshot
-        "RSI.upperband.color": "rgba(255, 255, 255, 0.3)",
-        "RSI.lowerband.color": "rgba(255, 255, 255, 0.3)",
-        "RSI.hisignal.color": "#ff4444",
-        "RSI.losignal.color": "#44ff44",
-        // Volume styling to match screenshot  
-        "volume.volume.color.0": "rgba(255, 82, 82, 0.8)", // Red volume bars
-        "volume.volume.color.1": "rgba(0, 230, 118, 0.8)", // Green volume bars
-      },
-      overrides: {
-        // Black background like screenshot
-        "paneProperties.background": "#131722",
-        "paneProperties.backgroundType": "solid",
-        "paneProperties.vertGridProperties.color": "#363c4e",
-        "paneProperties.horzGridProperties.color": "#363c4e",
-        "symbolWatermarkProperties.transparency": 90,
-        "scalesProperties.textColor": "#d1d4dc",
-        "scalesProperties.backgroundColor": "#131722",
-        // Candlestick colors to match professional look
-        "mainSeriesProperties.candleStyle.upColor": "#00e676", // Green candles
-        "mainSeriesProperties.candleStyle.downColor": "#ff5252", // Red candles
-        "mainSeriesProperties.candleStyle.drawWick": true,
-        "mainSeriesProperties.candleStyle.drawBorder": true,
-        "mainSeriesProperties.candleStyle.borderUpColor": "#00e676",
-        "mainSeriesProperties.candleStyle.borderDownColor": "#ff5252",
-        "mainSeriesProperties.candleStyle.wickUpColor": "#00e676",
-        "mainSeriesProperties.candleStyle.wickDownColor": "#ff5252",
-        // Black chart background
-        "chartProperties.background": "#131722",
-        "paneProperties.legendProperties.showLegend": true,
-      }
-    });
-
-    containerRef.current.appendChild(script);
+      container_id: widgetContainer.id
+    };
+    
+    script.innerHTML = JSON.stringify(config);
+    container.appendChild(script);
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
+      container.innerHTML = '';
     };
   }, [symbol, timeframe, theme, showIndicators, height]);
 

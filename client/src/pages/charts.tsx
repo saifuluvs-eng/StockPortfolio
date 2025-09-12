@@ -457,6 +457,7 @@ export default function Charts() {
             {/* Main Chart - Right Side (2/3 width) */}
             <div className={`${showTechnicals ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
               <TradingViewChart
+                key={`${selectedSymbol}-${selectedTimeframe}-${showTechnicals}-dark-v2`}
                 symbol={selectedSymbol}
                 timeframe={selectedTimeframe}
                 onTimeframeChange={handleTimeframeChange}
