@@ -105,9 +105,9 @@ export default function Home() {
             
             {/* Row 1: B-A-B-A-B Pattern */}
             
-            {/* B CARD: Portfolio - Big size */}
+            {/* A CARD: Portfolio - Small size */}
             <Link href="/portfolio">
-              <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-xl transition-all duration-300 border-border bg-gradient-to-br from-primary/5 to-primary/15 hover:from-primary/10 hover:to-primary/20">
+              <Card className="md:col-span-1 cursor-pointer hover:shadow-xl transition-all duration-300 border-border bg-gradient-to-br from-primary/5 to-primary/15 hover:from-primary/10 hover:to-primary/20">
                 <CardContent className="p-6 h-full flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="w-14 h-14 bg-primary/20 rounded-lg flex items-center justify-center">
@@ -148,9 +148,9 @@ export default function Home() {
               </Card>
             </Link>
 
-            {/* B CARD: High Potential - Big size */}
+            {/* A CARD: High Potential - Small size */}
             <Link href="/high-potential">
-              <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
+              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
                 <CardContent className="p-6 h-full flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="w-14 h-14 bg-red-500/20 rounded-lg flex items-center justify-center">
@@ -184,8 +184,8 @@ export default function Home() {
               </Card>
             </Link>
 
-            {/* B CARD: Total P&L - Big size */}
-            <Card className="md:col-span-1 md:row-span-2 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
+            {/* A CARD: Total P&L - Small size */}
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-emerald-500/20 rounded-lg flex items-center justify-center">
@@ -206,8 +206,8 @@ export default function Home() {
 
             {/* Row 2: A-B-A-B-A Pattern */}
             
-            {/* A CARD: Watchlist - Small size */}
-            <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist">
+            {/* B CARD: Watchlist - Big size */}
+            <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist">
               <CardContent className="p-3 h-full flex flex-col justify-center">
                 <div className="text-center">
                   <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -238,8 +238,8 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* A CARD: Active Positions - Small size */}
-            <Card className="md:col-span-1 border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+            {/* B CARD: Active Positions - Big size */}
+            <Card className="md:col-span-1 md:row-span-2 border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
               <CardContent className="p-3 h-full flex flex-col justify-center">
                 <div className="text-center">
                   <div className="w-8 h-8 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
@@ -270,8 +270,8 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            {/* A CARD: Market Status - Small size */}
-            <Card className="md:col-span-1 border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
+            {/* B CARD: Market Status - Big size */}
+            <Card className="md:col-span-1 md:row-span-2 border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
               <CardContent className="p-3 h-full flex flex-col justify-center">
                 <div className="text-center">
                   <div className="w-8 h-8 bg-slate-500/20 rounded-lg flex items-center justify-center mx-auto mb-2">
