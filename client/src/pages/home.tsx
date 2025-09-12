@@ -4,9 +4,76 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sidebar } from "@/components/layout/sidebar";
 import { TrendingUp, BarChart3, Search, Star, Award, Eye, Bell, Brain, Activity, DollarSign, Target } from "lucide-react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const { user } = useAuth();
+  const [prices, setPrices] = useState<{BTCUSDT?: number, ETHUSDT?: number}>({});
+  const [btcChange, setBtcChange] = useState<{priceChangePercent?: string}>({});
+  const [ethChange, setEthChange] = useState<{priceChangePercent?: string}>({});
+  
+  // Fetch BTC ticker data
+  const { data: btcTicker } = useQuery({
+    queryKey: ['/api/market/ticker/BTCUSDT'],
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
+  
+  // Fetch ETH ticker data
+  const { data: ethTicker } = useQuery({
+    queryKey: ['/api/market/ticker/ETHUSDT'],
+    refetchInterval: 10000, // Refresh every 10 seconds
+  });
+  
+  // Fetch portfolio data for performance metrics
+  const { data: portfolio } = useQuery({
+    queryKey: ['/api/portfolio'],
+    refetchInterval: 15000, // Refresh every 15 seconds
+    enabled: !!user,
+  });
+  
+  // WebSocket connection for real-time prices
+  useEffect(() => {
+    const ws = new WebSocket(`wss://${window.location.host}/ws`);
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'price_update') {
+          setPrices(data.data);
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    };
+    
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'subscribe', symbol: 'BTCUSDT' }));
+      ws.send(JSON.stringify({ type: 'subscribe', symbol: 'ETHUSDT' }));
+    };
+    
+    return () => ws.close();
+  }, []);
+  
+  // Update ticker data when received
+  useEffect(() => {
+    if (btcTicker) {
+      setBtcChange(btcTicker);
+    }
+  }, [btcTicker]);
+  
+  useEffect(() => {
+    if (ethTicker) {
+      setEthChange(ethTicker);
+    }
+  }, [ethTicker]);
+  
+  // Calculate portfolio metrics
+  const portfolioArray = Array.isArray(portfolio) ? portfolio : [];
+  const portfolioValue = portfolioArray.reduce((total: number, position: any) => total + (position.currentValue || 0), 0);
+  const portfolioPnL = portfolioArray.reduce((total: number, position: any) => total + (position.pnl || 0), 0);
+  const portfolioPnLPercent = portfolioValue > 0 ? (portfolioPnL / (portfolioValue - portfolioPnL)) * 100 : 0;
+  const activePositions = portfolioArray.length;
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
@@ -135,13 +202,17 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Portfolio</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-portfolio-value">$0.00</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="text-portfolio-value">
+                      ${portfolioValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
                   </div>
                   <DollarSign className="w-8 h-8 text-primary" />
                 </div>
                 <div className="mt-2 flex items-center space-x-1">
-                  <TrendingUp className="w-4 h-4 text-green-500" />
-                  <span className="text-sm text-green-500" data-testid="text-portfolio-change">+0.00%</span>
+                  <TrendingUp className={`w-4 h-4 ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} />
+                  <span className={`text-sm ${portfolioPnLPercent >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-portfolio-change">
+                    {portfolioPnLPercent >= 0 ? '+' : ''}{portfolioPnLPercent.toFixed(2)}%
+                  </span>
                 </div>
               </CardContent>
             </Card>
@@ -150,8 +221,10 @@ export default function Home() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Today's P&L</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-daily-pnl">$0.00</p>
+                    <p className="text-sm text-muted-foreground">Total P&L</p>
+                    <p className={`text-2xl font-bold ${portfolioPnL >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-daily-pnl">
+                      {portfolioPnL >= 0 ? '+' : ''}${portfolioPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
                   </div>
                   <Activity className="w-8 h-8 text-accent" />
                 </div>
@@ -166,7 +239,7 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Active Positions</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-active-positions">0</p>
+                    <p className="text-2xl font-bold text-foreground" data-testid="text-active-positions">{activePositions}</p>
                   </div>
                   <Target className="w-8 h-8 text-secondary" />
                 </div>
@@ -205,15 +278,23 @@ export default function Home() {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">BTC/USDT</span>
                   <div className="text-right">
-                    <p className="font-semibold" data-testid="text-btc-price">$0.00</p>
-                    <p className="text-sm text-green-500" data-testid="text-btc-change">+0.00%</p>
+                    <p className="font-semibold" data-testid="text-btc-price">
+                      ${(prices.BTCUSDT || parseFloat((btcTicker as any)?.price || '0')).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className={`text-sm ${parseFloat((btcChange as any).priceChangePercent || '0') >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-btc-change">
+                      {parseFloat((btcChange as any).priceChangePercent || '0') >= 0 ? '+' : ''}{parseFloat((btcChange as any).priceChangePercent || '0').toFixed(2)}%
+                    </p>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">ETH/USDT</span>
                   <div className="text-right">
-                    <p className="font-semibold" data-testid="text-eth-price">$0.00</p>
-                    <p className="text-sm text-red-500" data-testid="text-eth-change">+0.00%</p>
+                    <p className="font-semibold" data-testid="text-eth-price">
+                      ${(prices.ETHUSDT || parseFloat((ethTicker as any)?.price || '0')).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className={`text-sm ${parseFloat((ethChange as any).priceChangePercent || '0') >= 0 ? 'text-green-500' : 'text-red-500'}`} data-testid="text-eth-change">
+                      {parseFloat((ethChange as any).priceChangePercent || '0') >= 0 ? '+' : ''}{parseFloat((ethChange as any).priceChangePercent || '0').toFixed(2)}%
+                    </p>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
