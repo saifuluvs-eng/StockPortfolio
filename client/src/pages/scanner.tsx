@@ -238,37 +238,23 @@ export default function Scanner() {
             </Card>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* TradingView Chart */}
-            <div className="lg:col-span-2">
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Chart</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <TradingViewChart symbol={searchSymbol} interval={selectedTimeframe} />
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Technical Indicators */}
-            <div>
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle>Technical Indicators</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
-                  {scanResult ? (
-                    <TechnicalIndicators analysis={scanResult} />
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Click "Scan" to analyze technical indicators
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+          {/* Technical Analysis Results - Full Width */}
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle className="text-xl font-bold">Technical Analysis Results</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6">
+              {scanResult ? (
+                <TechnicalIndicators analysis={scanResult} />
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">No Analysis Available</h3>
+                  <p>Click "Scan" to analyze technical indicators and get detailed insights</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
