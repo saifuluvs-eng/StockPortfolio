@@ -69,20 +69,36 @@ export default function Portfolio() {
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
+  // Show sign-in UI if not authenticated (no auto-redirect)
+  if (!isLoading && !isAuthenticated) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="flex items-center justify-center gap-2">
+                <Wallet className="w-6 h-6" />
+                Portfolio Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Please sign in to access your portfolio and track your crypto investments.
+              </p>
+              <Button 
+                onClick={() => window.location.href = "/api/login"}
+                className="w-full"
+                data-testid="button-sign-in"
+              >
+                Sign In with Replit
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   // Fetch enhanced portfolio data
   const { data: portfolioSummary, isLoading: portfolioLoading } = useQuery<PortfolioSummary>({
@@ -109,9 +125,7 @@ export default function Portfolio() {
     retry: false,
   });
 
-  if (!isAuthenticated && !isLoading) {
-    return null;
-  }
+  // Removed redundant null return - sign-in UI is already handled above
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -296,8 +310,9 @@ export default function Portfolio() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3">
-                        {portfolioSummary?.positions
-                          ?.sort((a, b) => b.unrealizedPnLPercent - a.unrealizedPnLPercent)
+                        {(portfolioSummary?.positions ?? [])
+                          .slice()
+                          .sort((a, b) => b.unrealizedPnLPercent - a.unrealizedPnLPercent)
                           .slice(0, 3)
                           .map((position) => (
                             <div key={position.id} className="flex justify-between items-center">
@@ -380,7 +395,8 @@ export default function Portfolio() {
                         </tr>
                       </thead>
                       <tbody>
-                        {portfolioSummary.positions
+                        {(portfolioSummary?.positions ?? [])
+                          .slice()
                           .sort((a, b) => b.marketValue - a.marketValue)
                           .map((position) => {
                             const baseAsset = position.symbol.replace('USDT', '');

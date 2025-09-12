@@ -40,19 +40,19 @@ export function Sidebar() {
             const isActive = location === item.href;
             
             return (
-              <Link key={item.name} href={item.href}>
-                <a
-                  className={cn(
-                    "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
-                    isActive
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                  data-testid={`nav-link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.name}</span>
-                </a>
+              <Link 
+                key={item.name} 
+                href={item.href}
+                className={cn(
+                  "w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors",
+                  isActive
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+                data-testid={`nav-link-${item.name.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.name}</span>
               </Link>
             );
           })}

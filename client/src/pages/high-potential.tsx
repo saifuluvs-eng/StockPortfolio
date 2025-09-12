@@ -38,20 +38,36 @@ export default function HighPotential() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        window.location.href = "/api/login";
-      }, 500);
-      return;
-    }
-  }, [isAuthenticated, isLoading, toast]);
+  // Show sign-in UI if not authenticated (no auto-redirect)
+  if (!isLoading && !isAuthenticated) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <CardTitle className="flex items-center justify-center gap-2">
+                <SlidersHorizontal className="w-6 h-6" />
+                High Potential Scanner Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Please sign in to access the high potential scanner and find promising crypto investments.
+              </p>
+              <Button 
+                onClick={() => window.location.href = "/api/login"}
+                className="w-full"
+                data-testid="button-sign-in"
+              >
+                Sign In with Replit
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   const scanMutation = useMutation({
     mutationFn: async () => {
