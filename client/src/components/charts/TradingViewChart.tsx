@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -52,9 +52,12 @@ export default function TradingViewChart({
 }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    setIsLoading(true);
 
     // Clear previous widget
     if (widgetRef.current) {
@@ -66,6 +69,12 @@ export default function TradingViewChart({
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.type = 'text/javascript';
     script.async = true;
+    
+    // Handle script loading
+    script.onload = () => {
+      setTimeout(() => setIsLoading(false), 2000); // Give TradingView time to fully render
+    };
+    
     script.innerHTML = JSON.stringify({
       autosize: false,
       width: "100%",
@@ -200,12 +209,14 @@ export default function TradingViewChart({
         />
         
         {/* Loading State */}
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            <span>Loading {symbol} chart...</span>
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Loading {symbol} chart...</span>
+            </div>
           </div>
-        </div>
+        )}
       </Card>
 
       {/* Chart Footer */}
