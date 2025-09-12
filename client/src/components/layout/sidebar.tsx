@@ -15,7 +15,6 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Portfolio", href: "/portfolio", icon: BarChart3 },
   { name: "Advanced Charts", href: "/charts", icon: LineChart },
-  { name: "Custom Scanner", href: "/scanner", icon: Search },
   { name: "High Potential", href: "/high-potential", icon: Star },
   { name: "Top Gainers", href: "/gainers", icon: Award },
   { name: "AI Insights", href: "/ai-insights", icon: Brain },
