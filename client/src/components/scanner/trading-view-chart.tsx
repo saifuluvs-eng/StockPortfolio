@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { FallbackChart } from "./fallback-chart";
 
 interface TradingViewChartProps {
   symbol: string;
@@ -13,14 +14,31 @@ declare global {
 
 export function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [useFallback, setUseFallback] = useState(false);
+  const [loadingFailed, setLoadingFailed] = useState(false);
 
   useEffect(() => {
+    // Reset states when symbol/interval changes
+    setUseFallback(false);
+    setLoadingFailed(false);
+
+    // Check if we should use fallback (for demo/testing)
+    if (import.meta.env.MODE === 'development' || process.env.NODE_ENV === 'test') {
+      setUseFallback(true);
+      return;
+    }
+
     // Load TradingView script if not already loaded
     if (!window.TradingView) {
       const script = document.createElement('script');
       script.src = 'https://s3.tradingview.com/tv.js';
       script.async = true;
       script.onload = () => createWidget();
+      script.onerror = () => {
+        console.warn('Failed to load TradingView widget, using fallback chart');
+        setLoadingFailed(true);
+        setUseFallback(true);
+      };
       document.head.appendChild(script);
     } else {
       createWidget();
@@ -64,6 +82,11 @@ export function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
       });
     }
   };
+
+  // Use fallback chart if TradingView failed to load or in development
+  if (useFallback || loadingFailed) {
+    return <FallbackChart symbol={symbol} interval={interval} />;
+  }
 
   return (
     <div 
