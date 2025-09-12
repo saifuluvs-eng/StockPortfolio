@@ -3,6 +3,15 @@ import OpenAI from "openai";
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+// Binance API types
+interface BinanceTicker {
+  symbol: string;
+  priceChangePercent: string;
+  quoteVolume: string;
+  lowPrice: string;
+  highPrice: string;
+}
+
 export interface MarketSentimentAnalysis {
   sentiment: "bullish" | "bearish" | "neutral";
   confidence: number;
@@ -255,8 +264,8 @@ export class AIService {
       const volumeTrend = volumeHistory.length > 5 ? this.calculateVolumeTrend(volumeHistory.slice(-5)) : 0;
       
       // Support and resistance levels
-      const highs = recentPrices.filter(p => p > currentPrice * 0.99);
-      const lows = recentPrices.filter(p => p < currentPrice * 1.01);
+      const highs = recentPrices.filter((p: number) => p > currentPrice * 0.99);
+      const lows = recentPrices.filter((p: number) => p < currentPrice * 1.01);
       const resistance = highs.length > 0 ? Math.max(...highs) : currentPrice * 1.05;
       const support = lows.length > 0 ? Math.min(...lows) : currentPrice * 0.95;
       
@@ -282,7 +291,7 @@ export class AIService {
       if (riskFactors.length === 0) riskFactors.push("Standard market risks");
       
       return {
-        prediction,
+        prediction: prediction as "bullish" | "bearish" | "neutral",
         confidence,
         priceTarget: Math.round(priceTarget * 100) / 100,
         timeframe: "24h",
@@ -488,17 +497,17 @@ export class AIService {
                        "neutral - consolidation phase";
       
       // Generate specific token insights with actual names and performance
-      const topPerformers = topGainerAnalysis.slice(0, 5).map(coin => 
+      const topPerformers = topGainerAnalysis.slice(0, 5).map((coin: BinanceTicker) => 
         `${coin.symbol.replace('USDT', '')}: ${parseFloat(coin.priceChangePercent) > 0 ? '+' : ''}${parseFloat(coin.priceChangePercent).toFixed(1)}%`
       ).join(', ');
       
-      const highVolumeTokens = topGainerAnalysis.filter(g => parseFloat(g.quoteVolume) > 10000000)
-        .slice(0, 3).map(coin => coin.symbol.replace('USDT', '')).join(', ');
+      const highVolumeTokens = topGainerAnalysis.filter((g: BinanceTicker) => parseFloat(g.quoteVolume) > 10000000)
+        .slice(0, 3).map((coin: BinanceTicker) => coin.symbol.replace('USDT', '')).join(', ');
       
       const insights = [
         topPerformers ? `Top movers: ${topPerformers}` : "No significant price movements detected",
         highVolumeTokens ? `High volume leaders: ${highVolumeTokens} (>$10M volume)` : "Low volume across major pairs",
-        avgGain > 8 ? `Market surge: ${topGainerAnalysis.slice(0, 3).map(c => c.symbol.replace('USDT', '')).join(', ')} leading rally` : 
+        avgGain > 8 ? `Market surge: ${topGainerAnalysis.slice(0, 3).map((c: BinanceTicker) => c.symbol.replace('USDT', '')).join(', ')} leading rally` : 
         avgGain < -3 ? `Market decline: Major assets showing weakness` :
         `Sideways action: Most tokens trading within ranges`,
         `Volume analysis: ${highVolumeCount} tokens with institutional-level activity`,
@@ -507,9 +516,9 @@ export class AIService {
       ];
       
       const recommendations = [
-        avgGain > 6 ? `Long ${topGainerAnalysis.slice(0, 2).map(c => c.symbol.replace('USDT', '')).join('/')} on momentum continuation` :
-        avgGain < -2 ? `Short positions or DCA into ${topGainerAnalysis.slice(-2).map(c => c.symbol.replace('USDT', '')).join('/')}` :
-        `Range trade ${topGainerAnalysis.slice(0, 2).map(c => c.symbol.replace('USDT', '')).join('/')} within current levels`,
+        avgGain > 6 ? `Long ${topGainerAnalysis.slice(0, 2).map((c: BinanceTicker) => c.symbol.replace('USDT', '')).join('/')} on momentum continuation` :
+        avgGain < -2 ? `Short positions or DCA into ${topGainerAnalysis.slice(-2).map((c: BinanceTicker) => c.symbol.replace('USDT', '')).join('/')}` :
+        `Range trade ${topGainerAnalysis.slice(0, 2).map((c: BinanceTicker) => c.symbol.replace('USDT', '')).join('/')} within current levels`,
         highVolumeTokens ? `Focus on volume leaders: ${highVolumeTokens} for breakout plays` :
         "Wait for volume spike before entering positions",
         topGainerAnalysis.length > 0 ? `Watch ${topGainerAnalysis[0].symbol.replace('USDT', '')} key levels: support near ${(parseFloat(topGainerAnalysis[0].lowPrice) * 1.02).toFixed(2)}` :
@@ -525,6 +534,36 @@ export class AIService {
         riskAssessment: `Current risk level: ${riskLevel}. Market volatility ${avgGain > 15 || avgGain < -10 ? 'elevated' : 'normal'}. ${riskLevel === 'high' ? 'Reduce position sizes and use tight stops.' : 'Standard risk management applies.'}`
       };
     }
+  }
+
+  // Helper methods for technical calculations
+  private calculateVolatility(prices: number[]): number {
+    if (prices.length < 2) return 0;
+    const returns = [];
+    for (let i = 1; i < prices.length; i++) {
+      returns.push((prices[i] - prices[i-1]) / prices[i-1]);
+    }
+    const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+    const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length;
+    return Math.sqrt(variance);
+  }
+
+  private calculateMomentum(prices: number[]): number {
+    if (prices.length < 3) return 0;
+    const early = prices.slice(0, Math.floor(prices.length / 2));
+    const recent = prices.slice(Math.floor(prices.length / 2));
+    const earlyAvg = early.reduce((sum, p) => sum + p, 0) / early.length;
+    const recentAvg = recent.reduce((sum, p) => sum + p, 0) / recent.length;
+    return (recentAvg - earlyAvg) / earlyAvg;
+  }
+
+  private calculateVolumeTrend(volumes: number[]): number {
+    if (volumes.length < 2) return 0;
+    const early = volumes.slice(0, Math.floor(volumes.length / 2));
+    const recent = volumes.slice(Math.floor(volumes.length / 2));
+    const earlyAvg = early.reduce((sum, v) => sum + v, 0) / early.length;
+    const recentAvg = recent.reduce((sum, v) => sum + v, 0) / recent.length;
+    return (recentAvg - earlyAvg) / earlyAvg;
   }
 }
 
