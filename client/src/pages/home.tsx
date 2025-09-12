@@ -69,11 +69,11 @@ export default function Home() {
   }, [ethTicker]);
   
   // Calculate portfolio metrics
-  const portfolioArray = Array.isArray(portfolio) ? portfolio : [];
-  const portfolioValue = portfolioArray.reduce((total: number, position: any) => total + (position.currentValue || 0), 0);
-  const portfolioPnL = portfolioArray.reduce((total: number, position: any) => total + (position.pnl || 0), 0);
-  const portfolioPnLPercent = portfolioValue > 0 ? (portfolioPnL / (portfolioValue - portfolioPnL)) * 100 : 0;
-  const activePositions = portfolioArray.length;
+  const portfolioData = portfolio as any;
+  const portfolioValue = portfolioData?.totalValue || 0;
+  const portfolioPnL = portfolioData?.totalPnL || 0;
+  const portfolioPnLPercent = portfolioData?.totalPnLPercent || 0;
+  const activePositions = portfolioData?.positions?.length || 0;
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
