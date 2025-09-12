@@ -62,10 +62,10 @@ const DEFAULT_TIMEFRAME = "240"; // 4 hours
 export default function Charts() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
+  const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT"); // Default to BTC
   const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
   const [showTechnicals, setShowTechnicals] = useState(true);
-  const [searchInput, setSearchInput] = useState("BTC");
+  const [searchInput, setSearchInput] = useState("BTC"); // Default search to BTC
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
   // Show sign-in UI if not authenticated
@@ -147,6 +147,17 @@ export default function Charts() {
       });
     },
   });
+
+  // Auto-scan on page load with default BTC symbol
+  useEffect(() => {
+    if (isAuthenticated && selectedSymbol === "BTCUSDT" && !scanResult) {
+      // Auto-scan after a short delay to allow price data to load
+      const timer = setTimeout(() => {
+        scanMutation.mutate();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, selectedSymbol, scanResult, scanMutation]);
 
   const handleSearch = () => {
     console.log('🔍 Search clicked, input:', searchInput, 'current symbol:', selectedSymbol);
