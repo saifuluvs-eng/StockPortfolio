@@ -28,10 +28,12 @@ import {
 interface PriceData {
   symbol: string;
   price: string;
+  priceChange: string;
   priceChangePercent: string;
   volume: string;
-  high: string;
-  low: string;
+  quoteVolume: string;
+  highPrice: string;
+  lowPrice: string;
 }
 
 interface ScanResult {

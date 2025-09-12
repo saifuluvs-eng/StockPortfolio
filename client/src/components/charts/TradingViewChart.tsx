@@ -173,31 +173,6 @@ export default function TradingViewChart({
         </div>
       </div>
 
-      {/* Technical Indicators Bar */}
-      {showIndicators && (
-        <div className="flex items-center gap-2 mb-4 p-3 bg-muted/30 rounded-lg">
-          <Activity className="w-4 h-4 text-accent" />
-          <span className="text-sm font-medium text-muted-foreground">Active Indicators:</span>
-          {TECHNICAL_INDICATORS.slice(0, 3).map((indicator) => (
-            <Badge 
-              key={indicator.id} 
-              variant="secondary" 
-              className="text-xs"
-              style={{ borderColor: indicator.color }}
-            >
-              <div 
-                className="w-2 h-2 rounded-full mr-1" 
-                style={{ backgroundColor: indicator.color }}
-              />
-              {indicator.name}
-            </Badge>
-          ))}
-          <Button variant="ghost" size="sm" className="ml-auto h-6 px-2">
-            <Zap className="w-3 h-3" />
-            <span className="ml-1 text-xs">More Indicators</span>
-          </Button>
-        </div>
-      )}
 
       {/* TradingView Chart Container */}
       <Card className="p-0 border-border overflow-hidden">
