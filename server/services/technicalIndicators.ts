@@ -116,6 +116,113 @@ class TechnicalIndicators {
     return totalVolume > 0 ? totalPriceVolume / totalVolume : prices[prices.length - 1];
   }
 
+  // Stochastic Oscillator
+  private calculateStochastic(highs: number[], lows: number[], closes: number[], kPeriod: number = 14): { k: number; d: number } {
+    const currentClose = closes[closes.length - 1];
+    const highestHigh = Math.max(...highs.slice(-kPeriod));
+    const lowestLow = Math.min(...lows.slice(-kPeriod));
+    
+    const k = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+    
+    // Simplified %D as 3-period SMA of %K (in practice, track recent %K values)
+    const d = k; // Simplified for demo
+    
+    return { k, d };
+  }
+
+  // Williams %R
+  private calculateWilliamsR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
+    const currentClose = closes[closes.length - 1];
+    const highestHigh = Math.max(...highs.slice(-period));
+    const lowestLow = Math.min(...lows.slice(-period));
+    
+    return ((highestHigh - currentClose) / (highestHigh - lowestLow)) * -100;
+  }
+
+  // Commodity Channel Index (CCI)
+  private calculateCCI(highs: number[], lows: number[], closes: number[], period: number = 20): number {
+    const typicalPrices = closes.map((close, i) => (highs[i] + lows[i] + close) / 3);
+    const sma = this.calculateSMA(typicalPrices, period);
+    const slice = typicalPrices.slice(-period);
+    
+    const meanDeviation = slice.reduce((sum, tp) => sum + Math.abs(tp - sma), 0) / period;
+    const currentTP = typicalPrices[typicalPrices.length - 1];
+    
+    return meanDeviation !== 0 ? (currentTP - sma) / (0.015 * meanDeviation) : 0;
+  }
+
+  // Money Flow Index (MFI)
+  private calculateMFI(highs: number[], lows: number[], closes: number[], volumes: number[], period: number = 14): number {
+    const typicalPrices = closes.map((close, i) => (highs[i] + lows[i] + close) / 3);
+    const rawMoneyFlows = typicalPrices.map((tp, i) => tp * volumes[i]);
+    
+    let positiveFlow = 0;
+    let negativeFlow = 0;
+    
+    for (let i = 1; i < Math.min(rawMoneyFlows.length, period + 1); i++) {
+      if (typicalPrices[i] > typicalPrices[i - 1]) {
+        positiveFlow += rawMoneyFlows[i];
+      } else if (typicalPrices[i] < typicalPrices[i - 1]) {
+        negativeFlow += rawMoneyFlows[i];
+      }
+    }
+    
+    if (negativeFlow === 0) return 100;
+    const moneyFlowRatio = positiveFlow / negativeFlow;
+    return 100 - (100 / (1 + moneyFlowRatio));
+  }
+
+  // On Balance Volume (OBV)
+  private calculateOBV(closes: number[], volumes: number[]): number {
+    let obv = 0;
+    
+    for (let i = 1; i < closes.length; i++) {
+      if (closes[i] > closes[i - 1]) {
+        obv += volumes[i];
+      } else if (closes[i] < closes[i - 1]) {
+        obv -= volumes[i];
+      }
+    }
+    
+    return obv;
+  }
+
+  // Average True Range (ATR)
+  private calculateATR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
+    const trueRanges: number[] = [];
+    
+    for (let i = 1; i < closes.length; i++) {
+      const tr1 = highs[i] - lows[i];
+      const tr2 = Math.abs(highs[i] - closes[i - 1]);
+      const tr3 = Math.abs(lows[i] - closes[i - 1]);
+      
+      trueRanges.push(Math.max(tr1, tr2, tr3));
+    }
+    
+    return this.calculateSMA(trueRanges, Math.min(period, trueRanges.length));
+  }
+
+  // Parabolic SAR (simplified)
+  private calculateParabolicSAR(highs: number[], lows: number[], closes: number[]): { sar: number; trend: 'bullish' | 'bearish' } {
+    const currentClose = closes[closes.length - 1];
+    const prevClose = closes[closes.length - 2] || currentClose;
+    const highestHigh = Math.max(...highs.slice(-10));
+    const lowestLow = Math.min(...lows.slice(-10));
+    
+    const trend = currentClose > prevClose ? 'bullish' : 'bearish';
+    const sar = trend === 'bullish' ? lowestLow * 0.98 : highestHigh * 1.02;
+    
+    return { sar, trend };
+  }
+
+  // Volume Oscillator
+  private calculateVolumeOscillator(volumes: number[], shortPeriod: number = 5, longPeriod: number = 10): number {
+    const shortSMA = this.calculateSMA(volumes, shortPeriod);
+    const longSMA = this.calculateSMA(volumes, longPeriod);
+    
+    return longSMA !== 0 ? ((shortSMA - longSMA) / longSMA) * 100 : 0;
+  }
+
   // ADX (Average Directional Index) - simplified
   private calculateADX(highs: number[], lows: number[], closes: number[]): {
     adx: number;
@@ -190,6 +297,14 @@ class TechnicalIndicators {
       const bb = this.calculateBollingerBands(closes);
       const vwap = this.calculateVWAP(closes, volumes);
       const adx = this.calculateADX(highs, lows, closes);
+      const stoch = this.calculateStochastic(highs, lows, closes);
+      const williamsR = this.calculateWilliamsR(highs, lows, closes);
+      const cci = this.calculateCCI(highs, lows, closes);
+      const mfi = this.calculateMFI(highs, lows, closes, volumes);
+      const obv = this.calculateOBV(closes, volumes);
+      const atr = this.calculateATR(highs, lows, closes);
+      const psar = this.calculateParabolicSAR(highs, lows, closes);
+      const volOsc = this.calculateVolumeOscillator(volumes);
 
       // Calculate scores and signals
       const indicators: TechnicalAnalysis['indicators'] = {
@@ -241,6 +356,62 @@ class TechnicalIndicators {
           score: adx.plusDI > adx.minusDI ? 2 : -2,
           tier: 2,
           description: `+DI (${adx.plusDI.toFixed(1)}) vs -DI (${adx.minusDI.toFixed(1)})`
+        },
+        stochastic: {
+          value: stoch.k,
+          signal: stoch.k > 80 ? 'bearish' : stoch.k < 20 ? 'bullish' : 'neutral',
+          score: stoch.k > 80 ? -1 : stoch.k < 20 ? 2 : 0,
+          tier: 2,
+          description: `Stochastic %K: ${stoch.k.toFixed(1)} - ${stoch.k > 80 ? 'Overbought' : stoch.k < 20 ? 'Oversold' : 'Normal'}`
+        },
+        williams_r: {
+          value: williamsR,
+          signal: williamsR > -20 ? 'bearish' : williamsR < -80 ? 'bullish' : 'neutral',
+          score: williamsR > -20 ? -1 : williamsR < -80 ? 2 : 0,
+          tier: 2,
+          description: `Williams %R: ${williamsR.toFixed(1)} - ${williamsR > -20 ? 'Overbought' : williamsR < -80 ? 'Oversold' : 'Normal'}`
+        },
+        cci: {
+          value: cci,
+          signal: cci > 100 ? 'bearish' : cci < -100 ? 'bullish' : 'neutral',
+          score: cci > 100 ? -2 : cci < -100 ? 3 : 0,
+          tier: 2,
+          description: `CCI: ${cci.toFixed(1)} - ${cci > 100 ? 'Overbought' : cci < -100 ? 'Oversold' : 'Normal'}`
+        },
+        mfi: {
+          value: mfi,
+          signal: mfi > 80 ? 'bearish' : mfi < 20 ? 'bullish' : 'neutral',
+          score: mfi > 80 ? -2 : mfi < 20 ? 3 : 0,
+          tier: 1,
+          description: `MFI: ${mfi.toFixed(1)} - ${mfi > 80 ? 'Overbought' : mfi < 20 ? 'Oversold' : 'Normal'}`
+        },
+        obv: {
+          value: obv,
+          signal: obv > 0 ? 'bullish' : 'bearish',
+          score: obv > 0 ? 1 : -1,
+          tier: 3,
+          description: `OBV: ${obv.toFixed(0)} - Volume ${obv > 0 ? 'supporting uptrend' : 'supporting downtrend'}`
+        },
+        atr: {
+          value: atr,
+          signal: 'neutral',
+          score: 0,
+          tier: 3,
+          description: `ATR: ${atr.toFixed(4)} - Market volatility indicator`
+        },
+        parabolic_sar: {
+          value: psar.sar,
+          signal: psar.trend,
+          score: psar.trend === 'bullish' ? 2 : -2,
+          tier: 2,
+          description: `PSAR: ${psar.sar.toFixed(2)} - ${psar.trend === 'bullish' ? 'Uptrend' : 'Downtrend'} signal`
+        },
+        volume_oscillator: {
+          value: volOsc,
+          signal: volOsc > 0 ? 'bullish' : 'bearish',
+          score: volOsc > 5 ? 1 : volOsc < -5 ? -1 : 0,
+          tier: 3,
+          description: `Volume Osc: ${volOsc.toFixed(2)}% - ${volOsc > 0 ? 'Above' : 'Below'} average volume`
         }
       };
 
