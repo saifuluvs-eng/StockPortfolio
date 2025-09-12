@@ -150,7 +150,7 @@ export default function Home() {
 
             {/* B CARD: High Potential - Big size */}
             <Link href="/high-potential">
-              <Card className="md:col-span-1 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
+              <Card className="md:col-span-1 md:row-span-2 cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-red-500/5 to-red-500/15">
                 <CardContent className="p-6 h-full flex flex-col justify-between">
                   <div className="space-y-3">
                     <div className="w-14 h-14 bg-red-500/20 rounded-lg flex items-center justify-center">
@@ -185,7 +185,7 @@ export default function Home() {
             </Link>
 
             {/* B CARD: Total P&L - Big size */}
-            <Card className="md:col-span-1 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
+            <Card className="md:col-span-1 md:row-span-2 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/15">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-emerald-500/20 rounded-lg flex items-center justify-center">
@@ -252,7 +252,7 @@ export default function Home() {
             </Card>
 
             {/* B CARD: AI Signals - Big size */}
-            <Card className="md:col-span-1 border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/15">
+            <Card className="md:col-span-1 md:row-span-2 border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/15">
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="space-y-3">
                   <div className="w-14 h-14 bg-indigo-500/20 rounded-lg flex items-center justify-center">
