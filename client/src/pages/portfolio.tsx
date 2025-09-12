@@ -15,6 +15,20 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { Plus, Wallet, TrendingUp, BarChart3, Activity, Target, Clock, ArrowUpRight, ArrowDownRight, DollarSign } from "lucide-react";
 
+interface Transaction {
+  id: string;
+  symbol: string;
+  side: "buy" | "sell";
+  quantity: string;
+  price: string;
+  fee?: string;
+  feeAsset?: string;
+  tradeId?: string;
+  executedAt: string;
+  notes?: string;
+  createdAt: string;
+}
+
 interface EnrichedPosition {
   id: string;
   symbol: string;
@@ -119,7 +133,7 @@ export default function Portfolio() {
     retry: false,
   });
 
-  const { data: transactions = [], isLoading: transactionsLoading } = useQuery({
+  const { data: transactions = [], isLoading: transactionsLoading } = useQuery<Transaction[]>({
     queryKey: ['/api/portfolio/transactions'],
     refetchInterval: 30000,
     retry: false,

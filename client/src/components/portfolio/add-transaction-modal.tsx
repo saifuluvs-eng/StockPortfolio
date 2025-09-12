@@ -56,7 +56,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
         quantity: data.quantity,
         price: data.price,
         fee: data.fee || "0",
-        executedAt: new Date(data.executedAt),
+        executedAt: data.executedAt, // Keep as string, server will handle conversion
       };
       
       return await apiRequest('POST', '/api/portfolio/transactions', transactionData);

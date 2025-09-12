@@ -91,7 +91,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const validatedData = insertTradeTransactionSchema.parse({
         ...req.body,
-        userId
+        userId,
+        executedAt: new Date(req.body.executedAt) // Convert string to Date
       });
       const transaction = await portfolioService.addTransaction(userId, validatedData);
       res.json(transaction);
