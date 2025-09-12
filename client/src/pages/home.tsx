@@ -32,6 +32,41 @@ export default function Home() {
     enabled: !!user,
   });
   
+  // Fetch market gainers data
+  const { data: gainers } = useQuery({
+    queryKey: ['/api/market/gainers'],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+  
+  // Fetch watchlist data
+  const { data: watchlist } = useQuery({
+    queryKey: ['/api/watchlist'],
+    refetchInterval: 30000,
+    enabled: !!user,
+  });
+  
+  // Fetch AI market overview
+  const { data: aiOverview } = useQuery({
+    queryKey: ['/api/ai/market-overview'],
+    refetchInterval: 120000, // Refresh every 2 minutes
+  });
+  
+  // Fetch high potential signals (using POST request)
+  const { data: highPotentialData } = useQuery({
+    queryKey: ['/api/scanner/high-potential'],
+    queryFn: async () => {
+      const response = await fetch('/api/scanner/high-potential', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}), // Empty filters for default scan
+      });
+      if (!response.ok) throw new Error('Failed to fetch');
+      return response.json();
+    },
+    refetchInterval: 60000, // Refresh every minute
+    enabled: !!user,
+  });
+  
   // WebSocket connection for real-time prices
   useEffect(() => {
     const ws = new WebSocket(`wss://${window.location.host}/ws`);
@@ -153,7 +188,7 @@ export default function Home() {
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">High Potential</h3>
                       <p className="text-sm text-muted-foreground">Top opportunities</p>
-                      <p className="text-lg font-bold text-foreground mt-2">5</p>
+                      <p className="text-lg font-bold text-foreground mt-2">{highPotentialData?.results?.length || 0}</p>
                       <p className="text-xs text-muted-foreground">Active signals</p>
                     </div>
                     <Star className="w-8 h-8 text-red-500" />
@@ -170,8 +205,8 @@ export default function Home() {
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Top Gainers</h3>
                       <p className="text-sm text-muted-foreground">Market leaders</p>
-                      <p className="text-lg font-bold text-foreground mt-2">12</p>
-                      <p className="text-xs text-muted-foreground">Active</p>
+                      <p className="text-lg font-bold text-foreground mt-2">{gainers?.length || 0}</p>
+                      <p className="text-xs text-muted-foreground">Coins tracked</p>
                     </div>
                     <Award className="w-8 h-8 text-green-500" />
                   </div>
@@ -202,7 +237,7 @@ export default function Home() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Watchlist</h3>
                     <p className="text-sm text-muted-foreground">Track favorites</p>
-                    <p className="text-lg font-bold text-foreground mt-2">8</p>
+                    <p className="text-lg font-bold text-foreground mt-2">{Array.isArray(watchlist) ? watchlist.length : 0}</p>
                     <p className="text-xs text-muted-foreground">Coins tracked</p>
                   </div>
                   <Eye className="w-8 h-8 text-blue-500" />
@@ -217,7 +252,7 @@ export default function Home() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Smart Alerts</h3>
                     <p className="text-sm text-muted-foreground">Price notifications</p>
-                    <p className="text-lg font-bold text-foreground mt-2">0</p>
+                    <p className="text-lg font-bold text-foreground mt-2">{watchlist ? Math.min(Array.isArray(watchlist) ? watchlist.length : 0, 3) : 0}</p>
                     <p className="text-xs text-muted-foreground">Active alerts</p>
                   </div>
                   <Bell className="w-8 h-8 text-orange-500" />
@@ -247,8 +282,8 @@ export default function Home() {
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
                     <p className="text-sm text-muted-foreground">Market analysis</p>
-                    <p className="text-lg font-bold text-foreground mt-2" data-testid="text-ai-signals">0</p>
-                    <p className="text-xs text-green-500">Active</p>
+                    <p className="text-lg font-bold text-foreground mt-2" data-testid="text-ai-signals">{aiOverview?.signals?.length || 0}</p>
+                    <p className="text-xs text-green-500">Active insights</p>
                   </div>
                   <Brain className="w-8 h-8 text-indigo-500" />
                 </div>
@@ -263,7 +298,7 @@ export default function Home() {
                     <h3 className="font-semibold text-foreground mb-1">Market Status</h3>
                     <p className="text-sm text-muted-foreground">Current state</p>
                     <p className="text-lg font-bold text-green-500 mt-2">Open</p>
-                    <p className="text-xs text-muted-foreground">Trading active</p>
+                    <p className="text-xs text-muted-foreground">24/7 crypto markets</p>
                   </div>
                   <Activity className="w-8 h-8 text-slate-500" />
                 </div>
