@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
+import { aiService } from "./services/aiService";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -145,6 +146,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching gainers:", error);
       res.status(500).json({ message: "Failed to fetch gainers" });
+    }
+  });
+
+  // AI Analysis endpoints
+  app.post('/api/ai/analyze/:symbol', async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const { analysisType = 'recommendation', timeframe = '4h' } = req.body;
+      
+      // Get technical analysis for the symbol
+      const technicalAnalysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
+      
+      // Get market data
+      const marketData = await binanceService.getTickerData(symbol);
+      
+      // Generate AI insight
+      const aiInsight = await aiService.generateCryptoInsight(
+        symbol,
+        technicalAnalysis,
+        marketData
+      );
+      
+      res.json(aiInsight);
+    } catch (error) {
+      console.error("Error generating AI analysis:", error);
+      res.status(500).json({ message: "Failed to generate AI analysis" });
+    }
+  });
+
+  app.get('/api/ai/market-overview', async (req, res) => {
+    try {
+      // Get top gainers and market data
+      const gainers = await binanceService.getTopGainers(20);
+      
+      // Create market summary
+      const marketSummary = {
+        topGainers: gainers.slice(0, 5),
+        averageGain: gainers.reduce((sum, g) => sum + parseFloat(g.priceChangePercent), 0) / gainers.length,
+        highVolumeCount: gainers.filter(g => parseFloat(g.quoteVolume) > 10000000).length,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Generate AI market overview
+      const overview = await aiService.generateMarketOverview(marketSummary);
+      
+      res.json(overview);
+    } catch (error) {
+      console.error("Error generating market overview:", error);
+      res.status(500).json({ message: "Failed to generate market overview" });
+    }
+  });
+
+  app.get('/api/ai/sentiment/:symbol', async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const { timeframe = '4h' } = req.query;
+      
+      // Get price data and technical analysis
+      const klines = await binanceService.getKlineData(symbol, timeframe as string, 50);
+      const priceData = klines.map(k => parseFloat(k.close));
+      const technicalData = await technicalIndicators.analyzeSymbol(symbol, timeframe as string);
+      
+      // Generate sentiment analysis
+      const sentiment = await aiService.analyzeMarketSentiment(symbol, priceData, technicalData);
+      
+      res.json(sentiment);
+    } catch (error) {
+      console.error("Error analyzing sentiment:", error);
+      res.status(500).json({ message: "Failed to analyze sentiment" });
     }
   });
 

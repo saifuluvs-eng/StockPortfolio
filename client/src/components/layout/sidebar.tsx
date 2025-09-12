@@ -6,7 +6,8 @@ import {
   Search, 
   Star, 
   Award,
-  Home
+  Home,
+  Brain
 } from "lucide-react";
 
 const navigation = [
@@ -15,6 +16,7 @@ const navigation = [
   { name: "Custom Scanner", href: "/scanner", icon: Search },
   { name: "High Potential", href: "/high-potential", icon: Star },
   { name: "Top Gainers", href: "/gainers", icon: Award },
+  { name: "AI Insights", href: "/ai-insights", icon: Brain },
 ];
 
 export function Sidebar() {

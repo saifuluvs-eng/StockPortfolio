@@ -3,6 +3,7 @@ import {
   portfolioPositions,
   scanHistory,
   watchlist,
+  aiAnalysis,
   type User,
   type UpsertUser,
   type PortfolioPosition,
@@ -11,6 +12,8 @@ import {
   type InsertScanHistory,
   type WatchlistItem,
   type InsertWatchlistItem,
+  type AiAnalysis,
+  type InsertAiAnalysis,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc } from "drizzle-orm";
@@ -34,6 +37,10 @@ export interface IStorage {
   getWatchlist(userId: string): Promise<WatchlistItem[]>;
   addToWatchlist(item: InsertWatchlistItem): Promise<WatchlistItem>;
   removeFromWatchlist(userId: string, symbol: string): Promise<boolean>;
+  
+  // AI Analysis operations
+  createAiAnalysis(analysis: InsertAiAnalysis): Promise<AiAnalysis>;
+  getAiAnalysis(userId?: string, symbol?: string, analysisType?: string): Promise<AiAnalysis[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -145,6 +152,36 @@ export class DatabaseStorage implements IStorage {
         eq(watchlist.symbol, symbol)
       ));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // AI Analysis operations
+  async createAiAnalysis(analysis: InsertAiAnalysis): Promise<AiAnalysis> {
+    const [newAnalysis] = await db
+      .insert(aiAnalysis)
+      .values(analysis)
+      .returning();
+    return newAnalysis;
+  }
+
+  async getAiAnalysis(userId?: string, symbol?: string, analysisType?: string): Promise<AiAnalysis[]> {
+    const conditions = [];
+    
+    if (userId) {
+      conditions.push(eq(aiAnalysis.userId, userId));
+    }
+    if (symbol) {
+      conditions.push(eq(aiAnalysis.symbol, symbol));
+    }
+    if (analysisType) {
+      conditions.push(eq(aiAnalysis.analysisType, analysisType));
+    }
+    
+    return await db
+      .select()
+      .from(aiAnalysis)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(aiAnalysis.createdAt))
+      .limit(50);
   }
 }
 
