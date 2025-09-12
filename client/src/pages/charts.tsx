@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Sidebar } from "@/components/layout/sidebar";
 import TradingViewChart from "@/components/charts/TradingViewChart";
@@ -132,10 +132,11 @@ export default function Charts() {
     },
     onSuccess: (data) => {
       setScanResult(data);
-      toast({
-        title: "Technical Analysis Complete",
-        description: `Analysis for ${selectedSymbol} completed`,
-      });
+      // Temporarily disable notification to stop spam
+      // toast({
+      //   title: "Technical Analysis Complete", 
+      //   description: `Analysis for ${selectedSymbol} completed`,
+      // });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -159,22 +160,31 @@ export default function Charts() {
 
   // Auto-scan on page load with default BTC symbol
   useEffect(() => {
-    if (isAuthenticated && selectedSymbol === "BTCUSDT" && !scanResult) {
+    if (isAuthenticated && selectedSymbol === "BTCUSDT" && !scanResult && !scanMutation.isPending) {
       // Auto-scan after a short delay to allow price data to load
       const timer = setTimeout(() => {
         scanMutation.mutate();
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, selectedSymbol, scanResult, scanMutation]);
+  }, [isAuthenticated, selectedSymbol, scanResult]);
 
-  // Auto-scan when timeframe changes (if we already have scan results)
+  // Auto-scan when timeframe changes (but only after initial scan)
+  const hasScannedRef = useRef(false);
+  
+  // Track if we've ever scanned
   useEffect(() => {
-    if (isAuthenticated && scanResult) {
-      // Re-scan with new timeframe
+    if (scanResult) {
+      hasScannedRef.current = true;
+    }
+  }, [scanResult]);
+
+  // Re-scan when timeframe changes
+  useEffect(() => {
+    if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
       scanMutation.mutate();
     }
-  }, [selectedTimeframe, isAuthenticated, scanResult, scanMutation]);
+  }, [selectedTimeframe, isAuthenticated]);
 
   const handleSearch = () => {
     console.log('🔍 Search clicked, input:', searchInput, 'current symbol:', selectedSymbol);
