@@ -141,6 +141,8 @@ export default function Charts() {
   });
 
   const handleSearch = () => {
+    console.log('🔍 Search clicked, input:', searchInput, 'current symbol:', selectedSymbol);
+    
     if (!searchInput.trim()) {
       toast({
         title: "Invalid Input",
@@ -154,6 +156,8 @@ export default function Charts() {
     
     // If user already entered USDT pair, use as is, otherwise append USDT
     const fullSymbol = coinSymbol.endsWith('USDT') ? coinSymbol : coinSymbol + 'USDT';
+    
+    console.log('🚀 Updating symbol from', selectedSymbol, 'to', fullSymbol);
     setSelectedSymbol(fullSymbol);
     
     // Clear the search input after successful search
@@ -166,14 +170,39 @@ export default function Charts() {
   };
 
   const handleScan = () => {
+    console.log('💥 Scan clicked, input:', searchInput, 'current symbol:', selectedSymbol);
+    
+    // If user typed something in search but didn't search, update the symbol first
+    if (searchInput.trim() && searchInput.trim().toUpperCase() !== selectedSymbol.replace('USDT', '')) {
+      const coinSymbol = searchInput.trim().toUpperCase();
+      const fullSymbol = coinSymbol.endsWith('USDT') ? coinSymbol : coinSymbol + 'USDT';
+      
+      console.log('🔄 Auto-updating symbol from', selectedSymbol, 'to', fullSymbol, 'before scan');
+      setSelectedSymbol(fullSymbol);
+      
+      // Clear search input
+      setSearchInput('');
+      
+      toast({
+        title: "Symbol Updated & Scanning",
+        description: `Analyzing ${coinSymbol.replace('USDT', '')}/USDT`,
+      });
+      
+      // Let React update the state first, then scan on next render
+      setTimeout(() => scanMutation.mutate(), 100);
+      return;
+    }
+    
     if (!selectedSymbol.trim()) {
       toast({
-        title: "Invalid Symbol",
+        title: "Invalid Symbol", 
         description: "Please select a valid symbol",
         variant: "destructive",
       });
       return;
     }
+    
+    console.log('🎯 Scanning current symbol:', selectedSymbol);
     scanMutation.mutate();
   };
 
