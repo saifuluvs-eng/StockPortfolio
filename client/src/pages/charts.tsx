@@ -227,8 +227,8 @@ export default function Charts() {
             <CardContent className="pt-6">
               {/* SCANNER CONTROLS REPLACING ORIGINAL CONTENT */}
               <div className="flex flex-wrap items-center gap-4 mb-4">
-                <div className="flex-1 min-w-64">
-                  <div className="relative">
+                <div className="flex-1 min-w-64 flex gap-2">
+                  <div className="relative flex-1">
                     <Input
                       placeholder="Enter coin (BTC, ETH, SOL...)"
                       value={searchInput}
@@ -239,6 +239,14 @@ export default function Charts() {
                     />
                     <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
                   </div>
+                  <Button 
+                    onClick={handleSearch}
+                    variant="outline"
+                    className="px-4"
+                    data-testid="button-search-coin"
+                  >
+                    <Search className="w-4 h-4" />
+                  </Button>
                 </div>
                 
                 <div className="flex items-center space-x-2">
