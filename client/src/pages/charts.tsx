@@ -1,17 +1,38 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Sidebar } from "@/components/layout/sidebar";
-import { TradingViewChart } from "@/components/scanner/trading-view-chart";
+import TradingViewChart from "@/components/charts/TradingViewChart";
 import { TechnicalIndicators } from "@/components/scanner/technical-indicators";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { Search, BarChart3 } from "lucide-react";
+import { 
+  BarChart3,
+  TrendingUp, 
+  TrendingDown,
+  Activity,
+  DollarSign,
+  Volume,
+  Target,
+  Zap,
+  Search,
+  Scan
+} from "lucide-react";
+
+interface PriceData {
+  symbol: string;
+  price: string;
+  priceChangePercent: string;
+  volume: string;
+  high: string;
+  low: string;
+}
 
 interface ScanResult {
   symbol: string;
@@ -29,24 +50,21 @@ interface ScanResult {
   recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
 }
 
-interface TickerData {
-  symbol: string;
-  price: string;
-  priceChange: string;
-  priceChangePercent: string;
-  highPrice: string;
-  lowPrice: string;
-  volume: string;
-  quoteVolume: string;
-}
+const POPULAR_SYMBOLS = [
+  "BTCUSDT", "ETHUSDT", "ADAUSDT", "SOLUSDT", "DOTUSDT", 
+  "MATICUSDT", "LINKUSDT", "AVAXUSDT", "ATOMUSDT", "NEARUSDT"
+];
+
+const DEFAULT_TIMEFRAME = "240"; // 4 hours
 
 export default function Charts() {
-  const [searchSymbol, setSearchSymbol] = useState("BTCUSDT");
-  const [selectedTimeframe, setSelectedTimeframe] = useState("1h");
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [tickerData, setTickerData] = useState<TickerData | null>(null);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
+  const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
+  const [showTechnicals, setShowTechnicals] = useState(true);
+  const [searchInput, setSearchInput] = useState("BTC");
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
   // Show sign-in UI if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -79,38 +97,25 @@ export default function Charts() {
     );
   }
 
-  // Fetch ticker data when symbol changes
-  useEffect(() => {
-    if (searchSymbol && searchSymbol.length > 0) {
-      fetchTickerData();
-    }
-  }, [searchSymbol]);
-
-  const fetchTickerData = async () => {
-    try {
-      const response = await fetch(`/api/market/ticker/${searchSymbol}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTickerData(data);
-      }
-    } catch (error) {
-      console.error("Error fetching ticker data:", error);
-    }
-  };
+  // Fetch current price data for the selected symbol
+  const { data: priceData, isLoading: isPriceLoading } = useQuery<PriceData>({
+    queryKey: ['/api/market/ticker', selectedSymbol],
+    refetchInterval: 5000, // Update every 5 seconds
+  });
 
   const scanMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/scanner/scan', {
-        symbol: searchSymbol,
-        timeframe: selectedTimeframe,
+        symbol: selectedSymbol,
+        timeframe: selectedTimeframe === "240" ? "4h" : selectedTimeframe,
       });
       return response.json();
     },
     onSuccess: (data) => {
       setScanResult(data);
       toast({
-        title: "Analysis Complete",
-        description: `Technical analysis for ${searchSymbol} completed`,
+        title: "Technical Analysis Complete",
+        description: `Analysis for ${selectedSymbol} completed`,
       });
     },
     onError: (error) => {
@@ -133,15 +138,31 @@ export default function Charts() {
     },
   });
 
-  if (!isAuthenticated && !isLoading) {
-    return null;
-  }
+  const handleSearch = () => {
+    if (!searchInput.trim()) {
+      toast({
+        title: "Invalid Input",
+        description: "Please enter a coin symbol (e.g., BTC, ETH, SOL)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const coinSymbol = searchInput.trim().toUpperCase();
+    const fullSymbol = coinSymbol + "USDT";
+    setSelectedSymbol(fullSymbol);
+    
+    toast({
+      title: "Symbol Updated",
+      description: `Loading ${coinSymbol}/USDT chart`,
+    });
+  };
 
   const handleScan = () => {
-    if (!searchSymbol.trim()) {
+    if (!selectedSymbol.trim()) {
       toast({
         title: "Invalid Symbol",
-        description: "Please enter a valid symbol",
+        description: "Please select a valid symbol",
         variant: "destructive",
       });
       return;
@@ -149,26 +170,191 @@ export default function Charts() {
     scanMutation.mutate();
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const handleTimeframeChange = (timeframe: string) => {
+    setSelectedTimeframe(timeframe);
+  };
+
+  const formatPrice = (price: string) => {
+    const num = parseFloat(price);
+    if (num >= 1000) return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    if (num >= 1) return `$${num.toFixed(4)}`;
+    return `$${num.toFixed(8)}`;
+  };
+
+  const formatVolume = (volume: string) => {
+    const num = parseFloat(volume);
+    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
+    return `$${num.toFixed(2)}`;
+  };
+
+  const priceChange = priceData ? parseFloat(priceData.priceChangePercent) : 0;
+  const isPositive = priceChange > 0;
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
       
       <div className="flex-1 overflow-hidden">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-foreground">Advanced Charts</h1>
+        <div className="p-6 space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <BarChart3 className="w-6 h-6 text-primary" />
+                Advanced Charts
+              </h1>
+              <p className="text-muted-foreground">Professional trading charts with technical analysis</p>
+            </div>
+            
+            {/* Symbol Search */}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Enter coin (BTC, ETH, SOL...)"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="pl-10 w-64"
+                  data-testid="symbol-search"
+                />
+              </div>
+              <Button 
+                onClick={handleSearch} 
+                size="default"
+                data-testid="search-button"
+              >
+                <Search className="w-4 h-4 mr-1" />
+                Search
+              </Button>
+              <Button 
+                onClick={handleScan} 
+                variant="outline"
+                size="default"
+                data-testid="scan-button"
+              >
+                <Scan className="w-4 h-4 mr-1" />
+                SCAN
+              </Button>
+            </div>
           </div>
 
-          {/* Search and Controls */}
-          <Card className="border-border mb-6">
-            <CardContent className="p-6">
-              <div className="flex flex-wrap items-center gap-4">
+          {/* Current Symbol Display */}
+          <div className="flex items-center justify-center mb-4">
+            <Badge variant="secondary" className="text-lg px-4 py-2">
+              <Activity className="w-4 h-4 mr-2" />
+              Currently Viewing: {selectedSymbol.replace('USDT', '/USDT')}
+            </Badge>
+          </div>
+
+          {/* Price Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Current Price</p>
+                    <p className="text-lg font-bold text-foreground" data-testid="current-price">
+                      {isPriceLoading ? "..." : formatPrice(priceData?.price || "0")}
+                    </p>
+                  </div>
+                  <DollarSign className="w-5 h-5 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">24h Change</p>
+                    <div className="flex items-center gap-1">
+                      <p className={`text-lg font-bold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+                        {isPriceLoading ? "..." : `${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)}%`}
+                      </p>
+                    </div>
+                  </div>
+                  {isPositive ? (
+                    <TrendingUp className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <TrendingDown className="w-5 h-5 text-red-500" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">24h Volume</p>
+                    <p className="text-lg font-bold text-foreground">
+                      {isPriceLoading ? "..." : formatVolume(priceData?.volume || "0")}
+                    </p>
+                  </div>
+                  <Volume className="w-5 h-5 text-secondary" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">24h Range</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {isPriceLoading ? "..." : (
+                        <>
+                          {formatPrice(priceData?.low || "0")} - {formatPrice(priceData?.high || "0")}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <Target className="w-5 h-5 text-accent" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Chart Settings - REPLACED CONTENT WITH SCANNER CONTROLS */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  Chart Settings
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={showTechnicals ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowTechnicals(!showTechnicals)}
+                    data-testid="toggle-indicators"
+                  >
+                    <Zap className="w-4 h-4 mr-1" />
+                    Technical Indicators
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* SCANNER CONTROLS REPLACING ORIGINAL CONTENT */}
+              <div className="flex flex-wrap items-center gap-4 mb-4">
                 <div className="flex-1 min-w-64">
                   <div className="relative">
                     <Input
                       placeholder="Search symbol (e.g. BTCUSDT)"
-                      value={searchSymbol}
-                      onChange={(e) => setSearchSymbol(e.target.value.toUpperCase())}
+                      value={selectedSymbol}
+                      onChange={(e) => setSelectedSymbol(e.target.value.toUpperCase())}
                       className="pl-10"
                       data-testid="input-search-symbol"
                     />
@@ -184,8 +370,8 @@ export default function Charts() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="15m">15min</SelectItem>
-                      <SelectItem value="1h">1hr</SelectItem>
-                      <SelectItem value="4h">4hr</SelectItem>
+                      <SelectItem value="60">1hr</SelectItem>
+                      <SelectItem value="240">4hr</SelectItem>
                       <SelectItem value="1d">1Day</SelectItem>
                     </SelectContent>
                   </Select>
@@ -201,77 +387,79 @@ export default function Charts() {
                   {scanMutation.isPending ? "Scanning..." : "Scan"}
                 </Button>
               </div>
+              
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Active features:</span>
+                <Badge variant="secondary">Real-time Updates</Badge>
+                <Badge variant="secondary">Professional Charts</Badge>
+                {showTechnicals && <Badge variant="secondary">Technical Analysis</Badge>}
+                <Badge variant="secondary">Multi-timeframes</Badge>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Price Info Bar */}
-          {tickerData && (
-            <Card className="border-border mb-6">
-              <CardContent className="p-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Current Rate</p>
-                    <p className="text-lg font-bold text-foreground" data-testid="text-current-price">
-                      ${parseFloat(tickerData.price).toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">24h Change</p>
-                    <p className={`text-lg font-bold ${parseFloat(tickerData.priceChangePercent) >= 0 ? 'text-accent' : 'text-destructive'}`} data-testid="text-price-change">
-                      {parseFloat(tickerData.priceChangePercent) >= 0 ? '+' : ''}{parseFloat(tickerData.priceChangePercent).toFixed(2)}%
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">24h High</p>
-                    <p className="text-lg font-bold text-foreground" data-testid="text-high-price">
-                      ${parseFloat(tickerData.highPrice).toFixed(2)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">24h Low</p>
-                    <p className="text-lg font-bold text-foreground" data-testid="text-low-price">
-                      ${parseFloat(tickerData.lowPrice).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Main Layout: Breakdown Technicals (Left) + Live Chart (Right) */}
+          {/* Main Layout: Technical Indicators (Left) + Chart (Right) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Breakdown Technicals - Left Side (1/3 width) */}
-            <div className="lg:col-span-1">
-              <Card className="border-border h-full">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold">Breakdown Technicals</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
-                  {scanResult ? (
-                    <TechnicalIndicators analysis={scanResult} />
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <h3 className="text-lg font-medium mb-2">No Analysis Available</h3>
-                      <p>Click "Scan" to analyze technical indicators and get detailed insights</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            {/* Technical Indicators - Left Side (1/3 width) */}
+            {showTechnicals && (
+              <div className="lg:col-span-1">
+                <Card className="border-border h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-bold">Breakdown Technicals</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4">
+                    {scanResult ? (
+                      <TechnicalIndicators analysis={scanResult} />
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <h3 className="text-lg font-medium mb-2">No Analysis Available</h3>
+                        <p>Click "Scan" to analyze technical indicators and get detailed insights</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-            {/* Live Chart - Right Side (2/3 width) */}
-            <div className="lg:col-span-2">
-              <Card className="border-border h-full">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold">Live Chart</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <TradingViewChart symbol={searchSymbol} interval={selectedTimeframe} />
-                </CardContent>
-              </Card>
+            {/* Main Chart - Right Side (2/3 width) */}
+            <div className={`${showTechnicals ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+              <TradingViewChart
+                symbol={selectedSymbol}
+                timeframe={selectedTimeframe}
+                onTimeframeChange={handleTimeframeChange}
+                showIndicators={showTechnicals}
+                theme="dark"
+                height={600}
+              />
             </div>
           </div>
+
+          {/* Chart Analysis Footer */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <h4 className="font-medium text-foreground mb-1">Current Analysis</h4>
+                  <p className="text-muted-foreground">
+                    {isPositive ? "Bullish momentum" : "Bearish pressure"} detected on {selectedSymbol.replace('USDT', '/USDT')}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-foreground mb-1">Technical Indicators</h4>
+                  <p className="text-muted-foreground">
+                    RSI, MACD, and Bollinger Bands are {showTechnicals ? "active" : "disabled"}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium text-foreground mb-1">Data Source</h4>
+                  <p className="text-muted-foreground">
+                    Live data from Binance via TradingView
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

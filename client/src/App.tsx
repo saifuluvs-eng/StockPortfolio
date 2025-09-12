@@ -9,7 +9,6 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Portfolio from "@/pages/portfolio";
-import Scanner from "@/pages/scanner";
 import HighPotential from "@/pages/high-potential";
 import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
@@ -30,7 +29,6 @@ function Router() {
     <Switch>
       <Route path="/" component={isAuthenticated ? Home : Landing} />
       <Route path="/portfolio" component={Protected(Portfolio)} />
-      <Route path="/scanner" component={Protected(Scanner)} />
       <Route path="/high-potential" component={Protected(HighPotential)} />
       <Route path="/gainers" component={Protected(Gainers)} />
       <Route path="/ai-insights" component={Protected(AIInsights)} />
