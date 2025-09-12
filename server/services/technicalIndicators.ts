@@ -1,0 +1,339 @@
+import { binanceService } from './binanceService';
+
+interface TechnicalAnalysis {
+  symbol: string;
+  price: number;
+  indicators: {
+    [key: string]: {
+      value: number;
+      signal: 'bullish' | 'bearish' | 'neutral';
+      score: number;
+      tier: number;
+      description: string;
+    };
+  };
+  totalScore: number;
+  recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
+}
+
+interface ScanFilters {
+  timeframe?: string;
+  minScore?: number;
+  minVolume?: number;
+  excludeStablecoins?: boolean;
+}
+
+class TechnicalIndicators {
+  // Simple Moving Average
+  private calculateSMA(prices: number[], period: number): number {
+    const slice = prices.slice(-period);
+    return slice.reduce((sum, price) => sum + price, 0) / slice.length;
+  }
+
+  // Exponential Moving Average
+  private calculateEMA(prices: number[], period: number): number {
+    const multiplier = 2 / (period + 1);
+    let ema = prices[0];
+    
+    for (let i = 1; i < prices.length; i++) {
+      ema = (prices[i] * multiplier) + (ema * (1 - multiplier));
+    }
+    
+    return ema;
+  }
+
+  // Relative Strength Index
+  private calculateRSI(prices: number[], period: number = 14): number {
+    const gains: number[] = [];
+    const losses: number[] = [];
+
+    for (let i = 1; i < prices.length; i++) {
+      const change = prices[i] - prices[i - 1];
+      gains.push(change > 0 ? change : 0);
+      losses.push(change < 0 ? Math.abs(change) : 0);
+    }
+
+    const avgGain = gains.slice(-period).reduce((sum, gain) => sum + gain, 0) / period;
+    const avgLoss = losses.slice(-period).reduce((sum, loss) => sum + loss, 0) / period;
+
+    if (avgLoss === 0) return 100;
+    
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+  }
+
+  // MACD (Moving Average Convergence Divergence)
+  private calculateMACD(prices: number[]): { macd: number; signal: number; histogram: number } {
+    const ema12 = this.calculateEMA(prices, 12);
+    const ema26 = this.calculateEMA(prices, 26);
+    const macd = ema12 - ema26;
+    
+    // For signal line, we'd need historical MACD values, simplified for demo
+    const signal = macd * 0.9; // Approximation
+    const histogram = macd - signal;
+
+    return { macd, signal, histogram };
+  }
+
+  // Bollinger Bands
+  private calculateBollingerBands(prices: number[], period: number = 20): {
+    upper: number;
+    middle: number;
+    lower: number;
+    squeeze: boolean;
+  } {
+    const sma = this.calculateSMA(prices, period);
+    const slice = prices.slice(-period);
+    
+    const variance = slice.reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / period;
+    const stdDev = Math.sqrt(variance);
+    
+    const upper = sma + (2 * stdDev);
+    const lower = sma - (2 * stdDev);
+    
+    // BB Squeeze detection (simplified)
+    const squeeze = (upper - lower) / sma < 0.1;
+
+    return {
+      upper,
+      middle: sma,
+      lower,
+      squeeze
+    };
+  }
+
+  // Volume Weighted Average Price (simplified)
+  private calculateVWAP(prices: number[], volumes: number[]): number {
+    let totalPriceVolume = 0;
+    let totalVolume = 0;
+
+    for (let i = 0; i < Math.min(prices.length, volumes.length); i++) {
+      const pv = prices[i] * volumes[i];
+      totalPriceVolume += pv;
+      totalVolume += volumes[i];
+    }
+
+    return totalVolume > 0 ? totalPriceVolume / totalVolume : prices[prices.length - 1];
+  }
+
+  // ADX (Average Directional Index) - simplified
+  private calculateADX(highs: number[], lows: number[], closes: number[]): {
+    adx: number;
+    plusDI: number;
+    minusDI: number;
+  } {
+    // Simplified ADX calculation
+    let trueRanges: number[] = [];
+    let plusDMs: number[] = [];
+    let minusDMs: number[] = [];
+
+    for (let i = 1; i < closes.length; i++) {
+      const hl = highs[i] - lows[i];
+      const hc = Math.abs(highs[i] - closes[i - 1]);
+      const lc = Math.abs(lows[i] - closes[i - 1]);
+      const tr = Math.max(hl, hc, lc);
+      trueRanges.push(tr);
+
+      const hh = highs[i] - highs[i - 1];
+      const ll = lows[i - 1] - lows[i];
+      
+      plusDMs.push(hh > ll && hh > 0 ? hh : 0);
+      minusDMs.push(ll > hh && ll > 0 ? ll : 0);
+    }
+
+    const avgTR = trueRanges.slice(-14).reduce((sum, tr) => sum + tr, 0) / 14;
+    const avgPlusDM = plusDMs.slice(-14).reduce((sum, dm) => sum + dm, 0) / 14;
+    const avgMinusDM = minusDMs.slice(-14).reduce((sum, dm) => sum + dm, 0) / 14;
+
+    const plusDI = avgTR > 0 ? (avgPlusDM / avgTR) * 100 : 0;
+    const minusDI = avgTR > 0 ? (avgMinusDM / avgTR) * 100 : 0;
+
+    const dx = Math.abs(plusDI - minusDI) / (plusDI + minusDI) * 100;
+    const adx = dx; // Simplified, normally would be smoothed
+
+    return { adx, plusDI, minusDI };
+  }
+
+  async analyzeSymbol(symbol: string, timeframe: string = '1h'): Promise<TechnicalAnalysis> {
+    try {
+      // Convert timeframe to Binance format
+      const binanceInterval = this.convertTimeframeToBinance(timeframe);
+      
+      // Get candlestick data
+      const klines = await binanceService.getKlineData(symbol, binanceInterval, 100);
+      
+      const closes = klines.map(k => parseFloat(k.close));
+      const highs = klines.map(k => parseFloat(k.high));
+      const lows = klines.map(k => parseFloat(k.low));
+      const volumes = klines.map(k => parseFloat(k.volume));
+
+      const currentPrice = closes[closes.length - 1];
+
+      // Calculate indicators
+      const rsi = this.calculateRSI(closes);
+      const macd = this.calculateMACD(closes);
+      const ema20 = this.calculateEMA(closes, 20);
+      const ema50 = this.calculateEMA(closes, 50);
+      const bb = this.calculateBollingerBands(closes);
+      const vwap = this.calculateVWAP(closes, volumes);
+      const adx = this.calculateADX(highs, lows, closes);
+
+      // Calculate scores and signals
+      const indicators: TechnicalAnalysis['indicators'] = {
+        vwap: {
+          value: vwap,
+          signal: currentPrice > vwap ? 'bullish' : 'bearish',
+          score: currentPrice > vwap ? 1 : -1,
+          tier: 3,
+          description: `Price ${currentPrice > vwap ? 'above' : 'below'} VWAP (${vwap.toFixed(2)})`
+        },
+        rsi: {
+          value: rsi,
+          signal: rsi > 30 && rsi < 70 ? 'neutral' : rsi >= 70 ? 'bearish' : 'bullish',
+          score: rsi > 30 && rsi < 70 ? 0 : rsi >= 70 ? -2 : 2,
+          tier: 2,
+          description: `RSI: ${rsi.toFixed(1)} - ${rsi > 70 ? 'Overbought' : rsi < 30 ? 'Oversold' : 'Normal'}`
+        },
+        macd: {
+          value: macd.macd,
+          signal: macd.macd > macd.signal ? 'bullish' : 'bearish',
+          score: macd.macd > macd.signal ? 9 : -9,
+          tier: 1,
+          description: `MACD ${macd.macd > macd.signal ? 'above' : 'below'} signal line`
+        },
+        ema_crossover: {
+          value: ema20 - ema50,
+          signal: ema20 > ema50 ? 'bullish' : 'bearish',
+          score: ema20 > ema50 ? 9 : -9,
+          tier: 1,
+          description: `EMA20 ${ema20 > ema50 ? 'above' : 'below'} EMA50`
+        },
+        bb_squeeze: {
+          value: bb.squeeze ? 1 : 0,
+          signal: bb.squeeze ? 'bullish' : 'neutral',
+          score: bb.squeeze ? 1 : 0,
+          tier: 2,
+          description: `Bollinger Bands ${bb.squeeze ? 'in squeeze' : 'normal'}`
+        },
+        adx: {
+          value: adx.adx,
+          signal: adx.adx > 25 ? 'bullish' : 'neutral',
+          score: adx.adx > 25 ? 3 : 0,
+          tier: 1,
+          description: `ADX: ${adx.adx.toFixed(1)} - ${adx.adx > 25 ? 'Strong trend' : 'Weak trend'}`
+        },
+        plus_di: {
+          value: adx.plusDI,
+          signal: adx.plusDI > adx.minusDI ? 'bullish' : 'bearish',
+          score: adx.plusDI > adx.minusDI ? 2 : -2,
+          tier: 2,
+          description: `+DI (${adx.plusDI.toFixed(1)}) vs -DI (${adx.minusDI.toFixed(1)})`
+        }
+      };
+
+      // Calculate total score
+      const totalScore = Object.values(indicators).reduce((sum, indicator) => sum + indicator.score, 0);
+
+      // Determine recommendation
+      let recommendation: TechnicalAnalysis['recommendation'];
+      if (totalScore >= 15) recommendation = 'strong_buy';
+      else if (totalScore >= 5) recommendation = 'buy';
+      else if (totalScore <= -15) recommendation = 'strong_sell';
+      else if (totalScore <= -5) recommendation = 'sell';
+      else recommendation = 'hold';
+
+      return {
+        symbol,
+        price: currentPrice,
+        indicators,
+        totalScore,
+        recommendation
+      };
+
+    } catch (error) {
+      console.error(`Error analyzing ${symbol}:`, error);
+      throw error;
+    }
+  }
+
+  async scanHighPotential(filters: ScanFilters): Promise<TechnicalAnalysis[]> {
+    try {
+      const allPairs = await binanceService.getAllUSDTPairs();
+      const results: TechnicalAnalysis[] = [];
+
+      // Filter out stablecoins if requested
+      let pairsToScan = allPairs;
+      if (filters.excludeStablecoins) {
+        const stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP'];
+        pairsToScan = allPairs.filter(pair => 
+          !stablecoins.some(stable => pair.replace('USDT', '') === stable)
+        );
+      }
+
+      // Limit to top volume pairs for performance
+      const topPairs = pairsToScan.slice(0, 50);
+
+      for (const symbol of topPairs) {
+        try {
+          const analysis = await this.analyzeSymbol(symbol, filters.timeframe || '1h');
+          
+          // Apply filters
+          if (filters.minScore && analysis.totalScore < filters.minScore) continue;
+          
+          // Check bullish criteria
+          const meetsBullishCriteria = this.checkBullishCriteria(analysis);
+          if (meetsBullishCriteria) {
+            results.push(analysis);
+          }
+
+          // Add small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error(`Error analyzing ${symbol}:`, error);
+          continue;
+        }
+      }
+
+      // Sort by score descending
+      return results.sort((a, b) => b.totalScore - a.totalScore);
+
+    } catch (error) {
+      console.error('Error scanning high potential coins:', error);
+      throw error;
+    }
+  }
+
+  private checkBullishCriteria(analysis: TechnicalAnalysis): boolean {
+    const indicators = analysis.indicators;
+    
+    // Price above EMAs
+    const emaPositive = indicators.ema_crossover?.signal === 'bullish';
+    
+    // RSI in healthy range
+    const rsiHealthy = indicators.rsi?.value > 40 && indicators.rsi?.value < 70;
+    
+    // Positive MACD
+    const macdPositive = indicators.macd?.signal === 'bullish';
+    
+    // Strong trend
+    const strongTrend = indicators.adx?.value > 25;
+    
+    // At least 3 out of 4 criteria met
+    const criteriaCount = [emaPositive, rsiHealthy, macdPositive, strongTrend]
+      .filter(Boolean).length;
+    
+    return criteriaCount >= 3 && analysis.totalScore > 10;
+  }
+
+  private convertTimeframeToBinance(timeframe: string): string {
+    const mapping: { [key: string]: string } = {
+      '15m': '15m',
+      '1h': '1h',
+      '4h': '4h',
+      '1d': '1d'
+    };
+    return mapping[timeframe] || '1h';
+  }
+}
+
+export const technicalIndicators = new TechnicalIndicators();
