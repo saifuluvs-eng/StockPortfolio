@@ -5,13 +5,7 @@ import TradingViewChart from "@/components/charts/TradingViewChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { 
   BarChart3,
@@ -21,7 +15,9 @@ import {
   DollarSign,
   Volume,
   Target,
-  Zap
+  Zap,
+  Search,
+  Scan
 } from "lucide-react";
 
 interface PriceData {
@@ -45,6 +41,7 @@ export default function Charts() {
   const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
   const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
   const [showTechnicals, setShowTechnicals] = useState(true);
+  const [searchInput, setSearchInput] = useState("BTC");
 
   // Fetch current price data for the selected symbol
   const { data: priceData, isLoading } = useQuery<PriceData>({
@@ -52,12 +49,37 @@ export default function Charts() {
     refetchInterval: 5000, // Update every 5 seconds
   });
 
-  const handleSymbolChange = (symbol: string) => {
-    setSelectedSymbol(symbol);
+  const handleSearch = () => {
+    if (!searchInput.trim()) {
+      toast({
+        title: "Invalid Input",
+        description: "Please enter a coin symbol (e.g., BTC, ETH, SOL)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const coinSymbol = searchInput.trim().toUpperCase();
+    const fullSymbol = coinSymbol + "USDT";
+    setSelectedSymbol(fullSymbol);
+    
     toast({
-      title: "Symbol Changed",
-      description: `Switched to ${symbol.replace('USDT', '/USDT')} chart`,
+      title: "Symbol Updated",
+      description: `Loading ${coinSymbol}/USDT chart`,
     });
+  };
+
+  const handleScan = () => {
+    toast({
+      title: "Market Scanner",
+      description: "Advanced scanning features coming soon!",
+    });
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
   };
 
   const handleTimeframeChange = (timeframe: string) => {
@@ -98,21 +120,46 @@ export default function Charts() {
               <p className="text-muted-foreground">Professional trading charts with technical analysis</p>
             </div>
             
-            {/* Symbol Selector */}
-            <div className="flex items-center gap-4">
-              <Select value={selectedSymbol} onValueChange={handleSymbolChange}>
-                <SelectTrigger className="w-40" data-testid="symbol-selector">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {POPULAR_SYMBOLS.map((symbol) => (
-                    <SelectItem key={symbol} value={symbol}>
-                      {symbol.replace('USDT', '/USDT')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Symbol Search */}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Enter coin (BTC, ETH, SOL...)"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="pl-10 w-64"
+                  data-testid="symbol-search"
+                />
+              </div>
+              <Button 
+                onClick={handleSearch} 
+                size="default"
+                data-testid="search-button"
+              >
+                <Search className="w-4 h-4 mr-1" />
+                Search
+              </Button>
+              <Button 
+                onClick={handleScan} 
+                variant="outline"
+                size="default"
+                data-testid="scan-button"
+              >
+                <Scan className="w-4 h-4 mr-1" />
+                SCAN
+              </Button>
             </div>
+          </div>
+
+          {/* Current Symbol Display */}
+          <div className="flex items-center justify-center mb-4">
+            <Badge variant="secondary" className="text-lg px-4 py-2">
+              <Activity className="w-4 h-4 mr-2" />
+              Currently Viewing: {selectedSymbol.replace('USDT', '/USDT')}
+            </Badge>
           </div>
 
           {/* Price Summary Cards */}
