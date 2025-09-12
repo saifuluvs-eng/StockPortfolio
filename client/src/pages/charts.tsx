@@ -317,7 +317,7 @@ export default function Charts() {
                   <div>
                     <p className="text-sm text-muted-foreground">24h Volume</p>
                     <p className="text-lg font-bold text-foreground">
-                      {isPriceLoading ? "..." : formatVolume(priceData?.volume || "0")}
+                      {isPriceLoading ? "..." : formatVolume(priceData?.quoteVolume || "0")}
                     </p>
                   </div>
                   <Volume className="w-5 h-5 text-secondary" />
@@ -329,11 +329,11 @@ export default function Charts() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">24h Range</p>
+                    <p className="text-sm text-muted-foreground">Today's High/Low</p>
                     <p className="text-sm font-medium text-foreground">
                       {isPriceLoading ? "..." : (
                         <>
-                          {formatPrice(priceData?.low || "0")} - {formatPrice(priceData?.high || "0")}
+                          {formatPrice(priceData?.lowPrice || "0")} - {formatPrice(priceData?.highPrice || "0")}
                         </>
                       )}
                     </p>
