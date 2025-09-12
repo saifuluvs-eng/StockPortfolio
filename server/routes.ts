@@ -86,6 +86,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/portfolio/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const validatedData = insertPortfolioPositionSchema.omit({ userId: true }).parse(req.body);
+      
+      const updated = await storage.updatePortfolioPosition(id, userId, validatedData);
+      if (!updated) {
+        return res.status(404).json({ message: "Position not found" });
+      }
+      
+      res.json(updated);
+    } catch (error) {
+      console.error("Error updating portfolio position:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to update position" });
+      }
+    }
+  });
+
   app.delete('/api/portfolio/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

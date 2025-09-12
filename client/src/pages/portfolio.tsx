@@ -4,6 +4,8 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AddPositionModal } from "@/components/portfolio/add-position-modal";
+import { EditPositionModal } from "@/components/portfolio/edit-position-modal";
+import { PortfolioAllocation } from "@/components/portfolio/portfolio-allocation";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -23,6 +25,8 @@ interface PortfolioPosition {
 
 export default function Portfolio() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<PortfolioPosition | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading } = useAuth();
@@ -44,6 +48,7 @@ export default function Portfolio() {
 
   const { data: positions = [], isLoading: positionsLoading } = useQuery<PortfolioPosition[]>({
     queryKey: ['/api/portfolio'],
+    refetchInterval: 10000, // Refresh every 10 seconds for real-time updates
     retry: false,
   });
 
@@ -85,7 +90,8 @@ export default function Portfolio() {
   // Calculate portfolio summary
   const totalValue = positions.reduce((sum, pos) => sum + pos.currentValue, 0);
   const totalPnL = positions.reduce((sum, pos) => sum + pos.pnl, 0);
-  const totalPnLPercent = totalValue > 0 ? (totalPnL / (totalValue - totalPnL)) * 100 : 0;
+  const totalEntryValue = positions.reduce((sum, pos) => sum + (parseFloat(pos.entryPrice) * parseFloat(pos.quantity)), 0);
+  const totalPnLPercent = totalEntryValue > 0 ? (totalPnL / totalEntryValue) * 100 : 0;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -154,6 +160,54 @@ export default function Portfolio() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Portfolio Allocation */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div className="lg:col-span-2">
+              <PortfolioAllocation positions={positions} />
+            </div>
+            <div className="space-y-6">
+              {/* Quick Stats Card */}
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle>Quick Stats</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Best Performer</span>
+                      <span className="font-medium text-accent">
+                        {positions.length > 0 ? 
+                          positions.reduce((best, pos) => pos.pnlPercent > best.pnlPercent ? pos : best)
+                            .symbol.replace('USDT', '')
+                          : 'N/A'
+                        }
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Worst Performer</span>
+                      <span className="font-medium text-destructive">
+                        {positions.length > 0 ? 
+                          positions.reduce((worst, pos) => pos.pnlPercent < worst.pnlPercent ? pos : worst)
+                            .symbol.replace('USDT', '')
+                          : 'N/A'
+                        }
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Avg. P&L%</span>
+                      <span className="font-medium">
+                        {positions.length > 0 ? 
+                          (positions.reduce((sum, pos) => sum + pos.pnlPercent, 0) / positions.length).toFixed(2) + '%'
+                          : 'N/A'
+                        }
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Holdings Table */}
@@ -230,6 +284,10 @@ export default function Portfolio() {
                                   size="sm"
                                   variant="ghost"
                                   className="text-muted-foreground hover:text-foreground"
+                                  onClick={() => {
+                                    setSelectedPosition(position);
+                                    setShowEditModal(true);
+                                  }}
                                   data-testid={`button-edit-${position.id}`}
                                 >
                                   <Edit className="w-4 h-4" />
@@ -261,6 +319,12 @@ export default function Portfolio() {
       <AddPositionModal
         open={showAddModal}
         onOpenChange={setShowAddModal}
+      />
+      
+      <EditPositionModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        position={selectedPosition}
       />
     </div>
   );

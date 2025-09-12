@@ -23,7 +23,7 @@ export interface IStorage {
   // Portfolio operations
   getPortfolioPositions(userId: string): Promise<PortfolioPosition[]>;
   createPortfolioPosition(position: InsertPortfolioPosition): Promise<PortfolioPosition>;
-  updatePortfolioPosition(id: string, position: Partial<InsertPortfolioPosition>): Promise<PortfolioPosition>;
+  updatePortfolioPosition(id: string, userId: string, position: Partial<InsertPortfolioPosition>): Promise<PortfolioPosition | null>;
   deletePortfolioPosition(id: string, userId: string): Promise<boolean>;
   
   // Scan history operations
@@ -75,13 +75,16 @@ export class DatabaseStorage implements IStorage {
     return newPosition;
   }
 
-  async updatePortfolioPosition(id: string, position: Partial<InsertPortfolioPosition>): Promise<PortfolioPosition> {
+  async updatePortfolioPosition(id: string, userId: string, position: Partial<InsertPortfolioPosition>): Promise<PortfolioPosition | null> {
     const [updatedPosition] = await db
       .update(portfolioPositions)
       .set({ ...position, updatedAt: new Date() })
-      .where(eq(portfolioPositions.id, id))
+      .where(and(
+        eq(portfolioPositions.id, id),
+        eq(portfolioPositions.userId, userId)
+      ))
       .returning();
-    return updatedPosition;
+    return updatedPosition || null;
   }
 
   async deletePortfolioPosition(id: string, userId: string): Promise<boolean> {
