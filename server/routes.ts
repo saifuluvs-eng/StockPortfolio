@@ -6,7 +6,8 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
-import { insertPortfolioPositionSchema, insertWatchlistItemSchema } from "@shared/schema";
+import { portfolioService } from "./services/portfolioService";
+import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -25,45 +26,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Portfolio routes
+  // Enhanced Portfolio routes
   app.get('/api/portfolio', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const positions = await storage.getPortfolioPositions(userId);
-      
-      // Calculate P&L for each position
-      const positionsWithPnL = await Promise.all(
-        positions.map(async (position) => {
-          let currentPrice: number;
-          const entryPrice = parseFloat(position.entryPrice);
-          
-          try {
-            currentPrice = await binanceService.getCurrentPrice(position.symbol);
-          } catch (error) {
-            console.warn(`Failed to fetch current price for ${position.symbol}, using entry price as fallback:`, error);
-            currentPrice = entryPrice; // Fallback to entry price if API fails
-          }
-          
-          const quantity = parseFloat(position.quantity);
-          const currentValue = currentPrice * quantity;
-          const entryValue = entryPrice * quantity;
-          const pnl = currentValue - entryValue;
-          const pnlPercent = entryValue > 0 ? (pnl / entryValue) * 100 : 0;
-
-          return {
-            ...position,
-            currentPrice,
-            currentValue,
-            pnl,
-            pnlPercent,
-          };
-        })
-      );
-
-      res.json(positionsWithPnL);
+      const summary = await portfolioService.getPortfolioSummary(userId);
+      res.json(summary);
     } catch (error) {
       console.error("Error fetching portfolio:", error);
       res.status(500).json({ message: "Failed to fetch portfolio" });
+    }
+  });
+
+  app.get('/api/portfolio/allocation', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const allocation = await portfolioService.getAssetAllocation(userId);
+      res.json(allocation);
+    } catch (error) {
+      console.error("Error fetching asset allocation:", error);
+      res.status(500).json({ message: "Failed to fetch asset allocation" });
+    }
+  });
+
+  app.get('/api/portfolio/performance', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const days = parseInt(req.query.days as string) || 30;
+      const metrics = await portfolioService.getPerformanceMetrics(userId, days);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching performance metrics:", error);
+      res.status(500).json({ message: "Failed to fetch performance metrics" });
+    }
+  });
+
+  app.get('/api/portfolio/analytics', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
+      const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
+      const analytics = await storage.getPortfolioAnalytics(userId, startDate, endDate);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching portfolio analytics:", error);
+      res.status(500).json({ message: "Failed to fetch portfolio analytics" });
+    }
+  });
+
+  app.get('/api/portfolio/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const symbol = req.query.symbol as string;
+      const transactions = await portfolioService.getTransactionHistory(userId, symbol);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching transaction history:", error);
+      res.status(500).json({ message: "Failed to fetch transaction history" });
+    }
+  });
+
+  app.post('/api/portfolio/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedData = insertTradeTransactionSchema.parse(req.body);
+      const transaction = await portfolioService.addTransaction(userId, validatedData);
+      res.json(transaction);
+    } catch (error) {
+      console.error("Error adding transaction:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid data", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Failed to add transaction" });
+      }
     }
   });
 
