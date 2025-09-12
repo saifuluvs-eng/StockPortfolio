@@ -82,40 +82,54 @@ export default function TradingViewChart({
       symbol: `BINANCE:${symbol}`,
       interval: timeframe,
       timezone: "Etc/UTC",
-      theme: theme === "dark" ? "dark" : "light",
+      theme: "dark", // Force dark theme to match screenshot
       style: "1", // Candles
       locale: "en",
       enable_publishing: false,
       allow_symbol_change: false,
       container_id: `tradingview-chart-${symbol}-${timeframe}`,
-      // Professional features
+      // Professional features matching screenshot
       studies: showIndicators ? [
         "RSI@tv-basicstudies",
-        "MACD@tv-basicstudies", 
-        "BB@tv-basicstudies"
+        "Volume@tv-basicstudies"
       ] : [],
-      // Chart settings for professional look
+      // Chart settings for professional black look like screenshot
       details: true,
       hotlist: false,
       calendar: false,
+      hide_side_toolbar: false,
       studies_overrides: {
-        "volume.volume.color.0": "rgba(255, 107, 53, 0.7)",
-        "volume.volume.color.1": "rgba(78, 205, 196, 0.7)",
+        // RSI styling to match screenshot
+        "RSI.plot.color": "#E040FB", // Purple RSI line like in screenshot
+        "RSI.upperband.color": "rgba(255, 255, 255, 0.3)",
+        "RSI.lowerband.color": "rgba(255, 255, 255, 0.3)",
+        "RSI.hisignal.color": "#ff4444",
+        "RSI.losignal.color": "#44ff44",
+        // Volume styling to match screenshot  
+        "volume.volume.color.0": "rgba(255, 82, 82, 0.8)", // Red volume bars
+        "volume.volume.color.1": "rgba(0, 230, 118, 0.8)", // Green volume bars
       },
       overrides: {
-        "paneProperties.background": theme === "dark" ? "#1a1a1a" : "#ffffff",
-        "paneProperties.vertGridProperties.color": theme === "dark" ? "#2a2a2a" : "#e1e1e1",
-        "paneProperties.horzGridProperties.color": theme === "dark" ? "#2a2a2a" : "#e1e1e1",
+        // Black background like screenshot
+        "paneProperties.background": "#131722",
+        "paneProperties.backgroundType": "solid",
+        "paneProperties.vertGridProperties.color": "#363c4e",
+        "paneProperties.horzGridProperties.color": "#363c4e",
         "symbolWatermarkProperties.transparency": 90,
-        "scalesProperties.textColor": theme === "dark" ? "#ffffff" : "#131722",
-        "mainSeriesProperties.candleStyle.upColor": "#4ECDC4",
-        "mainSeriesProperties.candleStyle.downColor": "#FF6B35",
+        "scalesProperties.textColor": "#d1d4dc",
+        "scalesProperties.backgroundColor": "#131722",
+        // Candlestick colors to match professional look
+        "mainSeriesProperties.candleStyle.upColor": "#00e676", // Green candles
+        "mainSeriesProperties.candleStyle.downColor": "#ff5252", // Red candles
         "mainSeriesProperties.candleStyle.drawWick": true,
         "mainSeriesProperties.candleStyle.drawBorder": true,
-        "mainSeriesProperties.candleStyle.borderUpColor": "#4ECDC4",
-        "mainSeriesProperties.candleStyle.borderDownColor": "#FF6B35",
-        "mainSeriesProperties.candleStyle.wickUpColor": "#4ECDC4",
-        "mainSeriesProperties.candleStyle.wickDownColor": "#FF6B35",
+        "mainSeriesProperties.candleStyle.borderUpColor": "#00e676",
+        "mainSeriesProperties.candleStyle.borderDownColor": "#ff5252",
+        "mainSeriesProperties.candleStyle.wickUpColor": "#00e676",
+        "mainSeriesProperties.candleStyle.wickDownColor": "#ff5252",
+        // Black chart background
+        "chartProperties.background": "#131722",
+        "paneProperties.legendProperties.showLegend": true,
       }
     });
 
@@ -174,19 +188,19 @@ export default function TradingViewChart({
       </div>
 
 
-      {/* TradingView Chart Container */}
-      <Card className="p-0 border-border overflow-hidden">
+      {/* Professional Black TradingView Chart */}
+      <Card className="p-0 border-border overflow-hidden bg-[#131722] border-gray-800">
         <div 
           ref={containerRef}
-          className="tradingview-widget-container"
+          className="tradingview-widget-container bg-[#131722]"
           style={{ height: `${height}px` }}
           id={`tradingview-chart-${symbol}-${timeframe}`}
         />
         
         {/* Loading State */}
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
-            <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="absolute inset-0 flex items-center justify-center bg-[#131722]/80 backdrop-blur-sm z-10">
+            <div className="flex items-center gap-2 text-white">
               <RefreshCw className="w-4 h-4 animate-spin" />
               <span>Loading {symbol} chart...</span>
             </div>
@@ -200,6 +214,12 @@ export default function TradingViewChart({
           <span>Powered by TradingView</span>
           <span>•</span>
           <span>Real-time data from Binance</span>
+          {showIndicators && (
+            <>
+              <span>•</span>
+              <span className="text-purple-400">RSI & Volume Indicators Active</span>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span>Timeframe: {currentTimeframe?.label}</span>
