@@ -115,9 +115,18 @@ export default function Charts() {
 
   const scanMutation = useMutation({
     mutationFn: async () => {
+      // Convert frontend timeframe values to backend format
+      const timeframeMap: { [key: string]: string } = {
+        "15m": "15m",
+        "60": "1h", 
+        "240": "4h",
+        "1d": "1d"
+      };
+      const backendTimeframe = timeframeMap[selectedTimeframe] || selectedTimeframe;
+      
       const response = await apiRequest('POST', '/api/scanner/scan', {
         symbol: selectedSymbol,
-        timeframe: selectedTimeframe === "240" ? "4h" : selectedTimeframe,
+        timeframe: backendTimeframe,
       });
       return response.json();
     },
@@ -158,6 +167,14 @@ export default function Charts() {
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated, selectedSymbol, scanResult, scanMutation]);
+
+  // Auto-scan when timeframe changes (if we already have scan results)
+  useEffect(() => {
+    if (isAuthenticated && scanResult) {
+      // Re-scan with new timeframe
+      scanMutation.mutate();
+    }
+  }, [selectedTimeframe, isAuthenticated, scanResult, scanMutation]);
 
   const handleSearch = () => {
     console.log('🔍 Search clicked, input:', searchInput, 'current symbol:', selectedSymbol);
