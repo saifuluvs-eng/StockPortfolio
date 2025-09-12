@@ -162,80 +162,159 @@ export default function Portfolio() {
             </Button>
           </div>
 
-          {/* Enhanced Portfolio Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <Card className="border-border bg-gradient-to-br from-primary/5 to-primary/10">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+          {/* Dynamic Portfolio Dashboard - Varying Card Sizes */}
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8 auto-rows-min">
+            
+            {/* BIG CARD: Total Value - spans 2 columns and taller */}
+            <Card className="md:col-span-2 md:row-span-2 border-border bg-gradient-to-br from-primary/10 to-primary/20 shadow-lg">
+              <CardContent className="p-8">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-14 h-14 bg-primary/30 rounded-xl flex items-center justify-center">
+                      <Wallet className="w-8 h-8 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-sm font-medium">Portfolio Value</p>
+                      <Badge variant="secondary" className="mt-1 text-xs">
+                        <Activity className="w-3 h-3 mr-1" />
+                        Live
+                      </Badge>
+                    </div>
+                  </div>
                   <div>
-                    <p className="text-muted-foreground text-sm font-medium">Total Value</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-total-value">
+                    <p className="text-4xl font-bold text-foreground mb-2" data-testid="text-total-value">
                       ${portfolioSummary ? portfolioSummary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00'}
                     </p>
-                    <Badge variant="secondary" className="mt-1 text-xs">
-                      <Activity className="w-3 h-3 mr-1" />
-                      Live
-                    </Badge>
-                  </div>
-                  <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
-                    <Wallet className="w-6 h-6 text-primary" />
+                    <div className="text-sm text-muted-foreground">
+                      Total assets: {portfolioSummary?.positions?.length || 0}
+                    </div>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border bg-gradient-to-br from-accent/5 to-accent/10">
+            {/* MEDIUM CARD: Total P&L - spans 2 columns */}
+            <Card className="md:col-span-2 border-border bg-gradient-to-br from-accent/5 to-accent/15 shadow-md">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-muted-foreground text-sm font-medium">Total P&L</p>
-                    <p className={`text-2xl font-bold ${(portfolioSummary?.totalPnL || 0) >= 0 ? 'text-accent' : 'text-destructive'}`} data-testid="text-total-pnl">
+                    <p className="text-muted-foreground text-sm font-medium mb-2">Total P&L</p>
+                    <p className={`text-3xl font-bold ${(portfolioSummary?.totalPnL || 0) >= 0 ? 'text-accent' : 'text-destructive'}`} data-testid="text-total-pnl">
                       {(portfolioSummary?.totalPnL || 0) >= 0 ? '+' : ''}${(portfolioSummary?.totalPnL || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
-                    <p className={`text-sm ${(portfolioSummary?.totalPnLPercent || 0) >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                      {(portfolioSummary?.totalPnLPercent || 0) >= 0 ? '+' : ''}{(portfolioSummary?.totalPnLPercent || 0).toFixed(2)}%
+                    <p className={`text-sm font-medium ${(portfolioSummary?.totalPnLPercent || 0) >= 0 ? 'text-accent' : 'text-destructive'}`}>
+                      {(portfolioSummary?.totalPnLPercent || 0) >= 0 ? '+' : ''}{(portfolioSummary?.totalPnLPercent || 0).toFixed(2)}% overall
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-accent/20 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-accent" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-muted-foreground text-sm font-medium">24h Change</p>
-                    <p className={`text-2xl font-bold ${(portfolioSummary?.dayChange || 0) >= 0 ? 'text-accent' : 'text-destructive'}`} data-testid="text-day-change">
-                      {(portfolioSummary?.dayChange || 0) >= 0 ? '+' : ''}${(portfolioSummary?.dayChange || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </p>
-                    <p className={`text-sm ${(portfolioSummary?.dayChangePercent || 0) >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                      {(portfolioSummary?.dayChangePercent || 0) >= 0 ? '+' : ''}{(portfolioSummary?.dayChangePercent || 0).toFixed(2)}%
-                    </p>
-                  </div>
-                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-blue-500" />
+                  <div className="w-14 h-14 bg-accent/20 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-8 h-8 text-accent" />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
-              <CardContent className="p-6">
+            {/* SMALL CARDS: 24h Change and Win Rate */}
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10">
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <Clock className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <p className="text-muted-foreground text-xs font-medium mb-1">24h Change</p>
+                  <p className={`text-lg font-bold ${(portfolioSummary?.dayChange || 0) >= 0 ? 'text-accent' : 'text-destructive'}`} data-testid="text-day-change">
+                    {(portfolioSummary?.dayChangePercent || 0) >= 0 ? '+' : ''}{(portfolioSummary?.dayChangePercent || 0).toFixed(1)}%
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <Target className="w-5 h-5 text-purple-500" />
+                  </div>
+                  <p className="text-muted-foreground text-xs font-medium mb-1">Win Rate</p>
+                  <p className="text-lg font-bold text-foreground" data-testid="text-win-rate">
+                    {performanceMetrics ? performanceMetrics.winRate.toFixed(1) : '0.0'}%
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* MEDIUM CARDS: Additional metrics */}
+            <Card className="md:col-span-2 border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/10">
+              <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-muted-foreground text-sm font-medium">Win Rate</p>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-win-rate">
-                      {performanceMetrics ? performanceMetrics.winRate.toFixed(1) : '0.0'}%
+                    <p className="text-muted-foreground text-sm font-medium mb-1">Best Trade</p>
+                    <p className="text-2xl font-bold text-emerald-600">
+                      +${performanceMetrics ? performanceMetrics.bestTrade.toFixed(2) : '0.00'}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      Avg: {performanceMetrics ? performanceMetrics.avgWinPercent.toFixed(1) : '0.0'}%
+                    <p className="text-xs text-muted-foreground">Highest single gain</p>
+                  </div>
+                  <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                    <ArrowUpRight className="w-6 h-6 text-emerald-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-orange-500/5 to-orange-500/10">
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <BarChart3 className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <p className="text-muted-foreground text-xs font-medium mb-1">Volatility</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {performanceMetrics ? performanceMetrics.volatility.toFixed(1) : '0.0'}%
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-1 border-border bg-gradient-to-br from-red-500/5 to-red-500/10">
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                    <ArrowDownRight className="w-5 h-5 text-red-500" />
+                  </div>
+                  <p className="text-muted-foreground text-xs font-medium mb-1">Worst Trade</p>
+                  <p className="text-lg font-bold text-red-600">
+                    ${performanceMetrics ? performanceMetrics.worstTrade.toFixed(0) : '0'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* BIGGER CARD: Market Overview - spans 2 columns */}
+            <Card className="md:col-span-2 border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-foreground flex items-center gap-2">
+                    <Activity className="w-4 h-4" />
+                    Market Status
+                  </h3>
+                  <Badge variant="outline" className="text-xs">
+                    Real-time
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Active Positions</p>
+                    <p className="text-xl font-bold text-foreground">
+                      {portfolioSummary?.positions?.length || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                    <Target className="w-6 h-6 text-purple-500" />
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Avg Allocation</p>
+                    <p className="text-xl font-bold text-foreground">
+                      {portfolioSummary?.positions?.length ? 
+                        (100 / portfolioSummary.positions.length).toFixed(1) + '%'
+                        : '0%'
+                      }
+                    </p>
                   </div>
                 </div>
               </CardContent>
