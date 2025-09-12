@@ -148,13 +148,18 @@ export default function Charts() {
       return;
     }
 
-    const coinSymbol = searchInput.trim().toUpperCase();
-    const fullSymbol = coinSymbol + "USDT";
+    let coinSymbol = searchInput.trim().toUpperCase();
+    
+    // If user already entered USDT pair, use as is, otherwise append USDT
+    const fullSymbol = coinSymbol.endsWith('USDT') ? coinSymbol : coinSymbol + 'USDT';
     setSelectedSymbol(fullSymbol);
+    
+    // Clear the search input after successful search
+    setSearchInput('');
     
     toast({
       title: "Symbol Updated",
-      description: `Loading ${coinSymbol}/USDT chart`,
+      description: `Loading ${coinSymbol.replace('USDT', '')}/USDT chart`,
     });
   };
 
@@ -223,9 +228,10 @@ export default function Charts() {
                 <div className="flex-1 min-w-64">
                   <div className="relative">
                     <Input
-                      placeholder="Search symbol (e.g. BTCUSDT)"
-                      value={selectedSymbol}
-                      onChange={(e) => setSelectedSymbol(e.target.value.toUpperCase())}
+                      placeholder="Enter coin (BTC, ETH, SOL...)"
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
                       className="pl-10"
                       data-testid="input-search-symbol"
                     />
