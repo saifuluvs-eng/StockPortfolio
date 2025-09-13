@@ -381,7 +381,7 @@ export default function Charts() {
         const timer = setTimeout(() => {
           scanMutation.mutate();
           setHasAutoScanned(true);
-        }, 1000);
+        }, 200);
         return () => clearTimeout(timer);
       }
     }
