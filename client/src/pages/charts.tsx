@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Sidebar } from "@/components/layout/sidebar";
 import TradingViewChart from "@/components/charts/TradingViewChart";
@@ -72,11 +73,19 @@ const TIMEFRAMES = [
 export default function Charts() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT"); // Default to BTC
+  const [location] = useLocation();
+  
+  // Parse URL parameters for automatic symbol setting and scanning
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const symbolFromUrl = urlParams.get('symbol');
+  const shouldAutoScan = urlParams.get('scan') === 'true';
+  
+  const [selectedSymbol, setSelectedSymbol] = useState(symbolFromUrl || "BTCUSDT");
   const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
   const [showTechnicals, setShowTechnicals] = useState(true);
-  const [searchInput, setSearchInput] = useState("BTC"); // Default search to BTC
+  const [searchInput, setSearchInput] = useState(symbolFromUrl ? symbolFromUrl.replace('USDT', '') : "BTC");
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const [hasAutoScanned, setHasAutoScanned] = useState(false);
 
   // Show sign-in UI if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -163,16 +172,30 @@ export default function Charts() {
     },
   });
 
-  // Auto-scan on page load with default BTC symbol
+  // Auto-scan on page load with default BTC symbol or when coming from Portfolio
   useEffect(() => {
-    if (isAuthenticated && selectedSymbol === "BTCUSDT" && !scanResult && !scanMutation.isPending) {
-      // Auto-scan after a short delay to allow price data to load
-      const timer = setTimeout(() => {
-        scanMutation.mutate();
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (isAuthenticated && !scanMutation.isPending && !hasAutoScanned) {
+      // Auto-scan if it's the default symbol or if explicitly requested via URL
+      if ((selectedSymbol === "BTCUSDT" && !scanResult) || (shouldAutoScan && symbolFromUrl)) {
+        // Auto-scan after a short delay to allow price data to load
+        const timer = setTimeout(() => {
+          scanMutation.mutate();
+          setHasAutoScanned(true);
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [isAuthenticated, selectedSymbol, scanResult]);
+  }, [isAuthenticated, selectedSymbol, scanResult, scanMutation, shouldAutoScan, symbolFromUrl, hasAutoScanned]);
+
+  // Update symbol when URL changes (for navigation from Portfolio)
+  useEffect(() => {
+    if (symbolFromUrl && symbolFromUrl !== selectedSymbol) {
+      setSelectedSymbol(symbolFromUrl);
+      setSearchInput(symbolFromUrl.replace('USDT', ''));
+      setScanResult(null); // Clear previous scan results
+      setHasAutoScanned(false); // Allow auto-scan for new symbol
+    }
+  }, [symbolFromUrl]);
 
   // Auto-scan when timeframe changes (but only after initial scan)
   const hasScannedRef = useRef(false);

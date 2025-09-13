@@ -13,7 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { Plus, Wallet, TrendingUp, BarChart3, Activity, Target, Clock, ArrowUpRight, ArrowDownRight, DollarSign } from "lucide-react";
+import { Plus, Wallet, TrendingUp, BarChart3, Activity, Target, Clock, ArrowUpRight, ArrowDownRight, DollarSign, Search, X, ExternalLink } from "lucide-react";
+import { Link } from "wouter";
 
 interface Transaction {
   id: string;
@@ -138,6 +139,46 @@ export default function Portfolio() {
     refetchInterval: 30000,
     retry: false,
   });
+
+  // Delete position mutation
+  const deletePositionMutation = useMutation({
+    mutationFn: async (positionId: string) => {
+      await apiRequest('DELETE', `/api/portfolio/${positionId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/allocation'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/portfolio/performance'] });
+      toast({
+        title: "Position Deleted",
+        description: "The position has been removed from your portfolio",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to delete position. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeletePosition = (positionId: string) => {
+    if (window.confirm("Are you sure you want to delete this position? This action cannot be undone.")) {
+      deletePositionMutation.mutate(positionId);
+    }
+  };
 
   // Removed redundant null return - sign-in UI is already handled above
 
@@ -283,6 +324,8 @@ export default function Portfolio() {
                             <th className="text-right p-4 text-muted-foreground font-medium">Value</th>
                             <th className="text-right p-4 text-muted-foreground font-medium">P&L</th>
                             <th className="text-right p-4 text-muted-foreground font-medium">24h Change</th>
+                            <th className="text-center p-4 text-muted-foreground font-medium">Analyse</th>
+                            <th className="text-center p-4 text-muted-foreground font-medium">Close</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -343,6 +386,26 @@ export default function Portfolio() {
                                         {position.dayChangePercent >= 0 ? '+' : ''}${position.dayChange.toFixed(2)}
                                       </div>
                                     </div>
+                                  </td>
+                                  <td className="p-4 text-center">
+                                    <Link 
+                                      href={`/charts?symbol=${position.symbol}&scan=true`}
+                                      className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors"
+                                      data-testid={`button-analyse-${position.id}`}
+                                    >
+                                      <Search className="w-3 h-3" />
+                                      Scan
+                                    </Link>
+                                  </td>
+                                  <td className="p-4 text-center">
+                                    <button
+                                      onClick={() => handleDeletePosition(position.id)}
+                                      className="inline-flex items-center justify-center w-8 h-8 text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                                      data-testid={`button-close-${position.id}`}
+                                      title="Delete position"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
                                   </td>
                                 </tr>
                               );
