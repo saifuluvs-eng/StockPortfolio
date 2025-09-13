@@ -124,13 +124,16 @@ export default function Charts() {
   // Fetch current price data for the selected symbol with error handling
   const { data: priceData, isLoading: isPriceLoading, error: priceError, refetch } = useQuery<PriceData>({
     queryKey: ['/api/market/ticker', selectedSymbol],
-    refetchInterval: priceError ? false : 30000, // Only refetch every 30 seconds if no error, stop if error
+    refetchInterval: 30000, // Refetch every 30 seconds (reduced from 5 seconds)
     refetchOnMount: true,
     refetchOnWindowFocus: false, // Reduce aggressive fetching
-    staleTime: 60000, // Consider data fresh for 1 minute to reduce requests
-    retry: 2, // Only retry twice on failure
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    staleTime: 10000, // Consider data fresh for 10 seconds
+    retry: 1, // Only retry once on failure
+    retryDelay: 2000, // Wait 2 seconds before retry
   });
+
+  // Show loading state when API fails (no old data)
+  const showLoadingState = isPriceLoading || !!priceError;
 
   // Force refetch when symbol changes
   useEffect(() => {
@@ -335,7 +338,7 @@ export default function Charts() {
     }
   };
 
-  const priceChange = priceData ? parseFloat(priceData.priceChangePercent) : 0;
+  const priceChange = showLoadingState ? 0 : (priceData ? parseFloat(priceData.priceChangePercent) : 0);
   const isPositive = priceChange > 0;
 
   return (
@@ -427,7 +430,7 @@ export default function Charts() {
                   <div>
                     <p className="text-sm text-muted-foreground">Current Price</p>
                     <p className="text-lg font-bold text-foreground" data-testid="current-price">
-                      {isPriceLoading ? "..." : formatPrice(priceData?.lastPrice || "0")}
+                      {showLoadingState ? "..." : formatPrice(priceData?.lastPrice || "0")}
                     </p>
                   </div>
                   <DollarSign className="w-5 h-5 text-primary" />
@@ -442,7 +445,7 @@ export default function Charts() {
                     <p className="text-sm text-muted-foreground">24h Change</p>
                     <div className="flex items-center gap-1">
                       <p className={`text-lg font-bold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                        {isPriceLoading ? "..." : `${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)}%`}
+                        {showLoadingState ? "..." : `${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)}%`}
                       </p>
                     </div>
                   </div>
@@ -461,7 +464,7 @@ export default function Charts() {
                   <div>
                     <p className="text-sm text-muted-foreground">24h Volume</p>
                     <p className="text-lg font-bold text-foreground">
-                      {isPriceLoading ? "..." : formatVolume(priceData?.quoteVolume || "0")}
+                      {showLoadingState ? "..." : formatVolume(priceData?.quoteVolume || "0")}
                     </p>
                   </div>
                   <Volume className="w-5 h-5 text-secondary" />
@@ -475,7 +478,7 @@ export default function Charts() {
                   <div>
                     <p className="text-sm text-muted-foreground">Today's High/Low</p>
                     <p className="text-sm font-medium text-foreground">
-                      {isPriceLoading ? "..." : (
+                      {showLoadingState ? "..." : (
                         <>
                           {formatPrice(priceData?.lowPrice || "0")} - {formatPrice(priceData?.highPrice || "0")}
                         </>
