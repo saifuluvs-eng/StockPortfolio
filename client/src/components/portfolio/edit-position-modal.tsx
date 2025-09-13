@@ -104,7 +104,13 @@ export function EditPositionModal({ open, onOpenChange, position }: EditPosition
   });
 
   const onSubmit = (data: z.infer<typeof editPositionSchema>) => {
-    editPositionMutation.mutate(data);
+    // Strip commas from numeric fields before sending to backend
+    const cleanedData = {
+      ...data,
+      quantity: data.quantity.replace(/,/g, ''),
+      entryPrice: data.entryPrice.replace(/,/g, ''),
+    };
+    editPositionMutation.mutate(cleanedData);
   };
 
   const baseAsset = position ? position.symbol.replace('USDT', '') : '';

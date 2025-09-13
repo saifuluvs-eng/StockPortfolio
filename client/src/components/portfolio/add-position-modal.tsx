@@ -81,7 +81,13 @@ export function AddPositionModal({ open, onOpenChange }: AddPositionModalProps) 
   });
 
   const onSubmit = (data: z.infer<typeof addPositionSchema>) => {
-    addPositionMutation.mutate(data);
+    // Strip commas from numeric fields before sending to backend
+    const cleanedData = {
+      ...data,
+      quantity: data.quantity.replace(/,/g, ''),
+      entryPrice: data.entryPrice.replace(/,/g, ''),
+    };
+    addPositionMutation.mutate(cleanedData);
   };
 
   return (

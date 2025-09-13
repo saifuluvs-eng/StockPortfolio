@@ -97,7 +97,14 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
   });
 
   const onSubmit = (data: AddTransactionFormData) => {
-    addTransactionMutation.mutate(data);
+    // Strip commas from numeric fields before sending to backend
+    const cleanedData = {
+      ...data,
+      quantity: data.quantity.replace(/,/g, ''),
+      price: data.price.replace(/,/g, ''),
+      fee: data.fee ? data.fee.replace(/,/g, '') : data.fee,
+    };
+    addTransactionMutation.mutate(cleanedData);
   };
 
   const handleSymbolChange = (value: string) => {
