@@ -304,12 +304,12 @@ export class PortfolioService {
             if (fallbackPrice > 0) {
               const fallbackData = {
                 symbol: baseSymbol, // Use base symbol for mapping
-                price: fallbackPrice,
-                volume24h: 0,
-                priceChange24h: 0,
+                price: fallbackPrice.toString(),
+                volume24h: "0",
+                priceChange24h: "0",
                 priceChangePercent24h: 0,
-                high24h: fallbackPrice,
-                low24h: fallbackPrice,
+                high24h: fallbackPrice.toString(),
+                low24h: fallbackPrice.toString(),
                 marketCap: null,
               };
               const cached = await storage.upsertMarketData(fallbackData);
@@ -328,12 +328,12 @@ export class PortfolioService {
           
           const marketDataEntry = {
             symbol: baseSymbol, // Use base symbol for consistency
-            price: parseFloat(data.lastPrice) || 0,
-            volume24h: parseFloat(data.volume) || 0,
-            priceChange24h: parseFloat(data.priceChange) || 0,
+            price: data.lastPrice.toString(),
+            volume24h: data.volume.toString(),
+            priceChange24h: data.priceChange.toString(),
             priceChangePercent24h: parseFloat(data.priceChangePercent) || 0,
-            high24h: parseFloat(data.highPrice) || 0,
-            low24h: parseFloat(data.lowPrice) || 0,
+            high24h: data.highPrice.toString(),
+            low24h: data.lowPrice.toString(),
             marketCap: null,
           };
           
@@ -341,7 +341,7 @@ export class PortfolioService {
           const cached = await storage.upsertMarketData(marketDataEntry);
           marketData.push(cached);
         } catch (error) {
-          console.error(`Failed to fetch price for ${symbol}:`, error);
+          console.error(`Failed to fetch price for ${baseSymbol}:`, error);
         }
       }
       
