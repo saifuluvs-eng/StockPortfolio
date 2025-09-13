@@ -164,7 +164,7 @@ export default function Home() {
             </Link>
 
             {/* Scanner Card */}
-            <Link href="/scanner">
+            <Link href="/charts">
               <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-accent/5 to-accent/10">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -215,8 +215,9 @@ export default function Home() {
             </Link>
 
             {/* Total P&L Card */}
-            <Card className="border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/10">
-              <CardContent className="p-6">
+            <Link href="/portfolio">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-emerald-500/5 to-emerald-500/10">
+                <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Total P&L</h3>
@@ -229,6 +230,7 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+            </Link>
 
             {/* Watchlist Card */}
             <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist">
@@ -261,8 +263,9 @@ export default function Home() {
             </Card>
 
             {/* Active Positions Card */}
-            <Card className="border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
-              <CardContent className="p-6">
+            <Link href="/portfolio">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+                <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Positions</h3>
@@ -274,10 +277,12 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+            </Link>
 
             {/* AI Signals Card */}
-            <Card className="border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/10">
-              <CardContent className="p-6">
+            <Link href="/ai-insights">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-indigo-500/5 to-indigo-500/10">
+                <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
@@ -289,10 +294,12 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+            </Link>
 
             {/* Market Status Card */}
-            <Card className="border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
-              <CardContent className="p-6">
+            <Link href="/gainers">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow border-border bg-gradient-to-br from-slate-500/5 to-slate-500/10">
+                <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Market Status</h3>
@@ -304,6 +311,7 @@ export default function Home() {
                 </div>
               </CardContent>
             </Card>
+            </Link>
           </div>
 
           {/* Dashboard Overview */}
