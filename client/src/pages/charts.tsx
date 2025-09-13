@@ -121,13 +121,15 @@ export default function Charts() {
     );
   }
 
-  // Fetch current price data for the selected symbol
-  const { data: priceData, isLoading: isPriceLoading, refetch } = useQuery<PriceData>({
+  // Fetch current price data for the selected symbol with error handling
+  const { data: priceData, isLoading: isPriceLoading, error: priceError, refetch } = useQuery<PriceData>({
     queryKey: ['/api/market/ticker', selectedSymbol],
-    refetchInterval: 5000, // Update every 5 seconds
+    refetchInterval: priceError ? false : 30000, // Only refetch every 30 seconds if no error, stop if error
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Consider data immediately stale
+    refetchOnWindowFocus: false, // Reduce aggressive fetching
+    staleTime: 60000, // Consider data fresh for 1 minute to reduce requests
+    retry: 2, // Only retry twice on failure
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
   });
 
   // Force refetch when symbol changes
