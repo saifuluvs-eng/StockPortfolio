@@ -26,23 +26,23 @@ interface TradingViewChartProps {
   height?: number;
 }
 
+// Unified timeframe configuration (matching charts.tsx)
 const TIMEFRAMES = [
-  { value: "15", label: "15min", display: "15m" },
-  { value: "60", label: "1 hour", display: "1h" },
-  { value: "240", label: "4 hours", display: "4h" },
-  { value: "D", label: "1 day", display: "1D" },
-  { value: "W", label: "1 week", display: "1W" },
+  { value: "15", label: "15min", display: "15m", backend: "15m" },
+  { value: "60", label: "1hr", display: "1h", backend: "1h" },
+  { value: "240", label: "4hr", display: "4h", backend: "4h" },
+  { value: "D", label: "1Day", display: "1D", backend: "1d" },
+  { value: "W", label: "1Week", display: "1W", backend: "1w" },
 ];
 
 // Map from our internal timeframes to TradingView intervals
 const mapTimeframeToInterval = (timeframe: string): string => {
   const mapping: { [key: string]: string } = {
-    "15m": "15",
-    "60": "60",
-    "240": "240", 
-    "1d": "D",
-    "1h": "60",
-    "4h": "240"
+    "15": "15",
+    "60": "60", 
+    "240": "240",
+    "D": "D",
+    "W": "W"
   };
   return mapping[timeframe] || timeframe;
 };

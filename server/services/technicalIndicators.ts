@@ -14,6 +14,8 @@ interface TechnicalAnalysis {
   };
   totalScore: number;
   recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
+  calculationTimestamp?: string;
+  latestDataTime?: string;
 }
 
 interface ScanFilters {

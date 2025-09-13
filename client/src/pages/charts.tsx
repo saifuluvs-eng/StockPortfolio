@@ -59,6 +59,15 @@ const POPULAR_SYMBOLS = [
 
 const DEFAULT_TIMEFRAME = "240"; // 4 hours
 
+// Unified timeframe configuration for all components
+const TIMEFRAMES = [
+  { value: "15", label: "15min", display: "15m", backend: "15m" },
+  { value: "60", label: "1hr", display: "1h", backend: "1h" },
+  { value: "240", label: "4hr", display: "4h", backend: "4h" },
+  { value: "D", label: "1Day", display: "1D", backend: "1d" },
+  { value: "W", label: "1Week", display: "1W", backend: "1w" },
+];
+
 export default function Charts() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -115,14 +124,9 @@ export default function Charts() {
 
   const scanMutation = useMutation({
     mutationFn: async () => {
-      // Convert frontend timeframe values to backend format
-      const timeframeMap: { [key: string]: string } = {
-        "15m": "15m",
-        "60": "1h", 
-        "240": "4h",
-        "1d": "1d"
-      };
-      const backendTimeframe = timeframeMap[selectedTimeframe] || selectedTimeframe;
+      // Find the backend timeframe value using our unified configuration
+      const timeframeConfig = TIMEFRAMES.find(tf => tf.value === selectedTimeframe);
+      const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
       
       const response = await apiRequest('POST', '/api/scanner/scan', {
         symbol: selectedSymbol,
@@ -331,10 +335,11 @@ export default function Charts() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="15m">15min</SelectItem>
-                      <SelectItem value="60">1hr</SelectItem>
-                      <SelectItem value="240">4hr</SelectItem>
-                      <SelectItem value="1d">1Day</SelectItem>
+                      {TIMEFRAMES.map((tf) => (
+                        <SelectItem key={tf.value} value={tf.value}>
+                          {tf.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
