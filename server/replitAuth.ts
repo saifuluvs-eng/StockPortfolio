@@ -48,7 +48,6 @@ export function getSession() {
     cookie: {
       httpOnly: true,
       secure: true,
-      sameSite: 'lax', // Better compatibility for cross-site scenarios
       maxAge: sessionTtl,
     },
   });
@@ -112,24 +111,14 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    // Handle localhost and development environments
-    const hostname = req.hostname === '127.0.0.1' || req.hostname === 'localhost' 
-      ? process.env.REPLIT_DOMAINS!.split(",")[0] 
-      : req.hostname;
-    
-    passport.authenticate(`replitauth:${hostname}`, {
+    passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    // Handle localhost and development environments
-    const hostname = req.hostname === '127.0.0.1' || req.hostname === 'localhost' 
-      ? process.env.REPLIT_DOMAINS!.split(",")[0] 
-      : req.hostname;
-    
-    passport.authenticate(`replitauth:${hostname}`, {
+    passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
