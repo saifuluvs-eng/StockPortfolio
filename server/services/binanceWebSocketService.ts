@@ -160,8 +160,8 @@ export class BinanceWebSocketService {
       return {
         symbol: data.s,
         lastPrice: data.c,
-        priceChange: data.P,
-        priceChangePercent: data.P,
+        priceChange: data.p,      // Absolute price change (e.g., +1.25)
+        priceChangePercent: data.P, // Percentage change (e.g., +5.25%)
         highPrice: data.h,
         lowPrice: data.l,
         volume: data.v,

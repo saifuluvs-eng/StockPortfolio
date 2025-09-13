@@ -83,12 +83,26 @@ export default function Charts() {
   console.log('Charts page - symbolFromUrl:', symbolFromUrl);
   console.log('Charts page - shouldAutoScan:', shouldAutoScan);
   
+  // All state hooks MUST be declared before any conditional returns
   const [selectedSymbol, setSelectedSymbol] = useState(symbolFromUrl || "BTCUSDT");
   const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
   const [showTechnicals, setShowTechnicals] = useState(true);
   const [searchInput, setSearchInput] = useState(symbolFromUrl ? symbolFromUrl.replace('USDT', '') : "BTC");
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [hasAutoScanned, setHasAutoScanned] = useState(false);
+
+  // Real-time price data via WebSocket with REST API fallback
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [wsError, setWsError] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const [usingRestFallback, setUsingRestFallback] = useState(false);
+  
+  // WebSocket refs for proper reconnection handling
+  const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const restFallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const currentSymbolRef = useRef<string>(selectedSymbol);
 
   // Show sign-in UI if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -121,37 +135,118 @@ export default function Charts() {
     );
   }
 
-  // Real-time price data via WebSocket (replacing REST API polling)
-  const [priceData, setPriceData] = useState<PriceData | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
-  const [wsError, setWsError] = useState(false);
-  
-  // Show loading state when WebSocket is not connected or has error
-  const showLoadingState = !wsConnected || wsError || !priceData;
-
-  // WebSocket connection for real-time price updates
+  // Update symbol ref when selectedSymbol changes
   useEffect(() => {
+    currentSymbolRef.current = selectedSymbol;
+  }, [selectedSymbol]);
+
+  // REST API fallback function
+  const fetchRestPriceData = useRef(async (symbol: string) => {
+    try {
+      console.log(`🔄 Fetching price data via REST API for ${symbol}`);
+      const response = await fetch(`/api/market/ticker/${symbol}`);
+      
+      if (!response.ok) {
+        throw new Error(`REST API failed with status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Transform REST data to match WebSocket data structure
+      setPriceData({
+        symbol: data.symbol,
+        lastPrice: data.price || data.lastPrice,
+        priceChange: data.priceChange || '0',
+        priceChangePercent: data.priceChangePercent || '0',
+        highPrice: data.highPrice || data.price || data.lastPrice,
+        lowPrice: data.lowPrice || data.price || data.lastPrice,
+        volume: data.volume || '0',
+        quoteVolume: data.quoteVolume || '0'
+      });
+      
+      console.log(`📊 Updated ${symbol} price via REST API:`, data.price || data.lastPrice);
+      
+    } catch (error) {
+      console.error(`❌ REST API fallback failed for ${symbol}:`, error);
+    }
+  });
+
+  // Start REST fallback polling
+  const startRestFallback = useRef((symbol: string) => {
+    if (restFallbackIntervalRef.current) {
+      clearInterval(restFallbackIntervalRef.current);
+    }
+    
+    console.log(`🏥 Starting REST API fallback for ${symbol}`);
+    setUsingRestFallback(true);
+    
+    // Initial fetch
+    fetchRestPriceData.current(symbol);
+    
+    // Poll every 5 seconds
+    restFallbackIntervalRef.current = setInterval(() => {
+      fetchRestPriceData.current(currentSymbolRef.current);
+    }, 5000);
+  });
+
+  // Stop REST fallback polling
+  const stopRestFallback = useRef(() => {
+    if (restFallbackIntervalRef.current) {
+      clearInterval(restFallbackIntervalRef.current);
+      restFallbackIntervalRef.current = null;
+    }
+    setUsingRestFallback(false);
+    console.log('✅ Stopped REST API fallback, WebSocket resumed');
+  });
+  
+  // Show loading state when neither WebSocket nor REST fallback has data
+  const showLoadingState = !wsConnected && !usingRestFallback && !priceData;
+  
+  // Fallback data loading message
+  const getLoadingMessage = () => {
+    if (usingRestFallback) return "Using REST fallback...";
+    if (wsError) return reconnectAttempts > 3 ? "Connection failed..." : "Reconnecting...";
+    if (!wsConnected) return "Connecting...";
+    if (!priceData) return "Loading data...";
+    return "...";
+  };
+
+  // Function to create WebSocket connection
+  const createWebSocketConnection = useRef((symbol: string) => {
+    console.log(`🔌 Creating WebSocket connection for ${symbol}`);
+    
+    // Close existing connection if any
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    
     const ws = new WebSocket(`wss://${window.location.host}/ws`);
+    wsRef.current = ws;
     
     ws.onopen = () => {
       console.log('🟢 WebSocket connected for charts');
       setWsConnected(true);
       setWsError(false);
+      setReconnectAttempts(0);
+      
+      // Stop REST fallback if it was running
+      stopRestFallback.current();
       
       // Subscribe to the currently selected symbol
-      ws.send(JSON.stringify({ type: 'subscribe', symbol: selectedSymbol }));
+      ws.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
     };
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         
-        if (data.type === 'ticker_update' && data.symbol === selectedSymbol) {
-          // Update price data with WebSocket ticker data
+        if (data.type === 'ticker_update' && data.symbol === currentSymbolRef.current) {
+          // Update price data with WebSocket ticker data (fixed data mapping)
           setPriceData({
             symbol: data.symbol,
             lastPrice: data.data.lastPrice,
-            priceChange: data.data.priceChangePercent,
+            priceChange: data.data.priceChange || data.data.priceChangePercent, // Use priceChange if available
             priceChangePercent: data.data.priceChangePercent,
             highPrice: data.data.highPrice,
             lowPrice: data.data.lowPrice,
@@ -171,20 +266,58 @@ export default function Charts() {
       setWsError(true);
     };
 
-    ws.onclose = () => {
-      console.log('🔴 WebSocket disconnected from charts');
+    ws.onclose = (event) => {
+      console.log(`🔴 WebSocket disconnected from charts: ${event.code} - ${event.reason}`);
       setWsConnected(false);
       
-      // Attempt to reconnect after 3 seconds
-      setTimeout(() => {
-        console.log('🔄 Attempting to reconnect WebSocket...');
-        // This will trigger the useEffect to run again
-        setWsError(false);
-      }, 3000);
+      // Only attempt reconnection if it wasn't a normal closure and we haven't exceeded max attempts
+      if (event.code !== 1000 && reconnectAttempts < 5) {
+        setWsError(true);
+        
+        // Clear any existing reconnect timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+        
+        // Calculate exponential backoff delay (1s, 2s, 4s, 8s, 16s)
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 16000);
+        
+        reconnectTimeoutRef.current = setTimeout(() => {
+          console.log(`🔄 Attempting to reconnect WebSocket (attempt ${reconnectAttempts + 1}/5)...`);
+          setReconnectAttempts(prev => prev + 1);
+          createWebSocketConnection.current(currentSymbolRef.current);
+        }, delay);
+      } else if (reconnectAttempts >= 5) {
+        console.error('❌ Max reconnection attempts reached, switching to REST fallback');
+        setWsError(true);
+        
+        // Start REST fallback when WebSocket fails completely
+        startRestFallback.current(currentSymbolRef.current);
+      }
     };
 
+    return ws;
+  });
+
+  // WebSocket connection effect
+  useEffect(() => {
+    createWebSocketConnection.current(selectedSymbol);
+    
     return () => {
-      ws.close();
+      // Cleanup on unmount or symbol change
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (restFallbackIntervalRef.current) {
+        clearInterval(restFallbackIntervalRef.current);
+        restFallbackIntervalRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+      setUsingRestFallback(false);
     };
   }, [selectedSymbol]); // Re-connect when symbol changes
 
@@ -478,7 +611,7 @@ export default function Charts() {
                   <div>
                     <p className="text-sm text-muted-foreground">Current Price</p>
                     <p className="text-lg font-bold text-foreground" data-testid="current-price">
-                      {showLoadingState ? "..." : formatPrice(priceData?.lastPrice || "0")}
+                      {showLoadingState ? getLoadingMessage() : formatPrice(priceData?.lastPrice || "0")}
                     </p>
                   </div>
                   <DollarSign className="w-5 h-5 text-primary" />
@@ -493,7 +626,7 @@ export default function Charts() {
                     <p className="text-sm text-muted-foreground">24h Change</p>
                     <div className="flex items-center gap-1">
                       <p className={`text-lg font-bold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                        {showLoadingState ? "..." : `${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)}%`}
+                        {showLoadingState ? getLoadingMessage() : `${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)}%`}
                       </p>
                     </div>
                   </div>
@@ -512,7 +645,7 @@ export default function Charts() {
                   <div>
                     <p className="text-sm text-muted-foreground">24h Volume</p>
                     <p className="text-lg font-bold text-foreground">
-                      {showLoadingState ? "..." : formatVolume(priceData?.quoteVolume || "0")}
+                      {showLoadingState ? getLoadingMessage() : formatVolume(priceData?.quoteVolume || "0")}
                     </p>
                   </div>
                   <Volume className="w-5 h-5 text-secondary" />
@@ -526,7 +659,7 @@ export default function Charts() {
                   <div>
                     <p className="text-sm text-muted-foreground">Today's High/Low</p>
                     <p className="text-sm font-medium text-foreground">
-                      {showLoadingState ? "..." : (
+                      {showLoadingState ? getLoadingMessage() : (
                         <>
                           {formatPrice(priceData?.lowPrice || "0")} - {formatPrice(priceData?.highPrice || "0")}
                         </>
