@@ -4,5 +4,18 @@
       "source": "/(.*)",
       "destination": "/server/index.ts"
     }
+  ],
+  "builds": [
+    {
+      "src": "server/index.ts",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "client/**/*",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
   ]
 }
