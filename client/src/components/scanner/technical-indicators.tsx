@@ -170,29 +170,6 @@ export function TechnicalIndicators({ analysis }: TechnicalIndicatorsProps) {
         </div>
       ))}
 
-      {/* Overall Analysis Summary */}
-      <div className="border-t-2 border-border pt-6 mt-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-bold text-foreground">Overall Analysis</h3>
-            <p className="text-sm text-muted-foreground">Combined technical score and recommendation</p>
-          </div>
-          <div className="text-right">
-            <div className="flex items-center space-x-3">
-              <span className={`text-2xl font-bold ${getScoreColor(analysis.totalScore)}`} data-testid="text-total-score">
-                {analysis.totalScore > 0 ? '+' : ''}{analysis.totalScore}
-              </span>
-              <Badge className={`${getRecommendationColor(analysis.recommendation)} px-3 py-1`} data-testid="badge-recommendation">
-                {analysis.recommendation.replace(/_/g, ' ').toUpperCase()}
-              </Badge>
-            </div>
-          </div>
-        </div>
-        <Progress value={scorePercentage} className="h-3 mb-2" />
-        <p className="text-xs text-muted-foreground text-center">
-          Score Range: -30 to +30 | Current: {analysis.totalScore}
-        </p>
-      </div>
     </div>
   );
 }

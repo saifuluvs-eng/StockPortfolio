@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -281,6 +282,30 @@ export default function Charts() {
     return `$${num.toFixed(2)}`;
   };
 
+  // Helper functions for Overall Analysis card
+  const getScoreColor = (score: number) => {
+    if (score >= 10) return 'text-green-600';
+    if (score >= 5) return 'text-green-500';
+    if (score <= -10) return 'text-red-600';
+    if (score <= -5) return 'text-red-500';
+    return 'text-yellow-500';
+  };
+
+  const getRecommendationColor = (recommendation: string) => {
+    switch (recommendation) {
+      case 'strong_buy':
+        return 'bg-green-600 text-white';
+      case 'buy':
+        return 'bg-green-500 text-white';
+      case 'strong_sell':
+        return 'bg-red-600 text-white';
+      case 'sell':
+        return 'bg-red-500 text-white';
+      default:
+        return 'bg-yellow-500 text-black';
+    }
+  };
+
   const priceChange = priceData ? parseFloat(priceData.priceChangePercent) : 0;
   const isPositive = priceChange > 0;
 
@@ -366,7 +391,7 @@ export default function Charts() {
           </div>
 
           {/* Price Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
@@ -432,6 +457,33 @@ export default function Charts() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Overall Analysis Card */}
+            {scanResult && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Overall Analysis</p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className={`text-lg font-bold ${getScoreColor(scanResult.totalScore)}`} data-testid="text-total-score">
+                          {scanResult.totalScore > 0 ? '+' : ''}{scanResult.totalScore}
+                        </span>
+                        <Badge className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`} data-testid="badge-recommendation">
+                          {scanResult.recommendation.replace(/_/g, ' ').toUpperCase()}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <Progress value={Math.max(0, Math.min(100, ((scanResult.totalScore + 30) / 60) * 100))} className="h-2 mb-1" />
+                      <p className="text-xs text-muted-foreground">
+                        Range: -30 to +30
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
 
