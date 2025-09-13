@@ -492,11 +492,11 @@ export default function Charts() {
             {/* Technical Indicators - Left Side (1/3 width) */}
             {showTechnicals && (
               <div className="lg:col-span-1">
-                <Card className="border-border" style={{height: '560px'}}>
-                  <CardHeader className="flex-shrink-0">
+                <Card className="border-border h-[560px] flex flex-col overflow-hidden">
+                  <CardHeader className="shrink-0">
                     <CardTitle className="text-lg font-bold">Breakdown Technicals</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 overflow-y-auto" style={{height: 'calc(560px - 64px)'}}>
+                  <CardContent className="flex-1 min-h-0 overflow-y-auto p-4">
                     {scanResult ? (
                       <TechnicalIndicators analysis={scanResult} />
                     ) : (
