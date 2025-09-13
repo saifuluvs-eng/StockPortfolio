@@ -543,7 +543,7 @@ export default function Charts() {
           <Card>
             <CardContent className="pt-6">
               {/* SCANNER CONTROLS REPLACING ORIGINAL CONTENT */}
-              <div className="flex flex-wrap items-center gap-4 mb-4">
+              <div className="flex flex-wrap items-center gap-4 mb-3">
                 <div className="flex-1 min-w-64 flex gap-2">
                   <div className="relative flex-1">
                     <Input
@@ -592,16 +592,15 @@ export default function Charts() {
                   {scanMutation.isPending ? "Scanning..." : "Scan"}
                 </Button>
               </div>
+              
+              {/* Current Symbol Display - Compact */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Activity className="w-3 h-3" />
+                Currently Viewing: <span className="font-medium text-foreground">{selectedSymbol.replace('USDT', '/USDT')}</span>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Current Symbol Display */}
-          <div className="flex items-center justify-center mb-4">
-            <Badge variant="secondary" className="text-lg px-4 py-2">
-              <Activity className="w-4 h-4 mr-2" />
-              Currently Viewing: {selectedSymbol.replace('USDT', '/USDT')}
-            </Badge>
-          </div>
 
           {/* Price Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
