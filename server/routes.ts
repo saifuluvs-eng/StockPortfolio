@@ -7,6 +7,7 @@ import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
 import { portfolioService } from "./services/portfolioService";
+import { binanceWebSocketService } from "./services/binanceWebSocketService";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -370,30 +371,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Broadcast price updates to connected clients
-  setInterval(async () => {
-    const clients = Array.from(wss.clients).filter(client => client.readyState === WebSocket.OPEN);
-    if (clients.length > 0) {
-      try {
-        const btcPrice = await binanceService.getCurrentPrice('BTCUSDT');
-        const ethPrice = await binanceService.getCurrentPrice('ETHUSDT');
-        
-        const priceUpdate = {
-          type: 'price_update',
-          data: {
-            BTCUSDT: btcPrice,
-            ETHUSDT: ethPrice,
-          }
-        };
+  // Track subscribed symbols and connected clients
+  const clientSubscriptions = new Map<WebSocket, Set<string>>();
 
-        clients.forEach(client => {
-          client.send(JSON.stringify(priceUpdate));
-        });
-      } catch (error) {
-        console.error('Error broadcasting price updates:', error);
-      }
+  // Initialize WebSocket service for popular symbols
+  const popularSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT'];
+  
+  // Subscribe to multiple symbols with WebSocket streams
+  binanceWebSocketService.subscribeToMultipleSymbols(popularSymbols, (data: any) => {
+    const clients = Array.from(wss.clients).filter(client => client.readyState === WebSocket.OPEN);
+    
+    if (clients.length > 0) {
+      const priceUpdate = {
+        type: 'ticker_update',
+        symbol: data.symbol,
+        data: {
+          lastPrice: data.lastPrice,
+          priceChangePercent: data.priceChangePercent,
+          highPrice: data.highPrice,
+          lowPrice: data.lowPrice,
+          volume: data.volume,
+          quoteVolume: data.quoteVolume,
+          timestamp: data.timestamp
+        }
+      };
+
+      clients.forEach(client => {
+        const subscribedSymbols = clientSubscriptions.get(client) || new Set();
+        // Send to all clients for now, can optimize later for specific subscriptions
+        client.send(JSON.stringify(priceUpdate));
+      });
     }
-  }, 5000);
+  });
 
   return httpServer;
 }
