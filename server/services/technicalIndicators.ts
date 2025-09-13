@@ -44,19 +44,39 @@ class TechnicalIndicators {
     return ema;
   }
 
-  // Relative Strength Index
+  // Relative Strength Index using Wilder's smoothing method (matches TradingView)
   private calculateRSI(prices: number[], period: number = 14): number {
-    const gains: number[] = [];
-    const losses: number[] = [];
-
+    if (prices.length < period + 1) return 50; // Not enough data
+    
+    const changes: number[] = [];
     for (let i = 1; i < prices.length; i++) {
-      const change = prices[i] - prices[i - 1];
-      gains.push(change > 0 ? change : 0);
-      losses.push(change < 0 ? Math.abs(change) : 0);
+      changes.push(prices[i] - prices[i - 1]);
     }
 
-    const avgGain = gains.slice(-period).reduce((sum, gain) => sum + gain, 0) / period;
-    const avgLoss = losses.slice(-period).reduce((sum, loss) => sum + loss, 0) / period;
+    // Calculate initial averages for the first period (simple average)
+    let avgGain = 0;
+    let avgLoss = 0;
+    
+    for (let i = 0; i < period; i++) {
+      if (changes[i] > 0) {
+        avgGain += changes[i];
+      } else {
+        avgLoss += Math.abs(changes[i]);
+      }
+    }
+    
+    avgGain /= period;
+    avgLoss /= period;
+    
+    // Apply Wilder's smoothing method for remaining periods
+    for (let i = period; i < changes.length; i++) {
+      const gain = changes[i] > 0 ? changes[i] : 0;
+      const loss = changes[i] < 0 ? Math.abs(changes[i]) : 0;
+      
+      // Wilder's smoothing: (previous_average * (period - 1) + current_value) / period
+      avgGain = (avgGain * (period - 1) + gain) / period;
+      avgLoss = (avgLoss * (period - 1) + loss) / period;
+    }
 
     if (avgLoss === 0) return 100;
     
@@ -272,8 +292,8 @@ class TechnicalIndicators {
       let klines: any[] = [];
       
       try {
-        // Get candlestick data
-        klines = await binanceService.getKlineData(symbol, binanceInterval, 100);
+        // Get candlestick data (increased for better RSI accuracy)
+        klines = await binanceService.getKlineData(symbol, binanceInterval, 200);
         
         closes = klines.map(k => parseFloat(k.close));
         highs = klines.map(k => parseFloat(k.high));

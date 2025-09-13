@@ -110,7 +110,7 @@ class BinanceService {
     });
   }
 
-  async getKlineData(symbol: string, interval: string, limit: number = 100): Promise<CandlestickData[]> {
+  async getKlineData(symbol: string, interval: string, limit: number = 200): Promise<CandlestickData[]> {
     try {
       const response = await fetch(
         `${this.baseUrl}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
