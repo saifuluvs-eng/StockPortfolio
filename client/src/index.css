@@ -3,6 +3,45 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .dashboard-card {
+    @apply relative h-full min-h-44 md:min-h-48 rounded-xl border bg-card;
+  }
+  
+  .neon-hover {
+    position: relative;
+    border-color: transparent;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  
+  .neon-hover::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    box-shadow: 0 0 24px 2px var(--neon-glow);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  
+  .neon-hover:hover {
+    border-color: var(--neon-glow);
+    box-shadow: 0 0 0 1px var(--neon-glow);
+  }
+  
+  .neon-hover:hover::before {
+    opacity: 1;
+  }
+  
+  @media (prefers-reduced-motion: reduce) {
+    .neon-hover,
+    .neon-hover::before {
+      transition: none;
+    }
+  }
+}
+
 :root {
   /* Futuristic Deep Space Background */
   --background: hsl(220, 25%, 3%);
@@ -83,6 +122,9 @@
   --gradient-cyber: linear-gradient(135deg, hsl(195, 100%, 65%) 0%, hsl(280, 80%, 60%) 100%);
   --gradient-profit: linear-gradient(135deg, hsl(158, 100%, 50%) 0%, hsl(195, 100%, 65%) 100%);
   --gradient-loss: linear-gradient(135deg, hsl(0, 80%, 60%) 0%, hsl(280, 80%, 60%) 100%);
+  
+  /* Neon Glow Effect */
+  --neon-glow: hsl(195, 100%, 60%);
 }
 
 .dark {
@@ -121,6 +163,9 @@
   --sidebar-border: hsl(195, 40%, 15%);
   --sidebar-ring: hsl(195, 100%, 65%);
   --radius: 0.75rem;
+  
+  /* Neon Glow Effect */
+  --neon-glow: hsl(195, 100%, 60%);
 }
 
 @layer base {
