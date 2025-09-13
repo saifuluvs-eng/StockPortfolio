@@ -83,10 +83,10 @@ export class PortfolioService {
 
     for (const position of positions) {
       const marketData = marketDataMap.get(position.symbol);
-      if (!marketData) continue;
-
-      const currentPrice = parseFloat(marketData.price);
+      
+      // Use entry price as fallback if market data is unavailable
       const entryPrice = parseFloat(position.entryPrice);
+      const currentPrice = marketData ? parseFloat(marketData.price) : entryPrice;
       const quantity = parseFloat(position.quantity);
       
       const marketValue = currentPrice * quantity;
@@ -94,8 +94,8 @@ export class PortfolioService {
       const unrealizedPnL = marketValue - cost;
       const unrealizedPnLPercent = cost > 0 ? (unrealizedPnL / cost) * 100 : 0;
       
-      const dayChange = marketData.priceChange24h ? parseFloat(marketData.priceChange24h) * quantity : 0;
-      const dayChangePercent = marketData.priceChangePercent24h || 0;
+      const dayChange = marketData?.priceChange24h ? parseFloat(marketData.priceChange24h) * quantity : 0;
+      const dayChangePercent = marketData?.priceChangePercent24h || 0;
 
       enrichedPositions.push({
         ...position,
