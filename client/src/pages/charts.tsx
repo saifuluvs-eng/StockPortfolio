@@ -121,24 +121,72 @@ export default function Charts() {
     );
   }
 
-  // Fetch current price data for the selected symbol with error handling
-  const { data: priceData, isLoading: isPriceLoading, error: priceError, refetch } = useQuery<PriceData>({
-    queryKey: ['/api/market/ticker', selectedSymbol],
-    refetchInterval: 30000, // Refetch every 30 seconds (reduced from 5 seconds)
-    refetchOnMount: true,
-    refetchOnWindowFocus: false, // Reduce aggressive fetching
-    staleTime: 10000, // Consider data fresh for 10 seconds
-    retry: 1, // Only retry once on failure
-    retryDelay: 2000, // Wait 2 seconds before retry
-  });
+  // Real-time price data via WebSocket (replacing REST API polling)
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [wsError, setWsError] = useState(false);
+  
+  // Show loading state when WebSocket is not connected or has error
+  const showLoadingState = !wsConnected || wsError || !priceData;
 
-  // Show loading state when API fails (no old data)
-  const showLoadingState = isPriceLoading || !!priceError;
-
-  // Force refetch when symbol changes
+  // WebSocket connection for real-time price updates
   useEffect(() => {
-    refetch();
-  }, [selectedSymbol, refetch]);
+    const ws = new WebSocket(`wss://${window.location.host}/ws`);
+    
+    ws.onopen = () => {
+      console.log('🟢 WebSocket connected for charts');
+      setWsConnected(true);
+      setWsError(false);
+      
+      // Subscribe to the currently selected symbol
+      ws.send(JSON.stringify({ type: 'subscribe', symbol: selectedSymbol }));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'ticker_update' && data.symbol === selectedSymbol) {
+          // Update price data with WebSocket ticker data
+          setPriceData({
+            symbol: data.symbol,
+            lastPrice: data.data.lastPrice,
+            priceChange: data.data.priceChangePercent,
+            priceChangePercent: data.data.priceChangePercent,
+            highPrice: data.data.highPrice,
+            lowPrice: data.data.lowPrice,
+            volume: data.data.volume,
+            quoteVolume: data.data.quoteVolume
+          });
+          
+          console.log(`📈 Updated ${data.symbol} price via WebSocket:`, data.data.lastPrice);
+        }
+      } catch (error) {
+        console.error('❌ WebSocket message parsing error:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('🔴 WebSocket error:', error);
+      setWsError(true);
+    };
+
+    ws.onclose = () => {
+      console.log('🔴 WebSocket disconnected from charts');
+      setWsConnected(false);
+      
+      // Attempt to reconnect after 3 seconds
+      setTimeout(() => {
+        console.log('🔄 Attempting to reconnect WebSocket...');
+        // This will trigger the useEffect to run again
+        setWsError(false);
+      }, 3000);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [selectedSymbol]); // Re-connect when symbol changes
 
   const scanMutation = useMutation({
     mutationFn: async () => {
