@@ -4,7 +4,7 @@ import { TrendingUp, Shield, BarChart3, Users } from "lucide-react";
 
 export default function Landing() {
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    window.location.href = "/api/auth/google";
   };
 
   return (
@@ -19,7 +19,7 @@ export default function Landing() {
             <span className="text-xl font-bold text-foreground">CryptoTrader Pro</span>
           </div>
           <Button onClick={handleLogin} data-testid="button-login">
-            Sign In
+            Sign In with Google
           </Button>
         </div>
       </header>
@@ -36,7 +36,7 @@ export default function Landing() {
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" onClick={handleLogin} className="gradient-primary" data-testid="button-get-started">
-              Get Started Free
+              Sign In with Google
             </Button>
             <Button size="lg" variant="outline" data-testid="button-learn-more">
               Learn More
@@ -104,7 +104,7 @@ export default function Landing() {
               Join thousands of traders who use CryptoTrader Pro to make informed decisions and maximize their profits.
             </p>
             <Button size="lg" onClick={handleLogin} className="gradient-primary" data-testid="button-start-trading">
-              Start Trading Now
+              Sign In with Google
             </Button>
           </CardContent>
         </Card>

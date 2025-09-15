@@ -7,6 +7,14 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+interface HighPotentialData {
+  results: any[];
+}
+
+interface AiOverviewData {
+  signals: any[];
+}
+
 export default function Home() {
   const { user } = useAuth();
   const [prices, setPrices] = useState<{BTCUSDT?: number, ETHUSDT?: number}>({});
@@ -33,7 +41,7 @@ export default function Home() {
   });
   
   // Fetch market gainers data
-  const { data: gainers } = useQuery({
+  const { data: gainers } = useQuery<any[]>({
     queryKey: ['/api/market/gainers'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
@@ -46,13 +54,13 @@ export default function Home() {
   });
   
   // Fetch AI market overview
-  const { data: aiOverview } = useQuery({
+  const { data: aiOverview } = useQuery<AiOverviewData>({
     queryKey: ['/api/ai/market-overview'],
     refetchInterval: 120000, // Refresh every 2 minutes
   });
   
   // Fetch high potential signals (using POST request)
-  const { data: highPotentialData } = useQuery({
+  const { data: highPotentialData } = useQuery<HighPotentialData>({
     queryKey: ['/api/scanner/high-potential'],
     queryFn: async () => {
       const response = await fetch('/api/scanner/high-potential', {
@@ -205,7 +213,7 @@ export default function Home() {
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">Top Gainers</h3>
                       <p className="text-sm text-muted-foreground">Market leaders</p>
-                      <p className="text-lg font-bold text-foreground mt-2">{gainers?.length || 0}</p>
+                      <p className="text-lg font-bold text-foreground mt-2">{Array.isArray(gainers) ? gainers.length : 0}</p>
                       <p className="text-xs text-muted-foreground">Coins tracked</p>
                     </div>
                     <Award className="w-8 h-8 text-green-500" />

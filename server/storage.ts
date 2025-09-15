@@ -124,7 +124,7 @@ export class DatabaseStorage implements IStorage {
         eq(portfolioPositions.id, id),
         eq(portfolioPositions.userId, userId)
       ));
-    return (result.rowCount ?? 0) > 0;
+    return (result.changes ?? 0) > 0;
   }
 
   // Scan history operations
@@ -174,7 +174,7 @@ export class DatabaseStorage implements IStorage {
         eq(watchlist.userId, userId),
         eq(watchlist.symbol, symbol)
       ));
-    return (result.rowCount ?? 0) > 0;
+    return (result.changes ?? 0) > 0;
   }
 
   // Trade transaction operations

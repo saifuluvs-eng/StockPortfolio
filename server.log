@@ -1,0 +1,6 @@
+
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+7:12:26 PM [express] serving on port 5000
+9:48:01 PM [express] GET /api/portfolio 200 in 1048ms :: {"totalValue":75000,"totalPnL":0,"totalPnLP…

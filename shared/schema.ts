@@ -1,90 +1,86 @@
 import { sql } from 'drizzle-orm';
 import {
   index,
-  jsonb,
-  pgTable,
-  timestamp,
-  varchar,
-  decimal,
+  sqliteTable,
   text,
-  boolean,
   integer,
   real,
   unique,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { v4 as uuidv4 } from 'uuid';
 
 // Session storage table - mandatory for Replit Auth
-export const sessions = pgTable(
+export const sessions = sqliteTable(
   "sessions",
   {
-    sid: varchar("sid").primaryKey(),
-    sess: jsonb("sess").notNull(),
-    expire: timestamp("expire").notNull(),
+    sid: text("sid").primaryKey(),
+    sess: text("sess", { mode: 'json' }).notNull(),
+    expire: integer("expire", { mode: 'timestamp' }).notNull(),
   },
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
 // User storage table - mandatory for Replit Auth
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email").unique(),
-  firstName: varchar("first_name"),
-  lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  email: text("email").unique(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  profileImageUrl: text("profile_image_url"),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  updatedAt: integer("updated_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 });
 
 // Portfolio positions
-export const portfolioPositions = pgTable("portfolio_positions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  symbol: varchar("symbol").notNull(), // e.g., "BTCUSDT"
-  quantity: decimal("quantity", { precision: 18, scale: 8 }).notNull(),
-  entryPrice: decimal("entry_price", { precision: 18, scale: 8 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const portfolioPositions = sqliteTable("portfolio_positions", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(), // e.g., "BTCUSDT"
+  quantity: real("quantity").notNull(),
+  entryPrice: real("entry_price").notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  updatedAt: integer("updated_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_portfolio_user").on(table.userId),
 ]);
 
 // Scan history
-export const scanHistory = pgTable("scan_history", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  scanType: varchar("scan_type").notNull(), // "custom", "high_potential", "gainers"
-  filters: jsonb("filters"),
-  results: jsonb("results"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const scanHistory = sqliteTable("scan_history", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  scanType: text("scan_type").notNull(), // "custom", "high_potential", "gainers"
+  filters: text("filters", { mode: 'json' }),
+  results: text("results", { mode: 'json' }),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 });
 
 // Watchlist
-export const watchlist = pgTable("watchlist", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  symbol: varchar("symbol").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+export const watchlist = sqliteTable("watchlist", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_watchlist_user_symbol").on(table.userId, table.symbol),
   unique("UQ_watchlist_user_symbol").on(table.userId, table.symbol),
 ]);
 
 // Trade transactions for detailed P&L tracking
-export const tradeTransactions = pgTable("trade_transactions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  symbol: varchar("symbol").notNull(),
-  side: varchar("side").notNull(), // "buy" or "sell"
-  quantity: decimal("quantity", { precision: 18, scale: 8 }).notNull(),
-  price: decimal("price", { precision: 18, scale: 8 }).notNull(),
-  fee: decimal("fee", { precision: 18, scale: 8 }).default('0'),
-  feeAsset: varchar("fee_asset").default('USDT'),
-  tradeId: varchar("trade_id"), // External trade ID from exchange
-  executedAt: timestamp("executed_at").notNull(), // Exchange execution time
+export const tradeTransactions = sqliteTable("trade_transactions", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(),
+  side: text("side").notNull(), // "buy" or "sell"
+  quantity: real("quantity").notNull(),
+  price: real("price").notNull(),
+  fee: real("fee").default(0),
+  feeAsset: text("fee_asset").default('USDT'),
+  tradeId: text("trade_id"), // External trade ID from exchange
+  executedAt: integer("executed_at", { mode: 'timestamp' }).notNull(), // Exchange execution time
   notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_trades_user_symbol_time").on(table.userId, table.symbol, table.executedAt),
   index("IDX_trades_user_time").on(table.userId, table.executedAt),
@@ -93,15 +89,15 @@ export const tradeTransactions = pgTable("trade_transactions", {
 ]);
 
 // Technical indicators cache for performance
-export const technicalIndicators = pgTable("technical_indicators", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  symbol: varchar("symbol").notNull(),
-  timeframe: varchar("timeframe").notNull(), // "1m", "5m", "15m", "1h", "4h", "1d"
-  indicatorType: varchar("indicator_type").notNull(), // "rsi", "macd", "bb", "ema", etc.
-  value: decimal("value", { precision: 18, scale: 8 }),
-  metadata: jsonb("metadata"), // Additional indicator data (upper/lower bounds, signals, etc.)
-  timestamp: timestamp("timestamp").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+export const technicalIndicators = sqliteTable("technical_indicators", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  symbol: text("symbol").notNull(),
+  timeframe: text("timeframe").notNull(), // "1m", "5m", "15m", "1h", "4h", "1d"
+  indicatorType: text("indicator_type").notNull(), // "rsi", "macd", "bb", "ema", etc.
+  value: real("value"),
+  metadata: text("metadata", { mode: 'json' }), // Additional indicator data (upper/lower bounds, signals, etc.)
+  timestamp: integer("timestamp", { mode: 'timestamp' }).notNull(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_indicators_composite").on(table.symbol, table.timeframe, table.indicatorType, table.timestamp),
   index("IDX_indicators_latest").on(table.symbol, table.timeframe, table.indicatorType),
@@ -109,36 +105,36 @@ export const technicalIndicators = pgTable("technical_indicators", {
 ]);
 
 // Smart alerts and notifications
-export const alerts = pgTable("alerts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  symbol: varchar("symbol").notNull(),
-  alertType: varchar("alert_type").notNull(), // "price", "volume", "technical", "ai_signal"
-  condition: jsonb("condition").notNull(), // Alert trigger conditions
+export const alerts = sqliteTable("alerts", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(),
+  alertType: text("alert_type").notNull(), // "price", "volume", "technical", "ai_signal"
+  condition: text("condition", { mode: 'json' }).notNull(), // Alert trigger conditions
   message: text("message").notNull(),
-  isActive: boolean("is_active").default(true),
-  triggered: boolean("triggered").default(false),
+  isActive: integer("is_active", { mode: 'boolean' }).default(true),
+  triggered: integer("triggered", { mode: 'boolean' }).default(false),
   triggerCount: integer("trigger_count").default(0),
-  lastTriggered: timestamp("last_triggered"),
-  createdAt: timestamp("created_at").defaultNow(),
+  lastTriggered: integer("last_triggered", { mode: 'timestamp' }),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_alerts_user_active").on(table.userId, table.isActive),
   index("IDX_alerts_user_symbol").on(table.userId, table.symbol, table.isActive),
 ]);
 
 // AI analysis results storage
-export const aiAnalysis = pgTable("ai_analysis", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
-  symbol: varchar("symbol").notNull(),
-  analysisType: varchar("analysis_type").notNull(), // "sentiment", "pattern", "prediction", "recommendation"
+export const aiAnalysis = sqliteTable("ai_analysis", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(),
+  analysisType: text("analysis_type").notNull(), // "sentiment", "pattern", "prediction", "recommendation"
   confidence: real("confidence"), // 0.0 to 1.0
-  signal: varchar("signal"), // "bullish", "bearish", "neutral"
+  signal: text("signal"), // "bullish", "bearish", "neutral"
   reasoning: text("reasoning"),
-  metadata: jsonb("metadata"), // Full AI response data
-  timeframe: varchar("timeframe"),
-  validUntil: timestamp("valid_until"),
-  createdAt: timestamp("created_at").defaultNow(),
+  metadata: text("metadata", { mode: 'json' }), // Full AI response data
+  timeframe: text("timeframe"),
+  validUntil: integer("valid_until", { mode: 'timestamp' }),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_ai_analysis_symbol").on(table.symbol),
   index("IDX_ai_analysis_user").on(table.userId, table.symbol, table.timeframe),
@@ -146,17 +142,17 @@ export const aiAnalysis = pgTable("ai_analysis", {
 ]);
 
 // Market data cache for performance
-export const marketData = pgTable("market_data", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  symbol: varchar("symbol").notNull(),
-  price: decimal("price", { precision: 18, scale: 8 }).notNull(),
-  volume24h: decimal("volume_24h", { precision: 18, scale: 2 }),
-  priceChange24h: decimal("price_change_24h", { precision: 18, scale: 8 }),
+export const marketData = sqliteTable("market_data", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  symbol: text("symbol").notNull(),
+  price: real("price").notNull(),
+  volume24h: real("volume_24h"),
+  priceChange24h: real("price_change_24h"),
   priceChangePercent24h: real("price_change_percent_24h"),
-  high24h: decimal("high_24h", { precision: 18, scale: 8 }),
-  low24h: decimal("low_24h", { precision: 18, scale: 8 }),
-  marketCap: decimal("market_cap", { precision: 18, scale: 2 }),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  high24h: real("high_24h"),
+  low24h: real("low_24h"),
+  marketCap: real("market_cap"),
+  updatedAt: integer("updated_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_market_data_symbol").on(table.symbol),
   index("IDX_market_data_updated").on(table.updatedAt),
@@ -164,31 +160,31 @@ export const marketData = pgTable("market_data", {
 ]);
 
 // Scan presets for saved scanning configurations
-export const scanPresets = pgTable("scan_presets", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  name: varchar("name").notNull(),
+export const scanPresets = sqliteTable("scan_presets", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
   description: text("description"),
-  scanType: varchar("scan_type").notNull(), // "custom", "high_potential", "reversal"
-  filters: jsonb("filters").notNull(),
-  isPublic: boolean("is_public").default(false),
+  scanType: text("scan_type").notNull(), // "custom", "high_potential", "reversal"
+  filters: text("filters", { mode: 'json' }).notNull(),
+  isPublic: integer("is_public", { mode: 'boolean' }).default(false),
   usageCount: integer("usage_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
+  updatedAt: integer("updated_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 });
 
 // Performance analytics for portfolio tracking
-export const portfolioAnalytics = pgTable("portfolio_analytics", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  date: timestamp("date").notNull(),
-  totalValue: decimal("total_value", { precision: 18, scale: 2 }).notNull(),
-  totalPnl: decimal("total_pnl", { precision: 18, scale: 2 }).notNull(),
+export const portfolioAnalytics = sqliteTable("portfolio_analytics", {
+  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  date: integer("date", { mode: 'timestamp' }).notNull(),
+  totalValue: real("total_value").notNull(),
+  totalPnl: real("total_pnl").notNull(),
   totalPnlPercent: real("total_pnl_percent").notNull(),
-  dayChange: decimal("day_change", { precision: 18, scale: 2 }),
+  dayChange: real("day_change"),
   dayChangePercent: real("day_change_percent"),
-  positions: jsonb("positions"), // Snapshot of positions
-  createdAt: timestamp("created_at").defaultNow(),
+  positions: text("positions", { mode: 'json' }), // Snapshot of positions
+  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_portfolio_analytics_user_date").on(table.userId, table.date),
   unique("UQ_portfolio_analytics_user_date").on(table.userId, table.date),
