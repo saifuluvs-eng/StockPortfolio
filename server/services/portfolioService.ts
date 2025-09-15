@@ -57,8 +57,10 @@ export class PortfolioService {
    * Calculate real-time portfolio summary with P&L
    */
   async getPortfolioSummary(userId: string): Promise<PortfolioSummary> {
+    console.log(`Fetching portfolio summary for user: ${userId}`);
     // Get user positions
     const positions = await storage.getPortfolioPositions(userId);
+    console.log(`Found ${positions.length} positions for user: ${userId}`);
     
     if (positions.length === 0) {
       return {
@@ -85,16 +87,16 @@ export class PortfolioService {
       const marketData = marketDataMap.get(position.symbol);
       
       // Use entry price as fallback if market data is unavailable
-      const entryPrice = parseFloat(position.entryPrice);
-      const currentPrice = marketData ? parseFloat(marketData.price) : entryPrice;
-      const quantity = parseFloat(position.quantity);
+      const entryPrice = position.entryPrice;
+      const currentPrice = marketData ? marketData.price : entryPrice;
+      const quantity = position.quantity;
       
       const marketValue = currentPrice * quantity;
       const cost = entryPrice * quantity;
       const unrealizedPnL = marketValue - cost;
       const unrealizedPnLPercent = cost > 0 ? (unrealizedPnL / cost) * 100 : 0;
       
-      const dayChange = marketData?.priceChange24h ? parseFloat(marketData.priceChange24h) * quantity : 0;
+      const dayChange = marketData?.priceChange24h ? marketData.priceChange24h * quantity : 0;
       const dayChangePercent = marketData?.priceChangePercent24h || 0;
 
       enrichedPositions.push({
@@ -151,7 +153,7 @@ export class PortfolioService {
       coin: position.symbol.replace('USDT', ''),
       value: position.marketValue,
       percentage: position.allocation,
-      quantity: parseFloat(position.quantity),
+      quantity: position.quantity,
       color: colors[index % colors.length]
     }));
   }
@@ -251,10 +253,10 @@ export class PortfolioService {
     const analytics: InsertPortfolioAnalytics = {
       userId,
       date: today,
-      totalValue: summary.totalValue.toString(),
-      totalPnl: summary.totalPnL.toString(),
+      totalValue: summary.totalValue,
+      totalPnl: summary.totalPnL,
       totalPnlPercent: summary.totalPnLPercent,
-      dayChange: summary.dayChange.toString(),
+      dayChange: summary.dayChange,
       dayChangePercent: summary.dayChangePercent,
       positions: summary.positions.map(p => ({
         symbol: p.symbol,
@@ -304,12 +306,12 @@ export class PortfolioService {
             if (fallbackPrice > 0) {
               const fallbackData = {
                 symbol: baseSymbol, // Use base symbol for mapping
-                price: fallbackPrice.toString(),
-                volume24h: "0",
-                priceChange24h: "0",
+                price: fallbackPrice,
+                volume24h: 0,
+                priceChange24h: 0,
                 priceChangePercent24h: 0,
-                high24h: fallbackPrice.toString(),
-                low24h: fallbackPrice.toString(),
+                high24h: fallbackPrice,
+                low24h: fallbackPrice,
                 marketCap: null,
               };
               const cached = await storage.upsertMarketData(fallbackData);
@@ -328,12 +330,12 @@ export class PortfolioService {
           
           const marketDataEntry = {
             symbol: baseSymbol, // Use base symbol for consistency
-            price: data.lastPrice.toString(),
-            volume24h: data.volume.toString(),
-            priceChange24h: data.priceChange.toString(),
+            price: parseFloat(data.lastPrice),
+            volume24h: parseFloat(data.volume),
+            priceChange24h: parseFloat(data.priceChange),
             priceChangePercent24h: parseFloat(data.priceChangePercent) || 0,
-            high24h: data.highPrice.toString(),
-            low24h: data.lowPrice.toString(),
+            high24h: parseFloat(data.highPrice),
+            low24h: parseFloat(data.lowPrice),
             marketCap: null,
           };
           
@@ -358,7 +360,7 @@ export class PortfolioService {
     try {
       const positions = await storage.getPortfolioPositions(''); // Get all positions
       const position = positions.find(p => p.symbol === symbol);
-      return position ? parseFloat(position.entryPrice) : 0;
+      return position ? position.entryPrice : 0;
     } catch (error) {
       console.error(`Error getting fallback price for ${symbol}:`, error);
       return 0;
@@ -378,8 +380,8 @@ export class PortfolioService {
       const key = tx.symbol;
       const position = positionMap.get(key) || { buyQuantity: 0, buyValue: 0, sellValue: 0 };
       
-      const quantity = parseFloat(tx.quantity);
-      const price = parseFloat(tx.price);
+      const quantity = tx.quantity;
+      const price = tx.price;
       const value = quantity * price;
       
       if (tx.side === 'buy') {
@@ -414,34 +416,34 @@ export class PortfolioService {
     const existingPositions = await storage.getPortfolioPositions(userId);
     const existingPosition = existingPositions.find(p => p.symbol === transaction.symbol);
     
-    const quantity = parseFloat(transaction.quantity);
-    const price = parseFloat(transaction.price);
+    const quantity = transaction.quantity;
+    const price = transaction.price;
     
     if (transaction.side === 'buy') {
       if (existingPosition) {
         // Update existing position (average price)
-        const existingQuantity = parseFloat(existingPosition.quantity);
-        const existingPrice = parseFloat(existingPosition.entryPrice);
+        const existingQuantity = existingPosition.quantity;
+        const existingPrice = existingPosition.entryPrice;
         
         const newQuantity = existingQuantity + quantity;
         const newAvgPrice = ((existingQuantity * existingPrice) + (quantity * price)) / newQuantity;
         
         await storage.updatePortfolioPosition(existingPosition.id, userId, {
-          quantity: newQuantity.toString(),
-          entryPrice: newAvgPrice.toString()
+          quantity: newQuantity,
+          entryPrice: newAvgPrice
         });
       } else {
         // Create new position
         await storage.createPortfolioPosition({
           userId,
           symbol: transaction.symbol,
-          quantity: quantity.toString(),
-          entryPrice: price.toString()
+          quantity: quantity,
+          entryPrice: price
         });
       }
     } else if (transaction.side === 'sell' && existingPosition) {
       // Reduce position
-      const existingQuantity = parseFloat(existingPosition.quantity);
+      const existingQuantity = existingPosition.quantity;
       const newQuantity = existingQuantity - quantity;
       
       if (newQuantity <= 0) {
@@ -450,7 +452,7 @@ export class PortfolioService {
       } else {
         // Reduce quantity
         await storage.updatePortfolioPosition(existingPosition.id, userId, {
-          quantity: newQuantity.toString()
+          quantity: newQuantity
         });
       }
     }

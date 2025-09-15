@@ -1,23 +1,17 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.ts";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupAuth } from "./auth";
+import { debugLog } from "./debug";
+
+debugLog('Server script started.');
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Canonical domain redirect middleware
-app.use((req, res, next) => {
-  const replitDomains = process.env.REPLIT_DOMAINS?.split(',') || [];
-  const primaryDomain = replitDomains[0];
-  
-  if (primaryDomain && !replitDomains.includes(req.hostname) && req.hostname !== 'localhost' && req.hostname !== '127.0.0.1') {
-    const redirectUrl = `https://${primaryDomain}${req.originalUrl}`;
-    return res.redirect(302, redirectUrl);
-  }
-  
-  next();
-});
+setupAuth(app);
 
 app.use((req, res, next) => {
   const start = Date.now();
