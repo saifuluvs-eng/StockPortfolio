@@ -1,17 +1,15 @@
 {
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/server/index.ts"
-    }
-  ],
-  "builds": [
-    {
-      "src": "server/index.ts",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": "server/**"
-      }
+      "destination": "/api/index.js"
     }
   ]
 }
