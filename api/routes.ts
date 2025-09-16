@@ -29,7 +29,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -41,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced Portfolio routes
   app.get('/api/portfolio', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const summary = await portfolioService.getPortfolioSummary(userId);
       res.json(summary);
     } catch (error) {
@@ -52,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/portfolio/allocation', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const allocation = await portfolioService.getAssetAllocation(userId);
       res.json(allocation);
     } catch (error) {
@@ -63,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/portfolio/performance', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const days = parseInt(req.query.days as string) || 30;
       const metrics = await portfolioService.getPerformanceMetrics(userId, days);
       res.json(metrics);
@@ -75,7 +75,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/portfolio/analytics', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const analytics = await storage.getPortfolioAnalytics(userId, startDate, endDate);
@@ -88,7 +88,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/portfolio/transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const symbol = req.query.symbol as string;
       const transactions = await portfolioService.getTransactionHistory(userId, symbol);
       res.json(transactions);
@@ -100,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/portfolio/transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertTradeTransactionSchema.parse({
         ...req.body,
         userId,
@@ -120,7 +120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/portfolio', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertPortfolioPositionSchema.parse({
         ...req.body,
         userId,
@@ -140,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/portfolio/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { id } = req.params;
       
       const validatedData = insertPortfolioPositionSchema.omit({ userId: true }).parse(req.body);
@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/portfolio/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { id } = req.params;
       
       const deleted = await storage.deletePortfolioPosition(id, userId);
@@ -283,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Scanner routes
   app.post('/api/scanner/scan', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { symbol, timeframe, filters } = req.body;
       
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
@@ -305,7 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/scanner/high-potential', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const filters = req.body;
       
       const results = await technicalIndicators.scanHighPotential(filters);
@@ -328,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Watchlist routes
   app.get('/api/watchlist', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const watchlist = await storage.getWatchlist(userId);
       res.json(watchlist);
     } catch (error) {
@@ -339,7 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/watchlist', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertWatchlistItemSchema.parse({
         ...req.body,
         userId,
