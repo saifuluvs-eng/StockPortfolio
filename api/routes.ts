@@ -13,11 +13,16 @@ import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTr
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  console.log("--- JULES DEBUG: Registering routes ---");
   // Auth middleware
   await setupAuth(app);
+  console.log("--- JULES DEBUG: Auth has been set up ---");
 
   // Auth routes
-  app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+  app.get('/api/auth/google', (req, res, next) => {
+    console.log("--- JULES DEBUG: /api/auth/google route hit ---");
+    passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+  });
 
   app.get(
     '/api/auth/google/callback',
