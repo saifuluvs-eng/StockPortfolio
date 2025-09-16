@@ -1,3 +1,4 @@
+console.log("--- JULES DEBUG V3: Executing api/index.ts ---");
 import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes.ts";
