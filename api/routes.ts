@@ -17,7 +17,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/google', passport.authenticate('google'));
+  app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
   app.get(
     '/api/auth/google/callback',
