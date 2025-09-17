@@ -56,12 +56,6 @@ export default function AIInsights() {
     refetchInterval: 300000, // Refetch every 5 minutes
   });
 
-  const { data: predictions = [], isLoading: predictionsLoading, refetch: refetchPredictions } = useQuery<AIPrediction[]>({
-    queryKey: ['/api/ai/predictions'],
-    retry: false,
-    refetchInterval: 600000, // Refetch every 10 minutes
-  });
-
   const { data: sentiment, isLoading: sentimentLoading, refetch: refetchSentiment } = useQuery<AISentiment>({
     queryKey: ['/api/ai/sentiment', selectedSymbol, selectedTimeframe],
     retry: false,
@@ -70,7 +64,6 @@ export default function AIInsights() {
 
   const handleRefreshAll = () => {
     refetchOverview();
-    refetchPredictions();
     refetchSentiment();
     toast({
       title: "Refreshed",
@@ -115,11 +108,11 @@ export default function AIInsights() {
               </div>
               <Button 
                 onClick={handleRefreshAll}
-                disabled={overviewLoading || predictionsLoading || sentimentLoading}
+                disabled={overviewLoading || sentimentLoading}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
                 data-testid="button-refresh-insights"
               >
-                <RefreshCw className={`w-4 h-4 mr-2 ${overviewLoading || predictionsLoading || sentimentLoading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 mr-2 ${overviewLoading || sentimentLoading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
             </div>
@@ -297,74 +290,6 @@ export default function AIInsights() {
             </CardContent>
           </Card>
 
-          {/* AI Predictions */}
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-secondary" />
-                AI Predictions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {predictionsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-muted-foreground">Generating predictions...</div>
-                </div>
-              ) : predictions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {predictions.map((pred, index) => (
-                    <div key={index} className="bg-muted/30 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-semibold text-foreground">{pred.symbol}</h3>
-                        <Badge className={getSentimentColor(pred.prediction)}>
-                          {pred.prediction.toUpperCase()}
-                        </Badge>
-                      </div>
-
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Confidence:</span>
-                          <Badge className={getConfidenceColor(pred.confidence)}>
-                            {(pred.confidence * 100).toFixed(1)}%
-                          </Badge>
-                        </div>
-                        {pred.priceTarget && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Target:</span>
-                            <span className="text-foreground font-medium">${pred.priceTarget.toLocaleString()}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Timeframe:</span>
-                          <span className="text-foreground">{pred.timeframe}</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <p className="text-xs text-muted-foreground">{pred.reasoning.slice(0, 120)}...</p>
-                      </div>
-
-                      {pred.riskFactors.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-xs text-orange-400 flex items-start gap-1">
-                            <AlertTriangle className="w-3 h-3 mt-0.5" />
-                            Risks: {pred.riskFactors.slice(0, 2).join(', ')}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">No predictions available</p>
-                  <Button onClick={() => refetchPredictions()} data-testid="button-retry-predictions">
-                    Generate Predictions
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>

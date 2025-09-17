@@ -13,9 +13,6 @@ import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTr
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
-
   // Auth routes
   app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
@@ -26,6 +23,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       successRedirect: '/',
     }),
   );
+
+  app.get('/api/auth/logout', (req: any, res, next) => {
+    req.logout((err) => {
+      if (err) { return next(err); }
+      res.redirect('/');
+    });
+  });
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
@@ -376,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (clients.length > 0) {
         const priceUpdate = {
-          type: 'ticker_update',
+          type: 'price_update',
           symbol: data.symbol,
           data: {
             lastPrice: data.lastPrice,

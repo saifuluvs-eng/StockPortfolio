@@ -11,6 +11,10 @@ if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
   console.warn('Google client ID and/or secret not provided. Google authentication will not work.');
 }
 
+if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'a-very-secret-secret')) {
+  throw new Error('A strong SESSION_SECRET environment variable must be set in production.');
+}
+
 export function setupAuth(app: Express) {
   app.use(
     session({

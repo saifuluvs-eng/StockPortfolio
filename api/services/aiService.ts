@@ -1,8 +1,7 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const openai: any = undefined;
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Binance API types
 interface BinanceTicker {
@@ -87,7 +86,7 @@ export class AIService {
       `;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
@@ -212,7 +211,7 @@ export class AIService {
       `;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
@@ -346,7 +345,7 @@ export class AIService {
       `;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5",
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
