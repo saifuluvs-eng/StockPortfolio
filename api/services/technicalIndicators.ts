@@ -295,6 +295,10 @@ class TechnicalIndicators {
         // Get candlestick data (increased for better RSI accuracy)
         klines = await binanceService.getKlineData(symbol, binanceInterval, 200);
         
+        if (klines.length === 0) {
+          throw new Error('No kline data received from API');
+        }
+
         closes = klines.map(k => parseFloat(k.close));
         highs = klines.map(k => parseFloat(k.high));
         lows = klines.map(k => parseFloat(k.low));

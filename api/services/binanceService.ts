@@ -70,7 +70,12 @@ class BinanceService {
         .slice(0, limit);
 
       console.log(`Returning ${usdtPairs.length} top gainers after filtering.`);
-      return usdtPairs;
+      if (usdtPairs.length > 0) {
+        return usdtPairs;
+      } else {
+        console.log('No gainers found after filtering, returning fallback data.');
+        return this.generateFallbackGainers(limit);
+      }
     } catch (error) {
       console.error('Error fetching top gainers:', error);
       // Return fallback data when API fails
