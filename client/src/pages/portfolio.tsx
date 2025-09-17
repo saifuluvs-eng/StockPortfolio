@@ -89,24 +89,28 @@ export default function Portfolio() {
     queryKey: ['/api/portfolio'],
     refetchInterval: isAuthenticated ? 5000 : false, // Refresh every 5 seconds for real-time updates
     retry: false,
+    enabled: !isLoading,
   });
 
   const { data: assetAllocation = [], isLoading: allocationLoading } = useQuery<AssetAllocation[]>({
     queryKey: ['/api/portfolio/allocation'],
     refetchInterval: isAuthenticated ? 10000 : false,
     retry: false,
+    enabled: !isLoading,
   });
 
   const { data: performanceMetrics, isLoading: performanceLoading } = useQuery<PerformanceMetrics>({
     queryKey: ['/api/portfolio/performance'],
     refetchInterval: isAuthenticated ? 30000 : false, // Refresh every 30 seconds
     retry: false,
+    enabled: !isLoading,
   });
 
   const { data: transactions = [], isLoading: transactionsLoading } = useQuery<Transaction[]>({
     queryKey: ['/api/portfolio/transactions'],
     refetchInterval: isAuthenticated ? 30000 : false,
     retry: false,
+    enabled: !isLoading,
   });
 
   // Delete position mutation

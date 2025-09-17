@@ -33,7 +33,7 @@ export default function Landing() {
               Gainers
             </Link>
             <Link href="/charts" className="text-muted-foreground hover:text-foreground transition-colors">
-              Charts
+              SCAN
             </Link>
           </nav>
           <Button onClick={handleLogin} data-testid="button-login">

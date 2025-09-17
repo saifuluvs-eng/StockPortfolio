@@ -229,7 +229,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/market/gainers', async (req, res) => {
     try {
-      const gainers = await binanceService.getTopGainers();
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const gainers = await binanceService.getTopGainers(limit);
       res.json(gainers);
     } catch (error) {
       console.error("Error fetching gainers:", error);

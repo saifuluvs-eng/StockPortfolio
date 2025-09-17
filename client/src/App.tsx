@@ -27,7 +27,8 @@ function Router() {
 
   return (
     <Switch>
-      <Route path="/" component={isAuthenticated ? Home : Landing} />
+      <Route path="/" component={Home} />
+      <Route path="/landing" component={Landing} />
       <Route path="/portfolio" component={Protected(Portfolio)} />
       <Route path="/high-potential" component={Protected(HighPotential)} />
       <Route path="/gainers" component={Protected(Gainers)} />

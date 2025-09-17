@@ -343,9 +343,9 @@ export default function Charts() {
       scanResult: !!scanResult
     });
     
-    if (isAuthenticated && !scanMutation.isPending && !hasAutoScanned) {
-      // Auto-scan if it's the default symbol or if explicitly requested via URL
-      if ((selectedSymbol === "BTCUSDT" && !scanResult) || (shouldAutoScan && symbolFromUrl)) {
+    if (!scanMutation.isPending && !hasAutoScanned) {
+      // Auto-scan for BTC for all users, or for a specific symbol if authenticated and requested
+      if ((selectedSymbol === "BTCUSDT" && !scanResult) || (isAuthenticated && shouldAutoScan && symbolFromUrl)) {
         console.log('Triggering auto-scan for symbol:', selectedSymbol);
         // Auto-scan after a short delay to allow price data to load
         const timer = setTimeout(() => {
@@ -375,6 +375,14 @@ export default function Charts() {
   }, [selectedTimeframe, isAuthenticated]);
 
   const handleSearch = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Feature Locked",
+        description: "Please log in to search for other coins.",
+        variant: "destructive",
+      });
+      return;
+    }
     console.log('🔍 Search clicked, input:', searchInput, 'current symbol:', selectedSymbol);
     
     if (!searchInput.trim()) {
@@ -523,6 +531,7 @@ export default function Charts() {
                       onKeyPress={handleKeyPress}
                       className="pl-10"
                       data-testid="input-search-symbol"
+                      disabled={!isAuthenticated}
                     />
                     <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
                   </div>
@@ -531,6 +540,7 @@ export default function Charts() {
                     variant="outline"
                     className="px-4"
                     data-testid="button-search-coin"
+                    disabled={!isAuthenticated}
                   >
                     <Search className="w-4 h-4" />
                   </Button>

@@ -24,9 +24,9 @@ export default function Gainers() {
   const { isAuthenticated, isLoading } = useAuth();
 
   const { data: gainers = [], isLoading: gainersLoading, refetch } = useQuery<GainerData[]>({
-    queryKey: ['/api/market/gainers'],
+    queryKey: ['/api/market/gainers', isAuthenticated ? '' : '?limit=5'],
     retry: false,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: isAuthenticated ? 30000 : false, // Refetch every 30 seconds
   });
 
   const handleRefresh = () => {
@@ -53,7 +53,6 @@ export default function Gainers() {
   };
 
   const topThree = gainers.slice(0, 3);
-  const remainingGainers = gainers.slice(3);
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -64,7 +63,7 @@ export default function Gainers() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground">Top Gainers</h1>
-              <p className="text-muted-foreground">Top 50 performing USDT pairs in the last 24 hours</p>
+              <p className="text-muted-foreground">Top performing USDT pairs in the last 24 hours</p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-sm text-muted-foreground">
@@ -250,6 +249,13 @@ export default function Gainers() {
                       })}
                     </tbody>
                   </table>
+                  {!isAuthenticated && (
+                    <div className="text-center py-4">
+                      <Button onClick={() => window.location.href = "/api/auth/google"}>
+                        Login to see full list
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

@@ -138,9 +138,15 @@ export default function Home() {
                 Your trading dashboard is ready. Let's make some profitable trades today.
               </p>
             </div>
-            <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
-              Sign Out
-            </Button>
+            {user ? (
+              <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
+                Sign Out
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => window.location.href = "/api/auth/google"} data-testid="button-login">
+                Sign In
+              </Button>
+            )}
           </div>
 
           {/* Dashboard Cards - Clean Grid Layout */}
