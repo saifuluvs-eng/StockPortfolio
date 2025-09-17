@@ -55,12 +55,12 @@ export default function HighPotential() {
               <p className="text-muted-foreground">
                 Please sign in to access the high potential scanner and find promising crypto investments.
               </p>
-              <Button 
-                onClick={() => window.location.href = "/api/login"}
+              <Button
+                onClick={() => window.location.href = "/api/auth/google"}
                 className="w-full"
                 data-testid="button-sign-in"
               >
-                Sign In with Replit
+                Sign In with Google
               </Button>
             </CardContent>
           </Card>
@@ -94,7 +94,7 @@ export default function HighPotential() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/api/auth/google";
         }, 500);
         return;
       }
