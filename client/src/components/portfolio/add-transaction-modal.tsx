@@ -83,7 +83,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/api/auth/google";
         }, 500);
         return;
       }
