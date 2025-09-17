@@ -57,7 +57,6 @@ class BinanceService {
       }
       
       const allTickers: TickerData[] = await response.json();
-      console.log(`Fetched ${allTickers.length} total tickers from Binance.`);
       
       // Filter for USDT pairs and sort by price change percentage
       const usdtPairs = allTickers
@@ -69,7 +68,6 @@ class BinanceService {
         .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
         .slice(0, limit);
 
-      console.log(`Returning ${usdtPairs.length} top gainers after filtering.`);
       if (usdtPairs.length > 0) {
         return usdtPairs;
       } else {
