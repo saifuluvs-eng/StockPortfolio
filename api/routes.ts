@@ -25,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   app.get('/api/auth/logout', (req: any, res, next) => {
-    req.logout((err) => {
+    req.logout((err: any) => {
       if (err) { return next(err); }
       res.redirect('/');
     });
@@ -253,18 +253,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Ticker data endpoint for charts
-  app.get('/api/market/ticker/:symbol', async (req, res) => {
-    try {
-      const { symbol } = req.params;
-      const ticker = await binanceService.getTickerData(symbol);
-      res.json(ticker);
-    } catch (error) {
-      console.error("Error fetching ticker data:", error);
-      res.status(500).json({ message: "Failed to fetch ticker data" });
-    }
-  });
-
   app.get('/api/ai/sentiment/:symbol/:timeframe', async (req, res) => {
     try {
       const { symbol, timeframe = '4h' } = req.params;
@@ -287,7 +275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Scanner routes
   app.post('/api/scanner/scan', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const { symbol, timeframe, filters } = req.body;
       
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
@@ -309,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/scanner/high-potential', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const filters = req.body;
       
       const results = await technicalIndicators.scanHighPotential(filters);
@@ -332,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Watchlist routes
   app.get('/api/watchlist', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const watchlist = await storage.getWatchlist(userId);
       res.json(watchlist);
     } catch (error) {
@@ -343,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/watchlist', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertWatchlistItemSchema.parse({
         ...req.body,
         userId,
@@ -471,7 +459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientSymbols = clientSubscriptions.get(ws) || new Set<string>();
       for (const symbol of Array.from(clientSymbols)) {
         const currentCount = activeSymbolSubscriptions.get(symbol) || 0;
-        if (currentCount <= 1) {
+        if (currentCount <= 1 && !popularSymbols.includes(symbol)) {
           // Last subscriber, stop Binance stream
           console.log(`🛑 Stopping Binance stream for ${symbol} (client disconnect)`);
           activeSymbolSubscriptions.delete(symbol);
