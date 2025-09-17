@@ -91,7 +91,7 @@ export function EditPositionModal({ open, onOpenChange, position }: EditPosition
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/api/auth/google";
         }, 500);
         return;
       }
