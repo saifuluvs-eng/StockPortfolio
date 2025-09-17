@@ -16,6 +16,10 @@ if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || pro
 }
 
 export function setupAuth(app: Express) {
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
+
   app.use(
     session({
       store: new SQLiteStore({ db: 'sessions.db', dir: './' }),
