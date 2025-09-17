@@ -13,16 +13,11 @@ import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTr
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  console.log("--- JULES DEBUG: Registering routes ---");
   // Auth middleware
   await setupAuth(app);
-  console.log("--- JULES DEBUG: Auth has been set up ---");
 
   // Auth routes
-  app.get('/api/auth/google', (req, res, next) => {
-    console.log("--- JULES DEBUG: /api/auth/google route hit ---");
-    passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
-  });
+  app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
   app.get(
     '/api/auth/google/callback',
@@ -288,7 +283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Scanner routes
   app.post('/api/scanner/scan', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const { symbol, timeframe, filters } = req.body;
       
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
@@ -310,7 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/scanner/high-potential', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const filters = req.body;
       
       const results = await technicalIndicators.scanHighPotential(filters);
@@ -333,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Watchlist routes
   app.get('/api/watchlist', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const watchlist = await storage.getWatchlist(userId);
       res.json(watchlist);
     } catch (error) {
@@ -344,7 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/watchlist', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = req.user.claims.sub;
       const validatedData = insertWatchlistItemSchema.parse({
         ...req.body,
         userId,
