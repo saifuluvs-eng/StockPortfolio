@@ -25,7 +25,7 @@ import {
   type InsertMarketData,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { eq, and, desc, gte, lte, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - mandatory for Replit Auth
@@ -249,14 +249,13 @@ export class DatabaseStorage implements IStorage {
 
   // Market data operations
   async getMarketData(symbols: string[]): Promise<MarketData[]> {
+    if (symbols.length === 0) {
+      return [];
+    }
     return await db
       .select()
       .from(marketData)
-      .where(
-        symbols.length > 0 
-          ? eq(marketData.symbol, symbols[0]) // Simple implementation for now
-          : undefined
-      );
+      .where(inArray(marketData.symbol, symbols));
   }
 
   async upsertMarketData(data: InsertMarketData): Promise<MarketData> {

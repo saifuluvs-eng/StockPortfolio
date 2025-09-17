@@ -119,7 +119,7 @@ export default function Home() {
   const activePositions = portfolioData?.positions?.length || 0;
 
   const handleLogout = () => {
-    window.location.href = "/api/logout";
+    window.location.href = "/api/auth/logout";
   };
 
   return (

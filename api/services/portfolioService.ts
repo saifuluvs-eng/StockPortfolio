@@ -357,14 +357,11 @@ export class PortfolioService {
    * Get fallback price from portfolio positions (entry price)
    */
   private async getFallbackPrice(symbol: string): Promise<number> {
-    try {
-      const positions = await storage.getPortfolioPositions(''); // Get all positions
-      const position = positions.find(p => p.symbol === symbol);
-      return position ? position.entryPrice : 0;
-    } catch (error) {
-      console.error(`Error getting fallback price for ${symbol}:`, error);
-      return 0;
-    }
+    // This fallback is flawed as it doesn't have a userId context.
+    // Returning 0 to prevent incorrect data from being used.
+    // A proper implementation would require passing userId or using a different fallback mechanism.
+    console.error(`Could not get live market data for ${symbol}, and fallback is disabled.`);
+    return 0;
   }
 
   /**
