@@ -121,12 +121,12 @@ export default function Charts() {
               <p className="text-muted-foreground">
                 Please sign in to access advanced charts and technical analysis.
               </p>
-              <Button 
-                onClick={() => window.location.href = "/api/login"}
+              <Button
+                onClick={() => window.location.href = "/api/auth/google"}
                 className="w-full"
                 data-testid="button-sign-in"
               >
-                Sign In with Replit
+                Sign In with Google
               </Button>
             </CardContent>
           </Card>
@@ -349,7 +349,7 @@ export default function Charts() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/api/auth/google";
         }, 500);
         return;
       }
