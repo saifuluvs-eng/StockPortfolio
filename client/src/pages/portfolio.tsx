@@ -87,25 +87,25 @@ export default function Portfolio() {
   // Fetch enhanced portfolio data
   const { data: portfolioSummary, isLoading: portfolioLoading } = useQuery<PortfolioSummary>({
     queryKey: ['/api/portfolio'],
-    refetchInterval: 5000, // Refresh every 5 seconds for real-time updates
+    refetchInterval: isAuthenticated ? 5000 : false, // Refresh every 5 seconds for real-time updates
     retry: false,
   });
 
   const { data: assetAllocation = [], isLoading: allocationLoading } = useQuery<AssetAllocation[]>({
     queryKey: ['/api/portfolio/allocation'],
-    refetchInterval: 10000,
+    refetchInterval: isAuthenticated ? 10000 : false,
     retry: false,
   });
 
   const { data: performanceMetrics, isLoading: performanceLoading } = useQuery<PerformanceMetrics>({
     queryKey: ['/api/portfolio/performance'],
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: isAuthenticated ? 30000 : false, // Refresh every 30 seconds
     retry: false,
   });
 
   const { data: transactions = [], isLoading: transactionsLoading } = useQuery<Transaction[]>({
     queryKey: ['/api/portfolio/transactions'],
-    refetchInterval: 30000,
+    refetchInterval: isAuthenticated ? 30000 : false,
     retry: false,
   });
 
