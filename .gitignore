@@ -1,5 +1,11 @@
 node_modules
 dist
+/client/dist
+/api/index.js
+*.log
+debug.log
+server.log
+*.db
 .DS_Store
 server/public
 vite.config.ts.*

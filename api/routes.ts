@@ -25,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   app.get('/api/auth/logout', (req: any, res, next) => {
-    req.logout((err) => {
+    req.logout((err: any) => {
       if (err) { return next(err); }
       res.redirect('/');
     });
@@ -43,8 +43,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhanced Portfolio routes
-  app.get('/api/portfolio', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json({
+          totalValue: 0,
+          totalPnL: 0,
+          totalPnLPercent: 0,
+          dayChange: 0,
+          dayChangePercent: 0,
+          positions: []
+        });
+      }
       const userId = req.user.id;
       const summary = await portfolioService.getPortfolioSummary(userId);
       res.json(summary);
@@ -54,8 +64,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/portfolio/allocation', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio/allocation', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json([]);
+      }
       const userId = req.user.id;
       const allocation = await portfolioService.getAssetAllocation(userId);
       res.json(allocation);
@@ -65,8 +78,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/portfolio/performance', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio/performance', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json({
+          totalReturn: 0,
+          totalReturnPercent: 0,
+          volatility: 0,
+          sharpeRatio: 0,
+          maxDrawdown: 0,
+          winRate: 0,
+          avgWinPercent: 0,
+          avgLossPercent: 0,
+          bestTrade: 0,
+          worstTrade: 0
+        });
+      }
       const userId = req.user.id;
       const days = parseInt(req.query.days as string) || 30;
       const metrics = await portfolioService.getPerformanceMetrics(userId, days);
@@ -77,8 +104,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/portfolio/analytics', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio/analytics', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json([]);
+      }
       const userId = req.user.id;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
@@ -90,8 +120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/portfolio/transactions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio/transactions', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json([]);
+      }
       const userId = req.user.id;
       const symbol = req.query.symbol as string;
       const transactions = await portfolioService.getTransactionHistory(userId, symbol);
@@ -196,7 +229,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/market/gainers', async (req, res) => {
     try {
-      const gainers = await binanceService.getTopGainers();
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+      const gainers = await binanceService.getTopGainers(limit);
       res.json(gainers);
     } catch (error) {
       console.error("Error fetching gainers:", error);
@@ -253,18 +287,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Ticker data endpoint for charts
-  app.get('/api/market/ticker/:symbol', async (req, res) => {
-    try {
-      const { symbol } = req.params;
-      const ticker = await binanceService.getTickerData(symbol);
-      res.json(ticker);
-    } catch (error) {
-      console.error("Error fetching ticker data:", error);
-      res.status(500).json({ message: "Failed to fetch ticker data" });
-    }
-  });
-
   app.get('/api/ai/sentiment/:symbol/:timeframe', async (req, res) => {
     try {
       const { symbol, timeframe = '4h' } = req.params;
@@ -285,20 +307,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Scanner routes
-  app.post('/api/scanner/scan', isAuthenticated, async (req: any, res) => {
+  app.post('/api/scanner/scan', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
       const { symbol, timeframe, filters } = req.body;
+
+      // Allow scanning BTCUSDT without authentication
+      if (symbol.toUpperCase() !== 'BTCUSDT' && !req.isAuthenticated()) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const userId = req.user?.id;
       
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
       
-      // Save scan history
-      await storage.createScanHistory({
-        userId,
-        scanType: 'custom',
-        filters: { symbol, timeframe, ...filters },
-        results: analysis,
-      });
+      // Save scan history only for authenticated users
+      if (userId) {
+        await storage.createScanHistory({
+          userId,
+          scanType: 'custom',
+          filters: { symbol, timeframe, ...filters },
+          results: analysis,
+        });
+      }
       
       res.json(analysis);
     } catch (error) {
@@ -309,7 +339,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/scanner/high-potential', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const filters = req.body;
       
       const results = await technicalIndicators.scanHighPotential(filters);
@@ -330,9 +360,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Watchlist routes
-  app.get('/api/watchlist', isAuthenticated, async (req: any, res) => {
+  app.get('/api/watchlist', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      if (!req.user) {
+        return res.json([]);
+      }
+      const userId = req.user.id;
       const watchlist = await storage.getWatchlist(userId);
       res.json(watchlist);
     } catch (error) {
@@ -343,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/watchlist', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validatedData = insertWatchlistItemSchema.parse({
         ...req.body,
         userId,
@@ -471,7 +504,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const clientSymbols = clientSubscriptions.get(ws) || new Set<string>();
       for (const symbol of Array.from(clientSymbols)) {
         const currentCount = activeSymbolSubscriptions.get(symbol) || 0;
-        if (currentCount <= 1) {
+        if (currentCount <= 1 && !popularSymbols.includes(symbol)) {
           // Last subscriber, stop Binance stream
           console.log(`🛑 Stopping Binance stream for ${symbol} (client disconnect)`);
           activeSymbolSubscriptions.delete(symbol);

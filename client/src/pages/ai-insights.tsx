@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Sidebar } from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -87,11 +86,8 @@ export default function AIInsights() {
   const timeframes = ["1h", "4h", "1d", "1w"];
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      
-      <div className="flex-1 overflow-hidden">
-        <div className="p-6">
+    <div className="flex-1 overflow-hidden">
+      <div className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -291,7 +287,6 @@ export default function AIInsights() {
           </Card>
 
         </div>
-      </div>
     </div>
   );
 }

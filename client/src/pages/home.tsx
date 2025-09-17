@@ -1,7 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sidebar } from "@/components/layout/sidebar";
 import { TrendingUp, BarChart3, Search, Star, Award, Eye, Bell, Brain, Activity, DollarSign, Target } from "lucide-react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -123,11 +122,8 @@ export default function Home() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      
-      <div className="flex-1 overflow-hidden">
-        <div className="p-6">
+    <div className="flex-1 overflow-hidden">
+      <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -138,9 +134,15 @@ export default function Home() {
                 Your trading dashboard is ready. Let's make some profitable trades today.
               </p>
             </div>
-            <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
-              Sign Out
-            </Button>
+            {user ? (
+              <Button variant="outline" onClick={handleLogout} data-testid="button-logout">
+                Sign Out
+              </Button>
+            ) : (
+              <Button variant="outline" onClick={() => window.location.href = "/api/auth/google"} data-testid="button-login">
+                Sign In
+              </Button>
+            )}
           </div>
 
           {/* Dashboard Cards - Clean Grid Layout */}
@@ -434,7 +436,6 @@ export default function Home() {
             </Card>
           </div>
         </div>
-      </div>
     </div>
   );
 }

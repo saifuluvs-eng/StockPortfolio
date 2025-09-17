@@ -18,7 +18,7 @@ if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || pro
 export function setupAuth(app: Express) {
   app.use(
     session({
-      store: new SQLiteStore({ db: 'sessions.db', dir: './' }),
+      store: new (SQLiteStore as any)({ db: 'sessions.db', dir: './' }),
       secret: process.env.SESSION_SECRET || 'a-very-secret-secret',
       resave: false,
       saveUninitialized: false,
