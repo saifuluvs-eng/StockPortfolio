@@ -20,7 +20,7 @@ export default function Landing() {
             <span className="text-xl font-bold text-foreground">CryptoTrader Pro</span>
           </div>
           <nav className="flex items-center space-x-6 text-sm font-medium">
-            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
               Dashboard
             </Link>
             <Link href="/portfolio" className="text-muted-foreground hover:text-foreground transition-colors">

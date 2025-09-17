@@ -27,6 +27,7 @@ export default function Gainers() {
     queryKey: ['/api/market/gainers', isAuthenticated ? '' : '?limit=5'],
     retry: false,
     refetchInterval: isAuthenticated ? 30000 : false, // Refetch every 30 seconds
+    enabled: !isLoading,
   });
 
   const handleRefresh = () => {

@@ -307,20 +307,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Scanner routes
-  app.post('/api/scanner/scan', isAuthenticated, async (req: any, res) => {
+  app.post('/api/scanner/scan', async (req: any, res) => {
     try {
-      const userId = req.user.id;
       const { symbol, timeframe, filters } = req.body;
+
+      // Allow scanning BTCUSDT without authentication
+      if (symbol.toUpperCase() !== 'BTCUSDT' && !req.isAuthenticated()) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const userId = req.user?.id;
       
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
       
-      // Save scan history
-      await storage.createScanHistory({
-        userId,
-        scanType: 'custom',
-        filters: { symbol, timeframe, ...filters },
-        results: analysis,
-      });
+      // Save scan history only for authenticated users
+      if (userId) {
+        await storage.createScanHistory({
+          userId,
+          scanType: 'custom',
+          filters: { symbol, timeframe, ...filters },
+          results: analysis,
+        });
+      }
       
       res.json(analysis);
     } catch (error) {
