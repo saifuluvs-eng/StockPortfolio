@@ -68,7 +68,7 @@ export function AddPositionModal({ open, onOpenChange }: AddPositionModalProps) 
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          window.location.href = "/api/auth/google";
         }, 500);
         return;
       }
