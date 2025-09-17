@@ -309,6 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Scanner routes
   app.post('/api/scanner/scan', async (req: any, res) => {
     try {
+      console.log('SCAN route hit. Body:', req.body);
       const { symbol, timeframe, filters } = req.body;
 
       // Allow scanning BTCUSDT without authentication

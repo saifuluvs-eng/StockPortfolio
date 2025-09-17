@@ -22,8 +22,9 @@ export default function Gainers() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
+  const gainersQueryKey = isAuthenticated ? '/api/market/gainers' : '/api/market/gainers?limit=5';
   const { data: gainers = [], isLoading: gainersLoading, refetch } = useQuery<GainerData[]>({
-    queryKey: ['/api/market/gainers', isAuthenticated ? '' : '?limit=5'],
+    queryKey: [gainersQueryKey],
     retry: false,
     refetchInterval: isAuthenticated ? 30000 : false, // Refetch every 30 seconds
     enabled: !isLoading,

@@ -342,9 +342,9 @@ export default function Charts() {
       scanResult: !!scanResult
     });
     
-    if (!scanMutation.isPending && !hasAutoScanned) {
-      // Auto-scan for BTC for all users, or for a specific symbol if authenticated and requested
-      if ((selectedSymbol === "BTCUSDT" && !scanResult) || (isAuthenticated && shouldAutoScan && symbolFromUrl)) {
+    if (isAuthenticated && !scanMutation.isPending && !hasAutoScanned) {
+      // Auto-scan if it's the default symbol or if explicitly requested via URL
+      if ((selectedSymbol === "BTCUSDT" && !scanResult) || (shouldAutoScan && symbolFromUrl)) {
         console.log('Triggering auto-scan for symbol:', selectedSymbol);
         // Auto-scan after a short delay to allow price data to load
         const timer = setTimeout(() => {

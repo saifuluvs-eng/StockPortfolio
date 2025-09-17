@@ -21,6 +21,7 @@ export class BinanceWebSocketService {
   private connections: Map<string, WebSocket> = new Map();
   private subscribedSymbols: Set<string> = new Set();
   private reconnectTimeouts: Map<string, NodeJS.Timeout> = new Map();
+  private reconnectAttempts: Map<string, number> = new Map();
   private callbacks: Map<string, (data: any) => void> = new Map();
   
   private readonly baseUrl = 'wss://stream.binance.com:9443/ws';
@@ -83,6 +84,7 @@ export class BinanceWebSocketService {
     ws.on('open', () => {
       console.log(`🟢 Connected to Binance stream: ${streamName}`);
       this.connections.set(streamName, ws);
+      this.reconnectAttempts.set(streamName, 0); // Reset attempts on successful connection
     });
 
     ws.on('message', (data: Buffer) => {
@@ -177,15 +179,18 @@ export class BinanceWebSocketService {
    * Handle reconnection with exponential backoff
    */
   private handleReconnection(streamName: string, streams?: string[]): void {
+    const attempts = this.getReconnectAttempts(streamName) + 1;
+    this.reconnectAttempts.set(streamName, attempts);
+
     const existingTimeout = this.reconnectTimeouts.get(streamName);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
 
-    const reconnectDelay = Math.min(1000 * Math.pow(2, this.getReconnectAttempts(streamName)), 30000);
+    const reconnectDelay = Math.min(1000 * Math.pow(2, attempts), 30000);
     
     const timeout = setTimeout(() => {
-      console.log(`🔄 Attempting to reconnect ${streamName}...`);
+      console.log(`🔄 Attempting to reconnect ${streamName} (attempt ${attempts})...`);
       
       if (streams) {
         this.createMultiStreamConnection(streams, streamName);
@@ -203,8 +208,7 @@ export class BinanceWebSocketService {
    * Get reconnection attempt count (simplified)
    */
   private getReconnectAttempts(streamName: string): number {
-    // In a production app, you'd track actual attempts
-    return 1;
+    return this.reconnectAttempts.get(streamName) || 0;
   }
 
   /**

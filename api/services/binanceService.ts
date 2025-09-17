@@ -57,18 +57,19 @@ class BinanceService {
       }
       
       const allTickers: TickerData[] = await response.json();
+      console.log(`Fetched ${allTickers.length} total tickers from Binance.`);
       
       // Filter for USDT pairs and sort by price change percentage
       const usdtPairs = allTickers
         .filter(ticker => 
           ticker.symbol.endsWith('USDT') && 
           !ticker.symbol.includes('DOWN') && 
-          !ticker.symbol.includes('UP') &&
-          parseFloat(ticker.quoteVolume) > 1000000 // Minimum volume threshold
+          !ticker.symbol.includes('UP')
         )
         .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
         .slice(0, limit);
 
+      console.log(`Returning ${usdtPairs.length} top gainers after filtering.`);
       return usdtPairs;
     } catch (error) {
       console.error('Error fetching top gainers:', error);
