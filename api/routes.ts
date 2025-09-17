@@ -43,8 +43,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enhanced Portfolio routes
-  app.get('/api/portfolio', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json({
+          totalValue: 0,
+          totalPnL: 0,
+          totalPnLPercent: 0,
+          dayChange: 0,
+          dayChangePercent: 0,
+          positions: []
+        });
+      }
       const userId = req.user.id;
       const summary = await portfolioService.getPortfolioSummary(userId);
       res.json(summary);
@@ -54,8 +64,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/portfolio/allocation', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio/allocation', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json([]);
+      }
       const userId = req.user.id;
       const allocation = await portfolioService.getAssetAllocation(userId);
       res.json(allocation);
@@ -65,8 +78,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/portfolio/performance', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio/performance', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json({
+          totalReturn: 0,
+          totalReturnPercent: 0,
+          volatility: 0,
+          sharpeRatio: 0,
+          maxDrawdown: 0,
+          winRate: 0,
+          avgWinPercent: 0,
+          avgLossPercent: 0,
+          bestTrade: 0,
+          worstTrade: 0
+        });
+      }
       const userId = req.user.id;
       const days = parseInt(req.query.days as string) || 30;
       const metrics = await portfolioService.getPerformanceMetrics(userId, days);
@@ -77,8 +104,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/portfolio/analytics', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio/analytics', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json([]);
+      }
       const userId = req.user.id;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
@@ -90,8 +120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/portfolio/transactions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/portfolio/transactions', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json([]);
+      }
       const userId = req.user.id;
       const symbol = req.query.symbol as string;
       const transactions = await portfolioService.getTransactionHistory(userId, symbol);
@@ -318,8 +351,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Watchlist routes
-  app.get('/api/watchlist', isAuthenticated, async (req: any, res) => {
+  app.get('/api/watchlist', async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.json([]);
+      }
       const userId = req.user.id;
       const watchlist = await storage.getWatchlist(userId);
       res.json(watchlist);

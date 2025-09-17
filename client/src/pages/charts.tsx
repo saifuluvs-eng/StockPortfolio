@@ -104,36 +104,6 @@ export default function Charts() {
   const restFallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentSymbolRef = useRef<string>(selectedSymbol);
 
-  // Show sign-in UI if not authenticated
-  if (!isLoading && !isAuthenticated) {
-    return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="flex items-center justify-center gap-2">
-                <BarChart3 className="w-6 h-6" />
-                Advanced Charts Access
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Please sign in to access advanced charts and technical analysis.
-              </p>
-              <Button
-                onClick={() => window.location.href = "/api/auth/google"}
-                className="w-full"
-                data-testid="button-sign-in"
-              >
-                Sign In with Google
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   // Update symbol ref when selectedSymbol changes
   useEffect(() => {
@@ -584,7 +554,7 @@ export default function Charts() {
                 
                 <Button 
                   onClick={handleScan}
-                  disabled={scanMutation.isPending}
+                  disabled={scanMutation.isPending || !isAuthenticated}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                   data-testid="button-scan"
                 >

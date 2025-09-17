@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Shield, BarChart3, Users } from "lucide-react";
+import { Link } from "wouter";
 
 export default function Landing() {
   const handleLogin = () => {
@@ -18,6 +19,23 @@ export default function Landing() {
             </div>
             <span className="text-xl font-bold text-foreground">CryptoTrader Pro</span>
           </div>
+          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+              Dashboard
+            </Link>
+            <Link href="/portfolio" className="text-muted-foreground hover:text-foreground transition-colors">
+              Portfolio
+            </Link>
+            <Link href="/high-potential" className="text-muted-foreground hover:text-foreground transition-colors">
+              High Potential
+            </Link>
+            <Link href="/gainers" className="text-muted-foreground hover:text-foreground transition-colors">
+              Gainers
+            </Link>
+            <Link href="/charts" className="text-muted-foreground hover:text-foreground transition-colors">
+              Charts
+            </Link>
+          </nav>
           <Button onClick={handleLogin} data-testid="button-login">
             Sign In with Google
           </Button>

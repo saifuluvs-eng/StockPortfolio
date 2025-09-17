@@ -84,37 +84,6 @@ export default function Portfolio() {
   const queryClient = useQueryClient();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Show sign-in UI if not authenticated (no auto-redirect)
-  if (!isLoading && !isAuthenticated) {
-    return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="flex items-center justify-center gap-2">
-                <Wallet className="w-6 h-6" />
-                Portfolio Access
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Please sign in to access your portfolio and track your crypto investments.
-              </p>
-              <Button 
-                onClick={() => window.location.href = "/api/login"}
-                className="w-full"
-                data-testid="button-sign-in"
-              >
-                Sign In with Replit
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   // Fetch enhanced portfolio data
   const { data: portfolioSummary, isLoading: portfolioLoading } = useQuery<PortfolioSummary>({
     queryKey: ['/api/portfolio'],
@@ -193,14 +162,16 @@ export default function Portfolio() {
               <h1 className="text-2xl font-bold text-foreground">Portfolio</h1>
               <p className="text-muted-foreground">Real-time P&L tracking and analytics</p>
             </div>
-            <Button 
-              onClick={() => setShowAddTransactionModal(true)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              data-testid="button-add-transaction"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Coin
-            </Button>
+            {isAuthenticated && (
+              <Button
+                onClick={() => setShowAddTransactionModal(true)}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                data-testid="button-add-transaction"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Coin
+              </Button>
+            )}
           </div>
 
           {/* Enhanced Portfolio Summary Cards */}
@@ -308,10 +279,14 @@ export default function Portfolio() {
                     </div>
                   ) : (!portfolioSummary?.positions || portfolioSummary.positions.length === 0) ? (
                     <div className="text-center py-8">
-                      <p className="text-muted-foreground mb-4">No positions found</p>
-                      <Button onClick={() => setShowAddTransactionModal(true)} data-testid="button-add-first-transaction">
-                        Add Your First Coin
-                      </Button>
+                      <p className="text-muted-foreground mb-4">
+                        {isAuthenticated ? "No positions found" : "Please log in to see your portfolio"}
+                      </p>
+                      {isAuthenticated && (
+                        <Button onClick={() => setShowAddTransactionModal(true)} data-testid="button-add-first-transaction">
+                          Add Your First Coin
+                        </Button>
+                      )}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
@@ -325,7 +300,7 @@ export default function Portfolio() {
                             <th className="text-right p-4 text-muted-foreground font-medium">P&L</th>
                             <th className="text-right p-4 text-muted-foreground font-medium">24h Change</th>
                             <th className="text-center p-4 text-muted-foreground font-medium">Analyse</th>
-                            <th className="text-center p-4 text-muted-foreground font-medium">Close</th>
+                            {isAuthenticated && <th className="text-center p-4 text-muted-foreground font-medium">Close</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -397,16 +372,18 @@ export default function Portfolio() {
                                       Scan
                                     </Link>
                                   </td>
-                                  <td className="p-4 text-center">
-                                    <button
-                                      onClick={() => handleDeletePosition(position.id)}
-                                      className="inline-flex items-center justify-center w-8 h-8 text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                                      data-testid={`button-close-${position.id}`}
-                                      title="Delete position"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </td>
+                                  {isAuthenticated && (
+                                    <td className="p-4 text-center">
+                                      <button
+                                        onClick={() => handleDeletePosition(position.id)}
+                                        className="inline-flex items-center justify-center w-8 h-8 text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                                        data-testid={`button-close-${position.id}`}
+                                        title="Delete position"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    </td>
+                                  )}
                                 </tr>
                               );
                             })}

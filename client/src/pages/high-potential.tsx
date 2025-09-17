@@ -38,37 +38,6 @@ export default function HighPotential() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Show sign-in UI if not authenticated (no auto-redirect)
-  if (!isLoading && !isAuthenticated) {
-    return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="flex items-center justify-center gap-2">
-                <SlidersHorizontal className="w-6 h-6" />
-                High Potential Scanner Access
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Please sign in to access the high potential scanner and find promising crypto investments.
-              </p>
-              <Button
-                onClick={() => window.location.href = "/api/auth/google"}
-                className="w-full"
-                data-testid="button-sign-in"
-              >
-                Sign In with Google
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   const scanMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('POST', '/api/scanner/high-potential', {
@@ -106,10 +75,6 @@ export default function HighPotential() {
     },
   });
 
-  if (!isAuthenticated && !isLoading) {
-    return null;
-  }
-
   const handleScan = () => {
     scanMutation.mutate();
   };
@@ -135,7 +100,7 @@ export default function HighPotential() {
             </div>
             <Button 
               onClick={handleScan}
-              disabled={scanMutation.isPending}
+              disabled={scanMutation.isPending || !isAuthenticated}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               data-testid="button-refresh"
             >
@@ -156,7 +121,7 @@ export default function HighPotential() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Timeframe</label>
-                  <Select value={timeframe} onValueChange={setTimeframe}>
+                  <Select value={timeframe} onValueChange={setTimeframe} disabled={!isAuthenticated}>
                     <SelectTrigger data-testid="select-timeframe">
                       <SelectValue />
                     </SelectTrigger>
@@ -179,6 +144,7 @@ export default function HighPotential() {
                     value={minScore}
                     onChange={(e) => setMinScore(e.target.value)}
                     data-testid="input-min-score"
+                    disabled={!isAuthenticated}
                   />
                 </div>
                 
@@ -189,6 +155,7 @@ export default function HighPotential() {
                     value={minVolume}
                     onChange={(e) => setMinVolume(e.target.value)}
                     data-testid="input-min-volume"
+                    disabled={!isAuthenticated}
                   />
                 </div>
                 
@@ -199,6 +166,7 @@ export default function HighPotential() {
                       checked={excludeStablecoins}
                       onCheckedChange={(checked) => setExcludeStablecoins(checked === true)}
                       data-testid="checkbox-exclude-stablecoins"
+                      disabled={!isAuthenticated}
                     />
                     <label htmlFor="exclude-stablecoins" className="text-sm text-foreground">
                       Exclude stablecoins
@@ -241,10 +209,14 @@ export default function HighPotential() {
                 </div>
               ) : results.length === 0 ? (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">No results yet</p>
-                  <Button onClick={handleScan} data-testid="button-start-scan">
-                    Start Scanning
-                  </Button>
+                  <p className="text-muted-foreground mb-4">
+                    {isAuthenticated ? "No results yet" : "Please log in to use the scanner"}
+                  </p>
+                  {isAuthenticated && (
+                    <Button onClick={handleScan} data-testid="button-start-scan">
+                      Start Scanning
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto">
