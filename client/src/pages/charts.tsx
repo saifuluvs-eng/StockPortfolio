@@ -102,12 +102,27 @@ export default function Charts() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const restFallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentSymbolRef = useRef<string>(selectedSymbol);
+  const reconnectAttemptsRef = useRef(0);
+  const priceDataRef = useRef<PriceData | null>(null);
+  const usingRestFallbackRef = useRef(false);
 
 
   // Update symbol ref when selectedSymbol changes
   useEffect(() => {
     currentSymbolRef.current = selectedSymbol;
   }, [selectedSymbol]);
+
+ useEffect(() => {
+    priceDataRef.current = priceData;
+  }, [priceData]);
+
+  useEffect(() => {
+    usingRestFallbackRef.current = usingRestFallback;
+  }, [usingRestFallback]);
+
+  useEffect(() => {
+    reconnectAttemptsRef.current = reconnectAttempts;
+  }, [reconnectAttempts]);
 
   // REST API fallback function
   const fetchRestPriceData = useRef(async (symbol: string) => {
@@ -199,6 +214,13 @@ export default function Charts() {
       setWsConnected(true);
       setWsError(false);
       setReconnectAttempts(0);
+
+      reconnectAttemptsRef.current = 0;
+
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
       
       // Stop REST fallback if it was running
       stopRestFallback.current();
@@ -240,8 +262,14 @@ export default function Charts() {
       console.log(`🔴 WebSocket disconnected from charts: ${event.code} - ${event.reason}`);
       setWsConnected(false);
       
-      // Only attempt reconnection if it wasn't a normal closure and we haven't exceeded max attempts
-      if (event.code !== 1000 && reconnectAttempts < 5) {
+            if (event.code === 1000) {
+        return;
+      }
+
+      const attempts = reconnectAttemptsRef.current;
+
+      // Only attempt reconnection if we haven't exceeded max attempts
+      if (attempts < 5) {
         setWsError(true);
         
         // Clear any existing reconnect timeout
@@ -250,14 +278,19 @@ export default function Charts() {
         }
         
         // Calculate exponential backoff delay (1s, 2s, 4s, 8s, 16s)
-        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 16000);
-        
+        const delay = Math.min(1000 * Math.pow(2, attempts), 16000);
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log(`🔄 Attempting to reconnect WebSocket (attempt ${reconnectAttempts + 1}/5)...`);
-          setReconnectAttempts(prev => prev + 1);
+          const nextAttempt = Math.min(reconnectAttemptsRef.current + 1, 5);
+          console.log(`🔄 Attempting to reconnect WebSocket (attempt ${nextAttempt}/5)...`);
+          reconnectTimeoutRef.current = null;
+          setReconnectAttempts(prev => {
+            const updated = Math.min(prev + 1, 5);
+            reconnectAttemptsRef.current = updated;
+            return updated;
+          });
           createWebSocketConnection.current(currentSymbolRef.current);
         }, delay);
-      } else if (reconnectAttempts >= 5) {
+      } else {
         console.error('❌ Max reconnection attempts reached, switching to REST fallback');
         setWsError(true);
         
@@ -274,18 +307,10 @@ export default function Charts() {
     createWebSocketConnection.current(selectedSymbol);
 
     const fallbackTimer = setTimeout(() => {
-      if (!priceData) {
-        console.warn('WebSocket and REST fallback failed, using static data.');
-        setPriceData({
-          symbol: 'BTCUSDT',
-          lastPrice: '67000.00',
-          priceChange: '1000.00',
-          priceChangePercent: '1.51',
-          highPrice: '68000.00',
-          lowPrice: '66000.00',
-          volume: '30000',
-          quoteVolume: '2010000000',
-        });
+      if (!priceDataRef.current && !usingRestFallbackRef.current) {
+        console.warn('WebSocket did not deliver data within 10 seconds, switching to REST fallback.');
+        setWsError(true);
+        startRestFallback.current(currentSymbolRef.current);
       }
     }, 10000); // 10 second timeout
 
