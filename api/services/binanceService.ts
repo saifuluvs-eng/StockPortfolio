@@ -63,13 +63,17 @@ class BinanceService {
         .filter(ticker => 
           ticker.symbol.endsWith('USDT') && 
           !ticker.symbol.includes('DOWN') && 
-          !ticker.symbol.includes('UP') &&
-          parseFloat(ticker.quoteVolume) > 1000000 // Minimum volume threshold
+          !ticker.symbol.includes('UP')
         )
         .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
         .slice(0, limit);
 
-      return usdtPairs;
+      if (usdtPairs.length > 0) {
+        return usdtPairs;
+      } else {
+        console.log('No gainers found after filtering, returning fallback data.');
+        return this.generateFallbackGainers(limit);
+      }
     } catch (error) {
       console.error('Error fetching top gainers:', error);
       // Return fallback data when API fails

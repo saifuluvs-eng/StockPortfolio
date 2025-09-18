@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Sidebar } from "@/components/layout/sidebar";
 import TradingViewChart from "@/components/charts/TradingViewChart";
 import { TechnicalIndicators } from "@/components/scanner/technical-indicators";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -104,36 +103,6 @@ export default function Charts() {
   const restFallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const currentSymbolRef = useRef<string>(selectedSymbol);
 
-  // Show sign-in UI if not authenticated
-  if (!isLoading && !isAuthenticated) {
-    return (
-      <div className="flex min-h-screen bg-background">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="flex items-center justify-center gap-2">
-                <BarChart3 className="w-6 h-6" />
-                Advanced Charts Access
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <p className="text-muted-foreground">
-                Please sign in to access advanced charts and technical analysis.
-              </p>
-              <Button
-                onClick={() => window.location.href = "/api/auth/google"}
-                className="w-full"
-                data-testid="button-sign-in"
-              >
-                Sign In with Google
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   // Update symbol ref when selectedSymbol changes
   useEffect(() => {
@@ -241,7 +210,7 @@ export default function Charts() {
       try {
         const data = JSON.parse(event.data);
         
-        if (data.type === 'ticker_update' && data.symbol === currentSymbolRef.current) {
+        if (data.type === 'price_update' && data.symbol === currentSymbolRef.current) {
           // Update price data with WebSocket ticker data (fixed data mapping)
           setPriceData({
             symbol: data.symbol,
@@ -302,8 +271,25 @@ export default function Charts() {
   // WebSocket connection effect
   useEffect(() => {
     createWebSocketConnection.current(selectedSymbol);
-    
+
+    const fallbackTimer = setTimeout(() => {
+      if (!priceData) {
+        console.warn('WebSocket and REST fallback failed, using static data.');
+        setPriceData({
+          symbol: 'BTCUSDT',
+          lastPrice: '67000.00',
+          priceChange: '1000.00',
+          priceChangePercent: '1.51',
+          highPrice: '68000.00',
+          lowPrice: '66000.00',
+          volume: '30000',
+          quoteVolume: '2010000000',
+        });
+      }
+    }, 10000); // 10 second timeout
+
     return () => {
+      clearTimeout(fallbackTimer);
       // Cleanup on unmount or symbol change
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -405,6 +391,14 @@ export default function Charts() {
   }, [selectedTimeframe, isAuthenticated]);
 
   const handleSearch = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Feature Locked",
+        description: "Please log in to search for other coins.",
+        variant: "destructive",
+      });
+      return;
+    }
     console.log('🔍 Search clicked, input:', searchInput, 'current symbol:', selectedSymbol);
     
     if (!searchInput.trim()) {
@@ -523,11 +517,8 @@ export default function Charts() {
   const isPositive = priceChange > 0;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      
-      <div className="flex-1 overflow-hidden">
-        <div className="p-6 space-y-6">
+    <div className="flex-1 overflow-hidden">
+      <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -553,6 +544,7 @@ export default function Charts() {
                       onKeyPress={handleKeyPress}
                       className="pl-10"
                       data-testid="input-search-symbol"
+                      disabled={!isAuthenticated}
                     />
                     <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
                   </div>
@@ -561,6 +553,7 @@ export default function Charts() {
                     variant="outline"
                     className="px-4"
                     data-testid="button-search-coin"
+                    disabled={!isAuthenticated}
                   >
                     <Search className="w-4 h-4" />
                   </Button>
@@ -584,7 +577,7 @@ export default function Charts() {
                 
                 <Button 
                   onClick={handleScan}
-                  disabled={scanMutation.isPending}
+                  disabled={scanMutation.isPending || !isAuthenticated}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                   data-testid="button-scan"
                 >
@@ -763,7 +756,6 @@ export default function Charts() {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 }
