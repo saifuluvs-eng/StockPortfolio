@@ -76,7 +76,8 @@ export default function Home() {
   
   // WebSocket connection for real-time prices
   useEffect(() => {
-    const ws = new WebSocket(`wss://${window.location.host}/ws`);
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
     
     ws.onmessage = (event) => {
       try {
