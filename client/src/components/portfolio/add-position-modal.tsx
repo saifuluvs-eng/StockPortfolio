@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 const addPositionSchema = z.object({
   symbol: z.string().min(1, "Symbol is required").regex(/^[A-Z]+USDT$/, "Symbol must end with USDT (e.g., BTCUSDT)"),
@@ -37,6 +37,7 @@ interface AddPositionModalProps {
 export function AddPositionModal({ open, onOpenChange }: AddPositionModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { signInWithGoogle } = useAuth();
 
   const form = useForm<z.infer<typeof addPositionSchema>>({
     resolver: zodResolver(addPositionSchema),
@@ -67,9 +68,9 @@ export function AddPositionModal({ open, onOpenChange }: AddPositionModalProps) 
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/auth/google";
-        }, 500);
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
         return;
       }
       toast({
