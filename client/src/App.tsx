@@ -13,6 +13,7 @@ import HighPotential from "@/pages/high-potential";
 import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
 import Charts from "@/pages/charts";
+import { FirebaseAuthProvider } from "@/hooks/useFirebaseAuth";
 
 function Router() {
   return (
@@ -60,14 +61,16 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="cryptotrader-theme">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+      <FirebaseAuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="dark" storageKey="cryptotrader-theme">
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </FirebaseAuthProvider>
   );
 }
 
