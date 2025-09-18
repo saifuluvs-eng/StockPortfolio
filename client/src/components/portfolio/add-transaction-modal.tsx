@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,7 @@ import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
 
 const addTransactionSchema = z.object({
   symbol: z.string().min(1, "Symbol is required"),
@@ -34,6 +34,7 @@ interface AddTransactionModalProps {
 export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { signInWithGoogle } = useAuth();
   
   const form = useForm<AddTransactionFormData>({
     resolver: zodResolver(addTransactionSchema),
@@ -82,9 +83,9 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/auth/google";
-        }, 500);
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
         return;
       }
       
