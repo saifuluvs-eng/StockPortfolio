@@ -70,7 +70,7 @@ const TIMEFRAMES = [
 
 export default function Charts() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, signInWithGoogle } = useAuth();
   
   // Parse URL parameters for automatic symbol setting and scanning
   const urlParams = new URLSearchParams(window.location.search);
@@ -128,11 +128,7 @@ export default function Charts() {
   const fetchRestPriceData = useRef(async (symbol: string) => {
     try {
       console.log(`🔄 Fetching price data via REST API for ${symbol}`);
-      const response = await fetch(`/api/market/ticker/${symbol}`);
-      
-      if (!response.ok) {
-        throw new Error(`REST API failed with status: ${response.status}`);
-      }
+      const response = await apiRequest('GET', `/api/market/ticker/${symbol}`);
       
       const data = await response.json();
       
@@ -360,9 +356,9 @@ export default function Charts() {
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/auth/google";
-        }, 500);
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
         return;
       }
       toast({
