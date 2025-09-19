@@ -2,8 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import passport from "passport";
-import { setupAuth, isAuthenticated } from "./auth";
+import { isAuthenticated } from "./auth";
 import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
@@ -14,28 +13,26 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
-  app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-
-  app.get(
-    '/api/auth/google/callback',
-    passport.authenticate('google', {
-      failureRedirect: '/login',
-      successRedirect: '/',
-    }),
-  );
-
-  app.get('/api/auth/logout', (req: any, res, next) => {
-    req.logout((err: any) => {
-      if (err) { return next(err); }
-      res.redirect('/');
-    });
-  });
-
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.user.id;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      const authUser = req.user!;
+      const profile = await storage.upsertUser({
+        id: authUser.id,
+        email: authUser.email ?? undefined,
+        displayName: authUser.displayName ?? undefined,
+        profileImageUrl: authUser.picture ?? undefined,
+      });
+
+      res.json({
+        id: profile.id,
+        email: profile.email ?? authUser.email ?? null,
+        displayName: profile.displayName ?? authUser.displayName ?? null,
+        firstName: profile.firstName ?? null,
+        lastName: profile.lastName ?? null,
+        profileImageUrl: profile.profileImageUrl ?? authUser.picture ?? null,
+        createdAt: profile.createdAt ?? null,
+        updatedAt: profile.updatedAt ?? null,
+      });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -313,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { symbol, timeframe, filters } = req.body;
 
       // Allow scanning BTCUSDT without authentication
-      if (symbol.toUpperCase() !== 'BTCUSDT' && !req.isAuthenticated()) {
+      if (symbol.toUpperCase() !== 'BTCUSDT' && !req.user) {
         return res.status(401).json({ message: 'Unauthorized' });
       }
 
