@@ -4,10 +4,10 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development node --import tsx api/index.ts",
-    "build": "vite build && esbuild api/index.ts --platform=node --packages=external --bundle --format=esm --outfile=api/index.js",
+    "dev": "NODE_ENV=development node --import tsx api/standalone.ts",
+    "build": "vite build && esbuild api/standalone.ts --platform=node --packages=external --bundle --format=esm --outfile=api/standalone.js",
     "vercel-build": "npm run build",
-    "start": "NODE_ENV=production node api/index.js",
+    "start": "NODE_ENV=production node api/standalone.js",
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },
