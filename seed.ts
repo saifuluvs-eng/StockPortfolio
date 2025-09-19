@@ -1,4 +1,4 @@
-import { storage } from './server/storage';
+import { storage } from './api/storage';
 
 async function seed() {
   console.log('Seeding database...');
