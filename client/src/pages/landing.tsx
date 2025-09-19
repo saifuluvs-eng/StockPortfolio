@@ -2,10 +2,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Shield, BarChart3, Users } from "lucide-react";
 import { Link } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Landing() {
-  const handleLogin = () => {
-    window.location.href = "/api/auth/google";
+  const { signInWithGoogle } = useAuth();
+
+  const handleLogin = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("Failed to initiate Google sign-in", error);
+    }
   };
 
   return (
