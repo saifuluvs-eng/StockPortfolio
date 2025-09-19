@@ -1,80 +1,70 @@
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import session from 'express-session';
-import connectSqlite3 from 'connect-sqlite3';
-import { storage } from './storage';
 import type { Express, RequestHandler } from 'express';
+import type { DecodedIdToken } from 'firebase-admin/auth';
+import { verifyIdToken } from './firebaseAdmin';
 
-const SQLiteStore = connectSqlite3(session);
-
-if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-  console.warn('Google client ID and/or secret not provided. Google authentication will not work.');
+export interface AuthenticatedUser {
+  id: string;
+  email?: string | null;
+  displayName?: string | null;
+  picture?: string | null;
+  claims: DecodedIdToken;
 }
 
-if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'a-very-secret-secret')) {
-  throw new Error('A strong SESSION_SECRET environment variable must be set in production.');
+declare global {
+  namespace Express {
+    interface Request {
+      user?: AuthenticatedUser;
+      authToken?: string;
+      authError?: Error;
+    }
+  }
 }
+
+export const authenticateFirebaseRequest: RequestHandler = async (req, _res, next) => {
+  const authorization = req.headers.authorization;
+  req.user = undefined;
+  req.authToken = undefined;
+  req.authError = undefined;
+
+  if (!authorization || !authorization.toLowerCase().startsWith('bearer ')) {
+    return next();
+  }
+
+  const token = authorization.slice(7).trim();
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decodedToken = await verifyIdToken(token);
+    req.user = {
+      id: decodedToken.uid,
+      email: decodedToken.email ?? null,
+      displayName: decodedToken.name ?? null,
+      picture: decodedToken.picture ?? null,
+      claims: decodedToken,
+    };
+    req.authToken = token;
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error('Failed to verify Firebase ID token');
+    req.authError = err;
+    console.warn('Failed to verify Firebase ID token', err);
+  }
+  next();
+};
 
 export function setupAuth(app: Express) {
-  app.use(
-    session({
-      store: new (SQLiteStore as any)({ db: 'sessions.db', dir: './' }),
-      secret: process.env.SESSION_SECRET || 'a-very-secret-secret',
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-      },
-    })
-  );
-
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  passport.use(
-    new GoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID!,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        callbackURL: '/api/auth/google/callback',
-        scope: ['profile', 'email'],
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        try {
-          const user = await storage.upsertUser({
-            id: profile.id,
-            email: profile.emails?.[0].value,
-            firstName: profile.name?.givenName,
-            lastName: profile.name?.familyName,
-            profileImageUrl: profile.photos?.[0].value,
-          });
-          done(null, user);
-        } catch (err) {
-          done(err);
-        }
-      }
-    )
-  );
-
-  passport.serializeUser((user: any, done) => {
-    done(null, user.id);
-  });
-
-  passport.deserializeUser(async (id: string, done) => {
-    try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (err) {
-      done(err);
-    }
-  });
+  app.use(authenticateFirebaseRequest);
 }
 
 export const isAuthenticated: RequestHandler = (req, res, next) => {
-  if (req.isAuthenticated()) {
+  if (req.user) {
     return next();
   }
-  res.status(401).json({ message: 'Unauthorized' });
+
+  if (req.authError) {
+    return res.status(401).json({ message: 'Invalid or expired authentication token' });
+  }
+
+  return res.status(401).json({ message: 'Unauthorized' });
 };
