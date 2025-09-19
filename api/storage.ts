@@ -1,5 +1,4 @@
 import {
-  users,
   portfolioPositions,
   scanHistory,
   watchlist,
@@ -7,8 +6,6 @@ import {
   tradeTransactions,
   portfolioAnalytics,
   marketData,
-  type User,
-  type UpsertUser,
   type PortfolioPosition,
   type InsertPortfolioPosition,
   type ScanHistory,
@@ -25,7 +22,92 @@ import {
   type InsertMarketData,
 } from "@shared/schema";
 import { db } from "./db";
+import { firestore as adminFirestore } from "./firebaseAdmin";
+import { Timestamp, type DocumentData, type DocumentSnapshot } from "firebase-admin/firestore";
 import { eq, and, desc, gte, lte, inArray } from "drizzle-orm";
+export interface User extends Record<string, unknown> {
+  id: string;
+  email?: string | null;
+  displayName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
+}
+
+export interface UpsertUser extends Record<string, unknown> {
+  id: string;
+  email?: string | null;
+  displayName?: string | null;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+}
+
+const usersCollection = adminFirestore.collection("users");
+
+function mapTimestamp(value: unknown): Date | null | undefined {
+  if (value instanceof Timestamp) {
+    return value.toDate();
+  }
+
+  if (value instanceof Date) {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return new Date(value);
+  }
+
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? undefined : new Date(parsed);
+  }
+
+  return undefined;
+}
+
+function mapUserSnapshot(snapshot: DocumentSnapshot<DocumentData>): User | undefined {
+  if (!snapshot.exists) {
+    return undefined;
+  }
+
+  const data = snapshot.data() ?? {};
+  const { createdAt: rawCreatedAt, updatedAt: rawUpdatedAt, photoURL, ...rest } = data;
+  const createdAt = mapTimestamp(rawCreatedAt) ?? null;
+  const updatedAt = mapTimestamp(rawUpdatedAt) ?? null;
+
+  return {
+    ...rest,
+    id: snapshot.id,
+    email: typeof data.email === "string" ? data.email : null,
+    displayName: typeof data.displayName === "string" ? data.displayName : null,
+    firstName: typeof data.firstName === "string" ? data.firstName : null,
+    lastName: typeof data.lastName === "string" ? data.lastName : null,
+    profileImageUrl:
+      typeof data.profileImageUrl === "string"
+        ? data.profileImageUrl
+        : typeof photoURL === "string"
+          ? photoURL
+          : null,
+    createdAt,
+    updatedAt,
+  } satisfies User;
+}
+
+function buildUserPayload(userData: UpsertUser): Record<string, unknown> {
+  const { id: _id, ...rest } = userData;
+  const payload: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined) {
+      payload[key] = value;
+    }
+  }
+
+  return payload;
+}
 
 export interface IStorage {
   // User operations - mandatory for Replit Auth
@@ -69,22 +151,30 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    const snapshot = await usersCollection.doc(id).get();
+    return mapUserSnapshot(snapshot);
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
-      .returning();
+    const docRef = usersCollection.doc(userData.id);
+    const existing = await docRef.get();
+    const payload = buildUserPayload(userData);
+    const now = Timestamp.now();
+
+    payload.updatedAt = now;
+
+    if (!existing.exists || !existing.data()?.createdAt) {
+      payload.createdAt = now;
+    }
+
+    await docRef.set(payload, { merge: true });
+
+    const snapshot = await docRef.get();
+    const user = mapUserSnapshot(snapshot);
+
+    if (!user) {
+      throw new Error(`Failed to persist user profile for ${userData.id}`);
+    }
     return user;
   }
 
