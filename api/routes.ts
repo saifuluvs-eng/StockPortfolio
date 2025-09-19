@@ -11,7 +11,15 @@ import { binanceWebSocketService } from "./services/binanceWebSocketService";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export interface RegisterRoutesOptions {
+  enableWebSockets?: boolean;
+}
+
+export async function registerRoutes(
+  app: Express,
+  options: RegisterRoutesOptions = {},
+): Promise<Server | undefined> {
+  const { enableWebSockets = true } = options;
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req, res) => {
     try {
@@ -391,6 +399,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+  if (!enableWebSockets) {
+    return undefined;
+  }
 
   const httpServer = createServer(app);
 
@@ -401,11 +412,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const clientSubscriptions = new Map<WebSocket, Set<string>>();
   const activeSymbolSubscriptions = new Map<string, number>(); // symbol -> subscriber count
   const symbolCallbacks = new Map<string, (data: any) => void>();
+  const popularSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT'];
 
   // Create unified callback for all symbol updates
   const createSymbolCallback = (symbol: string) => {
     return (data: any) => {
-      const clients = Array.from(wss.clients).filter(client => 
+      const clients = Array.from(wss.clients).filter(client =>
         client.readyState === WebSocket.OPEN
       );
       
@@ -519,9 +531,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Initialize WebSocket service for popular symbols to ensure they're always available
-  const popularSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT'];
-  
-  // Pre-subscribe to popular symbols
   popularSymbols.forEach(symbol => {
     const callback = createSymbolCallback(symbol);
     symbolCallbacks.set(symbol, callback);
