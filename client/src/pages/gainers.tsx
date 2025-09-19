@@ -20,7 +20,7 @@ interface GainerData {
 
 export default function Gainers() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, signInWithGoogle } = useAuth();
 
   const gainersQueryKey = isAuthenticated ? '/api/market/gainers' : '/api/market/gainers?limit=5';
   const { data: gainers = [], isLoading: gainersLoading, refetch } = useQuery<GainerData[]>({
@@ -249,7 +249,13 @@ export default function Gainers() {
                   </table>
                   {!isAuthenticated && (
                     <div className="text-center py-4">
-                      <Button onClick={() => window.location.href = "/api/auth/google"}>
+                      <Button
+                        onClick={() => {
+                          signInWithGoogle().catch((error) => {
+                            console.error("Failed to sign in", error);
+                          });
+                        }}
+                      >
                         Login to see full list
                       </Button>
                     </div>
