@@ -1,10 +1,26 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getFirebaseIdToken } from "@/lib/firebase";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
+}
+
+async function buildHeaders(data?: unknown): Promise<HeadersInit> {
+  const headers: Record<string, string> = {};
+
+  if (data !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const token = await getFirebaseIdToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 export async function apiRequest(
@@ -14,9 +30,8 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: await buildHeaders(data),
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
   });
 
   await throwIfResNotOk(res);
@@ -29,8 +44,10 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    const token = await getFirebaseIdToken();
+    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
     const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
