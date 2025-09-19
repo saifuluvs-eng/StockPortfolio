@@ -5,6 +5,7 @@ import { TrendingUp, BarChart3, Search, Star, Award, Eye, Bell, Brain, Activity,
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
 
 interface HighPotentialData {
   results: any[];
@@ -15,7 +16,9 @@ interface AiOverviewData {
 }
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, signInWithGoogle, signOut } = useAuth();
+  const displayName = (user?.displayName?.trim() ?? user?.email ?? "Trader");
+  const firstName = displayName.split(" ")[0] || displayName;
   const [prices, setPrices] = useState<{BTCUSDT?: number, ETHUSDT?: number}>({});
   const [btcChange, setBtcChange] = useState<{priceChangePercent?: string}>({});
   const [ethChange, setEthChange] = useState<{priceChangePercent?: string}>({});
@@ -62,12 +65,7 @@ export default function Home() {
   const { data: highPotentialData } = useQuery<HighPotentialData>({
     queryKey: ['/api/scanner/high-potential'],
     queryFn: async () => {
-      const response = await fetch('/api/scanner/high-potential', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}), // Empty filters for default scan
-      });
-      if (!response.ok) throw new Error('Failed to fetch');
+            const response = await apiRequest('POST', '/api/scanner/high-potential', {});
       return response.json();
     },
     refetchInterval: 60000, // Refresh every minute
@@ -118,8 +116,20 @@ export default function Home() {
   const portfolioPnLPercent = portfolioData?.totalPnLPercent || 0;
   const activePositions = portfolioData?.positions?.length || 0;
 
-  const handleLogout = () => {
-    window.location.href = "/api/auth/logout";
+    const handleLogin = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error("Failed to sign in", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Failed to sign out", error);
+    }
   };
 
   return (
@@ -129,7 +139,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-foreground">
-                Welcome back, {(user as any)?.firstName || "Trader"}!
+                Welcome back, {firstName}!
               </h1>
               <p className="text-muted-foreground mt-1">
                 Your trading dashboard is ready. Let's make some profitable trades today.
@@ -140,7 +150,7 @@ export default function Home() {
                 Sign Out
               </Button>
             ) : (
-              <Button variant="outline" onClick={() => window.location.href = "/api/auth/google"} data-testid="button-login">
+              <Button variant="outline" onClick={handleLogin} data-testid="button-login">
                 Sign In
               </Button>
             )}
