@@ -81,7 +81,7 @@ export default function Portfolio() {
   const [selectedTab, setSelectedTab] = useState("overview");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, signInWithGoogle } = useAuth();
 
   // Fetch enhanced portfolio data
   const { data: portfolioSummary, isLoading: portfolioLoading } = useQuery<PortfolioSummary>({
@@ -133,9 +133,9 @@ export default function Portfolio() {
           description: "You are logged out. Logging in again...",
           variant: "destructive",
         });
-        setTimeout(() => {
-          window.location.href = "/api/auth/google";
-        }, 500);
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
         return;
       }
       toast({
