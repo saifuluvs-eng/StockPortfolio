@@ -11,32 +11,10 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { v4 as uuidv4 } from 'uuid';
 
-// Session storage table - mandatory for Replit Auth
-export const sessions = sqliteTable(
-  "sessions",
-  {
-    sid: text("sid").primaryKey(),
-    sess: text("sess", { mode: 'json' }).notNull(),
-    expire: integer("expire", { mode: 'timestamp' }).notNull(),
-  },
-  (table) => [index("IDX_session_expire").on(table.expire)],
-);
-
-// User storage table - mandatory for Replit Auth
-export const users = sqliteTable("users", {
-  id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  email: text("email").unique(),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  profileImageUrl: text("profile_image_url"),
-  createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
-  updatedAt: integer("updated_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
-});
-
 // Portfolio positions
 export const portfolioPositions = sqliteTable("portfolio_positions", {
   id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   symbol: text("symbol").notNull(), // e.g., "BTCUSDT"
   quantity: real("quantity").notNull(),
   entryPrice: real("entry_price").notNull(),
@@ -49,7 +27,7 @@ export const portfolioPositions = sqliteTable("portfolio_positions", {
 // Scan history
 export const scanHistory = sqliteTable("scan_history", {
   id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   scanType: text("scan_type").notNull(), // "custom", "high_potential", "gainers"
   filters: text("filters", { mode: 'json' }),
   results: text("results", { mode: 'json' }),
@@ -59,7 +37,7 @@ export const scanHistory = sqliteTable("scan_history", {
 // Watchlist
 export const watchlist = sqliteTable("watchlist", {
   id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   symbol: text("symbol").notNull(),
   createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
@@ -70,7 +48,7 @@ export const watchlist = sqliteTable("watchlist", {
 // Trade transactions for detailed P&L tracking
 export const tradeTransactions = sqliteTable("trade_transactions", {
   id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   symbol: text("symbol").notNull(),
   side: text("side").notNull(), // "buy" or "sell"
   quantity: real("quantity").notNull(),
@@ -107,7 +85,7 @@ export const technicalIndicators = sqliteTable("technical_indicators", {
 // Smart alerts and notifications
 export const alerts = sqliteTable("alerts", {
   id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   symbol: text("symbol").notNull(),
   alertType: text("alert_type").notNull(), // "price", "volume", "technical", "ai_signal"
   condition: text("condition", { mode: 'json' }).notNull(), // Alert trigger conditions
@@ -125,7 +103,7 @@ export const alerts = sqliteTable("alerts", {
 // AI analysis results storage
 export const aiAnalysis = sqliteTable("ai_analysis", {
   id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id"),
   symbol: text("symbol").notNull(),
   analysisType: text("analysis_type").notNull(), // "sentiment", "pattern", "prediction", "recommendation"
   confidence: real("confidence"), // 0.0 to 1.0
@@ -162,7 +140,7 @@ export const marketData = sqliteTable("market_data", {
 // Scan presets for saved scanning configurations
 export const scanPresets = sqliteTable("scan_presets", {
   id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   name: text("name").notNull(),
   description: text("description"),
   scanType: text("scan_type").notNull(), // "custom", "high_potential", "reversal"
@@ -176,7 +154,7 @@ export const scanPresets = sqliteTable("scan_presets", {
 // Performance analytics for portfolio tracking
 export const portfolioAnalytics = sqliteTable("portfolio_analytics", {
   id: text("id").primaryKey().$defaultFn(() => uuidv4()),
-  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
   date: integer("date", { mode: 'timestamp' }).notNull(),
   totalValue: real("total_value").notNull(),
   totalPnl: real("total_pnl").notNull(),
@@ -189,9 +167,6 @@ export const portfolioAnalytics = sqliteTable("portfolio_analytics", {
   index("IDX_portfolio_analytics_user_date").on(table.userId, table.date),
   unique("UQ_portfolio_analytics_user_date").on(table.userId, table.date),
 ]);
-
-export type UpsertUser = typeof users.$inferInsert;
-export type User = typeof users.$inferSelect;
 
 export type InsertPortfolioPosition = typeof portfolioPositions.$inferInsert;
 export type PortfolioPosition = typeof portfolioPositions.$inferSelect;
