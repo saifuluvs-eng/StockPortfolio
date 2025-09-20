@@ -50,68 +50,27 @@ class BinanceService {
   }
 
   async getTopGainers(limit: number = 50): Promise<TickerData[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/ticker/24hr`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch market data');
-      }
-      
-      const allTickers: TickerData[] = await response.json();
-      
-      // Filter for USDT pairs and sort by price change percentage
-      const usdtPairs = allTickers
-        .filter(ticker => 
-          ticker.symbol.endsWith('USDT') && 
-          !ticker.symbol.includes('DOWN') && 
-          !ticker.symbol.includes('UP')
-        )
-        .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
-        .slice(0, limit);
-
-      if (usdtPairs.length > 0) {
-        return usdtPairs;
-      } else {
-        console.log('No gainers found after filtering, returning fallback data.');
-        return this.generateFallbackGainers(limit);
-      }
-    } catch (error) {
-      console.error('Error fetching top gainers:', error);
-      // Return fallback data when API fails
-      return this.generateFallbackGainers(limit);
+    const response = await fetch(`${this.baseUrl}/ticker/24hr`);
+    if (!response.ok) {
+      // Throw an error that can be caught by the route handler
+      const errorBody = await response.text();
+      console.error(`Binance API Error: ${response.status} ${errorBody}`);
+      throw new Error(`Failed to fetch market data from Binance: ${response.statusText}`);
     }
-  }
 
-  private generateFallbackGainers(limit: number = 50): TickerData[] {
-    const symbols = [
-      'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'XRPUSDT', 'DOTUSDT', 'DOGEUSDT',
-      'AVAXUSDT', 'MATICUSDT', 'LINKUSDT', 'LTCUSDT', 'UNIUSDT', 'BCHUSDT', 'XLMUSDT', 'VETUSDT',
-      'FILUSDT', 'TRXUSDT', 'ETCUSDT', 'THETAUSDT', 'ALGOUSDT', 'ICPUSDT', 'ATOMUSDT', 'XMRUSDT',
-      'EOSUSDT', 'AAVEUSDT', 'MKRUSDT', 'COMPUSDT', 'YFIUSDT', 'SNXUSDT', 'CRVUSDT', 'SUSHIUSDT',
-      'ZECUSDT', 'DASHUSDT', 'NEOUSDT', 'KAVAUSDT', 'ZILUSDT', 'BATUSDT', 'ENJUSDT', 'CHZUSDT',
-      'SANDUSDT', 'MANAUSDT', 'GALAUSDT', 'LRCUSDT', 'SKLUSDT', 'CTKUSDT', 'SFPUSDT', 'RNDRUSDT',
-      'DYDXUSDT', 'NEARUSDT', 'FTMUSDT', 'ONEUSDT', 'HNTUSDT', 'IOTAUSDT', 'CELOUSDT', 'AUDIOUSDT'
-    ];
+    const allTickers: TickerData[] = await response.json();
 
-    return symbols.slice(0, limit).map((symbol, index) => {
-      const baseChangePercent = 25 - (index * 0.4); // Start high and decrease
-      const randomVariation = (Math.random() - 0.5) * 2; // ±1% variation
-      const changePercent = Math.max(0.1, baseChangePercent + randomVariation);
-      
-      const basePrice = 100 + Math.random() * 500; // Random base price
-      const change = (basePrice * changePercent) / 100;
-      const volume = 1000000 + Math.random() * 50000000; // 1M to 51M volume
-      
-      return {
-        symbol,
-        lastPrice: basePrice.toFixed(4),
-        priceChange: change.toFixed(4),
-        priceChangePercent: changePercent.toFixed(2),
-        highPrice: (basePrice + change * 1.2).toFixed(4),
-        lowPrice: (basePrice - change * 0.8).toFixed(4),
-        volume: (volume * 0.8).toFixed(0),
-        quoteVolume: volume.toFixed(0)
-      };
-    });
+    // Filter for USDT pairs and sort by price change percentage
+    const usdtPairs = allTickers
+      .filter(ticker =>
+        ticker.symbol.endsWith('USDT') &&
+        !ticker.symbol.includes('DOWN') &&
+        !ticker.symbol.includes('UP')
+      )
+      .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
+      .slice(0, limit);
+
+    return usdtPairs;
   }
 
   async getKlineData(symbol: string, interval: string, limit: number = 200): Promise<CandlestickData[]> {

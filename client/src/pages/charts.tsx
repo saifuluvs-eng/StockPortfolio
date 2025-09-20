@@ -90,244 +90,121 @@ export default function Charts() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [hasAutoScanned, setHasAutoScanned] = useState(false);
 
-  // Real-time price data via WebSocket with REST API fallback
+  // Real-time price data state
   const [priceData, setPriceData] = useState<PriceData | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
-  const [wsError, setWsError] = useState(false);
-  const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const [usingRestFallback, setUsingRestFallback] = useState(false);
-  
-  // WebSocket refs for proper reconnection handling
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const restFallbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const currentSymbolRef = useRef<string>(selectedSymbol);
-  const reconnectAttemptsRef = useRef(0);
-  const priceDataRef = useRef<PriceData | null>(null);
-  const usingRestFallbackRef = useRef(false);
+  const [pusherStatus, setPusherStatus] = useState<'connecting' | 'connected' | 'unavailable'>('connecting');
+  const pusherRef = useRef<Pusher | null>(null);
+  const channelRef = useRef<any>(null);
 
-
-  // Update symbol ref when selectedSymbol changes
+  // New useEffect for Pusher connection
   useEffect(() => {
-    currentSymbolRef.current = selectedSymbol;
-  }, [selectedSymbol]);
+    let previousSymbol = selectedSymbol;
 
- useEffect(() => {
-    priceDataRef.current = priceData;
-  }, [priceData]);
+    const initializePusher = async () => {
+      try {
+        // Fetch Pusher config from our new backend endpoint
+        const response = await apiRequest('GET', '/api/pusher/config');
+        const config = await response.json();
 
-  useEffect(() => {
-    usingRestFallbackRef.current = usingRestFallback;
-  }, [usingRestFallback]);
+        if (!config.key || !config.cluster) {
+          throw new Error('Pusher key/cluster not configured');
+        }
 
-  useEffect(() => {
-    reconnectAttemptsRef.current = reconnectAttempts;
-  }, [reconnectAttempts]);
+        // Import Pusher dynamically to avoid SSR issues if ever needed
+        const Pusher = (await import('pusher-js')).default;
+        pusherRef.current = new Pusher(config.key, {
+          cluster: config.cluster,
+        });
 
-  // REST API fallback function
-  const fetchRestPriceData = useRef(async (symbol: string) => {
-    try {
-      console.log(`🔄 Fetching price data via REST API for ${symbol}`);
-      const response = await apiRequest('GET', `/api/market/ticker/${symbol}`);
-      
-      const data = await response.json();
-      
-      // Transform REST data to match WebSocket data structure
-      setPriceData({
-        symbol: data.symbol,
-        lastPrice: data.price || data.lastPrice,
-        priceChange: data.priceChange || '0',
-        priceChangePercent: data.priceChangePercent || '0',
-        highPrice: data.highPrice || data.price || data.lastPrice,
-        lowPrice: data.lowPrice || data.price || data.lastPrice,
-        volume: data.volume || '0',
-        quoteVolume: data.quoteVolume || '0'
-      });
-      
-      console.log(`📊 Updated ${symbol} price via REST API:`, data.price || data.lastPrice);
-      
-    } catch (error) {
-      console.error(`❌ REST API fallback failed for ${symbol}:`, error);
-    }
-  });
+        pusherRef.current.connection.bind('state_change', (states: any) => {
+          const { current } = states;
+          if (current === 'connected') {
+            setPusherStatus('connected');
+            console.log('🟢 Pusher connected');
+          } else if (current === 'unavailable' || current === 'failed') {
+            setPusherStatus('unavailable');
+            console.error('🔴 Pusher connection failed');
+          } else {
+            setPusherStatus('connecting');
+          }
+        });
 
-  // Start REST fallback polling
-  const startRestFallback = useRef((symbol: string) => {
-    if (restFallbackIntervalRef.current) {
-      clearInterval(restFallbackIntervalRef.current);
-    }
-    
-    console.log(`🏥 Starting REST API fallback for ${symbol}`);
-    setUsingRestFallback(true);
-    
-    // Initial fetch
-    fetchRestPriceData.current(symbol);
-    
-    // Poll every 5 seconds
-    restFallbackIntervalRef.current = setInterval(() => {
-      fetchRestPriceData.current(currentSymbolRef.current);
-    }, 5000);
-  });
+        channelRef.current = pusherRef.current.subscribe('price-updates');
 
-  // Stop REST fallback polling
-  const stopRestFallback = useRef(() => {
-    if (restFallbackIntervalRef.current) {
-      clearInterval(restFallbackIntervalRef.current);
-      restFallbackIntervalRef.current = null;
-    }
-    setUsingRestFallback(false);
-    console.log('✅ Stopped REST API fallback, WebSocket resumed');
-  });
-  
-  // Show loading state when neither WebSocket nor REST fallback has data
-  const showLoadingState = !wsConnected && !usingRestFallback && !priceData;
-  
-  // Fallback data loading message
-  const getLoadingMessage = () => {
-    if (usingRestFallback) return "Using REST fallback...";
-    if (wsError) return reconnectAttempts > 3 ? "Connection failed..." : "Reconnecting...";
-    if (!wsConnected) return "Connecting...";
-    if (!priceData) return "Loading data...";
-    return "...";
-  };
+        // Bind to the initially selected symbol
+        channelRef.current.bind(selectedSymbol, (data: PriceData) => {
+          setPriceData(data);
+          console.log(`📈 Updated ${data.symbol} price via Pusher:`, data.lastPrice);
+        });
 
-  // Function to create WebSocket connection
-  const createWebSocketConnection = useRef((symbol: string) => {
-    console.log(`🔌 Creating WebSocket connection for ${symbol}`);
-    
-    // Close existing connection if any
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
-    wsRef.current = ws;
-    
-    ws.onopen = () => {
-      console.log('🟢 WebSocket connected for charts');
-      setWsConnected(true);
-      setWsError(false);
-      setReconnectAttempts(0);
-
-      reconnectAttemptsRef.current = 0;
-
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
+      } catch (error) {
+        console.error('Failed to initialize Pusher:', error);
+        setPusherStatus('unavailable');
       }
-      
-      // Stop REST fallback if it was running
-      stopRestFallback.current();
-      
-      // Subscribe to the currently selected symbol
-      ws.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
     };
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'price_update' && data.symbol === currentSymbolRef.current) {
-          // Update price data with WebSocket ticker data (fixed data mapping)
+    initializePusher();
+
+    // Cleanup function
+    return () => {
+      if (pusherRef.current) {
+        pusherRef.current.disconnect();
+        pusherRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  // useEffect to handle symbol changes
+  useEffect(() => {
+    let previousSymbol = selectedSymbol;
+
+    if (channelRef.current) {
+      // Unbind from the old symbol's event
+      if (previousSymbol) {
+        channelRef.current.unbind(previousSymbol);
+      }
+
+      // Bind to the new symbol's event
+      channelRef.current.bind(selectedSymbol, (data: PriceData) => {
+        setPriceData(data);
+        console.log(`📈 Updated ${data.symbol} price via Pusher:`, data.lastPrice);
+      });
+
+      // Fetch initial data for the new symbol via REST as Pusher only sends updates
+      const fetchInitialData = async () => {
+        try {
+          const response = await apiRequest('GET', `/api/market/ticker/${selectedSymbol}`);
+          const data = await response.json();
           setPriceData({
             symbol: data.symbol,
-            lastPrice: data.data.lastPrice,
-            priceChange: data.data.priceChange || data.data.priceChangePercent, // Use priceChange if available
-            priceChangePercent: data.data.priceChangePercent,
-            highPrice: data.data.highPrice,
-            lowPrice: data.data.lowPrice,
-            volume: data.data.volume,
-            quoteVolume: data.data.quoteVolume
+            lastPrice: data.price || data.lastPrice,
+            priceChange: data.priceChange || '0',
+            priceChangePercent: data.priceChangePercent || '0',
+            highPrice: data.highPrice || data.price || data.lastPrice,
+            lowPrice: data.lowPrice || data.price || data.lastPrice,
+            volume: data.volume || '0',
+            quoteVolume: data.quoteVolume || '0'
           });
-          
-          console.log(`📈 Updated ${data.symbol} price via WebSocket:`, data.data.lastPrice);
+        } catch (error) {
+          console.error(`Failed to fetch initial data for ${selectedSymbol}:`, error);
         }
-      } catch (error) {
-        console.error('❌ WebSocket message parsing error:', error);
-      }
-    };
+      };
+      fetchInitialData();
+    }
 
-    ws.onerror = (error) => {
-      console.error('🔴 WebSocket error:', error);
-      setWsError(true);
-    };
+    // Update the previous symbol for the next change
+    previousSymbol = selectedSymbol;
 
-    ws.onclose = (event) => {
-      console.log(`🔴 WebSocket disconnected from charts: ${event.code} - ${event.reason}`);
-      setWsConnected(false);
-      
-            if (event.code === 1000) {
-        return;
-      }
+  }, [selectedSymbol]); // This effect runs whenever the selected symbol changes
 
-      const attempts = reconnectAttemptsRef.current;
+  const showLoadingState = pusherStatus !== 'connected' && !priceData;
 
-      // Only attempt reconnection if we haven't exceeded max attempts
-      if (attempts < 5) {
-        setWsError(true);
-        
-        // Clear any existing reconnect timeout
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-        
-        // Calculate exponential backoff delay (1s, 2s, 4s, 8s, 16s)
-        const delay = Math.min(1000 * Math.pow(2, attempts), 16000);
-        reconnectTimeoutRef.current = setTimeout(() => {
-          const nextAttempt = Math.min(reconnectAttemptsRef.current + 1, 5);
-          console.log(`🔄 Attempting to reconnect WebSocket (attempt ${nextAttempt}/5)...`);
-          reconnectTimeoutRef.current = null;
-          setReconnectAttempts(prev => {
-            const updated = Math.min(prev + 1, 5);
-            reconnectAttemptsRef.current = updated;
-            return updated;
-          });
-          createWebSocketConnection.current(currentSymbolRef.current);
-        }, delay);
-      } else {
-        console.error('❌ Max reconnection attempts reached, switching to REST fallback');
-        setWsError(true);
-        
-        // Start REST fallback when WebSocket fails completely
-        startRestFallback.current(currentSymbolRef.current);
-      }
-    };
-
-    return ws;
-  });
-
-  // WebSocket connection effect
-  useEffect(() => {
-    createWebSocketConnection.current(selectedSymbol);
-
-    const fallbackTimer = setTimeout(() => {
-      if (!priceDataRef.current && !usingRestFallbackRef.current) {
-        console.warn('WebSocket did not deliver data within 10 seconds, switching to REST fallback.');
-        setWsError(true);
-        startRestFallback.current(currentSymbolRef.current);
-      }
-    }, 10000); // 10 second timeout
-
-    return () => {
-      clearTimeout(fallbackTimer);
-      // Cleanup on unmount or symbol change
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-      if (restFallbackIntervalRef.current) {
-        clearInterval(restFallbackIntervalRef.current);
-        restFallbackIntervalRef.current = null;
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      setUsingRestFallback(false);
-    };
-  }, [selectedSymbol]); // Re-connect when symbol changes
+  const getLoadingMessage = () => {
+    if (pusherStatus === 'connecting') return 'Connecting...';
+    if (pusherStatus === 'unavailable') return 'Real-time unavailable';
+    if (!priceData) return 'Loading data...';
+    return '...';
+  };
 
   const scanMutation = useMutation({
     mutationFn: async () => {

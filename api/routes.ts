@@ -405,137 +405,25 @@ export async function registerRoutes(
 
   const httpServer = createServer(app);
 
-  // WebSocket server for real-time updates
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  // With Pusher, we no longer need to manage a WebSocket server here.
+  // We just need to ensure the Binance WebSocket service is running and
+  // proxying data to Pusher.
 
-  // Track subscribed symbols and connected clients
-  const clientSubscriptions = new Map<WebSocket, Set<string>>();
-  const activeSymbolSubscriptions = new Map<string, number>(); // symbol -> subscriber count
-  const symbolCallbacks = new Map<string, (data: any) => void>();
   const popularSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT'];
 
-  // Create unified callback for all symbol updates
-  const createSymbolCallback = (symbol: string) => {
-    return (data: any) => {
-      const clients = Array.from(wss.clients).filter(client =>
-        client.readyState === WebSocket.OPEN
-      );
-      
-      if (clients.length > 0) {
-        const priceUpdate = {
-          type: 'price_update',
-          symbol: data.symbol,
-          data: {
-            lastPrice: data.lastPrice,
-            priceChangePercent: data.priceChangePercent,
-            highPrice: data.highPrice,
-            lowPrice: data.lowPrice,
-            volume: data.volume,
-            quoteVolume: data.quoteVolume,
-            timestamp: data.timestamp
-          }
-        };
-
-        // Only send to clients subscribed to this symbol
-        clients.forEach(client => {
-          const subscribedSymbols = clientSubscriptions.get(client) || new Set();
-          if (subscribedSymbols.has(symbol)) {
-            try {
-              client.send(JSON.stringify(priceUpdate));
-            } catch (error) {
-              console.error(`Failed to send data to client for ${symbol}:`, error);
-            }
-          }
-        });
-      }
-    };
-  };
-
-  wss.on('connection', (ws: WebSocket) => {
-    console.log('Client connected to WebSocket');
-    
-    // Initialize empty subscription set for this client
-    clientSubscriptions.set(ws, new Set<string>());
-    
-    ws.on('message', (message: string) => {
-      try {
-        const data = JSON.parse(message);
-        const clientSymbols = clientSubscriptions.get(ws) || new Set<string>();
-        
-        if (data.type === 'subscribe' && data.symbol) {
-          const symbol = data.symbol.toUpperCase();
-          console.log(`📡 Client subscribing to: ${symbol}`);
-          
-          // Add to client's subscription list
-          clientSymbols.add(symbol);
-          clientSubscriptions.set(ws, clientSymbols);
-          
-          // Track global symbol subscriptions
-          const currentCount = activeSymbolSubscriptions.get(symbol) || 0;
-          activeSymbolSubscriptions.set(symbol, currentCount + 1);
-          
-          // If this is the first subscription to this symbol, start Binance stream
-          if (currentCount === 0) {
-            console.log(`🚀 Starting Binance stream for ${symbol}`);
-            const callback = createSymbolCallback(symbol);
-            symbolCallbacks.set(symbol, callback);
-            binanceWebSocketService.subscribeToTicker(symbol, callback);
-          }
-          
-        } else if (data.type === 'unsubscribe' && data.symbol) {
-          const symbol = data.symbol.toUpperCase();
-          console.log(`🔇 Client unsubscribing from: ${symbol}`);
-          
-          // Remove from client's subscription list
-          clientSymbols.delete(symbol);
-          clientSubscriptions.set(ws, clientSymbols);
-          
-          // Decrease global symbol subscription count
-          const currentCount = activeSymbolSubscriptions.get(symbol) || 0;
-          if (currentCount <= 1) {
-            // Last subscriber, stop Binance stream
-            console.log(`🛑 Stopping Binance stream for ${symbol}`);
-            activeSymbolSubscriptions.delete(symbol);
-            symbolCallbacks.delete(symbol);
-            binanceWebSocketService.unsubscribe(symbol);
-          } else {
-            activeSymbolSubscriptions.set(symbol, currentCount - 1);
-          }
-        }
-      } catch (error) {
-        console.error('WebSocket message error:', error);
-      }
-    });
-
-    ws.on('close', () => {
-      console.log('Client disconnected from WebSocket');
-      
-      // Clean up subscriptions for this client
-      const clientSymbols = clientSubscriptions.get(ws) || new Set<string>();
-      for (const symbol of Array.from(clientSymbols)) {
-        const currentCount = activeSymbolSubscriptions.get(symbol) || 0;
-        if (currentCount <= 1 && !popularSymbols.includes(symbol)) {
-          // Last subscriber, stop Binance stream
-          console.log(`🛑 Stopping Binance stream for ${symbol} (client disconnect)`);
-          activeSymbolSubscriptions.delete(symbol);
-          symbolCallbacks.delete(symbol);
-          binanceWebSocketService.unsubscribe(symbol);
-        } else {
-          activeSymbolSubscriptions.set(symbol, currentCount - 1);
-        }
-      }
-      
-      // Remove client from tracking
-      clientSubscriptions.delete(ws);
-    });
+  // Initialize WebSocket service for popular symbols to ensure they're always available
+  // The service will now automatically proxy these to Pusher.
+  console.log('Initializing permanent subscriptions for popular symbols...');
+  popularSymbols.forEach(symbol => {
+    binanceWebSocketService.subscribeToTicker(symbol);
   });
 
-  // Initialize WebSocket service for popular symbols to ensure they're always available
-  popularSymbols.forEach(symbol => {
-    const callback = createSymbolCallback(symbol);
-    symbolCallbacks.set(symbol, callback);
-    binanceWebSocketService.subscribeToTicker(symbol, callback);
-    activeSymbolSubscriptions.set(symbol, 1); // Keep alive even with no clients
+  // We can add a simple endpoint for the client to get the Pusher key.
+  app.get('/api/pusher/config', (req, res) => {
+    res.json({
+      key: process.env.PUSHER_KEY,
+      cluster: process.env.PUSHER_CLUSTER,
+    });
   });
 
   return httpServer;
