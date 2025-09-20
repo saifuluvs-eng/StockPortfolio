@@ -1,6 +1,142 @@
 
 > rest-express@1.0.0 dev
-> NODE_ENV=development tsx server/index.ts
+> NODE_ENV=development node --import tsx api/standalone.ts
 
-7:12:26 PM [express] serving on port 5000
-9:48:01 PM [express] GET /api/portfolio 200 in 1048ms :: {"totalValue":75000,"totalPnL":0,"totalPnLP…
+Using dummy Firebase Admin. Firebase services will not be available.
+🔌 BinanceWebSocketService initialized
+📊 Subscribed to ticker data for BTCUSDT
+📊 Subscribed to ticker data for ETHUSDT
+📊 Subscribed to ticker data for BNBUSDT
+📊 Subscribed to ticker data for SOLUSDT
+📊 Subscribed to ticker data for ADAUSDT
+1:14:00 PM [express] serving on port 5000
+🔴 WebSocket error for btcusdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for btcusdt@ticker: 1006 -
+🔴 WebSocket error for ethusdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for ethusdt@ticker: 1006 -
+🔴 WebSocket error for bnbusdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for bnbusdt@ticker: 1006 -
+🔴 WebSocket error for solusdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for solusdt@ticker: 1006 -
+🔴 WebSocket error for adausdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for adausdt@ticker: 1006 -
+Error fetching top gainers: Error: Failed to fetch market data
+    at BinanceService.getTopGainers (/app/api/services/binanceService.ts:56:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (/app/api/routes.ts:238:23)
+1:14:05 PM [express] GET /api/market/gainers 200 in 119ms :: [{"symbol":"BTCUSDT","lastPrice":"148.3…
+🔄 Attempting to reconnect btcusdt@ticker (attempt 2)...
+🔄 Attempting to reconnect ethusdt@ticker (attempt 2)...
+🔄 Attempting to reconnect bnbusdt@ticker (attempt 2)...
+🔄 Attempting to reconnect solusdt@ticker (attempt 2)...
+🔄 Attempting to reconnect adausdt@ticker (attempt 2)...
+🔴 WebSocket error for btcusdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for btcusdt@ticker: 1006 -
+🔴 WebSocket error for ethusdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for ethusdt@ticker: 1006 -
+🔴 WebSocket error for solusdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for solusdt@ticker: 1006 -
+🔴 WebSocket error for bnbusdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for bnbusdt@ticker: 1006 -
+🔴 WebSocket error for adausdt@ticker: Error: Unexpected server response: 451
+    at ClientRequest.<anonymous> (/app/node_modules/ws/lib/websocket.js:913:7)
+    at ClientRequest.emit (node:events:518:28)
+    at HTTPParser.parserOnIncomingClient (node:_http_client:716:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:117:17)
+    at TLSSocket.socketOnData (node:_http_client:558:22)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+🔴 WebSocket closed for adausdt@ticker: 1006 -

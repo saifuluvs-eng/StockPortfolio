@@ -174,14 +174,26 @@ class TechnicalIndicators {
   }
 
   // Money Flow Index (MFI)
-  private calculateMFI(highs: number[], lows: number[], closes: number[], volumes: number[], period: number = 14): number {
-    const typicalPrices = closes.map((close, i) => (highs[i] + lows[i] + close) / 3);
-    const rawMoneyFlows = typicalPrices.map((tp, i) => tp * volumes[i]);
+  public calculateMFI(highs: number[], lows: number[], closes: number[], volumes: number[], period: number = 14): number {
+    // Ensure we have enough data points
+    if (highs.length < period + 1) {
+      return 50; // Not enough data, return neutral
+    }
+
+    // Slice the last `period + 1` data points to have `period` changes
+    const relevantHighs = highs.slice(-(period + 1));
+    const relevantLows = lows.slice(-(period + 1));
+    const relevantCloses = closes.slice(-(period + 1));
+    const relevantVolumes = volumes.slice(-(period + 1));
+
+    const typicalPrices = relevantCloses.map((close, i) => (relevantHighs[i] + relevantLows[i] + close) / 3);
+    const rawMoneyFlows = typicalPrices.map((tp, i) => tp * relevantVolumes[i]);
     
     let positiveFlow = 0;
     let negativeFlow = 0;
     
-    for (let i = 1; i < Math.min(rawMoneyFlows.length, period + 1); i++) {
+    // The loop now correctly iterates over the most recent data
+    for (let i = 1; i < typicalPrices.length; i++) {
       if (typicalPrices[i] > typicalPrices[i - 1]) {
         positiveFlow += rawMoneyFlows[i];
       } else if (typicalPrices[i] < typicalPrices[i - 1]) {
