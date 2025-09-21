@@ -1,3 +1,4 @@
+// client/src/pages/charts.tsx
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import TradingViewChart from "@/components/charts/TradingViewChart";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+// import { apiRequest } from "@/lib/queryClient"; // ❌ not needed anymore
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -23,7 +24,7 @@ import {
   Search
 } from "lucide-react";
 
-// ✅ NEW: direct Binance WS helper
+// ✅ direct Binance WS helper (client-only)
 import { openSpotTickerStream } from "../lib/binanceWs";
 
 interface PriceData {
@@ -42,7 +43,7 @@ interface ScanResult {
   price: number;
   indicators: {
     [key: string]: {
-      value: number;
+      value: number | string; // ✅ allow number or string (e.g., "72.5%")
       signal: 'bullish' | 'bearish' | 'neutral';
       score: number;
       tier: number;
@@ -52,11 +53,6 @@ interface ScanResult {
   totalScore: number;
   recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
 }
-
-const POPULAR_SYMBOLS = [
-  "BTCUSDT", "ETHUSDT", "ADAUSDT", "SOLUSDT", "DOTUSDT", 
-  "MATICUSDT", "LINKUSDT", "AVAXUSDT", "ATOMUSDT", "NEARUSDT"
-];
 
 const DEFAULT_TIMEFRAME = "240"; // 4 hours
 
@@ -72,7 +68,7 @@ export default function Charts() {
   const { toast } = useToast();
   const { isAuthenticated, signInWithGoogle } = useAuth();
 
-  // Parse URL params (kept from your version)
+  // Parse URL params
   const urlParams = new URLSearchParams(window.location.search);
   const symbolFromUrl = urlParams.get('symbol');
   const shouldAutoScan = urlParams.get('scan') === 'true';
@@ -89,11 +85,11 @@ export default function Charts() {
   const [wsConnected, setWsConnected] = useState(false);
   const [wsError, setWsError] = useState(false);
 
-  // ✅ SIMPLIFIED: loading just depends on priceData now
+  // Loading helpers
   const showLoadingState = !priceData;
   const getLoadingMessage = () => (!priceData ? "Loading..." : "...");
 
-  // ✅ NEW: direct Binance WS (no local /ws, no complex reconnection here)
+  // ✅ Direct Binance WS (no local /ws)
   useEffect(() => {
     setWsConnected(false);
     setWsError(false);
@@ -119,24 +115,36 @@ export default function Charts() {
     };
   }, [selectedSymbol]);
 
-  // --- Scanner logic (unchanged except for safety) ---
+  // --- Scanner logic ---
   const [hasAutoScanned, setHasAutoScanned] = useState(false);
 
   const scanMutation = useMutation({
     mutationFn: async () => {
       const timeframeConfig = TIMEFRAMES.find(tf => tf.value === selectedTimeframe);
       const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
-      const response = await apiRequest('POST', '/api/scanner/scan', {
-        symbol: selectedSymbol,
-        timeframe: backendTimeframe,
+
+      // ✅ send JSON explicitly; handle non-OK responses
+      const response = await fetch('/api/scanner/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: selectedSymbol, timeframe: backendTimeframe }),
       });
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        const err: any = new Error('Scan failed');
+        err.status = response.status;
+        err.body = text;
+        throw err;
+      }
+
       return response.json();
     },
     onSuccess: (data) => {
       setScanResult(data);
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
+    onError: (error: any) => {
+      if (isUnauthorizedError?.(error)) {
         toast({
           title: "Unauthorized",
           description: "You are logged out. Logging in again...",
@@ -147,14 +155,16 @@ export default function Charts() {
         });
         return;
       }
-      toast({
-        title: "Analysis Failed",
-        description: "Failed to analyze symbol. Please try again.",
-        variant: "destructive",
-      });
+      const status = error?.status;
+      const msg = status
+        ? `Scanner unavailable (HTTP ${status}). Try again shortly.`
+        : "Failed to analyze symbol. Please try again.";
+      toast({ title: "Analysis Failed", description: msg, variant: "destructive" });
+      console.error("scan error:", error);
     },
   });
 
+  // Auto-scan on load
   useEffect(() => {
     if (isAuthenticated && !scanMutation.isPending && !hasAutoScanned) {
       if ((selectedSymbol === "BTCUSDT" && !scanResult) || (shouldAutoScan && symbolFromUrl)) {
@@ -167,11 +177,13 @@ export default function Charts() {
     }
   }, [isAuthenticated, selectedSymbol, scanResult, scanMutation, shouldAutoScan, symbolFromUrl, hasAutoScanned]);
 
+  // Track first scan
   const hasScannedRef = useRef(false);
   useEffect(() => {
     if (scanResult) hasScannedRef.current = true;
   }, [scanResult]);
 
+  // Re-scan on timeframe change after first scan
   useEffect(() => {
     if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
       scanMutation.mutate();
