@@ -109,6 +109,13 @@ export default function Home() {
       setEthChange(ethTicker);
     }
   }, [ethTicker]);
+useEffect(() => {
+  const unsubscribe = openSpotTickerStream(['BTCUSDT','ETHUSDT'], (t) => {
+    console.log('[HOME] ticker', t.symbol, t.lastPrice, t.priceChangePercent);
+  });
+  return unsubscribe;
+}, []);
+
   
   // Calculate portfolio metrics
   const portfolioData = portfolio as any;
