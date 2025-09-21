@@ -1,3 +1,4 @@
+import { openSpotTickerStream } from '../lib/binanceWs';
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
