@@ -1,3 +1,4 @@
+import { openSpotTickerStream } from '../lib/binanceWs';
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import TradingViewChart from "@/components/charts/TradingViewChart";
@@ -60,6 +61,14 @@ const POPULAR_SYMBOLS = [
 const DEFAULT_TIMEFRAME = "240"; // 4 hours
 
 // Unified timeframe configuration for all components
+useEffect(() => {
+  const sym = (selectedSymbol || 'BTCUSDT').toUpperCase();
+  const unsubscribe = openSpotTickerStream([sym], (t) => {
+    console.log('[CHARTS] ticker', t.symbol, t.lastPrice, t.priceChangePercent);
+  });
+  return unsubscribe;
+}, [selectedSymbol]);
+
 const TIMEFRAMES = [
   { value: "15", label: "15min", display: "15m", backend: "15m" },
   { value: "60", label: "1hr", display: "1h", backend: "1h" },
