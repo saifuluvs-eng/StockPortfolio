@@ -1,20 +1,6 @@
-import { createServer } from "http";
-import { createApp } from "./server";
-import { log } from "./vite";
+// Vercel build stub: we don't run a custom Express server here.
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-const app = await createApp();
-const existingServer = app.get("httpServer");
-const server = existingServer ?? createServer(app);
-
-const port = parseInt(process.env.PORT || "5000", 10);
-
-server.listen(
-  {
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  },
-  () => {
-    log(`serving on port ${port}`);
-  },
-);
+export default function handler(req: VercelRequest, res: VercelResponse) {
+  res.status(200).json({ ok: true, msg: 'Standalone server is disabled on Vercel.' });
+}
