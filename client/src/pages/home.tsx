@@ -7,6 +7,10 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import LiveSummary from "@/components/home/LiveSummary";
+
+{/* Live market summary (Binance direct) */}
+<LiveSummary symbols={["BTCUSDT","ETHUSDT"]} />
 
 interface HighPotentialData {
   results: any[];
@@ -109,14 +113,7 @@ export default function Home() {
       setEthChange(ethTicker);
     }
   }, [ethTicker]);
-useEffect(() => {
-  const unsubscribe = openSpotTickerStream(['BTCUSDT','ETHUSDT'], (t) => {
-    console.log('[HOME] ticker', t.symbol, t.lastPrice, t.priceChangePercent);
-  });
-  return unsubscribe;
-}, []);
 
-  
   // Calculate portfolio metrics
   const portfolioData = portfolio as any;
   const portfolioValue = portfolioData?.totalValue || 0;
