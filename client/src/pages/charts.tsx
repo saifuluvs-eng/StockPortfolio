@@ -202,100 +202,101 @@ export default function Charts() {
     }
     
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
-    wsRef.current = ws;
+    // Disabled on Vercel: local /ws cannot upgrade to WebSocket.
+    // const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+    // wsRef.current = ws;
     
-    ws.onopen = () => {
-      console.log('🟢 WebSocket connected for charts');
-      setWsConnected(true);
-      setWsError(false);
-      setReconnectAttempts(0);
+    // ws.onopen = () => {
+    //   console.log('🟢 WebSocket connected for charts');
+    //   setWsConnected(true);
+    //   setWsError(false);
+    //   setReconnectAttempts(0);
 
-      reconnectAttemptsRef.current = 0;
+    //   reconnectAttemptsRef.current = 0;
 
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
+    //   if (reconnectTimeoutRef.current) {
+    //     clearTimeout(reconnectTimeoutRef.current);
+    //     reconnectTimeoutRef.current = null;
+    //   }
       
-      // Stop REST fallback if it was running
-      stopRestFallback.current();
+    //   // Stop REST fallback if it was running
+    //   stopRestFallback.current();
       
-      // Subscribe to the currently selected symbol
-      ws.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
-    };
+    //   // Subscribe to the currently selected symbol
+    //   ws.send(JSON.stringify({ type: 'subscribe', symbol: symbol }));
+    // };
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    // ws.onmessage = (event) => {
+    //   try {
+    //     const data = JSON.parse(event.data);
         
-        if (data.type === 'price_update' && data.symbol === currentSymbolRef.current) {
-          // Update price data with WebSocket ticker data (fixed data mapping)
-          setPriceData({
-            symbol: data.symbol,
-            lastPrice: data.data.lastPrice,
-            priceChange: data.data.priceChange || data.data.priceChangePercent, // Use priceChange if available
-            priceChangePercent: data.data.priceChangePercent,
-            highPrice: data.data.highPrice,
-            lowPrice: data.data.lowPrice,
-            volume: data.data.volume,
-            quoteVolume: data.data.quoteVolume
-          });
+    //     if (data.type === 'price_update' && data.symbol === currentSymbolRef.current) {
+    //       // Update price data with WebSocket ticker data (fixed data mapping)
+    //       setPriceData({
+    //         symbol: data.symbol,
+    //         lastPrice: data.data.lastPrice,
+    //         priceChange: data.data.priceChange || data.data.priceChangePercent, // Use priceChange if available
+    //         priceChangePercent: data.data.priceChangePercent,
+    //         highPrice: data.data.highPrice,
+    //         lowPrice: data.data.lowPrice,
+    //         volume: data.data.volume,
+    //         quoteVolume: data.data.quoteVolume
+    //       });
           
-          console.log(`📈 Updated ${data.symbol} price via WebSocket:`, data.data.lastPrice);
-        }
-      } catch (error) {
-        console.error('❌ WebSocket message parsing error:', error);
-      }
-    };
+    //       console.log(`📈 Updated ${data.symbol} price via WebSocket:`, data.data.lastPrice);
+    //     }
+    //   } catch (error) {
+    //     console.error('❌ WebSocket message parsing error:', error);
+    //   }
+    // };
 
-    ws.onerror = (error) => {
-      console.error('🔴 WebSocket error:', error);
-      setWsError(true);
-    };
+    // ws.onerror = (error) => {
+    //   console.error('🔴 WebSocket error:', error);
+    //   setWsError(true);
+    // };
 
-    ws.onclose = (event) => {
-      console.log(`🔴 WebSocket disconnected from charts: ${event.code} - ${event.reason}`);
-      setWsConnected(false);
+    // ws.onclose = (event) => {
+    //   console.log(`🔴 WebSocket disconnected from charts: ${event.code} - ${event.reason}`);
+    //   setWsConnected(false);
       
-            if (event.code === 1000) {
-        return;
-      }
+    //         if (event.code === 1000) {
+    //     return;
+    //   }
 
-      const attempts = reconnectAttemptsRef.current;
+    //   const attempts = reconnectAttemptsRef.current;
 
-      // Only attempt reconnection if we haven't exceeded max attempts
-      if (attempts < 5) {
-        setWsError(true);
+    //   // Only attempt reconnection if we haven't exceeded max attempts
+    //   if (attempts < 5) {
+    //     setWsError(true);
         
-        // Clear any existing reconnect timeout
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
+    //     // Clear any existing reconnect timeout
+    //     if (reconnectTimeoutRef.current) {
+    //       clearTimeout(reconnectTimeoutRef.current);
+    //     }
         
-        // Calculate exponential backoff delay (1s, 2s, 4s, 8s, 16s)
-        const delay = Math.min(1000 * Math.pow(2, attempts), 16000);
-        reconnectTimeoutRef.current = setTimeout(() => {
-          const nextAttempt = Math.min(reconnectAttemptsRef.current + 1, 5);
-          console.log(`🔄 Attempting to reconnect WebSocket (attempt ${nextAttempt}/5)...`);
-          reconnectTimeoutRef.current = null;
-          setReconnectAttempts(prev => {
-            const updated = Math.min(prev + 1, 5);
-            reconnectAttemptsRef.current = updated;
-            return updated;
-          });
-          createWebSocketConnection.current(currentSymbolRef.current);
-        }, delay);
-      } else {
-        console.error('❌ Max reconnection attempts reached, switching to REST fallback');
-        setWsError(true);
+    //     // Calculate exponential backoff delay (1s, 2s, 4s, 8s, 16s)
+    //     const delay = Math.min(1000 * Math.pow(2, attempts), 16000);
+    //     reconnectTimeoutRef.current = setTimeout(() => {
+    //       const nextAttempt = Math.min(reconnectAttemptsRef.current + 1, 5);
+    //       console.log(`🔄 Attempting to reconnect WebSocket (attempt ${nextAttempt}/5)...`);
+    //       reconnectTimeoutRef.current = null;
+    //       setReconnectAttempts(prev => {
+    //         const updated = Math.min(prev + 1, 5);
+    //         reconnectAttemptsRef.current = updated;
+    //         return updated;
+    //       });
+    //       createWebSocketConnection.current(currentSymbolRef.current);
+    //     }, delay);
+    //   } else {
+    //     console.error('❌ Max reconnection attempts reached, switching to REST fallback');
+    //     setWsError(true);
         
-        // Start REST fallback when WebSocket fails completely
-        startRestFallback.current(currentSymbolRef.current);
-      }
-    };
+    //     // Start REST fallback when WebSocket fails completely
+    //     startRestFallback.current(currentSymbolRef.current);
+    //   }
+    // };
 
-    return ws;
+    // return ws;
   });
 
   // WebSocket connection effect

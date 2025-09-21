@@ -74,26 +74,27 @@ export default function Home() {
   
   // WebSocket connection for real-time prices
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+    // const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    // // Disabled on Vercel: local /ws cannot upgrade to WebSocket.
+    // const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
     
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'price_update') {
-          setPrices(data.data);
-        }
-      } catch (error) {
-        console.error('WebSocket message error:', error);
-      }
-    };
+    // ws.onmessage = (event) => {
+    //   try {
+    //     const data = JSON.parse(event.data);
+    //     if (data.type === 'price_update') {
+    //       setPrices(data.data);
+    //     }
+    //   } catch (error) {
+    //     console.error('WebSocket message error:', error);
+    //   }
+    // };
     
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: 'subscribe', symbol: 'BTCUSDT' }));
-      ws.send(JSON.stringify({ type: 'subscribe', symbol: 'ETHUSDT' }));
-    };
+    // ws.onopen = () => {
+    //   ws.send(JSON.stringify({ type: 'subscribe', symbol: 'BTCUSDT' }));
+    //   ws.send(JSON.stringify({ type: 'subscribe', symbol: 'ETHUSDT' }));
+    // };
     
-    return () => ws.close();
+    // return () => ws.close();
   }, []);
   
   // Update ticker data when received
