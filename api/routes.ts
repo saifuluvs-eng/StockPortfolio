@@ -1,46 +1,23 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
-import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
-import { isAuthenticated } from "./auth";
+import { setupAuth,} from "./replitAuth";
 import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
 import { portfolioService } from "./services/portfolioService";
-import { binanceWebSocketService } from "./services/binanceWebSocketService";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
-export interface RegisterRoutesOptions {
-  enableWebSockets?: boolean;
-}
+export function registerRoutes(app: Express): void {
+  // Auth middleware
+  //await setupAuth(app);
 
-export async function registerRoutes(
-  app: Express,
-  options: RegisterRoutesOptions = {},
-): Promise<Server | undefined> {
-  const { enableWebSockets = true } = options;
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req, res) => {
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const authUser = req.user!;
-      const profile = await storage.upsertUser({
-        id: authUser.id,
-        email: authUser.email ?? undefined,
-        displayName: authUser.displayName ?? undefined,
-        profileImageUrl: authUser.picture ?? undefined,
-      });
-
-      res.json({
-        id: profile.id,
-        email: profile.email ?? authUser.email ?? null,
-        displayName: profile.displayName ?? authUser.displayName ?? null,
-        firstName: profile.firstName ?? null,
-        lastName: profile.lastName ?? null,
-        profileImageUrl: profile.profileImageUrl ?? authUser.picture ?? null,
-        createdAt: profile.createdAt ?? null,
-        updatedAt: profile.updatedAt ?? null,
-      });
+      const userId = "demo-user";
+      const user = await storage.getUser(userId);
+      res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -50,17 +27,7 @@ export async function registerRoutes(
   // Enhanced Portfolio routes
   app.get('/api/portfolio', async (req: any, res) => {
     try {
-      if (!req.user) {
-        return res.json({
-          totalValue: 0,
-          totalPnL: 0,
-          totalPnLPercent: 0,
-          dayChange: 0,
-          dayChangePercent: 0,
-          positions: []
-        });
-      }
-      const userId = req.user.id;
+      const userId = "demo-user";
       const summary = await portfolioService.getPortfolioSummary(userId);
       res.json(summary);
     } catch (error) {
@@ -71,10 +38,7 @@ export async function registerRoutes(
 
   app.get('/api/portfolio/allocation', async (req: any, res) => {
     try {
-      if (!req.user) {
-        return res.json([]);
-      }
-      const userId = req.user.id;
+      const userId = "demo-user";
       const allocation = await portfolioService.getAssetAllocation(userId);
       res.json(allocation);
     } catch (error) {
@@ -85,21 +49,7 @@ export async function registerRoutes(
 
   app.get('/api/portfolio/performance', async (req: any, res) => {
     try {
-      if (!req.user) {
-        return res.json({
-          totalReturn: 0,
-          totalReturnPercent: 0,
-          volatility: 0,
-          sharpeRatio: 0,
-          maxDrawdown: 0,
-          winRate: 0,
-          avgWinPercent: 0,
-          avgLossPercent: 0,
-          bestTrade: 0,
-          worstTrade: 0
-        });
-      }
-      const userId = req.user.id;
+      const userId = "demo-user";
       const days = parseInt(req.query.days as string) || 30;
       const metrics = await portfolioService.getPerformanceMetrics(userId, days);
       res.json(metrics);
@@ -111,10 +61,7 @@ export async function registerRoutes(
 
   app.get('/api/portfolio/analytics', async (req: any, res) => {
     try {
-      if (!req.user) {
-        return res.json([]);
-      }
-      const userId = req.user.id;
+      const userId = "demo-user";
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const analytics = await storage.getPortfolioAnalytics(userId, startDate, endDate);
@@ -127,10 +74,7 @@ export async function registerRoutes(
 
   app.get('/api/portfolio/transactions', async (req: any, res) => {
     try {
-      if (!req.user) {
-        return res.json([]);
-      }
-      const userId = req.user.id;
+      const userId = "demo-user";
       const symbol = req.query.symbol as string;
       const transactions = await portfolioService.getTransactionHistory(userId, symbol);
       res.json(transactions);
@@ -140,9 +84,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/portfolio/transactions', isAuthenticated, async (req: any, res) => {
+  app.post('/api/portfolio/transactions', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = "demo-user";
       const validatedData = insertTradeTransactionSchema.parse({
         ...req.body,
         userId,
@@ -160,9 +104,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/portfolio', isAuthenticated, async (req: any, res) => {
+  app.post('/api/portfolio', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = "demo-user";
       const validatedData = insertPortfolioPositionSchema.parse({
         ...req.body,
         userId,
@@ -180,9 +124,9 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/portfolio/:id', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/portfolio/:id', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = "demo-user";
       const { id } = req.params;
       
       const validatedData = insertPortfolioPositionSchema.omit({ userId: true }).parse(req.body);
@@ -203,9 +147,9 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/portfolio/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/portfolio/:id', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = "demo-user";
       const { id } = req.params;
       
       const deleted = await storage.deletePortfolioPosition(id, userId);
@@ -234,8 +178,7 @@ export async function registerRoutes(
 
   app.get('/api/market/gainers', async (req, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
-      const gainers = await binanceService.getTopGainers(limit);
+      const gainers = await binanceService.getTopGainers();
       res.json(gainers);
     } catch (error) {
       console.error("Error fetching gainers:", error);
@@ -292,6 +235,18 @@ export async function registerRoutes(
     }
   });
 
+  // Ticker data endpoint for charts
+  app.get('/api/market/ticker/:symbol', async (req, res) => {
+    try {
+      const { symbol } = req.params;
+      const ticker = await binanceService.getTickerData(symbol);
+      res.json(ticker);
+    } catch (error) {
+      console.error("Error fetching ticker data:", error);
+      res.status(500).json({ message: "Failed to fetch ticker data" });
+    }
+  });
+
   app.get('/api/ai/sentiment/:symbol/:timeframe', async (req, res) => {
     try {
       const { symbol, timeframe = '4h' } = req.params;
@@ -314,27 +269,18 @@ export async function registerRoutes(
   // Scanner routes
   app.post('/api/scanner/scan', async (req: any, res) => {
     try {
-      console.log('SCAN route hit. Body:', req.body);
+      const userId = "demo-user";
       const { symbol, timeframe, filters } = req.body;
-
-      // Allow scanning BTCUSDT without authentication
-      if (symbol.toUpperCase() !== 'BTCUSDT' && !req.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
-      }
-
-      const userId = req.user?.id;
       
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
       
-      // Save scan history only for authenticated users
-      if (userId) {
-        await storage.createScanHistory({
-          userId,
-          scanType: 'custom',
-          filters: { symbol, timeframe, ...filters },
-          results: analysis,
-        });
-      }
+      // Save scan history
+      await storage.createScanHistory({
+        userId,
+        scanType: 'custom',
+        filters: { symbol, timeframe, ...filters },
+        results: analysis,
+      });
       
       res.json(analysis);
     } catch (error) {
@@ -343,9 +289,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/scanner/high-potential', isAuthenticated, async (req: any, res) => {
+  app.post('/api/scanner/high-potential', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = "demo-user";
       const filters = req.body;
       
       const results = await technicalIndicators.scanHighPotential(filters);
@@ -368,10 +314,7 @@ export async function registerRoutes(
   // Watchlist routes
   app.get('/api/watchlist', async (req: any, res) => {
     try {
-      if (!req.user) {
-        return res.json([]);
-      }
-      const userId = req.user.id;
+      const userId = "demo-user";
       const watchlist = await storage.getWatchlist(userId);
       res.json(watchlist);
     } catch (error) {
@@ -380,9 +323,9 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/watchlist', isAuthenticated, async (req: any, res) => {
+  app.post('/api/watchlist', async (req: any, res) => {
     try {
-      const userId = req.user.id;
+      const userId = "demo-user";
       const validatedData = insertWatchlistItemSchema.parse({
         ...req.body,
         userId,
@@ -399,144 +342,4 @@ export async function registerRoutes(
       }
     }
   });
-  if (!enableWebSockets) {
-    return undefined;
-  }
-
-  const httpServer = createServer(app);
-
-  // WebSocket server for real-time updates
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-  // Track subscribed symbols and connected clients
-  const clientSubscriptions = new Map<WebSocket, Set<string>>();
-  const activeSymbolSubscriptions = new Map<string, number>(); // symbol -> subscriber count
-  const symbolCallbacks = new Map<string, (data: any) => void>();
-  const popularSymbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'ADAUSDT'];
-
-  // Create unified callback for all symbol updates
-  const createSymbolCallback = (symbol: string) => {
-    return (data: any) => {
-      const clients = Array.from(wss.clients).filter(client =>
-        client.readyState === WebSocket.OPEN
-      );
-      
-      if (clients.length > 0) {
-        const priceUpdate = {
-          type: 'price_update',
-          symbol: data.symbol,
-          data: {
-            lastPrice: data.lastPrice,
-            priceChangePercent: data.priceChangePercent,
-            highPrice: data.highPrice,
-            lowPrice: data.lowPrice,
-            volume: data.volume,
-            quoteVolume: data.quoteVolume,
-            timestamp: data.timestamp
-          }
-        };
-
-        // Only send to clients subscribed to this symbol
-        clients.forEach(client => {
-          const subscribedSymbols = clientSubscriptions.get(client) || new Set();
-          if (subscribedSymbols.has(symbol)) {
-            try {
-              client.send(JSON.stringify(priceUpdate));
-            } catch (error) {
-              console.error(`Failed to send data to client for ${symbol}:`, error);
-            }
-          }
-        });
-      }
-    };
-  };
-
-  wss.on('connection', (ws: WebSocket) => {
-    console.log('Client connected to WebSocket');
-    
-    // Initialize empty subscription set for this client
-    clientSubscriptions.set(ws, new Set<string>());
-    
-    ws.on('message', (message: string) => {
-      try {
-        const data = JSON.parse(message);
-        const clientSymbols = clientSubscriptions.get(ws) || new Set<string>();
-        
-        if (data.type === 'subscribe' && data.symbol) {
-          const symbol = data.symbol.toUpperCase();
-          console.log(`📡 Client subscribing to: ${symbol}`);
-          
-          // Add to client's subscription list
-          clientSymbols.add(symbol);
-          clientSubscriptions.set(ws, clientSymbols);
-          
-          // Track global symbol subscriptions
-          const currentCount = activeSymbolSubscriptions.get(symbol) || 0;
-          activeSymbolSubscriptions.set(symbol, currentCount + 1);
-          
-          // If this is the first subscription to this symbol, start Binance stream
-          if (currentCount === 0) {
-            console.log(`🚀 Starting Binance stream for ${symbol}`);
-            const callback = createSymbolCallback(symbol);
-            symbolCallbacks.set(symbol, callback);
-            binanceWebSocketService.subscribeToTicker(symbol, callback);
-          }
-          
-        } else if (data.type === 'unsubscribe' && data.symbol) {
-          const symbol = data.symbol.toUpperCase();
-          console.log(`🔇 Client unsubscribing from: ${symbol}`);
-          
-          // Remove from client's subscription list
-          clientSymbols.delete(symbol);
-          clientSubscriptions.set(ws, clientSymbols);
-          
-          // Decrease global symbol subscription count
-          const currentCount = activeSymbolSubscriptions.get(symbol) || 0;
-          if (currentCount <= 1) {
-            // Last subscriber, stop Binance stream
-            console.log(`🛑 Stopping Binance stream for ${symbol}`);
-            activeSymbolSubscriptions.delete(symbol);
-            symbolCallbacks.delete(symbol);
-            binanceWebSocketService.unsubscribe(symbol);
-          } else {
-            activeSymbolSubscriptions.set(symbol, currentCount - 1);
-          }
-        }
-      } catch (error) {
-        console.error('WebSocket message error:', error);
-      }
-    });
-
-    ws.on('close', () => {
-      console.log('Client disconnected from WebSocket');
-      
-      // Clean up subscriptions for this client
-      const clientSymbols = clientSubscriptions.get(ws) || new Set<string>();
-      for (const symbol of Array.from(clientSymbols)) {
-        const currentCount = activeSymbolSubscriptions.get(symbol) || 0;
-        if (currentCount <= 1 && !popularSymbols.includes(symbol)) {
-          // Last subscriber, stop Binance stream
-          console.log(`🛑 Stopping Binance stream for ${symbol} (client disconnect)`);
-          activeSymbolSubscriptions.delete(symbol);
-          symbolCallbacks.delete(symbol);
-          binanceWebSocketService.unsubscribe(symbol);
-        } else {
-          activeSymbolSubscriptions.set(symbol, currentCount - 1);
-        }
-      }
-      
-      // Remove client from tracking
-      clientSubscriptions.delete(ws);
-    });
-  });
-
-  // Initialize WebSocket service for popular symbols to ensure they're always available
-  popularSymbols.forEach(symbol => {
-    const callback = createSymbolCallback(symbol);
-    symbolCallbacks.set(symbol, callback);
-    binanceWebSocketService.subscribeToTicker(symbol, callback);
-    activeSymbolSubscriptions.set(symbol, 1); // Keep alive even with no clients
-  });
-
-  return httpServer;
 }
