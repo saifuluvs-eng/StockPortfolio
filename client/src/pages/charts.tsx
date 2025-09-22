@@ -10,12 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-// import { apiRequest } from "@/lib/queryClient"; // ❌ not needed anymore
+import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { 
+import {
   BarChart3,
-  TrendingUp, 
+  TrendingUp,
   TrendingDown,
   Activity,
   DollarSign,
@@ -24,7 +24,7 @@ import {
   Search
 } from "lucide-react";
 
-// ✅ direct Binance WS helper (client-only)
+// Direct Binance WS helper (client-only)
 import { openSpotTickerStream } from "../lib/binanceWs";
 
 interface PriceData {
@@ -43,25 +43,25 @@ interface ScanResult {
   price: number;
   indicators: {
     [key: string]: {
-      value: number | string; // ✅ allow number or string (e.g., "72.5%")
-      signal: 'bullish' | 'bearish' | 'neutral';
+      value: number;
+      signal: "bullish" | "bearish" | "neutral";
       score: number;
       tier: number;
       description: string;
     };
   };
   totalScore: number;
-  recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
+  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
 }
 
-const DEFAULT_TIMEFRAME = "240"; // 4 hours
+const DEFAULT_TIMEFRAME = "240"; // 4h
 
 const TIMEFRAMES = [
   { value: "15", label: "15min", display: "15m", backend: "15m" },
   { value: "60", label: "1hr", display: "1h", backend: "1h" },
   { value: "240", label: "4hr", display: "4h", backend: "4h" },
   { value: "D", label: "1Day", display: "1D", backend: "1d" },
-  { value: "W", label: "1Week", display: "1W", backend: "1w" },
+  { value: "W", label: "1Week", display: "1W", backend: "1w" }
 ];
 
 export default function Charts() {
@@ -70,33 +70,30 @@ export default function Charts() {
 
   // Parse URL params
   const urlParams = new URLSearchParams(window.location.search);
-  const symbolFromUrl = urlParams.get('symbol');
-  const shouldAutoScan = urlParams.get('scan') === 'true';
+  const symbolFromUrl = urlParams.get("symbol");
+  const shouldAutoScan = urlParams.get("scan") === "true";
 
   // State
-  const [selectedSymbol, setSelectedSymbol] = useState(symbolFromUrl || "BTCUSDT");
+  const [selectedSymbol, setSelectedSymbol] = useState((symbolFromUrl || "BTCUSDT").toUpperCase());
   const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
-  const [showTechnicals, setShowTechnicals] = useState(true);
-  const [searchInput, setSearchInput] = useState(symbolFromUrl ? symbolFromUrl.replace('USDT', '') : "BTC");
+  const [showTechnicals] = useState(true);
+  const [searchInput, setSearchInput] = useState(symbolFromUrl ? symbolFromUrl.replace("USDT", "") : "BTC");
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
   // Live price data
   const [priceData, setPriceData] = useState<PriceData | null>(null);
-  const [wsConnected, setWsConnected] = useState(false);
-  const [wsError, setWsError] = useState(false);
 
-  // Loading helpers
-  const showLoadingState = !priceData;
-  const getLoadingMessage = () => (!priceData ? "Loading..." : "...");
-
-  // ✅ Direct Binance WS (no local /ws)
+  // --- Binance WS subscription (flicker-proof) ---
   useEffect(() => {
-    setWsConnected(false);
-    setWsError(false);
+    // Clear old price immediately so UI doesn't show stale coin
+    setPriceData(null);
+
+    let active = true; // kills late events from the previous subscription
 
     const unsubscribe = openSpotTickerStream([selectedSymbol], (t) => {
+      if (!active) return;
       if (t.symbol.toUpperCase() !== selectedSymbol.toUpperCase()) return;
-      setWsConnected(true);
+
       setPriceData({
         symbol: t.symbol,
         lastPrice: t.lastPrice,
@@ -110,61 +107,57 @@ export default function Charts() {
     });
 
     return () => {
+      active = false;
       unsubscribe?.();
-      setWsConnected(false);
     };
   }, [selectedSymbol]);
+
+  // Use only matching price payload to render (prevents cross-coin flashes)
+  const latestPrice = priceData?.symbol?.toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
+  const showLoadingState = !latestPrice;
+  const getLoadingMessage = () => (!latestPrice ? "Loading..." : "...");
 
   // --- Scanner logic ---
   const [hasAutoScanned, setHasAutoScanned] = useState(false);
 
   const scanMutation = useMutation({
     mutationFn: async () => {
-      const timeframeConfig = TIMEFRAMES.find(tf => tf.value === selectedTimeframe);
+      const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
       const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
 
-      // ✅ send JSON explicitly; handle non-OK responses
-      const response = await fetch('/api/scanner/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symbol: selectedSymbol, timeframe: backendTimeframe }),
+      const res = await apiRequest("POST", "/api/scanner/scan", {
+        symbol: selectedSymbol,
+        timeframe: backendTimeframe
       });
 
-      if (!response.ok) {
-        const text = await response.text().catch(() => '');
-        const err: any = new Error('Scan failed');
-        err.status = response.status;
-        err.body = text;
-        throw err;
+      if (!res.ok) {
+        throw new Error("Scan failed");
       }
-
-      return response.json();
+      return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: (data: ScanResult) => {
       setScanResult(data);
     },
-    onError: (error: any) => {
-      if (isUnauthorizedError?.(error)) {
+    onError: (error: unknown) => {
+      if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
           description: "You are logged out. Logging in again...",
-          variant: "destructive",
+          variant: "destructive"
         });
         signInWithGoogle().catch((authError) => {
           console.error("Failed to sign in after unauthorized error", authError);
         });
         return;
       }
-      const status = error?.status;
-      const msg = status
-        ? `Scanner unavailable (HTTP ${status}). Try again shortly.`
-        : "Failed to analyze symbol. Please try again.";
-      toast({ title: "Analysis Failed", description: msg, variant: "destructive" });
-      console.error("scan error:", error);
-    },
+      toast({
+        title: "Analysis Failed",
+        description: "Failed to analyze symbol. Please try again.",
+        variant: "destructive"
+      });
+    }
   });
 
-  // Auto-scan on load
   useEffect(() => {
     if (isAuthenticated && !scanMutation.isPending && !hasAutoScanned) {
       if ((selectedSymbol === "BTCUSDT" && !scanResult) || (shouldAutoScan && symbolFromUrl)) {
@@ -177,18 +170,16 @@ export default function Charts() {
     }
   }, [isAuthenticated, selectedSymbol, scanResult, scanMutation, shouldAutoScan, symbolFromUrl, hasAutoScanned]);
 
-  // Track first scan
   const hasScannedRef = useRef(false);
   useEffect(() => {
     if (scanResult) hasScannedRef.current = true;
   }, [scanResult]);
 
-  // Re-scan on timeframe change after first scan
   useEffect(() => {
     if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
       scanMutation.mutate();
     }
-  }, [selectedTimeframe, isAuthenticated]);
+  }, [selectedTimeframe, isAuthenticated]); // re-scan on timeframe change
 
   // --- UI handlers ---
   const handleSearch = () => {
@@ -196,7 +187,7 @@ export default function Charts() {
       toast({
         title: "Feature Locked",
         description: "Please log in to search for other coins.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -204,38 +195,38 @@ export default function Charts() {
       toast({
         title: "Invalid Input",
         description: "Please enter a coin symbol (e.g., BTC, ETH, SOL)",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
     const coinSymbol = searchInput.trim().toUpperCase();
-    const fullSymbol = coinSymbol.endsWith('USDT') ? coinSymbol : coinSymbol + 'USDT';
+    const fullSymbol = coinSymbol.endsWith("USDT") ? coinSymbol : coinSymbol + "USDT";
     setSelectedSymbol(fullSymbol);
-    setSearchInput('');
+    setSearchInput("");
     toast({
       title: "Symbol Updated",
-      description: `Loading ${coinSymbol.replace('USDT', '')}/USDT chart`,
+      description: `Loading ${coinSymbol.replace("USDT", "")}/USDT chart`
     });
   };
 
   const handleScan = () => {
-    if (searchInput.trim() && searchInput.trim().toUpperCase() !== selectedSymbol.replace('USDT', '')) {
+    if (searchInput.trim() && searchInput.trim().toUpperCase() !== selectedSymbol.replace("USDT", "")) {
       const coinSymbol = searchInput.trim().toUpperCase();
-      const fullSymbol = coinSymbol.endsWith('USDT') ? coinSymbol : coinSymbol + 'USDT';
+      const fullSymbol = coinSymbol.endsWith("USDT") ? coinSymbol : coinSymbol + "USDT";
       setSelectedSymbol(fullSymbol);
-      setSearchInput('');
+      setSearchInput("");
       toast({
         title: "Symbol Updated & Scanning",
-        description: `Analyzing ${coinSymbol.replace('USDT', '')}/USDT`,
+        description: `Analyzing ${coinSymbol.replace("USDT", "")}/USDT`
       });
       setTimeout(() => scanMutation.mutate(), 100);
       return;
     }
     if (!selectedSymbol.trim()) {
       toast({
-        title: "Invalid Symbol", 
+        title: "Invalid Symbol",
         description: "Please select a valid symbol",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
@@ -243,23 +234,23 @@ export default function Charts() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
+    if (e.key === "Enter") handleSearch();
   };
 
-  const handleTimeframeChange = (timeframe: string) => {
-    setSelectedTimeframe(timeframe);
-  };
+  const handleTimeframeChange = (timeframe: string) => setSelectedTimeframe(timeframe);
 
   // --- format helpers ---
-  const formatPrice = (price: string) => {
+  const formatPrice = (price?: string) => {
     const num = parseFloat(price || "0");
+    if (Number.isNaN(num)) return "$0.00";
     if (num >= 1000) return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
     if (num >= 1) return `$${num.toFixed(4)}`;
     return `$${num.toFixed(8)}`;
   };
 
-  const formatVolume = (volume: string) => {
+  const formatVolume = (volume?: string) => {
     const num = parseFloat(volume || "0");
+    if (Number.isNaN(num)) return "$0.00";
     if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
     if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
     if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
@@ -267,24 +258,29 @@ export default function Charts() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 10) return 'text-green-600';
-    if (score >= 5) return 'text-green-500';
-    if (score <= -10) return 'text-red-600';
-    if (score <= -5) return 'text-red-500';
-    return 'text-yellow-500';
+    if (score >= 10) return "text-green-600";
+    if (score >= 5) return "text-green-500";
+    if (score <= -10) return "text-red-600";
+    if (score <= -5) return "text-red-500";
+    return "text-yellow-500";
   };
 
   const getRecommendationColor = (recommendation: string) => {
     switch (recommendation) {
-      case 'strong_buy': return 'bg-green-600 text-white';
-      case 'buy':        return 'bg-green-500 text-white';
-      case 'strong_sell':return 'bg-red-600 text-white';
-      case 'sell':       return 'bg-red-500 text-white';
-      default:           return 'bg-yellow-500 text-black';
+      case "strong_buy":
+        return "bg-green-600 text-white";
+      case "buy":
+        return "bg-green-500 text-white";
+      case "strong_sell":
+        return "bg-red-600 text-white";
+      case "sell":
+        return "bg-red-500 text-white";
+      default:
+        return "bg-yellow-500 text-black";
     }
   };
 
-  const priceChange = showLoadingState ? 0 : (priceData ? parseFloat(priceData.priceChangePercent) : 0);
+  const priceChange = showLoadingState ? 0 : parseFloat(latestPrice?.priceChangePercent || "0");
   const isPositive = priceChange > 0;
 
   return (
@@ -318,7 +314,7 @@ export default function Charts() {
                   />
                   <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
                 </div>
-                <Button 
+                <Button
                   onClick={handleSearch}
                   variant="outline"
                   className="px-4"
@@ -328,7 +324,7 @@ export default function Charts() {
                   <Search className="w-4 h-4" />
                 </Button>
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <label className="text-sm font-medium text-foreground">Timeframe:</label>
                 <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
@@ -344,8 +340,8 @@ export default function Charts() {
                   </SelectContent>
                 </Select>
               </div>
-              
-              <Button 
+
+              <Button
                 onClick={handleScan}
                 disabled={scanMutation.isPending || !isAuthenticated}
                 className="bg-primary text-primary-foreground hover:bg-primary/90"
@@ -355,11 +351,12 @@ export default function Charts() {
                 {scanMutation.isPending ? "Scanning..." : "Scan"}
               </Button>
             </div>
-            
+
             {/* Current Symbol Display */}
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Activity className="w-3 h-3" />
-              Currently Viewing: <span className="font-medium text-foreground">{selectedSymbol.replace('USDT', '/USDT')}</span>
+              Currently Viewing:{" "}
+              <span className="font-medium text-foreground">{selectedSymbol.replace("USDT", "/USDT")}</span>
             </div>
           </CardContent>
         </Card>
@@ -372,7 +369,7 @@ export default function Charts() {
                 <div>
                   <p className="text-sm text-muted-foreground">Current Price</p>
                   <p className="text-lg font-bold text-foreground" data-testid="current-price">
-                    {showLoadingState ? getLoadingMessage() : formatPrice(priceData?.lastPrice || "0")}
+                    {showLoadingState ? getLoadingMessage() : formatPrice(latestPrice?.lastPrice)}
                   </p>
                 </div>
                 <DollarSign className="w-5 h-5 text-primary" />
@@ -386,16 +383,12 @@ export default function Charts() {
                 <div>
                   <p className="text-sm text-muted-foreground">24h Change</p>
                   <div className="flex items-center gap-1">
-                    <p className={`text-lg font-bold ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                      {showLoadingState ? getLoadingMessage() : `${priceChange > 0 ? '+' : ''}${priceChange.toFixed(2)}%`}
+                    <p className={`text-lg font-bold ${isPositive ? "text-green-500" : "text-red-500"}`}>
+                      {showLoadingState ? getLoadingMessage() : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`}
                     </p>
                   </div>
                 </div>
-                {isPositive ? (
-                  <TrendingUp className="w-5 h-5 text-green-500" />
-                ) : (
-                  <TrendingDown className="w-5 h-5 text-red-500" />
-                )}
+                {isPositive ? <TrendingUp className="w-5 h-5 text-green-500" /> : <TrendingDown className="w-5 h-5 text-red-500" />}
               </div>
             </CardContent>
           </Card>
@@ -406,7 +399,7 @@ export default function Charts() {
                 <div>
                   <p className="text-sm text-muted-foreground">24h Volume</p>
                   <p className="text-lg font-bold text-foreground">
-                    {showLoadingState ? getLoadingMessage() : formatVolume(priceData?.quoteVolume || "0")}
+                    {showLoadingState ? getLoadingMessage() : formatVolume(latestPrice?.quoteVolume)}
                   </p>
                 </div>
                 <Volume className="w-5 h-5 text-secondary" />
@@ -420,9 +413,11 @@ export default function Charts() {
                 <div>
                   <p className="text-sm text-muted-foreground">Today's High/Low</p>
                   <p className="text-sm font-medium text-foreground">
-                    {showLoadingState ? getLoadingMessage() : (
+                    {showLoadingState ? (
+                      getLoadingMessage()
+                    ) : (
                       <>
-                        {formatPrice(priceData?.lowPrice || "0")} - {formatPrice(priceData?.highPrice || "0")}
+                        {formatPrice(latestPrice?.lowPrice)} - {formatPrice(latestPrice?.highPrice)}
                       </>
                     )}
                   </p>
@@ -441,18 +436,17 @@ export default function Charts() {
                     <p className="text-sm text-muted-foreground">Overall Analysis</p>
                     <div className="flex items-center space-x-2 mt-1">
                       <span className={`text-lg font-bold ${getScoreColor(scanResult.totalScore)}`} data-testid="text-total-score">
-                        {scanResult.totalScore > 0 ? '+' : ''}{scanResult.totalScore}
+                        {scanResult.totalScore > 0 ? "+" : ""}
+                        {scanResult.totalScore}
                       </span>
                       <Badge className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`} data-testid="badge-recommendation">
-                        {scanResult.recommendation.replace(/_/g, ' ').toUpperCase()}
+                        {scanResult.recommendation.replace(/_/g, " ").toUpperCase()}
                       </Badge>
                     </div>
                   </div>
                   <div>
                     <Progress value={Math.max(0, Math.min(100, ((scanResult.totalScore + 30) / 60) * 100))} className="h-2 mb-1" />
-                    <p className="text-xs text-muted-foreground">
-                      Range: -30 to +30
-                    </p>
+                    <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
                   </div>
                 </div>
               </CardContent>
@@ -485,7 +479,7 @@ export default function Charts() {
           )}
 
           {/* TradingView Chart - Right */}
-          <div className={`${showTechnicals ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+          <div className={`${showTechnicals ? "lg:col-span-2" : "lg:col-span-3"}`}>
             <TradingViewChart
               key={`${selectedSymbol}-${selectedTimeframe}-${showTechnicals}-dark-v2`}
               symbol={selectedSymbol}
@@ -505,20 +499,16 @@ export default function Charts() {
               <div>
                 <h4 className="font-medium text-foreground mb-1">Current Analysis</h4>
                 <p className="text-muted-foreground">
-                  {(priceChange > 0 ? "Bullish momentum" : "Bearish pressure")} detected on {selectedSymbol.replace('USDT', '/USDT')}
+                  {priceChange > 0 ? "Bullish momentum" : "Bearish pressure"} detected on {selectedSymbol.replace("USDT", "/USDT")}
                 </p>
               </div>
               <div>
                 <h4 className="font-medium text-foreground mb-1">Technical Indicators</h4>
-                <p className="text-muted-foreground">
-                  RSI, MACD, and Bollinger Bands are {showTechnicals ? "active" : "disabled"}
-                </p>
+                <p className="text-muted-foreground">RSI, MACD, and Bollinger Bands are {showTechnicals ? "active" : "disabled"}</p>
               </div>
               <div>
                 <h4 className="font-medium text-foreground mb-1">Data Source</h4>
-                <p className="text-muted-foreground">
-                  Live price from Binance (direct WebSocket)
-                </p>
+                <p className="text-muted-foreground">Live price from Binance (direct WebSocket)</p>
               </div>
             </div>
           </CardContent>
