@@ -1,6 +1,6 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
-import { setupAuth,} from "./replitAuth";
+import { setupAuth, isAuthenticated as replitIsAuthenticated } from "./replitAuth";
 import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
@@ -8,14 +8,27 @@ import { portfolioService } from "./services/portfolioService";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
+// A robust authentication middleware placeholder.
+// When authentication is enabled, this will protect routes.
+const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
+  // In a real app, you'd use the real authentication middleware.
+  // For now, we'll attach a demo user to the request object.
+  // This makes it easy to switch to real auth later.
+  (req as any).user = { id: "demo-user" };
+  next();
+  // return replitIsAuthenticated(req, res, next);
+};
+
 export function registerRoutes(app: Express): void {
   // Auth middleware
+  // TODO: Uncomment this when you are ready to enable real authentication.
   //await setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', async (req: any, res) => {
+  // This route should also be protected to get the currently logged-in user.
+  app.get('/api/auth/user', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
@@ -25,9 +38,9 @@ export function registerRoutes(app: Express): void {
   });
 
   // Enhanced Portfolio routes
-  app.get('/api/portfolio', async (req: any, res) => {
+  app.get('/api/portfolio', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const summary = await portfolioService.getPortfolioSummary(userId);
       res.json(summary);
     } catch (error) {
@@ -36,9 +49,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.get('/api/portfolio/allocation', async (req: any, res) => {
+  app.get('/api/portfolio/allocation', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const allocation = await portfolioService.getAssetAllocation(userId);
       res.json(allocation);
     } catch (error) {
@@ -47,9 +60,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.get('/api/portfolio/performance', async (req: any, res) => {
+  app.get('/api/portfolio/performance', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const days = parseInt(req.query.days as string) || 30;
       const metrics = await portfolioService.getPerformanceMetrics(userId, days);
       res.json(metrics);
@@ -59,9 +72,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.get('/api/portfolio/analytics', async (req: any, res) => {
+  app.get('/api/portfolio/analytics', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
       const analytics = await storage.getPortfolioAnalytics(userId, startDate, endDate);
@@ -72,9 +85,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.get('/api/portfolio/transactions', async (req: any, res) => {
+  app.get('/api/portfolio/transactions', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const symbol = req.query.symbol as string;
       const transactions = await portfolioService.getTransactionHistory(userId, symbol);
       res.json(transactions);
@@ -84,9 +97,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.post('/api/portfolio/transactions', async (req: any, res) => {
+  app.post('/api/portfolio/transactions', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const validatedData = insertTradeTransactionSchema.parse({
         ...req.body,
         userId,
@@ -104,9 +117,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.post('/api/portfolio', async (req: any, res) => {
+  app.post('/api/portfolio', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const validatedData = insertPortfolioPositionSchema.parse({
         ...req.body,
         userId,
@@ -124,12 +137,14 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.patch('/api/portfolio/:id', async (req: any, res) => {
+  app.patch('/api/portfolio/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const { id } = req.params;
       
-      const validatedData = insertPortfolioPositionSchema.omit({ userId: true }).parse(req.body);
+      // For PATCH, we should allow partial updates.
+      // .partial() makes all fields in the schema optional.
+      const validatedData = insertPortfolioPositionSchema.partial().parse(req.body);
       
       const updated = await storage.updatePortfolioPosition(id, userId, validatedData);
       if (!updated) {
@@ -147,9 +162,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.delete('/api/portfolio/:id', async (req: any, res) => {
+  app.delete('/api/portfolio/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const { id } = req.params;
       
       const deleted = await storage.deletePortfolioPosition(id, userId);
@@ -165,7 +180,7 @@ export function registerRoutes(app: Express): void {
   });
 
   // Market data routes
-  app.get('/api/market/ticker/:symbol', async (req, res) => {
+  app.get('/api/market/ticker/:symbol', async (req: Request, res: Response) => {
     try {
       const { symbol } = req.params;
       const ticker = await binanceService.getTickerData(symbol);
@@ -176,7 +191,7 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.get('/api/market/gainers', async (req, res) => {
+  app.get('/api/market/gainers', async (req: Request, res: Response) => {
     try {
       const gainers = await binanceService.getTopGainers();
       res.json(gainers);
@@ -187,7 +202,7 @@ export function registerRoutes(app: Express): void {
   });
 
   // AI Analysis endpoints
-  app.post('/api/ai/analyze/:symbol', async (req, res) => {
+  app.post('/api/ai/analyze/:symbol', async (req: Request, res: Response) => {
     try {
       const { symbol } = req.params;
       const { analysisType = 'recommendation', timeframe = '4h' } = req.body;
@@ -212,7 +227,7 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.get('/api/ai/market-overview', async (req, res) => {
+  app.get('/api/ai/market-overview', async (req: Request, res: Response) => {
     try {
       // Get top gainers and market data
       const gainers = await binanceService.getTopGainers(20);
@@ -235,19 +250,7 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  // Ticker data endpoint for charts
-  app.get('/api/market/ticker/:symbol', async (req, res) => {
-    try {
-      const { symbol } = req.params;
-      const ticker = await binanceService.getTickerData(symbol);
-      res.json(ticker);
-    } catch (error) {
-      console.error("Error fetching ticker data:", error);
-      res.status(500).json({ message: "Failed to fetch ticker data" });
-    }
-  });
-
-  app.get('/api/ai/sentiment/:symbol/:timeframe', async (req, res) => {
+  app.get('/api/ai/sentiment/:symbol/:timeframe', async (req: Request, res: Response) => {
     try {
       const { symbol, timeframe = '4h' } = req.params;
       
@@ -267,9 +270,9 @@ export function registerRoutes(app: Express): void {
   });
 
   // Scanner routes
-  app.post('/api/scanner/scan', async (req: any, res) => {
+  app.post('/api/scanner/scan', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const { symbol, timeframe, filters } = req.body;
       
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
@@ -289,9 +292,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.post('/api/scanner/high-potential', async (req: any, res) => {
+  app.post('/api/scanner/high-potential', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const filters = req.body;
       
       const results = await technicalIndicators.scanHighPotential(filters);
@@ -312,9 +315,9 @@ export function registerRoutes(app: Express): void {
   });
 
   // Watchlist routes
-  app.get('/api/watchlist', async (req: any, res) => {
+  app.get('/api/watchlist', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const watchlist = await storage.getWatchlist(userId);
       res.json(watchlist);
     } catch (error) {
@@ -323,9 +326,9 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.post('/api/watchlist', async (req: any, res) => {
+  app.post('/api/watchlist', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = "demo-user";
+      const userId = (req as any).user.id;
       const validatedData = insertWatchlistItemSchema.parse({
         ...req.body,
         userId,
