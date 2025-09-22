@@ -1,175 +1,174 @@
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Check, X, HelpCircle, AlertTriangle } from "lucide-react";
+import * as React from "react";
 
-interface TechnicalAnalysis {
+/**
+ * Renders ALL indicators returned by the scan API instead of relying on a hardcoded list.
+ * - Sorts by tier (3 -> 1), then by |score| desc, then by name.
+ * - Colors: green=bullish, red=bearish, yellow=neutral.
+ * - Works with the ScanResult shape used on chart.tsx.
+ */
+
+type Signal = "bullish" | "bearish" | "neutral";
+
+type Indicator = {
+  value: number | null;
+  signal: Signal;
+  score: number;          // -3..+3 typically
+  tier: number;           // 1..3
+  description: string;
+  // (Optional) future-friendly fields like "name" can be added by the API; we fall back to the map key.
+};
+
+type ScanResult = {
   symbol: string;
   price: number;
-  indicators: {
-    [key: string]: {
-      value: number;
-      signal: 'bullish' | 'bearish' | 'neutral';
-      score: number;
-      tier: number;
-      description: string;
-    };
-  };
+  indicators: Record<string, Indicator>;
   totalScore: number;
-  recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
-}
+  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
+  meta?: Record<string, any>;
+};
 
-interface TechnicalIndicatorsProps {
-  analysis: TechnicalAnalysis;
-}
+export default function TechnicalIndicators({
+  analysis,
+}: {
+  analysis: ScanResult;
+}) {
+  const items = React.useMemo(() => {
+    const entries = Object.entries(analysis?.indicators || {});
+    // Show everything the API provided:
+    return entries
+      .map(([key, it]) => ({ key, ...it }))
+      .sort((a, b) => {
+        // Tier desc, then absolute score desc, then name asc
+        if (b.tier !== a.tier) return b.tier - a.tier;
+        const abs = Math.abs(b.score) - Math.abs(a.score);
+        if (abs !== 0) return abs;
+        return a.key.localeCompare(b.key);
+      });
+  }, [analysis]);
 
-export function TechnicalIndicators({ analysis }: TechnicalIndicatorsProps) {
-  const getSignalIcon = (signal: string) => {
-    switch (signal) {
-      case 'bullish':
-        return <Check className="w-4 h-4" />;
-      case 'bearish':
-        return <X className="w-4 h-4" />;
-      default:
-        return <HelpCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getBorderColor = (signal: string) => {
-    switch (signal) {
-      case 'bullish':
-        return 'border-l-green-500';
-      case 'bearish':
-        return 'border-l-red-500';
-      default:
-        return 'border-l-yellow-500';
-    }
-  };
-
-  const getBackgroundColor = (signal: string) => {
-    switch (signal) {
-      case 'bullish':
-        return 'bg-green-500/10';
-      case 'bearish':
-        return 'bg-red-500/10';
-      default:
-        return 'bg-yellow-500/10';
-    }
-  };
-
-  const getScoreColor = (score: number) => {
-    if (score > 0) return 'text-green-500';
-    if (score < 0) return 'text-red-500';
-    return 'text-yellow-500';
-  };
-
-  const getIndicatorTitle = (key: string) => {
-    const titles: { [key: string]: string } = {
-      'rsi': 'RSI (14) - Tier 2',
-      'macd': 'MACD (12, 26, 9) - Tier 1',
-      'ema_20': 'EMAs (20, 50) - Tier 1',
-      'ema_50': 'EMAs (20, 50) - Tier 1',
-      'bb_squeeze': 'Volatility: BB Squeeze',
-      'vwap_bias': 'VWAP Bias - Tier 3',
-      'volume_spike': 'Volume Spike - Tier 2',
-      'momentum_divergence': 'Momentum: RSI Divergence',
-      'price_action': 'Price Action: Candlestick',
-      'ema_crossover': 'Trend: EMA Crossover',
-      'support_resistance': 'Structure: Support/Resistance',
-      'order_book': 'Resistance: Order Book',
-      'atr_check': 'Volatility: ATR Check',
-      'pattern_consolidation': 'Pattern: Consolidation',
-      'pdi_mdi': '+DI / -DI (14) - Tier 2',
-      'adx': 'ADX (14) - Tier 1',
-      'obv': 'OBV (Confirmation) - Tier 2'
-    };
-    return titles[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const getDetailedDescription = (key: string, indicator: any, analysis: TechnicalAnalysis) => {
-    const price = analysis.price;
-    
-    const descriptions: { [key: string]: string } = {
-      'rsi': `RSI is ${indicator.value.toFixed(1)} (${indicator.signal === 'neutral' ? 'neutral' : indicator.signal}). Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pts.`,
-      'macd': indicator.signal === 'bullish' 
-        ? `MACD line is above signal line - bullish momentum. Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pts.`
-        : `MACD line is below signal line - bearish momentum. Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pts.`,
-      'ema_20': indicator.signal === 'bullish'
-        ? `EMA20 is above EMA50 - uptrend confirmed. Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pts.`
-        : `EMA20 is below EMA50 - downtrend confirmed. Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pts.`,
-      'bb_squeeze': indicator.signal === 'bullish'
-        ? 'Bollinger Bands are in a squeeze, indicating potential breakout.'
-        : 'Bollinger Bands show normal volatility levels.',
-      'vwap_bias': indicator.signal === 'bearish'
-        ? `Price ($${price.toFixed(2)}) is below VWAP ($${(price * 1.002).toFixed(2)}), indicating bearish control. Weighted score: ${indicator.score}/${indicator.tier} pt.`
-        : `Price ($${price.toFixed(2)}) is above VWAP ($${(price * 0.998).toFixed(2)}), indicating bullish control. Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pt.`,
-      'volume_spike': indicator.signal === 'bearish'
-        ? `No significant volume spike (${(indicator.value).toFixed(1)}x average). Weighted score: ${indicator.score}/${indicator.tier} pts.`
-        : `Significant volume spike detected (${(indicator.value).toFixed(1)}x average). Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pts.`,
-      'momentum_divergence': indicator.signal === 'bullish'
-        ? `RSI (${indicator.value.toFixed(1)}) shows potential for momentum divergence.`
-        : 'No significant momentum divergence detected.',
-      'price_action': 'No significant candlestick pattern detected in the last two candles.',
-      'ema_crossover': indicator.signal === 'bullish'
-        ? `Short-term EMA (${Math.floor(price * 0.99)}) is above long-term EMA (${Math.floor(price * 0.98)}).`
-        : `Short-term EMA is below long-term EMA - downtrend signal.`,
-      'support_resistance': `Price is approaching strong resistance at $${(price * 1.005).toFixed(2)} (${(Math.random() * 0.5).toFixed(2)}% away). Support is at $${(price * 0.995).toFixed(2)}.`,
-      'order_book': `Significant sell wall detected at $${(price * 1.001).toFixed(4)} (${(Math.random() * 0.2).toFixed(2)}% away).`,
-      'atr_check': `Low volatility (ATR: ${(Math.random() * 3 + 1).toFixed(2)}%). A ${Math.floor(Math.random() * 2 + 2)}% move is possible.`,
-      'pattern_consolidation': `Price range is ${(Math.random() * 3 + 1).toFixed(2)}%, which is narrow for consolidation.`,
-      'pdi_mdi': `+DI (${(Math.random() * 10 + 20).toFixed(1)}) is ${indicator.signal === 'bullish' ? 'above' : 'below'} -DI (${(Math.random() * 10 + 15).toFixed(1)}) indicating ${indicator.signal} momentum. Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pts.`,
-      'adx': `ADX is ${(Math.random() * 20 + 15).toFixed(0)} - trend strength is ${indicator.score > 0 ? 'strong' : 'moderate'}. Weighted score: ${indicator.score > 0 ? '+' : ''}${indicator.score}/${indicator.tier} pts.`,
-      'obv': `Volume ${indicator.signal === 'bearish' ? 'does not confirm' : 'confirms'} the price movement. Weighted score: ${indicator.score}/${indicator.tier} pts.`
-    };
-    
-    return descriptions[key] || indicator.description || `${indicator.signal === 'bullish' ? 'Bullish' : indicator.signal === 'bearish' ? 'Bearish' : 'Neutral'} signal detected. Score: ${indicator.score > 0 ? '+' : ''}${indicator.score}`;
-  };
-
-  const getRecommendationColor = (recommendation: string) => {
-    switch (recommendation) {
-      case 'strong_buy':
-        return 'bg-green-600 text-white';
-      case 'buy':
-        return 'bg-green-500 text-white';
-      case 'strong_sell':
-        return 'bg-red-600 text-white';
-      case 'sell':
-        return 'bg-red-500 text-white';
-      default:
-        return 'bg-yellow-500 text-black';
-    }
-  };
-
-  const scorePercentage = Math.max(0, Math.min(100, ((analysis.totalScore + 30) / 60) * 100));
+  if (!items.length) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        <svg className="w-12 h-12 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none">
+          <path d="M21 21l-4.35-4.35m2.1-5.4a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" stroke="currentColor" strokeWidth="1.5"/>
+        </svg>
+        <h3 className="text-lg font-medium mb-2">No Analysis Available</h3>
+        <p>Click “Scan” to analyze technical indicators and get detailed insights</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-3" data-testid="technical-indicators">
-      {Object.entries(analysis.indicators).map(([key, indicator]) => (
-        <div 
-          key={key} 
-          className={`border-l-4 ${getBorderColor(indicator.signal)} ${getBackgroundColor(indicator.signal)} p-4 rounded-r-lg`}
-          data-testid={`indicator-${key}`}
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-2">
-                {getSignalIcon(indicator.signal)}
-                <h3 className="font-semibold text-foreground text-base">
-                  {getIndicatorTitle(key)}
-                </h3>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {getDetailedDescription(key, indicator, analysis)}
-              </p>
-            </div>
-            <div className="ml-4 text-right">
-              <span className={`text-lg font-bold ${getScoreColor(indicator.score)}`}>
-                ({indicator.score > 0 ? '+' : ''}{indicator.score})
-              </span>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-3">
+      {items.map((it) => (
+        <IndicatorCard key={it.key} id={it.key} indicator={it} />
       ))}
-
     </div>
   );
+}
+
+function IndicatorCard({
+  id,
+  indicator,
+}: {
+  id: string;
+  indicator: Indicator & { key?: string };
+}) {
+  const { value, signal, score, tier, description } = indicator;
+
+  const border =
+    signal === "bullish"
+      ? "border-green-500/40"
+      : signal === "bearish"
+      ? "border-red-500/40"
+      : "border-yellow-500/40";
+
+  const dot =
+    signal === "bullish"
+      ? "bg-green-500"
+      : signal === "bearish"
+      ? "bg-red-500"
+      : "bg-yellow-500";
+
+  const badge =
+    signal === "bullish"
+      ? "text-green-500"
+      : signal === "bearish"
+      ? "text-red-500"
+      : "text-yellow-500";
+
+  const scoreText =
+    score > 0 ? `+${score}` : `${score}`;
+
+  return (
+    <div className={`relative rounded-xl border ${border} bg-card/40 p-3`}>
+      {/* tier stripe */}
+      <div
+        className={`absolute left-0 top-0 h-full w-1 rounded-l-xl ${
+          tier >= 3 ? "bg-primary" : tier === 2 ? "bg-primary/70" : "bg-primary/40"
+        }`}
+      />
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${dot}`} />
+            <h4 className="text-foreground text-sm font-semibold">
+              {prettyName(id)}
+            </h4>
+            <span className={`text-xs font-semibold ${badge}`}>({scoreText})</span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+        </div>
+        <div className="text-right">
+          <div className="text-xs uppercase text-muted-foreground">Signal</div>
+          <div className={`text-sm font-semibold ${badge}`}>
+            {signal.toUpperCase()}
+          </div>
+          {value !== null && Number.isFinite(value) && (
+            <div className="mt-1 text-xs text-muted-foreground">
+              Value: {formatValue(value)}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function prettyName(id: string) {
+  // Best-effort prettifier for common IDs; otherwise just title-case the id.
+  const map: Record<string, string> = {
+    rsi: "RSI (14)",
+    macd: "MACD (12,26,9)",
+    ema20: "EMA 20",
+    ema50: "EMA 50",
+    ema200: "EMA 200",
+    sma20: "SMA 20",
+    sma50: "SMA 50",
+    sma200: "SMA 200",
+    ma_stack: "MA Stack",
+    bollinger: "Bollinger Bands (20,2)",
+    stoch: "Stochastic (14,3)",
+    adx: "ADX (14)",
+    atr: "ATR (14)",
+    mfi: "MFI (14)",
+    cci: "CCI (20)",
+    vwap: "VWAP (20)",
+    change24: "24h Change",
+  };
+  if (map[id]) return map[id];
+  return id
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatValue(n: number) {
+  const a = Math.abs(n);
+  if (a >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (a >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+  if (a >= 1e3) return `${(n / 1e3).toFixed(2)}K`;
+  if (a === 0) return "0";
+  // adapt precision so tiny numbers don’t look like 0
+  const digits = a >= 1 ? 2 : a >= 0.01 ? 4 : 6;
+  return n.toFixed(digits);
 }
