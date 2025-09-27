@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm run build",
- "outputDirectory": "public",
+  "buildCommand": "npm run build && mv api api_disabled || true",
+  "outputDirectory": "public",
   "cleanUrls": true,
   "trailingSlash": false
 }
