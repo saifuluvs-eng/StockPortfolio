@@ -79,6 +79,7 @@
     "ws": "^8.18.0",
     "zod": "^3.24.2",
     "zod-validation-error": "^3.4.0"
+    "firebase": "^10.12.4"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.3.0",
