@@ -4,11 +4,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// keep your auth provider
 import { FirebaseAuthProvider } from "./hooks/useFirebaseAuth";
 
-// ✅ use wouter with hash location so routes are `/#/...`
-import { Router, useHashLocation } from "wouter";
+// ✅ Correct import paths for wouter + hash location
+import { Router } from "wouter";
+import useHashLocation from "wouter/use-hash-location";
 
 createRoot(document.getElementById("root")!).render(
   <Router hook={useHashLocation}>
