@@ -23,11 +23,9 @@ function Protected<T extends React.ComponentType<any>>(Component: T) {
     if (isLoading) {
       return null; // or a <LoadingSpinner />
     }
-
     if (!isAuthenticated) {
       return <Redirect to="/" />;
     }
-
     return <Component {...props} />;
   };
 }
@@ -44,10 +42,10 @@ function Router() {
       {/* Public root: Landing when logged out, Home when logged in */}
       <Route path="/" component={isAuthenticated ? Home : Landing} />
 
-      {/* ✅ Dedicated Dashboard route (secured) */}
-      <Route path="/dashboard" component={Protected(Home)} />
+      {/* ✅ Make Dashboard public temporarily to verify routing */}
+      <Route path="/dashboard" component={Home} />
 
-      {/* Other secured routes */}
+      {/* Other secured routes (keep these protected) */}
       <Route path="/portfolio" component={Protected(Portfolio)} />
       <Route path="/high-potential" component={Protected(HighPotential)} />
       <Route path="/gainers" component={Protected(Gainers)} />
