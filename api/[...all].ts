@@ -10,15 +10,13 @@
 // - GET /api/portfolio             -> empty list (valid empty state)
 // - GET /api/scanner/high-potential-> simple heuristic based on gainers
 
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-
 // ---------- helpers ----------
-function json(res: VercelResponse, code: number, body: any) {
+function json(res: any, code: number, body: any) {
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
   return res.status(code).json(body);
 }
-const ok = (res: VercelResponse, body: any) => json(res, 200, body);
-const bad = (res: VercelResponse, code: number, message: string, extra: any = {}) =>
+const ok = (res: any, body: any) => json(res, 200, body);
+const bad = (res: any, code: number, message: string, extra: any = {}) =>
   json(res, code, { ok: false, message, ...extra });
 
 const BINANCE = "https://api.binance.com";
@@ -110,14 +108,14 @@ const stochastic = (high: number[], low: number[], close: number[], p = 14, smoo
 };
 
 // ---------- route handlers ----------
-async function handleAlive(_req: VercelRequest, res: VercelResponse) {
+async function handleAlive(_req: any, res: any) {
   return ok(res, { ok: true, message: "API is alive", time: new Date().toISOString() });
 }
-async function handleHealth(_req: VercelRequest, res: VercelResponse) {
+async function handleHealth(_req: any, res: any) {
   return ok(res, { ok: true, message: "healthy", time: new Date().toISOString() });
 }
 
-async function handleTicker(_req: VercelRequest, res: VercelResponse, symbol: string) {
+async function handleTicker(_req: any, res: any, symbol: string) {
   if (!symbol) return bad(res, 400, "symbol required");
   const sym = symbol.toUpperCase();
   const r = await fetch(`${BINANCE}/api/v3/ticker/24hr?symbol=${encodeURIComponent(sym)}`);
@@ -126,7 +124,7 @@ async function handleTicker(_req: VercelRequest, res: VercelResponse, symbol: st
   return ok(res, { ok: true, symbol: sym, data });
 }
 
-async function handleGainers(_req: VercelRequest, res: VercelResponse) {
+async function handleGainers(_req: any, res: any) {
   const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`);
   if (!r.ok) return bad(res, 502, "Binance 24hr all error", { detail: await r.text() });
   const list: any[] = await r.json();
@@ -144,7 +142,7 @@ async function handleGainers(_req: VercelRequest, res: VercelResponse) {
   return ok(res, { ok: true, gainers: filtered });
 }
 
-async function handleScan(req: VercelRequest, res: VercelResponse) {
+async function handleScan(req: any, res: any) {
   const q = req.query || {};
   const body = (req.body || {}) as any;
   const method = (req.method || "GET").toUpperCase();
@@ -232,7 +230,7 @@ async function handleScan(req: VercelRequest, res: VercelResponse) {
   });
 }
 
-async function handleHighPotential(_req: VercelRequest, res: VercelResponse) {
+async function handleHighPotential(_req: any, res: any) {
   const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`);
   if (!r.ok) return bad(res, 502, "Binance 24hr all error", { detail: await r.text() });
   const list: any[] = await r.json();
@@ -250,18 +248,16 @@ async function handleHighPotential(_req: VercelRequest, res: VercelResponse) {
 }
 
 // ---------- router ----------
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   try {
     // In a catch-all function, req.url is RELATIVE to /api/[...all]
     // e.g. "/market/ticker/BTCUSDT" (no leading "/api")
-    const full = (req.url || "/").split("?")[0];   // e.g. "/market/ticker/BTCUSDT"
-    const path = full.replace(/^\/+/, "");         // "market/ticker/BTCUSDT" OR maybe "api/..."
-    let seg = path.split("/");                     // ["market","ticker","BTCUSDT"] OR ["api",...]
+    const full = (req.url || "/").split("?")[0];
+    const path = full.replace(/^\/+/, "");
+    let seg = path.split("/");
 
-    // If the first segment is "api", drop it so both styles work.
     if (seg[0] === "api") seg = seg.slice(1);
 
-    // Root -> alive
     if (seg.length === 0 || (seg.length === 1 && seg[0] === "")) return handleAlive(req, res);
     if (seg[0] === "health") return handleHealth(req, res);
 
