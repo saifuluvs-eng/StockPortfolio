@@ -1,6 +1,7 @@
 {
-  "buildCommand": "npm run build && mv api api_disabled || true",
+  "buildCommand": "npm run build",
   "outputDirectory": "public",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
