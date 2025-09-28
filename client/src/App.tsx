@@ -18,19 +18,17 @@ import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
 import Charts from "@/pages/charts";
 
-// HOC: require auth
+// (keep for later) Protected HOC
 function Protected<T extends React.ComponentType<any>>(Component: T) {
   return function ProtectedComponent(props: React.ComponentProps<T>) {
     const { isAuthenticated, isLoading } = useAuth();
-
-    if (isLoading) return null; // could show spinner
+    if (isLoading) return null;
     if (!isAuthenticated) return <Redirect to="/" />;
-
     return <Component {...props} />;
   };
 }
 
-// HOC: wrap a page with the AppLayout (adds Sidebar etc.)
+// Wrap pages with Sidebar/Layout
 const withLayout =
   <P,>(Comp: React.ComponentType<P>) =>
   (props: P) =>
@@ -42,37 +40,26 @@ const withLayout =
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return <div>Loading Application...</div>;
-  }
+  if (isLoading) return <div>Loading Application...</div>;
 
   return (
     <Switch>
-      {/* Public root: Landing when logged out, Dashboard(Home) when logged in */}
+      {/* Root: landing when logged out, dashboard(Home) when logged in */}
       <Route
         path="/"
         component={isAuthenticated ? withLayout(Home) : Landing}
       />
 
-      {/* Dashboard (now wrapped with layout so Sidebar appears) */}
+      {/* PUBLIC (temporary) so you can navigate freely */}
       <Route path="/dashboard" component={withLayout(Home)} />
+      <Route path="/portfolio" component={withLayout(Portfolio)} />
+      <Route path="/high-potential" component={withLayout(HighPotential)} />
+      <Route path="/gainers" component={withLayout(Gainers)} />
+      <Route path="/ai-insights" component={withLayout(AIInsights)} />
+      <Route path="/charts" component={withLayout(Charts)} />
+      <Route path="/scan" component={withLayout(Charts)} />
 
-      {/* Secured routes (auth + layout) */}
-      <Route path="/portfolio" component={Protected(withLayout(Portfolio))} />
-      <Route
-        path="/high-potential"
-        component={Protected(withLayout(HighPotential))}
-      />
-      <Route path="/gainers" component={Protected(withLayout(Gainers))} />
-      <Route
-        path="/ai-insights"
-        component={Protected(withLayout(AIInsights))}
-      />
-      <Route path="/charts" component={Protected(withLayout(Charts))} />
-      <Route path="/scan" component={Protected(withLayout(Charts))} />
-
-      {/* 404 fallback (public; no layout to keep it simple) */}
+      {/* 404 */}
       <Route component={NotFound} />
     </Switch>
   );
