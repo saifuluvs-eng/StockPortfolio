@@ -1,9 +1,4 @@
 api/**
 !api/
-!api/market/
-!api/market/ticker/
-!api/market/ticker/[symbol].ts
-!api/market/gainers.ts
-!api/watchlist.ts
-!api/portfolio.ts
+!api/[...all].ts
 !api/ping.ts
