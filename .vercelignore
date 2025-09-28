@@ -1,5 +1,5 @@
 api/**
 !api/
 !api/index.ts
-!api/[...all].ts
 !api/ping.ts
+!api/all.ts
