@@ -1,2 +1,2 @@
 api/**
-!api/index.ts
+!api/[...all].ts
