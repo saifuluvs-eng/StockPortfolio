@@ -225,8 +225,8 @@ async function handleScan(req: VercelRequest, res: VercelResponse) {
       { name: "RSI(14)", value: lastRSI, status: lastRSI === null ? "neutral" : lastRSI > 70 ? "bearish" : lastRSI < 30 ? "bullish" : "neutral" },
       { name: "MACD(12,26,9)", value: isMACDBull ? "Bullish" : "Bearish", status: isMACDBull ? "bullish" : "bearish" },
       { name: "EMA(20)", value: `Price ${priceVs20} EMA20`, status: priceVs20 === "above" ? "bullish" : priceVs20 === "below" ? "bearish" : "neutral" },
-      { name: "EMA(50)", value: `Price ${priceVs50} EMA50`, status: priceVs50 === "above" ? "bullish" : priceVs50 === "below" ? "bearish" : "neutral" },
-      { name: "EMA(200)", value: `Price ${priceVs200} EMA200`, status: priceVs200 === "above" ? "bullish" : priceVs200 === "below" ? "bearish" : "neutral" },
+      { name: "EMA(50)", value: `Price ${priceVs50} EMA50`, status: priceVs50 === "above" ? "bullish" : "bearish" },
+      { name: "EMA(200)", value: `Price ${priceVs200} EMA200`, status: priceVs200 === "above" ? "bullish" : "bearish" },
       { name: "Stochastic(14,3)", value: `${lastK?.toFixed?.(0) ?? "-"} / ${lastD?.toFixed?.(0) ?? "-"}`, status: lastK !== null && lastD !== null ? (lastK > 80 && lastD > 80 ? "bearish" : lastK < 20 && lastD < 20 ? "bullish" : "neutral") : "neutral" }
     ],
   });
@@ -252,31 +252,35 @@ async function handleHighPotential(_req: VercelRequest, res: VercelResponse) {
 // ---------- router ----------
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const full = (req.url || "/").split("?")[0];    // "/api/market/ticker/BTCUSDT"
-    const path = full.replace(/^\/+/, "");          // "api/market/ticker/BTCUSDT"
-    const seg = path.split("/");                    // ["api","market","ticker","BTCUSDT"]
+    // In a catch-all function, req.url is RELATIVE to /api/[...all]
+    // e.g. "/market/ticker/BTCUSDT" (no leading "/api")
+    const full = (req.url || "/").split("?")[0];   // e.g. "/market/ticker/BTCUSDT"
+    const path = full.replace(/^\/+/, "");         // "market/ticker/BTCUSDT" OR maybe "api/..."
+    let seg = path.split("/");                     // ["market","ticker","BTCUSDT"] OR ["api",...]
 
-    if (seg[0] !== "api") return bad(res, 404, "Not Found", { path: full });
+    // If the first segment is "api", drop it so both styles work.
+    if (seg[0] === "api") seg = seg.slice(1);
 
-    if (seg.length === 1 || (seg.length === 2 && seg[1] === "")) return handleAlive(req, res);
-    if (seg[1] === "health") return handleHealth(req, res);
+    // Root -> alive
+    if (seg.length === 0 || (seg.length === 1 && seg[0] === "")) return handleAlive(req, res);
+    if (seg[0] === "health") return handleHealth(req, res);
 
-    if (seg[1] === "market") {
-      if (seg[2] === "ticker" && seg[3]) return handleTicker(req, res, seg[3]);
-      if (seg[2] === "gainers") return handleGainers(req, res);
+    if (seg[0] === "market") {
+      if (seg[1] === "ticker" && seg[2]) return handleTicker(req, res, seg[2]);
+      if (seg[1] === "gainers") return handleGainers(req, res);
       return bad(res, 404, "Unknown market route", { path: full });
     }
 
-    if (seg[1] === "scanner") {
-      if (seg[2] === "scan") return handleScan(req, res);
-      if (seg[2] === "high-potential") return handleHighPotential(req, res);
+    if (seg[0] === "scanner") {
+      if (seg[1] === "scan") return handleScan(req, res);
+      if (seg[1] === "high-potential") return handleHighPotential(req, res);
       return bad(res, 404, "Unknown scanner route", { path: full });
     }
 
-    if (seg[1] === "watchlist") return ok(res, { ok: true, items: [] });
-    if (seg[1] === "portfolio") return ok(res, { ok: true, positions: [] });
+    if (seg[0] === "watchlist") return ok(res, { ok: true, items: [] });
+    if (seg[0] === "portfolio") return ok(res, { ok: true, positions: [] });
 
-    if (seg[1] === "ai" && seg[2] === "market-overview") {
+    if (seg[0] === "ai" && seg[1] === "market-overview") {
       const [btc, eth] = await Promise.all([
         fetch(`${BINANCE}/api/v3/ticker/24hr?symbol=BTCUSDT`).then((r) => r.json()),
         fetch(`${BINANCE}/api/v3/ticker/24hr?symbol=ETHUSDT`).then((r) => r.json()),
