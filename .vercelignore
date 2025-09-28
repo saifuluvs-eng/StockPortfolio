@@ -1,4 +1,2 @@
 api/**
-!api/
-!api/[...all].ts
-!api/ping.ts
+!api/**
