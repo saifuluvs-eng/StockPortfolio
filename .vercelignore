@@ -1,6 +1,3 @@
 api/**
 !api/
-!api/index.ts
-!api/health.ts
-!api/scanner/
-!api/scanner/scan.ts
+!api/[...all].ts
