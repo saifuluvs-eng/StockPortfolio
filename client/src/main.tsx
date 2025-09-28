@@ -4,11 +4,16 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// ⬇️ wrap App with the provider that your hook expects
+// Firebase auth provider
 import { FirebaseAuthProvider } from "./hooks/useFirebaseAuth";
 
+// ⬇️ add HashRouter (prevents server 404s on deep links)
+import { HashRouter } from "react-router-dom";
+
 createRoot(document.getElementById("root")!).render(
-  <FirebaseAuthProvider>
-    <App />
-  </FirebaseAuthProvider>
+  <HashRouter>
+    <FirebaseAuthProvider>
+      <App />
+    </FirebaseAuthProvider>
+  </HashRouter>
 );
