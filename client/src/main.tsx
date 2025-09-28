@@ -4,16 +4,16 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 
-// Firebase auth provider
+// keep your auth provider
 import { FirebaseAuthProvider } from "./hooks/useFirebaseAuth";
 
-// ⬇️ add HashRouter (prevents server 404s on deep links)
-import { HashRouter } from "react-router-dom";
+// ✅ use wouter with hash location so routes are `/#/...`
+import { Router, useHashLocation } from "wouter";
 
 createRoot(document.getElementById("root")!).render(
-  <HashRouter>
+  <Router hook={useHashLocation}>
     <FirebaseAuthProvider>
       <App />
     </FirebaseAuthProvider>
-  </HashRouter>
+  </Router>
 );
