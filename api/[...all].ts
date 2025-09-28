@@ -1,27 +1,16 @@
-// api/[...all].ts
-// One function to handle ALL /api/* routes on Vercel Hobby.
-// Live data via Binance public API (no key). Includes:
-// - GET /api                       -> alive
-// - GET /api/health                -> healthy
-// - GET|POST /api/scanner/scan     -> technicals for symbol & timeframe
-// - GET /api/market/ticker/:symbol -> 24h ticker for a symbol (e.g. BTCUSDT)
-// - GET /api/market/gainers        -> top USDT gainers (24h)
-// - GET /api/watchlist             -> empty list (valid empty state)
-// - GET /api/portfolio             -> empty list (valid empty state)
-// - GET /api/scanner/high-potential-> simple heuristic based on gainers
+// api/all.ts
+// Router via query param: /api/all?path=market/ticker/BTCUSDT
 
-// ---------- helpers ----------
 function json(res: any, code: number, body: any) {
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
   return res.status(code).json(body);
 }
-const ok = (res: any, body: any) => json(res, 200, body);
+const ok  = (res: any, body: any) => json(res, 200, body);
 const bad = (res: any, code: number, message: string, extra: any = {}) =>
   json(res, code, { ok: false, message, ...extra });
 
 const BINANCE = "https://api.binance.com";
 
-// map friendly timeframes to Binance intervals
 const VALID = new Set(["1m","3m","5m","15m","30m","1h","2h","4h","6h","8h","12h","1d","3d","1w","1M"]);
 function normTF(tf: string) {
   const t = (tf || "").toLowerCase().trim();
@@ -36,7 +25,6 @@ function normTF(tf: string) {
   return "1d";
 }
 
-// math utils
 const sma = (arr: number[], p: number) => {
   if (arr.length < p) return [];
   const out: number[] = [];
@@ -107,61 +95,50 @@ const stochastic = (high: number[], low: number[], close: number[], p = 14, smoo
   return { k: k.slice(k.length - d.length), d };
 };
 
-// ---------- route handlers ----------
-async function handleAlive(_req: any, res: any) {
-  return ok(res, { ok: true, message: "API is alive", time: new Date().toISOString() });
+async function alive(_req: any, res: any) {
+  return ok(res, { ok: true, message: "alive", time: new Date().toISOString() });
 }
-async function handleHealth(_req: any, res: any) {
+async function health(_req: any, res: any) {
   return ok(res, { ok: true, message: "healthy", time: new Date().toISOString() });
 }
-
-async function handleTicker(_req: any, res: any, symbol: string) {
+async function ticker(_req: any, res: any, symbol: string) {
   if (!symbol) return bad(res, 400, "symbol required");
   const sym = symbol.toUpperCase();
-  const r = await fetch(`${BINANCE}/api/v3/ticker/24hr?symbol=${encodeURIComponent(sym)}`);
-  if (!r.ok) return bad(res, 502, "Binance 24hr error", { detail: await r.text() });
+  const r = await fetch(`${BINANCE}/api/v3/ticker/24hr?symbol=${encodeURIComponent(sym)}`, { cache: "no-store" });
+  if (!r.ok) return bad(res, r.status, "binance error", { detail: await r.text() });
   const data = await r.json();
   return ok(res, { ok: true, symbol: sym, data });
 }
-
-async function handleGainers(_req: any, res: any) {
-  const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`);
-  if (!r.ok) return bad(res, 502, "Binance 24hr all error", { detail: await r.text() });
+async function gainers(_req: any, res: any) {
+  const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`, { cache: "no-store" });
+  if (!r.ok) return bad(res, r.status, "binance error", { detail: await r.text() });
   const list: any[] = await r.json();
   const filtered = list
     .filter((t: any) => typeof t?.symbol === "string" && t.symbol.endsWith("USDT"))
     .map((t: any) => ({
       symbol: t.symbol,
-      price: parseFloat(t.lastPrice),
+      last: parseFloat(t.lastPrice),
       changePct: parseFloat(t.priceChangePercent),
-      volume: parseFloat(t.volume),
       quoteVolume: parseFloat(t.quoteVolume),
     }))
     .sort((a, b) => b.changePct - a.changePct)
     .slice(0, 20);
-  return ok(res, { ok: true, gainers: filtered });
+  return ok(res, { ok: true, items: filtered });
 }
-
-async function handleScan(req: any, res: any) {
+async function scan(req: any, res: any) {
   const q = req.query || {};
-  const body = (req.body || {}) as any;
-  const method = (req.method || "GET").toUpperCase();
-  if (method !== "GET" && method !== "POST") return bad(res, 405, "Method Not Allowed");
+  const symbol = String(q.symbol || "BTCUSDT").toUpperCase();
+  const timeframe = normTF(String(q.timeframe || "1d"));
+  const limit = Math.min(parseInt(String(q.limit || "250"), 10) || 250, 500);
 
-  const symbol = (body.symbol || q.symbol || "BTCUSDT").toString().toUpperCase();
-  const timeframe = normTF((body.timeframe || q.timeframe || "1d").toString());
-  const limit = Math.min(parseInt((body.limit || q.limit || "250") as string, 10) || 250, 500);
-
-  const r = await fetch(`${BINANCE}/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(timeframe)}&limit=${limit}`);
-  if (!r.ok) return bad(res, 502, "Binance klines error", { detail: await r.text() });
+  const r = await fetch(`${BINANCE}/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${encodeURIComponent(timeframe)}&limit=${limit}`, { cache: "no-store" });
+  if (!r.ok) return bad(res, r.status, "binance error", { detail: await r.text() });
   const klines: any[] = await r.json();
   if (!Array.isArray(klines) || klines.length < 50) return bad(res, 422, "Not enough data");
 
   const highs: number[] = [], lows: number[] = [], closes: number[] = [];
   for (const k of klines) {
-    highs.push(parseFloat(k[2]));
-    lows.push(parseFloat(k[3]));
-    closes.push(parseFloat(k[4]));
+    highs.push(parseFloat(k[2])); lows.push(parseFloat(k[3])); closes.push(parseFloat(k[4]));
   }
 
   const rsiArr = rsi(closes, 14);
@@ -182,9 +159,6 @@ async function handleScan(req: any, res: any) {
   const lastEMA20 = ema20Arr.at(-1) ?? null;
   const lastEMA50 = ema50Arr.at(-1) ?? null;
   const lastEMA200 = ema200Arr.at(-1) ?? null;
-  const lastSMA20 = sma20Arr.at(-1) ?? null;
-  const lastSMA50 = sma50Arr.at(-1) ?? null;
-  const lastSMA200 = sma200Arr.at(-1) ?? null;
   const lastK = stochK.at(-1) ?? null;
   const lastD = stochD.at(-1) ?? null;
 
@@ -208,92 +182,42 @@ async function handleScan(req: any, res: any) {
 
   return ok(res, {
     ok: true,
-    symbol,
-    timeframe,
-    price: lastClose,
+    symbol, timeframe, price: lastClose,
     indicators: {
       rsi: lastRSI,
       macd: { line: lastMACD, signal: lastSignal, hist: lastHist },
       ema: { ema20: lastEMA20, ema50: lastEMA50, ema200: lastEMA200 },
-      sma: { sma20: lastSMA20, sma50: lastSMA50, sma200: lastSMA200 },
       stochastic: { k: lastK, d: lastD },
     },
-    summary: { buy, neutral, sell, verdict },
-    breakdown: [
-      { name: "RSI(14)", value: lastRSI, status: lastRSI === null ? "neutral" : lastRSI > 70 ? "bearish" : lastRSI < 30 ? "bullish" : "neutral" },
-      { name: "MACD(12,26,9)", value: isMACDBull ? "Bullish" : "Bearish", status: isMACDBull ? "bullish" : "bearish" },
-      { name: "EMA(20)", value: `Price ${priceVs20} EMA20`, status: priceVs20 === "above" ? "bullish" : priceVs20 === "below" ? "bearish" : "neutral" },
-      { name: "EMA(50)", value: `Price ${priceVs50} EMA50`, status: priceVs50 === "above" ? "bullish" : "bearish" },
-      { name: "EMA(200)", value: `Price ${priceVs200} EMA200`, status: priceVs200 === "above" ? "bullish" : "bearish" },
-      { name: "Stochastic(14,3)", value: `${lastK?.toFixed?.(0) ?? "-"} / ${lastD?.toFixed?.(0) ?? "-"}`, status: lastK !== null && lastD !== null ? (lastK > 80 && lastD > 80 ? "bearish" : lastK < 20 && lastD < 20 ? "bullish" : "neutral") : "neutral" }
-    ],
+    summary: { buy, neutral, sell, verdict }
   });
 }
 
-async function handleHighPotential(_req: any, res: any) {
-  const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`);
-  if (!r.ok) return bad(res, 502, "Binance 24hr all error", { detail: await r.text() });
-  const list: any[] = await r.json();
-  const top = list
-    .filter((t: any) => t?.symbol?.endsWith("USDT"))
-    .map((t: any) => ({
-      symbol: t.symbol,
-      changePct: parseFloat(t.priceChangePercent),
-      lastPrice: parseFloat(t.lastPrice),
-      quoteVolume: parseFloat(t.quoteVolume),
-    }))
-    .sort((a, b) => b.changePct - a.changePct)
-    .slice(0, 10);
-  return ok(res, { ok: true, items: top });
-}
-
-// ---------- router ----------
 export default async function handler(req: any, res: any) {
   try {
-    // In a catch-all function, req.url is RELATIVE to /api/[...all]
-    // e.g. "/market/ticker/BTCUSDT" (no leading "/api")
-    const full = (req.url || "/").split("?")[0];
-    const path = full.replace(/^\/+/, "");
-    let seg = path.split("/");
+    const p = String((req.query?.path ?? "")).replace(/^\/+/, ""); // e.g. "market/ticker/BTCUSDT"
+    if (!p) return alive(req, res);
+    const seg = p.split("/").filter(Boolean);
 
-    if (seg[0] === "api") seg = seg.slice(1);
-
-    if (seg.length === 0 || (seg.length === 1 && seg[0] === "")) return handleAlive(req, res);
-    if (seg[0] === "health") return handleHealth(req, res);
+    if (seg[0] === "health") return health(req, res);
 
     if (seg[0] === "market") {
-      if (seg[1] === "ticker" && seg[2]) return handleTicker(req, res, seg[2]);
-      if (seg[1] === "gainers") return handleGainers(req, res);
-      return bad(res, 404, "Unknown market route", { path: full });
+      if (seg[1] === "ticker" && seg[2]) return ticker(req, res, seg[2]);
+      if (seg[1] === "gainers") return gainers(req, res);
+      return bad(res, 404, "Unknown market route", { path: p });
     }
 
     if (seg[0] === "scanner") {
-      if (seg[1] === "scan") return handleScan(req, res);
-      if (seg[1] === "high-potential") return handleHighPotential(req, res);
-      return bad(res, 404, "Unknown scanner route", { path: full });
+      if (seg[1] === "scan") return scan(req, res);
+      return bad(res, 404, "Unknown scanner route", { path: p });
     }
 
     if (seg[0] === "watchlist") return ok(res, { ok: true, items: [] });
     if (seg[0] === "portfolio") return ok(res, { ok: true, positions: [] });
 
-    if (seg[0] === "ai" && seg[1] === "market-overview") {
-      const [btc, eth] = await Promise.all([
-        fetch(`${BINANCE}/api/v3/ticker/24hr?symbol=BTCUSDT`).then((r) => r.json()),
-        fetch(`${BINANCE}/api/v3/ticker/24hr?symbol=ETHUSDT`).then((r) => r.json()),
-      ]);
-      return ok(res, {
-        ok: true,
-        overview: {
-          BTCUSDT: { last: parseFloat(btc.lastPrice), changePct: parseFloat(btc.priceChangePercent) },
-          ETHUSDT: { last: parseFloat(eth.lastPrice), changePct: parseFloat(eth.priceChangePercent) },
-          note: "AI summary pending; showing live snapshot.",
-        },
-      });
-    }
-
-    return bad(res, 404, "Unknown API route", { path: full });
-  } catch (err: any) {
-    console.error("API error:", err);
-    return bad(res, 500, err?.message || "Internal error");
+    return bad(res, 404, "Unknown API route", { path: p });
+  } catch (e: any) {
+    console.error("api/all error:", e);
+    return bad(res, 500, e?.message || "internal_error");
   }
 }
