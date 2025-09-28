@@ -6,9 +6,9 @@ import "./index.css";
 
 import { FirebaseAuthProvider } from "./hooks/useFirebaseAuth";
 
-// ✅ Correct import paths for wouter + hash location
+// ✅ use named import for the hook
 import { Router } from "wouter";
-import useHashLocation from "wouter/use-hash-location";
+import { useHashLocation } from "wouter/use-hash-location";
 
 createRoot(document.getElementById("root")!).render(
   <Router hook={useHashLocation}>
