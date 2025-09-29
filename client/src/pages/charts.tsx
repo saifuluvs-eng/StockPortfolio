@@ -97,10 +97,9 @@ export default function Charts() {
   const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
   const [showTechnicals] = useState(true);
   const [searchInput, setSearchInput] = useState<string>(() => {
-    // For the input, strip USDT safely for display
     const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
     return base || "BTC";
-    });
+  });
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
   // Keep state in sync when navigating directly to /charts/:symbol
@@ -114,10 +113,8 @@ export default function Charts() {
 
   // When symbol changes from UI, push to /charts/:symbol so deep links work
   useEffect(() => {
-    // Only update URL if current route is charts
     if (matchWithParam) {
       const target = `/charts/${selectedSymbol}`;
-      // Avoid infinite loops
       if (!window.location.hash.endsWith(target)) {
         setLocation(target);
       }
@@ -130,10 +127,8 @@ export default function Charts() {
 
   // --- Binance WS subscription (flicker-proof) ---
   useEffect(() => {
-    // Clear old price immediately so UI doesn't show stale coin
     setPriceData(null);
-
-    let active = true; // kills late events from the previous subscription
+    let active = true;
 
     const unsubscribe = openSpotTickerStream([selectedSymbol], (t) => {
       if (!active) return;
@@ -176,9 +171,7 @@ export default function Charts() {
         timeframe: backendTimeframe
       });
 
-      if (!res.ok) {
-        throw new Error("Scan failed");
-      }
+      if (!res.ok) throw new Error("Scan failed");
       return res.json();
     },
     onSuccess: (data: ScanResult) => {
@@ -448,7 +441,6 @@ export default function Charts() {
                     {showLoadingState ? getLoadingMessage() : formatVolume(latestPrice?.quoteVolume)}
                   </p>
                 </div>
-                {/* Using Target icon here to avoid any missing icon import issues */}
                 <Target className="w-5 h-5 text-secondary" />
               </div>
             </CardContent>
@@ -530,11 +522,7 @@ export default function Charts() {
             <TradingViewChart
               key={`${selectedSymbol}-${selectedTimeframe}-${showTechnicals}-dark-v2`}
               symbol={selectedSymbol}
-              timeframe={selectedTimeframe}
-              onTimeframeChange={handleTimeframeChange}
-              showIndicators={showTechnicals}
-              theme="dark"
-              height={560}
+              interval={selectedTimeframe}
             />
           </div>
         </div>
