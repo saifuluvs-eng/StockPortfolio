@@ -1,7 +1,7 @@
 // client/src/pages/charts.tsx
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import TradingViewChart from "@/components/charts/TradingViewChart";
+import TradingViewChart from "@/components/scanner/trading-view-chart";
 import TechnicalIndicators from "@/components/scanner/technical-indicators";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
