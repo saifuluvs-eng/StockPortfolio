@@ -1,7 +1,7 @@
 // client/src/pages/charts.tsx
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { TradingViewChart } from "@/components/scanner/trading-view-chart";
+import TradingViewChart from "@/components/scanner/trading-view-chart";
 import TechnicalIndicators from "@/components/scanner/technical-indicators";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,6 @@ import {
   Search
 } from "lucide-react";
 
-// Direct Binance WS helper (client-only)
 import { openSpotTickerStream } from "../lib/binanceWs";
 
 interface PriceData {
@@ -89,7 +88,6 @@ export default function Charts() {
   const querySymbol = urlParams.get("symbol");
   const shouldAutoScan = urlParams.get("scan") === "true";
 
-  // Resolve initial symbol
   const initialSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
 
   // State
@@ -111,7 +109,7 @@ export default function Charts() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.symbol, querySymbol]);
 
-  // When symbol changes from UI, push to /charts/:symbol so deep links work
+  // Push to /charts/:symbol so deep links work
   useEffect(() => {
     if (matchWithParam) {
       const target = `/charts/${selectedSymbol}`;
@@ -125,7 +123,6 @@ export default function Charts() {
   // Live price data
   const [priceData, setPriceData] = useState<PriceData | null>(null);
 
-  // --- Binance WS subscription (flicker-proof) ---
   useEffect(() => {
     setPriceData(null);
     let active = true;
