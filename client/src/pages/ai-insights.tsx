@@ -1,4 +1,5 @@
-import { useState } from "react";
+// client/src/pages/ai-insights.tsx
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,55 +29,43 @@ function safeNum(x: unknown, d = 0) {
 }
 
 async function fetchInsightsFallback(): Promise<{ insights: Insight[]; table: Binance24hr[] }> {
-  const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
-  if (!res.ok) return { insights: [], table: [] };
-  const all = (await res.json()) as Binance24hr[];
-  const usdt = all.filter((r) => r.symbol.endsWith("USDT"));
+  try {
+    const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+    if (!res.ok) return { insights: [], table: [] };
+    const all = (await res.json()) as Binance24hr[];
+    const usdt = all.filter((r) => r.symbol.endsWith("USDT"));
 
-  // Compute some simple features
-  const enriched = usdt.map((r) => {
-    const last = safeNum(r.lastPrice);
-    const high = safeNum(r.highPrice);
-    const low = safeNum(r.lowPrice);
-    const change = safeNum(r.priceChangePercent);
-    const range = Math.max(1e-8, high - low);
-    const pos = Math.max(0, Math.min(1, (last - low) / range)); // 0..1
-    return { ...r, _pos: pos, _chg: change, _qv: safeNum(r.quoteVolume) };
-  });
+    // Compute simple features
+    const enriched = usdt.map((r) => {
+      const last = safeNum(r.lastPrice);
+      const high = safeNum(r.highPrice);
+      const low = safeNum(r.lowPrice);
+      const change = safeNum(r.priceChangePercent);
+      const range = Math.max(1e-8, high - low);
+      const pos = Math.max(0, Math.min(1, (last - low) / range)); // 0..1 (near high)
+      return { ...r, _pos: pos, _chg: change, _qv: safeNum(r.quoteVolume) };
+    });
 
-  const byChange = [...enriched].sort((a, b) => b._chg - a._chg);
-  const byRangePos = [...enriched].sort((a, b) => b._pos - a._pos);
-  const byVolume = [...enriched].sort((a, b) => b._qv - a._qv);
+    const byChange = [...enriched].sort((a, b) => b._chg - a._chg);
+    const byRangePos = [...enriched].sort((a, b) => b._pos - a._pos);
+    const byVolume = [...enriched].sort((a, b) => b._qv - a._qv);
 
-  const topBreakouts = byRangePos.filter((x) => x._chg > 3 && x._pos > 0.7).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
-  const momentumLeaders = byChange.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
-  const liquidityLeaders = byVolume.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
-  const overheated = enriched.filter((x) => x._chg > 15 && x._pos > 0.9).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+    const topBreakouts = byRangePos.filter((x) => x._chg > 3 && x._pos > 0.7).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+    const momentumLeaders = byChange.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+    const liquidityLeaders = byVolume.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+    const overheated = enriched.filter((x) => x._chg > 15 && x._pos > 0.9).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
 
-  const insights: Insight[] = [
-    {
-      title: "Breakout candidates near 24h highs",
-      detail: topBreakouts.length ? topBreakouts.join(", ") : "No clear breakouts right now.",
-      tags: ["breakout", "price-action"],
-    },
-    {
-      title: "Top momentum leaders (24h %)",
-      detail: momentumLeaders.length ? momentumLeaders.join(", ") : "No strong momentum standouts.",
-      tags: ["momentum"],
-    },
-    {
-      title: "Highest liquidity (quote volume)",
-      detail: liquidityLeaders.length ? liquidityLeaders.join(", ") : "Low liquidity market.",
-      tags: ["liquidity"],
-    },
-    {
-      title: "Potentially overheated (extended move)",
-      detail: overheated.length ? overheated.join(", ") : "No overheated clusters.",
-      tags: ["risk", "overextension"],
-    },
-  ];
+    const insights: Insight[] = [
+      { title: "Breakout candidates near 24h highs", detail: topBreakouts.length ? topBreakouts.join(", ") : "No clear breakouts right now.", tags: ["breakout", "price-action"] },
+      { title: "Top momentum leaders (24h %)", detail: momentumLeaders.length ? momentumLeaders.join(", ") : "No strong momentum standouts.", tags: ["momentum"] },
+      { title: "Highest liquidity (quote volume)", detail: liquidityLeaders.length ? liquidityLeaders.join(", ") : "Low liquidity market.", tags: ["liquidity"] },
+      { title: "Potentially overheated (extended move)", detail: overheated.length ? overheated.join(", ") : "No overheated clusters.", tags: ["risk", "overextension"] },
+    ];
 
-  return { insights, table: byChange.slice(0, 50) }; // keep table light
+    return { insights, table: byChange.slice(0, 50) }; // keep table light
+  } catch {
+    return { insights: [], table: [] };
+  }
 }
 
 export default function AIInsights() {
@@ -107,6 +96,14 @@ export default function AIInsights() {
     },
   });
 
+  // Auto-refresh once on mount when authenticated, so the page never looks empty
+  useEffect(() => {
+    if (isAuthenticated && data.insights.length === 0 && !runMutation.isPending) {
+      runMutation.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
   return (
     <div className="flex-1 overflow-hidden">
       <div className="p-6 space-y-6">
@@ -117,7 +114,12 @@ export default function AIInsights() {
             </h1>
             <p className="text-muted-foreground">Market themes & signals, refreshed on demand.</p>
           </div>
-          <Button onClick={() => runMutation.mutate()} disabled={!isAuthenticated || runMutation.isPending} className="bg-primary text-primary-foreground">
+          <Button
+            onClick={() => runMutation.mutate()}
+            disabled={!isAuthenticated || runMutation.isPending}
+            className="bg-primary text-primary-foreground"
+            data-testid="button-refresh-insights"
+          >
             <RefreshCw className={`w-4 h-4 mr-2 ${runMutation.isPending ? "animate-spin" : ""}`} />
             {runMutation.isPending ? "Refreshing..." : "Refresh"}
           </Button>
@@ -145,7 +147,9 @@ export default function AIInsights() {
                   <div className="text-foreground">{ins.detail}</div>
                   <div className="flex gap-2 flex-wrap">
                     {ins.tags.map((t) => (
-                      <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
+                      <Badge key={t} variant="secondary" className="text-xs">
+                        {t}
+                      </Badge>
                     ))}
                   </div>
                 </CardContent>
@@ -181,7 +185,9 @@ export default function AIInsights() {
                         <tr key={r.symbol} className="border-b border-border hover:bg-muted/20">
                           <td className="p-3 font-medium">{base}</td>
                           <td className="p-3 text-right">${safeNum(r.lastPrice).toFixed(6)}</td>
-                          <td className={`p-3 text-right ${chg >= 0 ? "text-accent" : "text-destructive"}`}>{(chg >= 0 ? "+" : "") + chg.toFixed(2)}%</td>
+                          <td className={`p-3 text-right ${chg >= 0 ? "text-accent" : "text-destructive"}`}>
+                            {(chg >= 0 ? "+" : "") + chg.toFixed(2)}%
+                          </td>
                           <td className="p-3 text-right">${safeNum(r.highPrice).toFixed(6)}</td>
                           <td className="p-3 text-right">${safeNum(r.lowPrice).toFixed(6)}</td>
                           <td className="p-3 text-right">{safeNum(r.quoteVolume).toLocaleString()}</td>
