@@ -1,103 +1,154 @@
-import { useEffect, useState } from "react";
+// client/src/components/scanner/fallback-chart.tsx
+import { useEffect, useState, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-interface FallbackChartProps {
+type FallbackChartProps = {
   symbol: string;
-  interval: string;
-}
+  interval: string; // accepts: "15" | "60" | "240" | "D" | "W" | "15m" | "1h" | "4h" | "1d" | "1w"
+};
 
-interface ChartData {
+type ChartData = {
   time: string;
   price: number;
   volume: number;
+};
+
+function normalizeInterval(raw: string) {
+  const v = (raw || "").toLowerCase();
+  switch (v) {
+    case "15":
+    case "15m":
+      return { key: "15m", points: 96, stepMs: 15 * 60 * 1000, label: "15m" };
+    case "60":
+    case "1h":
+      return { key: "1h", points: 24, stepMs: 60 * 60 * 1000, label: "1h" };
+    case "240":
+    case "4h":
+      return { key: "4h", points: 24, stepMs: 4 * 60 * 60 * 1000, label: "4h" };
+    case "d":
+    case "1d":
+      return { key: "1d", points: 30, stepMs: 24 * 60 * 60 * 1000, label: "1D" };
+    case "w":
+    case "1w":
+      return { key: "1w", points: 26, stepMs: 7 * 24 * 60 * 60 * 1000, label: "1W" };
+    default:
+      // sensible default
+      return { key: "1d", points: 30, stepMs: 24 * 60 * 60 * 1000, label: "1D" };
+  }
+}
+
+function inferBasePrice(sym: string) {
+  const s = (sym || "").toUpperCase();
+  if (s.includes("BTC")) return 45000;
+  if (s.includes("ETH")) return 3000;
+  if (s.includes("BNB")) return 400;
+  if (s.includes("ADA")) return 0.5;
+  if (s.includes("SOL")) return 100;
+  return 50;
+}
+
+function decimalsForSymbol(sym: string) {
+  const s = (sym || "").toUpperCase();
+  if (s.includes("BTC") || s.includes("ETH") || s.includes("BNB")) return 2;
+  if (s.includes("SOL")) return 3;
+  return 4;
+}
+
+function generateFallbackData(symbol: string, intervalKey: string, points: number, stepMs: number): ChartData[] {
+  const basePrice = inferBasePrice(symbol);
+  const dec = decimalsForSymbol(symbol);
+
+  const data: ChartData[] = [];
+  const now = Date.now();
+
+  for (let i = points - 1; i >= 0; i--) {
+    // Slight, realistic movement: ±5% and a tiny trend
+    const variation = (Math.random() - 0.5) * 0.10; // ±5% either side total = 10% span
+    const trend = 0.04 * ((points - 1 - i) / Math.max(points - 1, 1)); // up to +4% across the window
+    const priceRaw = basePrice * (1 + variation + trend);
+    const timeMs = now - i * stepMs;
+
+    const isDailyPlus = intervalKey === "1d" || intervalKey === "1w";
+    const timeLabel = isDailyPlus
+      ? new Date(timeMs).toLocaleDateString(undefined, { month: "short", day: "2-digit" })
+      : new Date(timeMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+    data.push({
+      time: timeLabel,
+      price: parseFloat(priceRaw.toFixed(dec)),
+      // scale volume loosely to price so charts look natural
+      volume: Math.round((Math.random() * 0.8 + 0.2) * basePrice * 1000),
+    });
+  }
+
+  return data;
 }
 
 export function FallbackChart({ symbol, interval }: FallbackChartProps) {
+  const { key, points, stepMs, label } = useMemo(() => normalizeInterval(interval), [interval]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
 
   useEffect(() => {
-    generateFallbackData();
-  }, [symbol, interval]);
+    setChartData(generateFallbackData(symbol, key, points, stepMs));
+  }, [symbol, key, points, stepMs]);
 
-  const generateFallbackData = () => {
-    // Generate realistic chart data for demonstration
-    const basePrice = symbol.includes('BTC') ? 45000 : 
-                     symbol.includes('ETH') ? 3000 : 
-                     symbol.includes('BNB') ? 400 : 
-                     symbol.includes('ADA') ? 0.5 : 
-                     symbol.includes('SOL') ? 100 : 50;
-
-    const data: ChartData[] = [];
-    const pointsCount = interval === '15m' ? 96 : interval === '1h' ? 24 : interval === '4h' ? 6 : 30;
-    
-    for (let i = 0; i < pointsCount; i++) {
-      const variation = (Math.random() - 0.5) * 0.1; // ±5% variation
-      const trendFactor = 0.05 * (i / pointsCount); // Slight upward trend
-      const price = basePrice * (1 + variation + trendFactor);
-      
-      const now = new Date();
-      const intervalMs = interval === '15m' ? 15 * 60 * 1000 : 
-                        interval === '1h' ? 60 * 60 * 1000 :
-                        interval === '4h' ? 4 * 60 * 60 * 1000 :
-                        24 * 60 * 60 * 1000;
-      
-      const time = new Date(now.getTime() - (pointsCount - i) * intervalMs);
-      
-      data.push({
-        time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        price: parseFloat(price.toFixed(symbol.includes('BTC') || symbol.includes('ETH') ? 2 : 4)),
-        volume: Math.random() * 1000000 + 100000
-      });
-    }
-    
-    setChartData(data);
-  };
+  const dec = decimalsForSymbol(symbol);
 
   return (
     <div className="h-[400px] w-full rounded-b-xl bg-card p-4" data-testid="fallback-chart">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-foreground">{symbol}</h3>
-        <p className="text-sm text-muted-foreground">
-          Demo Chart - {interval} timeframe
-        </p>
+        <h3 className="text-lg font-semibold text-foreground">{symbol.toUpperCase()}</h3>
+        <p className="text-sm text-muted-foreground">Demo Chart — {label} timeframe</p>
       </div>
-      
+
       <ResponsiveContainer width="100%" height="85%">
         <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-          <XAxis 
-            dataKey="time" 
-            tick={{ fontSize: 12 }}
-            className="text-muted-foreground"
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+          <XAxis
+            dataKey="time"
+            tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+            axisLine={{ stroke: "hsl(var(--border))" }}
+            tickLine={{ stroke: "hsl(var(--border))" }}
           />
-          <YAxis 
-            tick={{ fontSize: 12 }}
-            className="text-muted-foreground"
-            domain={['dataMin * 0.99', 'dataMax * 1.01']}
+          <YAxis
+            tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+            axisLine={{ stroke: "hsl(var(--border))" }}
+            tickLine={{ stroke: "hsl(var(--border))" }}
+            domain={[
+              (dataMin: number) => (Number.isFinite(dataMin) ? dataMin * 0.985 : 0),
+              (dataMax: number) => (Number.isFinite(dataMax) ? dataMax * 1.015 : 1),
+            ]}
           />
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: 'hsl(var(--card))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: '8px',
-              color: 'hsl(var(--foreground))'
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "hsl(var(--card))",
+              border: "1px solid hsl(var(--border))",
+              borderRadius: "8px",
+              color: "hsl(var(--foreground))",
             }}
-            formatter={(value: number) => [`$${value.toFixed(4)}`, 'Price']}
+            formatter={(val: unknown) => {
+              const num = typeof val === "number" ? val : Number(val);
+              if (Number.isNaN(num)) return ["—", "Price"];
+              return [`$${num.toLocaleString(undefined, { maximumFractionDigits: dec })}`, "Price"];
+            }}
           />
-          <Line 
-            type="monotone" 
-            dataKey="price" 
-            stroke="hsl(var(--primary))" 
+          <Line
+            type="monotone"
+            dataKey="price"
+            stroke="hsl(var(--primary))"
             strokeWidth={2}
             dot={false}
-            activeDot={{ r: 4, fill: 'hsl(var(--primary))' }}
+            activeDot={{ r: 4, fill: "hsl(var(--primary))" }}
           />
         </LineChart>
       </ResponsiveContainer>
-      
+
       <div className="mt-2 text-xs text-muted-foreground text-center">
-        Fallback chart - Real TradingView integration available in production
+        Fallback chart — Real TradingView chart loads in production.
       </div>
     </div>
   );
 }
+
+// Keep both named and default export to avoid import mismatches elsewhere.
+export default FallbackChart;
