@@ -1,3 +1,4 @@
+// client/src/App.tsx
 import React from "react";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -50,14 +51,16 @@ function Router() {
         component={isAuthenticated ? withLayout(Home) : Landing}
       />
 
-      {/* PUBLIC (temporary) so you can navigate freely */}
+      {/* PUBLIC routes */}
       <Route path="/dashboard" component={withLayout(Home)} />
       <Route path="/portfolio" component={withLayout(Portfolio)} />
       <Route path="/high-potential" component={withLayout(HighPotential)} />
       <Route path="/gainers" component={withLayout(Gainers)} />
       <Route path="/ai-insights" component={withLayout(AIInsights)} />
-      <Route path="/charts" component={withLayout(Charts)} />
-      <Route path="/scan" component={withLayout(Charts)} />
+
+      {/* SCAN / CHARTS (support optional symbol param) */}
+      <Route path="/charts/:symbol?" component={withLayout(Charts)} />
+      <Route path="/scan/:symbol?" component={withLayout(Charts)} />
 
       {/* 404 */}
       <Route component={NotFound} />
