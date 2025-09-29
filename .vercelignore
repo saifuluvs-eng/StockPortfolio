@@ -2,4 +2,4 @@ api/**
 !api/
 !api/index.ts
 !api/ping.ts
-!api/all.ts
+!api/all.js
