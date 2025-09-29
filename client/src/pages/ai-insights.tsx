@@ -1,292 +1,200 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Brain, 
-  TrendingUp, 
-  Target, 
-  AlertTriangle, 
-  RefreshCw, 
-  Sparkles,
-  BarChart3,
-  Activity,
-  Zap
-} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { RefreshCw, Brain, Zap, TrendingUp, Flame } from "lucide-react";
 
-interface AIMarketOverview {
-  overallSentiment: string;
-  keyInsights: string[];
-  tradingRecommendations: string[];
-  riskAssessment: string;
-}
+type Insight = {
+  title: string;
+  detail: string;
+  tags: string[];
+};
 
-interface AIPrediction {
+type Binance24hr = {
   symbol: string;
-  prediction: string;
-  confidence: number;
-  priceTarget?: number;
-  timeframe: string;
-  reasoning: string;
-  riskFactors: string[];
-  supportLevels?: number[];
-  resistanceLevels?: number[];
+  lastPrice: string;
+  priceChangePercent: string;
+  highPrice: string;
+  lowPrice: string;
+  quoteVolume: string;
+};
+
+function safeNum(x: unknown, d = 0) {
+  const n = typeof x === "number" ? x : Number(x);
+  return Number.isFinite(n) ? n : d;
 }
 
-interface AISentiment {
-  sentiment: string;
-  confidence: number;
-  reasoning: string;
-  signal: string;
-  keyFactors: string[];
-  timeframe: string;
+async function fetchInsightsFallback(): Promise<{ insights: Insight[]; table: Binance24hr[] }> {
+  const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+  if (!res.ok) return { insights: [], table: [] };
+  const all = (await res.json()) as Binance24hr[];
+  const usdt = all.filter((r) => r.symbol.endsWith("USDT"));
+
+  // Compute some simple features
+  const enriched = usdt.map((r) => {
+    const last = safeNum(r.lastPrice);
+    const high = safeNum(r.highPrice);
+    const low = safeNum(r.lowPrice);
+    const change = safeNum(r.priceChangePercent);
+    const range = Math.max(1e-8, high - low);
+    const pos = Math.max(0, Math.min(1, (last - low) / range)); // 0..1
+    return { ...r, _pos: pos, _chg: change, _qv: safeNum(r.quoteVolume) };
+  });
+
+  const byChange = [...enriched].sort((a, b) => b._chg - a._chg);
+  const byRangePos = [...enriched].sort((a, b) => b._pos - a._pos);
+  const byVolume = [...enriched].sort((a, b) => b._qv - a._qv);
+
+  const topBreakouts = byRangePos.filter((x) => x._chg > 3 && x._pos > 0.7).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+  const momentumLeaders = byChange.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+  const liquidityLeaders = byVolume.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+  const overheated = enriched.filter((x) => x._chg > 15 && x._pos > 0.9).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+
+  const insights: Insight[] = [
+    {
+      title: "Breakout candidates near 24h highs",
+      detail: topBreakouts.length ? topBreakouts.join(", ") : "No clear breakouts right now.",
+      tags: ["breakout", "price-action"],
+    },
+    {
+      title: "Top momentum leaders (24h %)",
+      detail: momentumLeaders.length ? momentumLeaders.join(", ") : "No strong momentum standouts.",
+      tags: ["momentum"],
+    },
+    {
+      title: "Highest liquidity (quote volume)",
+      detail: liquidityLeaders.length ? liquidityLeaders.join(", ") : "Low liquidity market.",
+      tags: ["liquidity"],
+    },
+    {
+      title: "Potentially overheated (extended move)",
+      detail: overheated.length ? overheated.join(", ") : "No overheated clusters.",
+      tags: ["risk", "overextension"],
+    },
+  ];
+
+  return { insights, table: byChange.slice(0, 50) }; // keep table light
 }
 
 export default function AIInsights() {
+  const { isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
-  const [selectedTimeframe, setSelectedTimeframe] = useState("4h");
+  const [data, setData] = useState<{ insights: Insight[]; table: Binance24hr[] }>({ insights: [], table: [] });
 
-  const { data: marketOverview, isLoading: overviewLoading, refetch: refetchOverview } = useQuery<AIMarketOverview>({
-    queryKey: ['/api/ai/market-overview'],
-    retry: false,
-    refetchInterval: 300000, // Refetch every 5 minutes
+  const runMutation = useMutation({
+    mutationFn: async () => {
+      // 1) Try your API if it exists
+      try {
+        const r = await fetch("/api/ai/insights");
+        if (r.ok) {
+          return (await r.json()) as { insights: Insight[]; table?: Binance24hr[] };
+        }
+      } catch {
+        /* fall back below */
+      }
+      // 2) Fallback: local “AI-style” insights from Binance data
+      return await fetchInsightsFallback();
+    },
+    onSuccess: (payload) => {
+      setData({ insights: payload.insights || [], table: payload.table || [] });
+      toast({ title: "Insights updated" });
+    },
+    onError: () => {
+      toast({ title: "Failed to load insights", variant: "destructive" });
+    },
   });
-
-  const { data: sentiment, isLoading: sentimentLoading, refetch: refetchSentiment } = useQuery<AISentiment>({
-    queryKey: ['/api/ai/sentiment', selectedSymbol, selectedTimeframe],
-    retry: false,
-    enabled: !!selectedSymbol,
-  });
-
-  const handleRefreshAll = () => {
-    refetchOverview();
-    refetchSentiment();
-    toast({
-      title: "Refreshed",
-      description: "AI insights updated successfully",
-    });
-  };
-
-  const getSentimentColor = (sentiment: string) => {
-    if (sentiment.toLowerCase().includes('bullish')) return 'text-green-500';
-    if (sentiment.toLowerCase().includes('bearish')) return 'text-red-500';
-    return 'text-yellow-500';
-  };
-
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'bg-green-500/20 text-green-400';
-    if (confidence >= 0.6) return 'bg-yellow-500/20 text-yellow-400';
-    return 'bg-red-500/20 text-red-400';
-  };
-
-  const popularSymbols = ["BTCUSDT", "ETHUSDT", "ADAUSDT", "SOLUSDT", "DOTUSDT"];
-  const timeframes = ["1h", "4h", "1d", "1w"];
 
   return (
     <div className="flex-1 overflow-hidden">
-      <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-                <Brain className="w-6 h-6 text-accent" />
-                AI Market Insights
-              </h1>
-              <p className="text-muted-foreground">AI-powered market analysis and predictions</p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-muted-foreground">
-                Last updated: <span className="text-foreground font-medium" data-testid="text-last-updated">
-                  {new Date().toLocaleTimeString()}
-                </span>
-              </div>
-              <Button 
-                onClick={handleRefreshAll}
-                disabled={overviewLoading || sentimentLoading}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                data-testid="button-refresh-insights"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${overviewLoading || sentimentLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            </div>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Brain className="w-6 h-6" /> AI Insights
+            </h1>
+            <p className="text-muted-foreground">Market themes & signals, refreshed on demand.</p>
           </div>
-
-          {/* Market Overview */}
-          <Card className="mb-6 border-border bg-gradient-to-br from-accent/10 to-accent/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-accent" />
-                AI Market Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {overviewLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-muted-foreground">Analyzing market conditions...</div>
-                </div>
-              ) : marketOverview ? (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-2">Overall Sentiment</h3>
-                    <p className={`text-lg font-medium ${getSentimentColor(marketOverview.overallSentiment)}`}>
-                      {marketOverview.overallSentiment}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-2">Key Insights</h3>
-                    <ul className="space-y-1">
-                      {marketOverview.keyInsights.map((insight, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <TrendingUp className="w-4 h-4 text-accent mt-0.5" />
-                          <span className="text-foreground">{insight}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-2">Trading Recommendations</h3>
-                    <ul className="space-y-1">
-                      {marketOverview.tradingRecommendations.map((rec, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <Target className="w-4 h-4 text-primary mt-0.5" />
-                          <span className="text-foreground">{rec}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-2">Risk Assessment</h3>
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-sm text-foreground flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-orange-500 mt-0.5" />
-                        {marketOverview.riskAssessment}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">Unable to generate market overview</p>
-                  <Button onClick={() => refetchOverview()} data-testid="button-retry-overview">
-                    Try Again
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Symbol Selection for Sentiment Analysis */}
-          <Card className="mb-6 border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-primary" />
-                Sentiment Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Symbol:</span>
-                  {popularSymbols.map((symbol) => (
-                    <Button
-                      key={symbol}
-                      variant={selectedSymbol === symbol ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedSymbol(symbol)}
-                      data-testid={`button-symbol-${symbol}`}
-                    >
-                      {symbol.replace('USDT', '')}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2 mb-6">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Timeframe:</span>
-                  {timeframes.map((tf) => (
-                    <Button
-                      key={tf}
-                      variant={selectedTimeframe === tf ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedTimeframe(tf)}
-                      data-testid={`button-timeframe-${tf}`}
-                    >
-                      {tf}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {sentimentLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-muted-foreground">Analyzing {selectedSymbol} sentiment...</div>
-                </div>
-              ) : sentiment ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-3">Sentiment Analysis</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Sentiment:</span>
-                        <Badge className={getSentimentColor(sentiment.sentiment)}>
-                          {sentiment.sentiment.toUpperCase()}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Confidence:</span>
-                        <Badge className={getConfidenceColor(sentiment.confidence)}>
-                          {(sentiment.confidence * 100).toFixed(1)}%
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Signal:</span>
-                        <span className="font-medium text-foreground">{sentiment.signal}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Timeframe:</span>
-                        <span className="text-foreground">{sentiment.timeframe}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-3">Key Factors</h3>
-                    <ul className="space-y-2">
-                      {sentiment.keyFactors.map((factor, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <Zap className="w-3 h-3 text-accent mt-1" />
-                          <span className="text-sm text-foreground">{factor}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <h3 className="font-semibold text-foreground mb-3">AI Reasoning</h3>
-                    <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-sm text-foreground">{sentiment.reasoning}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground mb-4">Unable to analyze sentiment for {selectedSymbol}</p>
-                  <Button onClick={() => refetchSentiment()} data-testid="button-retry-sentiment">
-                    Try Again
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
+          <Button onClick={() => runMutation.mutate()} disabled={!isAuthenticated || runMutation.isPending} className="bg-primary text-primary-foreground">
+            <RefreshCw className={`w-4 h-4 mr-2 ${runMutation.isPending ? "animate-spin" : ""}`} />
+            {runMutation.isPending ? "Refreshing..." : "Refresh"}
+          </Button>
         </div>
+
+        {/* Insight cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {data.insights.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-muted-foreground">Click Refresh to generate insights.</CardContent>
+            </Card>
+          ) : (
+            data.insights.map((ins, i) => (
+              <Card key={i} className="border-border">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    {ins.tags.includes("breakout") ? <Zap className="w-5 h-5 text-accent" /> :
+                     ins.tags.includes("momentum") ? <TrendingUp className="w-5 h-5 text-accent" /> :
+                     ins.tags.includes("risk") ? <Flame className="w-5 h-5 text-destructive" /> :
+                     <Brain className="w-5 h-5" />}
+                    {ins.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="text-foreground">{ins.detail}</div>
+                  <div className="flex gap-2 flex-wrap">
+                    {ins.tags.map((t) => (
+                      <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Top movers table (optional) */}
+        {data.table.length > 0 && (
+          <Card className="border-border">
+            <CardHeader>
+              <CardTitle>Top Movers (24h)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 text-muted-foreground">Symbol</th>
+                      <th className="text-right p-3 text-muted-foreground">Last Price</th>
+                      <th className="text-right p-3 text-muted-foreground">24h %</th>
+                      <th className="text-right p-3 text-muted-foreground">High</th>
+                      <th className="text-right p-3 text-muted-foreground">Low</th>
+                      <th className="text-right p-3 text-muted-foreground">Quote Vol</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.table.map((r) => {
+                      const base = r.symbol.replace("USDT", "");
+                      const chg = safeNum(r.priceChangePercent);
+                      return (
+                        <tr key={r.symbol} className="border-b border-border hover:bg-muted/20">
+                          <td className="p-3 font-medium">{base}</td>
+                          <td className="p-3 text-right">${safeNum(r.lastPrice).toFixed(6)}</td>
+                          <td className={`p-3 text-right ${chg >= 0 ? "text-accent" : "text-destructive"}`}>{(chg >= 0 ? "+" : "") + chg.toFixed(2)}%</td>
+                          <td className="p-3 text-right">${safeNum(r.highPrice).toFixed(6)}</td>
+                          <td className="p-3 text-right">${safeNum(r.lowPrice).toFixed(6)}</td>
+                          <td className="p-3 text-right">{safeNum(r.quoteVolume).toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
