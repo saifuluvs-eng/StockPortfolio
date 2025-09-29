@@ -1,58 +1,39 @@
+// client/src/components/scanner/trading-view-chart.tsx
 import { useEffect, useRef, useState } from "react";
 import { FallbackChart } from "./fallback-chart";
 
 interface TradingViewChartProps {
-  symbol: string;
-  interval: string; // "15" | "60" | "240" | "D" | "W"
+  symbol: string;        // e.g. "BTCUSDT"
+  interval: string;      // e.g. "15", "60", "240", "D", "W"
 }
 
 declare global {
   interface Window {
     TradingView?: any;
-    __tvScriptLoading__?: Promise<void>;
   }
 }
 
-async function ensureTvScript(): Promise<void> {
-  if (window.TradingView) return;
-  if (window.__tvScriptLoading__) return window.__tvScriptLoading__;
-  window.__tvScriptLoading__ = new Promise<void>((resolve, reject) => {
-    const el = document.createElement("script");
-    el.src = "https://s3.tradingview.com/tv.js";
-    el.async = true;
-    el.onload = () => resolve();
-    el.onerror = () => reject(new Error("Failed to load TradingView"));
-    document.head.appendChild(el);
-  });
-  return window.__tvScriptLoading__;
-}
-
-export default function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
+function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const idRef = useRef<string>("tv_" + Math.random().toString(36).slice(2));
+  // Stable id for the widget’s container (prevents widget from “losing” its node between renders)
+  const idRef = useRef<string>(`tradingview-${Math.random().toString(36).slice(2)}`);
   const [useFallback, setUseFallback] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    setUseFallback(false);
 
-    const start = async () => {
-      setUseFallback(false);
-      if (import.meta.env.MODE === "development") {
-        setUseFallback(true);
-        return;
-      }
+    const createWidget = () => {
+      if (!containerRef.current || !window.TradingView) return;
+
+      // Ensure the DOM node has the expected id and is clean
+      containerRef.current.id = idRef.current;
+      containerRef.current.innerHTML = "";
+
       try {
-        await ensureTvScript();
-        if (cancelled) return;
-        const el = containerRef.current;
-        if (!el) throw new Error("Container missing");
-        el.innerHTML = "";
-
-        // TradingView expects a container id string that exists in the DOM
         new window.TradingView.widget({
           autosize: true,
           symbol: `BINANCE:${symbol}`,
-          interval,
+          interval: interval || "240",
           timezone: "Etc/UTC",
           theme: "dark",
           style: "1",
@@ -63,26 +44,56 @@ export default function TradingViewChart({ symbol, interval }: TradingViewChartP
           hide_legend: false,
           save_image: false,
           backgroundColor: "rgba(0,0,0,0)",
-          gridColor: "rgba(255,255,255,0.1)",
           hide_volume: false,
-          studies: ["MASimple@tv-basicstudies", "RSI@tv-basicstudies", "MACD@tv-basicstudies"],
+          studies: [
+            "MASimple@tv-basicstudies",
+            "RSI@tv-basicstudies",
+            "MACD@tv-basicstudies",
+          ],
         });
       } catch (e) {
-        console.warn("TradingView failed, using fallback", e);
-        if (!cancelled) setUseFallback(true);
+        console.warn("TradingView widget init failed, using fallback chart", e);
+        setUseFallback(true);
       }
     };
 
-    start();
+    if (!window.TradingView) {
+      const script = document.createElement("script");
+      script.src = "https://s3.tradingview.com/tv.js";
+      script.async = true;
+      script.onload = createWidget;
+      script.onerror = () => {
+        console.warn("Failed to load TradingView script, using fallback.");
+        setUseFallback(true);
+      };
+      document.head.appendChild(script);
+      return () => {
+        // no special cleanup needed for the script tag
+      };
+    } else {
+      createWidget();
+    }
+
     return () => {
-      cancelled = true;
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
     };
   }, [symbol, interval]);
 
-  if (useFallback) return <FallbackChart symbol={symbol} interval={interval} />;
+  if (useFallback) {
+    return <FallbackChart symbol={symbol} interval={interval || "240"} />;
+  }
 
   return (
-    <div ref={containerRef} id={idRef.current} className="h-[400px] w-full rounded-b-xl" data-testid="tradingview-chart" />
+    <div
+      ref={containerRef}
+      id={idRef.current}
+      className="h-[400px] w-full rounded-b-xl"
+      data-testid="tradingview-chart"
+    />
   );
 }
+
+export default TradingViewChart;
+export { TradingViewChart };
