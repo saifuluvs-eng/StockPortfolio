@@ -1,3 +1,4 @@
+// client/src/pages/landing.tsx
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Shield, BarChart3, Users } from "lucide-react";
@@ -5,7 +6,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Landing() {
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, isAuthenticated } = useAuth();
 
   const handleLogin = async () => {
     try {
@@ -14,6 +15,8 @@ export default function Landing() {
       console.error("Failed to initiate Google sign-in", error);
     }
   };
+
+  const year = new Date().getFullYear();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
@@ -26,6 +29,7 @@ export default function Landing() {
             </div>
             <span className="text-xl font-bold text-foreground">CryptoTrader Pro</span>
           </div>
+
           <nav className="flex items-center space-x-6 text-sm font-medium">
             <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
               Dashboard
@@ -43,9 +47,16 @@ export default function Landing() {
               SCAN
             </Link>
           </nav>
-          <Button onClick={handleLogin} data-testid="button-login">
-            Sign In with Google
-          </Button>
+
+          {isAuthenticated ? (
+            <Link href="/dashboard">
+              <Button data-testid="button-go-dashboard">Go to Dashboard</Button>
+            </Link>
+          ) : (
+            <Button onClick={handleLogin} data-testid="button-login">
+              Sign In with Google
+            </Button>
+          )}
         </div>
       </header>
 
@@ -60,12 +71,22 @@ export default function Landing() {
             Make informed trading decisions with our comprehensive suite of tools.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" onClick={handleLogin} className="gradient-primary" data-testid="button-get-started">
-              Sign In with Google
-            </Button>
-            <Button size="lg" variant="outline" data-testid="button-learn-more">
-              Learn More
-            </Button>
+            {isAuthenticated ? (
+              <Link href="/dashboard">
+                <Button size="lg" className="gradient-primary" data-testid="button-open-dashboard">
+                  Open Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Button size="lg" onClick={handleLogin} className="gradient-primary" data-testid="button-get-started">
+                Sign In with Google
+              </Button>
+            )}
+            <Link href="/charts">
+              <Button size="lg" variant="outline" data-testid="button-learn-more">
+                Explore Charts
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -84,7 +105,9 @@ export default function Landing() {
                 <BarChart3 className="w-6 h-6 text-primary" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Portfolio Management</h3>
-              <p className="text-muted-foreground text-sm">Track your investments with real-time P&L calculations and performance analytics.</p>
+              <p className="text-muted-foreground text-sm">
+                Track your investments with real-time P&amp;L calculations and performance analytics.
+              </p>
             </CardContent>
           </Card>
 
@@ -94,7 +117,9 @@ export default function Landing() {
                 <TrendingUp className="w-6 h-6 text-accent" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Technical Analysis</h3>
-              <p className="text-muted-foreground text-sm">Advanced indicators including RSI, MACD, EMA, and custom scoring algorithms.</p>
+              <p className="text-muted-foreground text-sm">
+                Advanced indicators including RSI, MACD, EMA, and custom scoring algorithms.
+              </p>
             </CardContent>
           </Card>
 
@@ -104,7 +129,9 @@ export default function Landing() {
                 <Shield className="w-6 h-6 text-destructive" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Market Scanner</h3>
-              <p className="text-muted-foreground text-sm">Scan thousands of coins for high-potential opportunities and market trends.</p>
+              <p className="text-muted-foreground text-sm">
+                Scan thousands of coins for high-potential opportunities and market trends.
+              </p>
             </CardContent>
           </Card>
 
@@ -114,7 +141,9 @@ export default function Landing() {
                 <Users className="w-6 h-6 text-secondary" />
               </div>
               <h3 className="font-semibold text-foreground mb-2">Real-time Data</h3>
-              <p className="text-muted-foreground text-sm">Live market data powered by Binance API with WebSocket connections.</p>
+              <p className="text-muted-foreground text-sm">
+                Live market data powered by Binance API with WebSocket connections.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -126,11 +155,19 @@ export default function Landing() {
           <CardContent className="p-12 text-center">
             <h2 className="text-3xl font-bold text-foreground mb-4">Ready to Start Trading?</h2>
             <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join thousands of traders who use CryptoTrader Pro to make informed decisions and maximize their profits.
+              Join traders who use CryptoTrader Pro to make informed decisions and maximize their profits.
             </p>
-            <Button size="lg" onClick={handleLogin} className="gradient-primary" data-testid="button-start-trading">
-              Sign In with Google
-            </Button>
+            {isAuthenticated ? (
+              <Link href="/dashboard">
+                <Button size="lg" className="gradient-primary" data-testid="button-start-trading">
+                  Open Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <Button size="lg" onClick={handleLogin} className="gradient-primary" data-testid="button-start-trading">
+                Sign In with Google
+              </Button>
+            )}
           </CardContent>
         </Card>
       </section>
@@ -142,7 +179,7 @@ export default function Landing() {
             <div className="w-6 h-6 bg-primary rounded flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="text-muted-foreground">© 2024 CryptoTrader Pro. All rights reserved.</span>
+            <span className="text-muted-foreground">© {year} CryptoTrader Pro. All rights reserved.</span>
           </div>
         </div>
       </footer>
