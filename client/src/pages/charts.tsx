@@ -1,7 +1,7 @@
 // client/src/pages/charts.tsx
 import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
-import TradingViewChart from "@/components/scanner/trading-view-chart";
+import { TradingViewChart } from "@/components/scanner/trading-view-chart";
 import TechnicalIndicators from "@/components/scanner/technical-indicators";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,7 @@ function toUsdtSymbol(input: string) {
 
 function displayPair(sym: string) {
   const s = (sym || "").toUpperCase();
-  return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : s || DEFAULT_SYMBOL;
+  return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : (s || DEFAULT_SYMBOL);
 }
 
 export default function Charts() {
@@ -84,12 +84,12 @@ export default function Charts() {
   const [matchWithParam, params] = useRoute("/charts/:symbol?");
   const [, setLocation] = useLocation();
 
-  // Also honour ?symbol= and ?scan=true (works with hash router: /#/charts?symbol=ETHUSDT&scan=true)
+  // Also honour ?symbol= and ?scan=true
   const urlParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const querySymbol = urlParams.get("symbol");
   const shouldAutoScan = urlParams.get("scan") === "true";
 
-  // Resolve initial symbol priority: route param > query ?symbol > default
+  // Resolve initial symbol
   const initialSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
 
   // State
@@ -152,7 +152,6 @@ export default function Charts() {
     };
   }, [selectedSymbol]);
 
-  // Use only matching price payload to render (prevents cross-coin flashes)
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
   const showLoadingState = !latestPrice;
@@ -171,7 +170,9 @@ export default function Charts() {
         timeframe: backendTimeframe
       });
 
-      if (!res.ok) throw new Error("Scan failed");
+      if (!res.ok) {
+        throw new Error("Scan failed");
+      }
       return res.json();
     },
     onSuccess: (data: ScanResult) => {
@@ -520,7 +521,7 @@ export default function Charts() {
           {/* TradingView Chart - Right */}
           <div className={`${showTechnicals ? "lg:col-span-2" : "lg:col-span-3"}`}>
             <TradingViewChart
-              key={`${selectedSymbol}-${selectedTimeframe}-${showTechnicals}-dark-v2`}
+              key={`${selectedSymbol}-${selectedTimeframe}-${showTechnicals}-dark-v3`}
               symbol={selectedSymbol}
               interval={selectedTimeframe}
             />
