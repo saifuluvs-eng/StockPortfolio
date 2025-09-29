@@ -13,13 +13,13 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoute, useLocation } from "wouter";
 import {
   BarChart3,
   TrendingUp,
   TrendingDown,
   Activity,
   DollarSign,
-  Volume,
   Target,
   Search
 } from "lucide-react";
@@ -55,6 +55,7 @@ interface ScanResult {
 }
 
 const DEFAULT_TIMEFRAME = "240"; // 4h
+const DEFAULT_SYMBOL = "BTCUSDT";
 
 const TIMEFRAMES = [
   { value: "15", label: "15min", display: "15m", backend: "15m" },
@@ -64,21 +65,65 @@ const TIMEFRAMES = [
   { value: "W", label: "1Week", display: "1W", backend: "1w" }
 ];
 
+function toUsdtSymbol(input: string) {
+  const coin = (input || "").trim().toUpperCase();
+  if (!coin) return DEFAULT_SYMBOL;
+  return coin.endsWith("USDT") ? coin : `${coin}USDT`;
+}
+
+function displayPair(sym: string) {
+  const s = (sym || "").toUpperCase();
+  return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : s || DEFAULT_SYMBOL;
+}
+
 export default function Charts() {
   const { toast } = useToast();
   const { isAuthenticated, signInWithGoogle } = useAuth();
 
-  // Parse URL params
-  const urlParams = new URLSearchParams(window.location.search);
-  const symbolFromUrl = urlParams.get("symbol");
+  // Route support: /#/charts and /#/charts/:symbol
+  const [matchWithParam, params] = useRoute("/charts/:symbol?");
+  const [, setLocation] = useLocation();
+
+  // Also honour ?symbol= and ?scan=true (works with hash router: /#/charts?symbol=ETHUSDT&scan=true)
+  const urlParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const querySymbol = urlParams.get("symbol");
   const shouldAutoScan = urlParams.get("scan") === "true";
 
+  // Resolve initial symbol priority: route param > query ?symbol > default
+  const initialSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
+
   // State
-  const [selectedSymbol, setSelectedSymbol] = useState((symbolFromUrl || "BTCUSDT").toUpperCase());
+  const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
   const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
   const [showTechnicals] = useState(true);
-  const [searchInput, setSearchInput] = useState(symbolFromUrl ? symbolFromUrl.replace("USDT", "") : "BTC");
+  const [searchInput, setSearchInput] = useState<string>(() => {
+    // For the input, strip USDT safely for display
+    const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
+    return base || "BTC";
+    });
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+
+  // Keep state in sync when navigating directly to /charts/:symbol
+  useEffect(() => {
+    const next = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
+    if (next !== selectedSymbol) {
+      setSelectedSymbol(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.symbol, querySymbol]);
+
+  // When symbol changes from UI, push to /charts/:symbol so deep links work
+  useEffect(() => {
+    // Only update URL if current route is charts
+    if (matchWithParam) {
+      const target = `/charts/${selectedSymbol}`;
+      // Avoid infinite loops
+      if (!window.location.hash.endsWith(target)) {
+        setLocation(target);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol]);
 
   // Live price data
   const [priceData, setPriceData] = useState<PriceData | null>(null);
@@ -92,7 +137,7 @@ export default function Charts() {
 
     const unsubscribe = openSpotTickerStream([selectedSymbol], (t) => {
       if (!active) return;
-      if (t.symbol.toUpperCase() !== selectedSymbol.toUpperCase()) return;
+      if ((t.symbol || "").toUpperCase() !== selectedSymbol.toUpperCase()) return;
 
       setPriceData({
         symbol: t.symbol,
@@ -113,7 +158,8 @@ export default function Charts() {
   }, [selectedSymbol]);
 
   // Use only matching price payload to render (prevents cross-coin flashes)
-  const latestPrice = priceData?.symbol?.toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
+  const latestPrice =
+    (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
   const showLoadingState = !latestPrice;
   const getLoadingMessage = () => (!latestPrice ? "Loading..." : "...");
 
@@ -160,7 +206,7 @@ export default function Charts() {
 
   useEffect(() => {
     if (isAuthenticated && !scanMutation.isPending && !hasAutoScanned) {
-      if ((selectedSymbol === "BTCUSDT" && !scanResult) || (shouldAutoScan && symbolFromUrl)) {
+      if ((selectedSymbol === DEFAULT_SYMBOL && !scanResult) || (shouldAutoScan && (params?.symbol || querySymbol))) {
         const timer = setTimeout(() => {
           scanMutation.mutate();
           setHasAutoScanned(true);
@@ -168,7 +214,7 @@ export default function Charts() {
         return () => clearTimeout(timer);
       }
     }
-  }, [isAuthenticated, selectedSymbol, scanResult, scanMutation, shouldAutoScan, symbolFromUrl, hasAutoScanned]);
+  }, [isAuthenticated, selectedSymbol, scanResult, scanMutation, shouldAutoScan, params?.symbol, querySymbol, hasAutoScanned]);
 
   const hasScannedRef = useRef(false);
   useEffect(() => {
@@ -191,7 +237,8 @@ export default function Charts() {
       });
       return;
     }
-    if (!searchInput.trim()) {
+    const raw = (searchInput || "").trim().toUpperCase();
+    if (!raw) {
       toast({
         title: "Invalid Input",
         description: "Please enter a coin symbol (e.g., BTC, ETH, SOL)",
@@ -199,30 +246,29 @@ export default function Charts() {
       });
       return;
     }
-    const coinSymbol = searchInput.trim().toUpperCase();
-    const fullSymbol = coinSymbol.endsWith("USDT") ? coinSymbol : coinSymbol + "USDT";
+    const fullSymbol = toUsdtSymbol(raw);
     setSelectedSymbol(fullSymbol);
     setSearchInput("");
     toast({
       title: "Symbol Updated",
-      description: `Loading ${coinSymbol.replace("USDT", "")}/USDT chart`
+      description: `Loading ${displayPair(fullSymbol)} chart`
     });
   };
 
   const handleScan = () => {
-    if (searchInput.trim() && searchInput.trim().toUpperCase() !== selectedSymbol.replace("USDT", "")) {
-      const coinSymbol = searchInput.trim().toUpperCase();
-      const fullSymbol = coinSymbol.endsWith("USDT") ? coinSymbol : coinSymbol + "USDT";
+    const raw = (searchInput || "").trim().toUpperCase();
+    if (raw && raw !== selectedSymbol && raw !== displayPair(selectedSymbol).replace("/USDT", "")) {
+      const fullSymbol = toUsdtSymbol(raw);
       setSelectedSymbol(fullSymbol);
       setSearchInput("");
       toast({
         title: "Symbol Updated & Scanning",
-        description: `Analyzing ${coinSymbol.replace("USDT", "")}/USDT`
+        description: `Analyzing ${displayPair(fullSymbol)}`
       });
       setTimeout(() => scanMutation.mutate(), 100);
       return;
     }
-    if (!selectedSymbol.trim()) {
+    if (!selectedSymbol) {
       toast({
         title: "Invalid Symbol",
         description: "Please select a valid symbol",
@@ -356,7 +402,7 @@ export default function Charts() {
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Activity className="w-3 h-3" />
               Currently Viewing:{" "}
-              <span className="font-medium text-foreground">{selectedSymbol.replace("USDT", "/USDT")}</span>
+              <span className="font-medium text-foreground">{displayPair(selectedSymbol)}</span>
             </div>
           </CardContent>
         </Card>
@@ -402,7 +448,8 @@ export default function Charts() {
                     {showLoadingState ? getLoadingMessage() : formatVolume(latestPrice?.quoteVolume)}
                   </p>
                 </div>
-                <Volume className="w-5 h-5 text-secondary" />
+                {/* Using Target icon here to avoid any missing icon import issues */}
+                <Target className="w-5 h-5 text-secondary" />
               </div>
             </CardContent>
           </Card>
@@ -499,7 +546,7 @@ export default function Charts() {
               <div>
                 <h4 className="font-medium text-foreground mb-1">Current Analysis</h4>
                 <p className="text-muted-foreground">
-                  {priceChange > 0 ? "Bullish momentum" : "Bearish pressure"} detected on {selectedSymbol.replace("USDT", "/USDT")}
+                  {isPositive ? "Bullish momentum" : "Bearish pressure"} detected on {displayPair(selectedSymbol)}
                 </p>
               </div>
               <div>
