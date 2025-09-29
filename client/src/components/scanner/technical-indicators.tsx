@@ -1,27 +1,28 @@
+// client/src/components/scanner/technical-indicators.tsx
 import * as React from "react";
 
 /**
  * Renders ALL indicators returned by the scan API instead of relying on a hardcoded list.
  * - Sorts by tier (3 -> 1), then by |score| desc, then by name.
  * - Colors: green=bullish, red=bearish, yellow=neutral.
- * - Works with the ScanResult shape used on chart.tsx.
+ * - Robust to null/undefined fields so it never crashes the page.
  */
 
 type Signal = "bullish" | "bearish" | "neutral";
 
 type Indicator = {
-  value: number | null;
-  signal: Signal;
-  score: number;          // -3..+3 typically
-  tier: number;           // 1..3
-  description: string;
-  // (Optional) future-friendly fields like "name" can be added by the API; we fall back to the map key.
+  value: number | null | undefined;
+  signal?: Signal | string | null;
+  score?: number | null;
+  tier?: number | null;
+  description?: string | null;
+  // Future-friendly: API can add fields; we ignore them safely.
 };
 
 type ScanResult = {
   symbol: string;
   price: number;
-  indicators: Record<string, Indicator>;
+  indicators: Record<string, Indicator> | null | undefined;
   totalScore: number;
   recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
   meta?: Record<string, any>;
@@ -30,18 +31,26 @@ type ScanResult = {
 export default function TechnicalIndicators({
   analysis,
 }: {
-  analysis: ScanResult;
+  analysis?: ScanResult | null;
 }) {
   const items = React.useMemo(() => {
-    const entries = Object.entries(analysis?.indicators || {});
-    // Show everything the API provided:
+    const entries = Object.entries(analysis?.indicators ?? {});
     return entries
-      .map(([key, it]) => ({ key, ...it }))
+      .map(([key, it]) => ({
+        key,
+        value: it?.value ?? null,
+        signal: normalizeSignal(it?.signal),
+        score: toNumber(it?.score, 0),
+        tier: toNumber(it?.tier, 1),
+        description: it?.description ?? "",
+      }))
       .sort((a, b) => {
-        // Tier desc, then absolute score desc, then name asc
+        // Tier desc (3..1)
         if (b.tier !== a.tier) return b.tier - a.tier;
+        // Absolute score desc
         const abs = Math.abs(b.score) - Math.abs(a.score);
         if (abs !== 0) return abs;
+        // Name asc
         return a.key.localeCompare(b.key);
       });
   }, [analysis]);
@@ -49,7 +58,7 @@ export default function TechnicalIndicators({
   if (!items.length) {
     return (
       <div className="text-center py-12 text-muted-foreground">
-        <svg className="w-12 h-12 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none">
+        <svg className="w-12 h-12 mx-auto mb-4 opacity-50" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M21 21l-4.35-4.35m2.1-5.4a7.5 7.5 0 11-15 0 7.5 7.5 0 0115 0z" stroke="currentColor" strokeWidth="1.5"/>
         </svg>
         <h3 className="text-lg font-medium mb-2">No Analysis Available</h3>
@@ -72,7 +81,14 @@ function IndicatorCard({
   indicator,
 }: {
   id: string;
-  indicator: Indicator & { key?: string };
+  indicator: {
+    value: number | null;
+    signal: Signal;
+    score: number;
+    tier: number;
+    description: string;
+    key?: string;
+  };
 }) {
   const { value, signal, score, tier, description } = indicator;
 
@@ -97,8 +113,7 @@ function IndicatorCard({
       ? "text-red-500"
       : "text-yellow-500";
 
-  const scoreText =
-    score > 0 ? `+${score}` : `${score}`;
+  const scoreText = score > 0 ? `+${score}` : `${score}`;
 
   return (
     <div className={`relative rounded-xl border ${border} bg-card/40 p-3`}>
@@ -107,27 +122,24 @@ function IndicatorCard({
         className={`absolute left-0 top-0 h-full w-1 rounded-l-xl ${
           tier >= 3 ? "bg-primary" : tier === 2 ? "bg-primary/70" : "bg-primary/40"
         }`}
+        aria-hidden="true"
       />
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className={`inline-block h-2.5 w-2.5 rounded-full ${dot}`} />
-            <h4 className="text-foreground text-sm font-semibold">
-              {prettyName(id)}
-            </h4>
+            <span className={`inline-block h-2.5 w-2.5 rounded-full ${dot}`} aria-hidden="true" />
+            <h4 className="text-foreground text-sm font-semibold">{prettyName(id)}</h4>
             <span className={`text-xs font-semibold ${badge}`}>({scoreText})</span>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+          {description ? (
+            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+          ) : null}
         </div>
         <div className="text-right">
           <div className="text-xs uppercase text-muted-foreground">Signal</div>
-          <div className={`text-sm font-semibold ${badge}`}>
-            {signal.toUpperCase()}
-          </div>
-          {value !== null && Number.isFinite(value) && (
-            <div className="mt-1 text-xs text-muted-foreground">
-              Value: {formatValue(value)}
-            </div>
+          <div className={`text-sm font-semibold ${badge}`}>{signal.toUpperCase()}</div>
+          {isFiniteNumber(value) && (
+            <div className="mt-1 text-xs text-muted-foreground">Value: {formatValue(value!)}</div>
           )}
         </div>
       </div>
@@ -135,8 +147,25 @@ function IndicatorCard({
   );
 }
 
+/* ---------- helpers ---------- */
+
+function toNumber(n: unknown, fallback: number): number {
+  const v = typeof n === "number" ? n : Number(n);
+  return Number.isFinite(v) ? v : fallback;
+}
+
+function isFiniteNumber(n: unknown): n is number {
+  return typeof n === "number" && Number.isFinite(n);
+}
+
+function normalizeSignal(sig: unknown): Signal {
+  const s = String(sig ?? "").toLowerCase();
+  if (s === "bullish" || s === "bearish" || s === "neutral") return s;
+  return "neutral";
+}
+
 function prettyName(id: string) {
-  // Best-effort prettifier for common IDs; otherwise just title-case the id.
+  // Best-effort prettifier for common IDs; otherwise title-case the id.
   const map: Record<string, string> = {
     rsi: "RSI (14)",
     macd: "MACD (12,26,9)",
@@ -158,7 +187,7 @@ function prettyName(id: string) {
   };
   if (map[id]) return map[id];
   return id
-    .replace(/_/g, " ")
+    .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
@@ -168,7 +197,6 @@ function formatValue(n: number) {
   if (a >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
   if (a >= 1e3) return `${(n / 1e3).toFixed(2)}K`;
   if (a === 0) return "0";
-  // adapt precision so tiny numbers don’t look like 0
   const digits = a >= 1 ? 2 : a >= 0.01 ? 4 : 6;
   return n.toFixed(digits);
 }
