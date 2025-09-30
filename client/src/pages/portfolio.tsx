@@ -4,22 +4,32 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Activity, PlusCircle, Eye, EyeIcon, Bell, X } from "lucide-react";
+import {
+  TrendingUp,
+  Activity,
+  PlusCircle,
+  Eye,
+  EyeIcon,
+  Bell,
+  X,
+} from "lucide-react";
 import LiveSummary from "@/components/home/LiveSummary";
 import { apiRequest } from "@/lib/queryClient";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+type Position = {
+  symbol: string;
+  qty: number;
+  avgPrice: number;
+  livePrice: number;
+  pnl: number;
+};
 
 type PortfolioAPI = {
   totalValue: number;
   totalPnL: number;
   totalPnLPercent: number;
-  positions: Array<{
-    symbol: string;
-    qty: number;
-    avgPrice: number;
-    livePrice: number;
-    pnl: number;
-  }>;
+  positions: Position[];
 };
 
 export default function Portfolio() {
@@ -54,31 +64,64 @@ export default function Portfolio() {
     return s.length >= 2 && Number.isFinite(q) && q > 0 && Number.isFinite(a) && a > 0;
   }, [form]);
 
+  // prevent body scroll when modal open
+  useEffect(() => {
+    if (open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [open]);
+
   async function handleCreate() {
     if (!formValid || saving) return;
     setSaving(true);
-    try {
-      // Minimal backend contract: POST /api/portfolio with { action: "add", position }
-      const body = {
-        action: "add",
-        position: {
-          symbol: form.symbol.trim().toUpperCase(),
-          qty: Number(form.qty),
-          avgPrice: Number(form.avgPrice),
-        },
+
+    const newPos: Position = {
+      symbol: form.symbol.trim().toUpperCase(),
+      qty: Number(form.qty),
+      avgPrice: Number(form.avgPrice),
+      // conservative defaults until backend recomputes:
+      livePrice: Number(form.avgPrice),
+      pnl: 0,
+    };
+
+    // optimistic update (so you SEE the row immediately)
+    const key = ["/api/portfolio"];
+    const prev = qc.getQueryData<PortfolioAPI>(key);
+    qc.setQueryData<PortfolioAPI>(key, (old) => {
+      const base = old ?? {
+        totalValue: 0,
+        totalPnL: 0,
+        totalPnLPercent: 0,
+        positions: [],
       };
-      const res = await apiRequest("POST", "/api/portfolio", body);
+      return { ...base, positions: [newPos, ...base.positions] };
+    });
+
+    try {
+      // Backend contract: POST /api/portfolio { action:"add", position:{symbol, qty, avgPrice} }
+      const res = await apiRequest("POST", "/api/portfolio", {
+        action: "add",
+        position: { symbol: newPos.symbol, qty: newPos.qty, avgPrice: newPos.avgPrice },
+      });
+
       if (!res.ok) {
+        // rollback on failure
+        qc.setQueryData(key, prev);
         const msg = await res.text().catch(() => "Request failed");
         throw new Error(msg || `HTTP ${res.status}`);
       }
-      // refresh portfolio
-      await qc.invalidateQueries({ queryKey: ["/api/portfolio"] });
+
+      // re-fetch to get canonical values from server
+      await qc.invalidateQueries({ queryKey: key });
       setOpen(false);
       setForm({ symbol: "", qty: "", avgPrice: "" });
     } catch (err) {
       console.error("Add position failed:", err);
-      alert("Could not add position. Please try again.");
+      alert("Could not add position. If you have a different API route/body, tell me and I’ll adjust.");
     } finally {
       setSaving(false);
     }
@@ -91,7 +134,9 @@ export default function Portfolio() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Your Portfolio</h1>
-            <p className="text-muted-foreground mt-1">Positions, P&amp;L, and live performance.</p>
+            <p className="text-muted-foreground mt-1">
+              Positions, P&amp;L, and live performance.
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -196,7 +241,7 @@ export default function Portfolio() {
             </CardContent>
           </Card>
 
-          {/* Alerts count (placeholder) */}
+          {/* Alerts count */}
           <Card
             className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10"
             style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}
@@ -298,17 +343,17 @@ export default function Portfolio() {
         </Card>
       </div>
 
-      {/* ---- Add Position Modal (simple, no external dep) ---- */}
+      {/* ---- Add Position Modal (now solid & readable) ---- */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* backdrop */}
+          {/* darker backdrop */}
           <div
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-black/80"
             onClick={() => (!saving ? setOpen(false) : null)}
           />
-          {/* panel */}
-          <div className="relative z-10 w-full max-w-md rounded-xl border border-border bg-gradient-to-b from-background/80 to-background p-5">
-            <div className="flex items-center justify-between mb-4">
+          {/* solid panel */}
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl">
+            <div className="p-5 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground">Add Position</h3>
               <button
                 className="p-1 rounded-md hover:bg-white/5"
@@ -319,38 +364,40 @@ export default function Portfolio() {
               </button>
             </div>
 
-            <div className="grid gap-3">
+            <div className="p-5">
               <label className="text-sm text-muted-foreground">Symbol (e.g., BTCUSDT)</label>
               <input
-                className="w-full rounded-md bg-black/20 border border-border px-3 py-2 outline-none"
+                className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
                 placeholder="BTCUSDT"
                 value={form.symbol}
                 onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
               />
 
-              <label className="text-sm text-muted-foreground mt-2">Quantity</label>
+              <label className="text-sm text-muted-foreground mt-4 block">Quantity</label>
               <input
                 type="number"
                 min="0"
                 step="any"
-                className="w-full rounded-md bg-black/20 border border-border px-3 py-2 outline-none"
+                className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
                 placeholder="e.g., 0.5"
                 value={form.qty}
                 onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
               />
 
-              <label className="text-sm text-muted-foreground mt-2">Average Entry Price (USDT)</label>
+              <label className="text-sm text-muted-foreground mt-4 block">
+                Average Entry Price (USDT)
+              </label>
               <input
                 type="number"
                 min="0"
                 step="any"
-                className="w-full rounded-md bg-black/20 border border-border px-3 py-2 outline-none"
+                className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
                 placeholder="e.g., 42000"
                 value={form.avgPrice}
                 onChange={(e) => setForm((f) => ({ ...f, avgPrice: e.target.value }))}
               />
 
-              <div className="flex justify-end gap-2 mt-4">
+              <div className="flex justify-end gap-2 mt-6">
                 <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
                   Cancel
                 </Button>
@@ -359,8 +406,9 @@ export default function Portfolio() {
                 </Button>
               </div>
 
-              <p className="text-xs text-muted-foreground mt-2">
-                Tip: Use symbols exactly like Binance spot pairs (e.g., <span className="font-mono">BTCUSDT</span>, <span className="font-mono">ETHUSDT</span>).
+              <p className="text-xs text-muted-foreground mt-3">
+                Tip: Use Binance spot symbols like <span className="font-mono">BTCUSDT</span>,{" "}
+                <span className="font-mono">ETHUSDT</span>.
               </p>
             </div>
           </div>
