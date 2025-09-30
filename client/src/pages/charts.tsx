@@ -97,27 +97,48 @@ function updateUrlQuery(next: Record<string, string | undefined>) {
   window.history.replaceState({}, "", url.toString());
 }
 
+/** Convert user text to a clean base ticker (letters only, uppercase) */
+function sanitizeBaseTicker(input: string): string {
+  // Keep only A–Z letters; users may paste "btc/usdt", "btc usdt", etc.
+  const lettersOnly = (input || "")
+    .toUpperCase()
+    .replace(/[^A-Z]/g, " ") // non-letters → spaces
+    .trim()
+    .split(/\s+/)[0] || ""; // take first token
+  // If user typed a full pair like BTCUSDT, strip trailing USDT to get base
+  if (lettersOnly.endsWith("USDT")) return lettersOnly.slice(0, -4);
+  return lettersOnly;
+}
+
+/** Build a USDT pair from base; if already ends with USDT, keep it */
+function toUsdtPair(baseOrPair: string): string {
+  const up = (baseOrPair || "").toUpperCase().replace(/[^A-Z]/g, "");
+  if (!up) return "BTCUSDT";
+  return up.endsWith("USDT") ? up : `${up}USDT`;
+}
+
 /**
  * Minimal, robust chart using TradingView’s public widget (iframe).
- * Now includes a toolbar to change symbol + resolution safely.
+ * Now enforces base-ticker input and auto-uses USDT pairs.
  */
 export default function Charts() {
   const search = typeof window !== "undefined" ? window.location.search : "";
   const params = useMemo(() => new URLSearchParams(search), [search]);
 
-  // Pair can be "BTCUSDT" or "BTC/USDT" from URL (?s=)
+  // Read pair from URL (?s=), default to BTCUSDT
   const rawPair = params.get("s");
-  const pair = safeString(rawPair, "BTCUSDT");
-  const pairNoSlash = safeReplace(pair, "/", ""); // "BTC/USDT" -> "BTCUSDT"
-  const base = safeReplace(pairNoSlash, /USDT$/, ""); // "BTC"
+  const pair = toUsdtPair(safeString(rawPair, "BTCUSDT")); // ensure USDT
+  const pairNoSlash = safeReplace(pair, "/", ""); // safety (shouldn’t contain '/')
+  const base = safeReplace(pairNoSlash, /USDT$/, ""); // base only (e.g., BTC)
 
   // Resolution / timeframe from URL (?res=)
   const rawRes = params.get("res");
   const resolution = mapResolution(safeString(rawRes, "60"));
 
-  // UI state for input/select (initialised from URL)
-  const [symbolInput, setSymbolInput] = useState<string>(pairNoSlash);
+  // UI state (input only accepts base tickers like BTC, ETH, AVAX)
+  const [baseInput, setBaseInput] = useState<string>(base);
   const [resSelect, setResSelect] = useState<string>(resolution);
+  const [inputError, setInputError] = useState<string>("");
 
   // Build TradingView symbol (BINANCE:BTCUSDT)
   const exchange = "BINANCE";
@@ -135,7 +156,7 @@ export default function Charts() {
     u.searchParams.set("hide_side_toolbar", "0");
     u.searchParams.set("allow_symbol_change", "1");
     u.searchParams.set("save_image", "0");
-    // keep studies empty for now; we’ll add them in the next step
+    // keep studies empty for now; we’ll add them later
     u.searchParams.set("studies", "");
     return u.toString();
   }, [tvSymbol, resSelect, resolution]);
@@ -150,16 +171,21 @@ export default function Charts() {
   }, [iframeSrc]);
 
   // Handlers
-  function applySymbol() {
-    // Accepts "BTCUSDT" or "BTC/USDT" in the input
-    const cleaned = safeReplace(symbolInput, "/", "").toUpperCase();
-    const next = cleaned || "BTCUSDT";
-    updateUrlQuery({ s: next });
-    setSymbolInput(next);
-    // when URL changes, pairNoSlash will update on next render; we also refresh iframe immediately:
+  function applyBaseTicker() {
+    const cleanedBase = sanitizeBaseTicker(baseInput);
+    if (!cleanedBase) {
+      setInputError("Enter a base ticker like BTC, ETH, AVAX.");
+      return;
+    }
+    setInputError("");
+    const nextPair = toUsdtPair(cleanedBase); // e.g., BTC → BTCUSDT
+    // reflect in URL
+    updateUrlQuery({ s: nextPair });
+    // refresh iframe immediately
     const u = new URL(iframeSrc);
-    u.searchParams.set("symbol", `${exchange}:${next}`);
+    u.searchParams.set("symbol", `${exchange}:${nextPair}`);
     if (iframeRef.current) iframeRef.current.src = u.toString();
+    // also sync local state display (read-only info at right)
   }
 
   function applyResolution(nextRes: string) {
@@ -171,10 +197,17 @@ export default function Charts() {
     if (iframeRef.current) iframeRef.current.src = u.toString();
   }
 
-  function onSymbolKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function onBaseChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // live-restrict to letters only, uppercase
+    const next = e.target.value.toUpperCase().replace(/[^A-Z]/g, "");
+    setBaseInput(next);
+    if (inputError && next) setInputError("");
+  }
+
+  function onBaseKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
-      applySymbol();
+      applyBaseTicker();
     }
   }
 
@@ -208,12 +241,15 @@ export default function Charts() {
           }}
         >
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontSize: 12, opacity: 0.75 }}>Symbol</label>
+            <label style={{ fontSize: 12, opacity: 0.75 }}>
+              Base ticker (auto-USDT)
+            </label>
             <input
-              value={symbolInput}
-              onChange={(e) => setSymbolInput(e.target.value)}
-              onKeyDown={onSymbolKeyDown}
-              placeholder="BTCUSDT or BTC/USDT"
+              value={baseInput}
+              onChange={onBaseChange}
+              onKeyDown={onBaseKeyDown}
+              placeholder="BTC, ETH, AVAX"
+              maxLength={10}
               style={{
                 background: "#0e0e0e",
                 color: "#e0e0e0",
@@ -225,7 +261,7 @@ export default function Charts() {
               }}
             />
             <button
-              onClick={applySymbol}
+              onClick={applyBaseTicker}
               style={{
                 background: "#232323",
                 color: "#e0e0e0",
@@ -291,6 +327,23 @@ export default function Charts() {
           </div>
         </div>
 
+        {/* Inline validation message */}
+        {inputError ? (
+          <div
+            style={{
+              background: "#2a1717",
+              border: "1px solid #5a2a2a",
+              color: "#ffb3b3",
+              padding: "8px 12px",
+              borderRadius: 8,
+              margin: "0 0 12px 0",
+              maxWidth: 1200,
+            }}
+          >
+            {inputError}
+          </div>
+        ) : null}
+
         {/* Chart */}
         <div
           style={{
@@ -314,9 +367,10 @@ export default function Charts() {
         </div>
 
         <p style={{ marginTop: 16, opacity: 0.85 }}>
-          Use the toolbar to change the symbol (e.g., <code>ETHUSDT</code>) or
-          resolution. Next, we’ll add indicator toggles (EMA, RSI, MACD)
-          safely—still keeping this page uncrashable.
+          Type a base ticker like <code>BTC</code>, <code>ETH</code>, or{" "}
+          <code>AVAX</code>. We’ll automatically load the{" "}
+          <code>USDT</code> pair (e.g., <code>BTCUSDT</code>). Next, we can add
+          indicator toggles (EMA/RSI/MACD) safely.
         </p>
       </main>
     </ErrorBoundary>
