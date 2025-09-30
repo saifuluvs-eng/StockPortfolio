@@ -22,7 +22,7 @@ type Position = {
   symbol: string;
   qty: number;
   avgPrice: number;
-  livePrice: number; // server’s last known price (fallback)
+  livePrice: number;
   pnl: number;
 };
 
@@ -37,7 +37,6 @@ type AiOverviewData = {
   signals: any[];
 };
 
-// ---- util: normalize symbol to Binance stream id
 function binanceStreamId(symbol: string) {
   return `${symbol.toLowerCase()}@ticker`;
 }
@@ -47,7 +46,6 @@ export default function Portfolio() {
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Per-user portfolio (hidden when logged out)
   const { data, isLoading } = useQuery<PortfolioAPI>({
     queryKey: ["/api/portfolio", user?.uid],
     enabled: !!user,
@@ -69,14 +67,11 @@ export default function Portfolio() {
   const totalPnLPercent = data?.totalPnLPercent ?? 0;
   const positions = Array.isArray(data?.positions) ? data!.positions : [];
 
-  // ---------- LIVE PRICES (Binance WS) ----------
-  // We keep a map of SYMBOL -> latest close price from Binance ticker stream
   const [live, setLive] = useState<Record<string, number>>({});
   useEffect(() => {
     if (!user || positions.length === 0) return;
 
     const symbols = Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase())));
-    // Combine multiple tickers into a single connection
     const streams = symbols.map(binanceStreamId).join("/");
     const url = `wss://stream.binance.com:9443/stream?streams=${streams}`;
     const ws = new WebSocket(url);
@@ -84,7 +79,6 @@ export default function Portfolio() {
     ws.onmessage = (evt) => {
       try {
         const payload = JSON.parse(evt.data);
-        // payload = { stream: "btcusdt@ticker", data: { c: "xxxxx", ... } }
         const stream: string | undefined = payload?.stream;
         const priceStr: string | undefined = payload?.data?.c;
         if (stream && priceStr) {
@@ -94,18 +88,14 @@ export default function Portfolio() {
             setLive((prev) => (prev[sym] === price ? prev : { ...prev, [sym]: price }));
           }
         }
-      } catch (e) {
-        // ignore malformed frames
-      }
+      } catch {}
     };
 
     return () => {
       try { ws.close(); } catch {}
     };
-    // re-connect if the set of symbols changes
   }, [user, positions.map((p) => p.symbol).sort().join(",")]);
 
-  // ---------- ADD / DELETE ----------
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ symbol: "", qty: "", avgPrice: "" });
@@ -120,9 +110,7 @@ export default function Portfolio() {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, [open]);
 
   async function handleCreate() {
@@ -145,22 +133,29 @@ export default function Portfolio() {
     });
 
     try {
-      const res = await apiRequest("POST", "/api/portfolio", {
-        action: "add",
-        uid: user.uid,
-        position: { symbol: newPos.symbol, qty: newPos.qty, avgPrice: newPos.avgPrice },
+      // IMPORTANT: also pass uid in the URL so the API always sees it
+      const res = await fetch(`/api/portfolio?uid=${encodeURIComponent(user.uid)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add",
+          uid: user.uid,
+          position: { symbol: newPos.symbol, qty: newPos.qty, avgPrice: newPos.avgPrice },
+        }),
       });
+
       if (!res.ok) {
         qc.setQueryData(key, prev);
-        const msg = await res.text().catch(() => "Request failed");
+        const msg = await res.text().catch(() => "");
+        alert(msg ? msg : "Could not add position.");
         throw new Error(msg || `HTTP ${res.status}`);
       }
+
       await qc.invalidateQueries({ queryKey: key });
       setOpen(false);
       setForm({ symbol: "", qty: "", avgPrice: "" });
     } catch (err) {
       console.error("Add position failed:", err);
-      alert("Could not add position.");
     } finally {
       setSaving(false);
     }
@@ -170,35 +165,32 @@ export default function Portfolio() {
     if (!user) return;
     const key = ["/api/portfolio", user.uid];
     const prev = qc.getQueryData<PortfolioAPI>(key);
-    // optimistic remove
     qc.setQueryData<PortfolioAPI>(key, (old) =>
       old ? { ...old, positions: old.positions.filter((p) => p.symbol !== symbol) } : old
     );
     try {
-      const res = await apiRequest("POST", "/api/portfolio", {
-        action: "delete",
-        uid: user.uid,
-        symbol,
+      const res = await fetch(`/api/portfolio?uid=${encodeURIComponent(user.uid)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", uid: user.uid, symbol }),
       });
       if (!res.ok) {
         qc.setQueryData(key, prev);
-        const msg = await res.text().catch(() => "Request failed");
+        const msg = await res.text().catch(() => "");
+        alert(msg ? msg : "Could not delete the position.");
         throw new Error(msg || `HTTP ${res.status}`);
       }
       await qc.invalidateQueries({ queryKey: key });
     } catch (e) {
       console.error("Delete failed:", e);
-      alert("Could not delete the position.");
       qc.setQueryData(key, prev);
     }
   }
 
   function goScan(symbol: string) {
-    // Route to charts/scan page with symbol prefilled
     setLocation(`/charts/${encodeURIComponent(symbol)}`);
   }
 
-  // Short stat cards
   const cardClampClass = "dashboard-card neon-hover !min-h-[64px]";
   const cardClampStyle: React.CSSProperties = { minHeight: 64 };
   const rowContentClass = "!p-2 h-[64px] min-h-0 flex items-center justify-between";
@@ -290,7 +282,7 @@ export default function Portfolio() {
           </Link>
         </div>
 
-        {/* Holdings table — COIN | QTY | ENTRY | CURRENT | P&L (USDT) | P&L % | ACTIONS */}
+        {/* Holdings table */}
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Holdings</CardTitle>
