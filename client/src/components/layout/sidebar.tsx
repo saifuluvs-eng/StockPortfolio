@@ -32,7 +32,7 @@ function SidebarLink({
   );
 }
 
-export default function Sidebar() {
+export function Sidebar() {
   return (
     <aside
       style={{
@@ -53,7 +53,7 @@ export default function Sidebar() {
       <nav style={{ display: "grid", gap: 6 }}>
         <SidebarLink to="/home">Home</SidebarLink>
         <SidebarLink to="/charts">Charts</SidebarLink>
-        <SidebarLink to="/scan">Scan</SidebarLink> {/* ✅ new */}
+        <SidebarLink to="/scan">Scan</SidebarLink>
         <SidebarLink to="/gainers">Gainers</SidebarLink>
         <SidebarLink to="/high-potential">High Potential</SidebarLink>
         <SidebarLink to="/portfolio">Portfolio</SidebarLink>
@@ -63,3 +63,5 @@ export default function Sidebar() {
     </aside>
   );
 }
+
+export default Sidebar;
