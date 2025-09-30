@@ -15,7 +15,6 @@ import {
   Trash2,
 } from "lucide-react";
 import LiveSummary from "@/components/home/LiveSummary";
-import { apiRequest } from "@/lib/queryClient";
 import { useEffect, useMemo, useState } from "react";
 
 type Position = {
@@ -42,14 +41,14 @@ export default function Portfolio() {
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Fetch portfolio FOR THIS USER (uid in query string)
+  // Per-user portfolio
   const { data, isLoading } = useQuery<PortfolioAPI>({
     queryKey: ["/api/portfolio", user?.uid],
     enabled: !!user,
     refetchInterval: 15000,
     queryFn: async () => {
       const res = await fetch(`/api/portfolio?uid=${encodeURIComponent(user!.uid)}`);
-      if (!res.ok) throw new Error("Failed to load portfolio");
+      if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load portfolio"));
       return res.json();
     },
   });
@@ -64,7 +63,50 @@ export default function Portfolio() {
   const totalPnLPercent = data?.totalPnLPercent ?? 0;
   const positions = Array.isArray(data?.positions) ? data!.positions : [];
 
-  // ---- Add Position Modal state ----
+  // ----- LIVE PRICES via your existing /ws -----
+  const [live, setLive] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!user || positions.length === 0) return;
+
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+
+    ws.onopen = () => {
+      // subscribe to all symbols we have
+      const symbols = Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase())));
+      symbols.forEach((s) => ws.send(JSON.stringify({ type: "subscribe", symbol: s })));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg?.type === "price_update" && msg?.data && typeof msg.data === "object") {
+          // msg.data is a map like { BTCUSDT: 1234.5, ETHUSDT: ... }
+          setLive((prev) => {
+            let changed = false;
+            const next = { ...prev };
+            for (const [sym, price] of Object.entries(msg.data)) {
+              const s = sym.toUpperCase();
+              const p = Number(price as any);
+              if (Number.isFinite(p) && next[s] !== p) {
+                next[s] = p;
+                changed = true;
+              }
+            }
+            return changed ? next : prev;
+          });
+        }
+      } catch {}
+    };
+
+    return () => {
+      try {
+        ws.close();
+      } catch {}
+    };
+  }, [user, positions.map((p) => p.symbol).sort().join(",")]);
+
+  // ----- Add / Delete -----
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ symbol: "", qty: "", avgPrice: "" });
@@ -75,14 +117,19 @@ export default function Portfolio() {
     return s.length >= 2 && Number.isFinite(q) && q > 0 && Number.isFinite(a) && a > 0;
   }, [form]);
 
+  // Clear the form whenever we open the modal
+  const openAdd = () => {
+    setForm({ symbol: "", qty: "", avgPrice: "" });
+    setOpen(true);
+  };
+
   useEffect(() => {
-    if (open) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      return () => {
-        document.body.style.overflow = prev;
-      };
-    }
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [open]);
 
   async function handleCreate() {
@@ -105,22 +152,28 @@ export default function Portfolio() {
     });
 
     try {
-      const res = await apiRequest("POST", "/api/portfolio", {
-        action: "add",
-        uid: user.uid,
-        position: { symbol: newPos.symbol, qty: newPos.qty, avgPrice: newPos.avgPrice },
+      const res = await fetch(`/api/portfolio?uid=${encodeURIComponent(user.uid)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "add",
+          uid: user.uid,
+          position: { symbol: newPos.symbol, qty: newPos.qty, avgPrice: newPos.avgPrice },
+        }),
       });
+
       if (!res.ok) {
         qc.setQueryData(key, prev);
-        const msg = await res.text().catch(() => "Request failed");
+        const msg = await res.text().catch(() => "");
+        if (msg) alert(msg);
         throw new Error(msg || `HTTP ${res.status}`);
       }
+
       await qc.invalidateQueries({ queryKey: key });
       setOpen(false);
       setForm({ symbol: "", qty: "", avgPrice: "" });
     } catch (err) {
       console.error("Add position failed:", err);
-      alert("Could not add position.");
     } finally {
       setSaving(false);
     }
@@ -130,35 +183,38 @@ export default function Portfolio() {
     if (!user) return;
     const key = ["/api/portfolio", user.uid];
     const prev = qc.getQueryData<PortfolioAPI>(key);
+
     // optimistic remove
     qc.setQueryData<PortfolioAPI>(key, (old) =>
       old ? { ...old, positions: old.positions.filter((p) => p.symbol !== symbol) } : old
     );
+
     try {
-      const res = await apiRequest("POST", "/api/portfolio", {
-        action: "delete",
-        uid: user.uid,
-        symbol,
+      const res = await fetch(`/api/portfolio?uid=${encodeURIComponent(user.uid)}&symbol=${encodeURIComponent(symbol)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", uid: user.uid, symbol }),
       });
+
       if (!res.ok) {
         qc.setQueryData(key, prev);
-        const msg = await res.text().catch(() => "Request failed");
+        const msg = await res.text().catch(() => "");
+        if (msg) alert(msg);
         throw new Error(msg || `HTTP ${res.status}`);
       }
+
       await qc.invalidateQueries({ queryKey: key });
     } catch (e) {
       console.error("Delete failed:", e);
-      alert("Could not delete the position.");
       qc.setQueryData(key, prev);
     }
   }
 
   function goScan(symbol: string) {
-    // Deep-link to /scan/:symbol (Scan page will read the param and prefill)
-    setLocation(`/scan/${encodeURIComponent(symbol)}`);
+    setLocation(`/charts/${encodeURIComponent(symbol)}`);
   }
 
-  // Short stat cards
+  // short cards
   const cardClampClass = "dashboard-card neon-hover !min-h-[64px]";
   const cardClampStyle: React.CSSProperties = { minHeight: 64 };
   const rowContentClass = "!p-2 h-[64px] min-h-0 flex items-center justify-between";
@@ -180,7 +236,7 @@ export default function Portfolio() {
               </Button>
             </Link>
             {user && (
-              <Button size="sm" onClick={() => setOpen(true)}>
+              <Button size="sm" onClick={openAdd}>
                 <PlusCircle className="w-4 h-4 mr-2" /> Add Position
               </Button>
             )}
@@ -250,7 +306,7 @@ export default function Portfolio() {
           </Link>
         </div>
 
-        {/* Holdings table — NEW columns + Scan/Delete */}
+        {/* Holdings table */}
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Holdings</CardTitle>
@@ -261,7 +317,7 @@ export default function Portfolio() {
                 </Button>
               </Link>
               {user && (
-                <Button size="sm" onClick={() => setOpen(true)}>
+                <Button size="sm" onClick={openAdd}>
                   <PlusCircle className="w-4 h-4 mr-2" /> Add Position
                 </Button>
               )}
@@ -277,8 +333,8 @@ export default function Portfolio() {
                     <th className="text-right py-2 pr-4">QTY</th>
                     <th className="text-right py-2 pr-4">ENTRY PRICE</th>
                     <th className="text-right py-2 pr-4">CURRENT PRICE</th>
-                    <th className="text-right py-2 pr-4">P&L (USDT)</th>
-                    <th className="text-right py-2 pr-4">P&L %</th>
+                    <th className="text-right py-2 pr-4">P&amp;L (USDT)</th>
+                    <th className="text-right py-2 pr-4">P&amp;L %</th>
                     <th className="text-right py-2">ACTIONS</th>
                   </tr>
                 </thead>
@@ -301,7 +357,7 @@ export default function Portfolio() {
                             Add your first position to start tracking P&amp;L.
                           </p>
                           {user && (
-                            <Button size="sm" className="mt-3" onClick={() => setOpen(true)}>
+                            <Button size="sm" className="mt-3" onClick={openAdd}>
                               <PlusCircle className="w-4 h-4 mr-2" />
                               Add Position
                             </Button>
@@ -313,29 +369,42 @@ export default function Portfolio() {
                 ) : (
                   <tbody>
                     {positions.map((p) => {
-                      const pnlValue = (p.livePrice - p.avgPrice) * p.qty;
-                      const pnlPct = p.avgPrice > 0 ? (p.livePrice - p.avgPrice) / p.avgPrice * 100 : 0;
+                      const sym = p.symbol.toUpperCase();
+                      const current = Number.isFinite(live[sym]) ? live[sym] : (p.livePrice ?? p.avgPrice);
+                      const pnlValue = (current - p.avgPrice) * p.qty;
+                      const pnlPct = p.avgPrice > 0 ? ((current - p.avgPrice) / p.avgPrice) * 100 : 0;
                       const pnlColor = pnlValue >= 0 ? "text-green-500" : "text-red-500";
 
                       return (
-                        <tr key={p.symbol} className="border-b border-border/50">
-                          <td className="py-3 pr-4 font-medium text-foreground">{p.symbol}</td>
+                        <tr key={sym} className="border-b border-border/50">
+                          <td className="py-3 pr-4 font-medium text-foreground">{sym}</td>
                           <td className="py-3 pr-4 text-right">{p.qty}</td>
-                          <td className="py-3 pr-4 text-right">${p.avgPrice.toLocaleString("en-US", { maximumFractionDigits: 4 })}</td>
-                          <td className="py-3 pr-4 text-right">${p.livePrice.toLocaleString("en-US", { maximumFractionDigits: 4 })}</td>
-                          <td className={`py-3 pr-4 text-right ${pnlColor}`}>
-                            {pnlValue >= 0 ? "+" : "-"}${Math.abs(pnlValue).toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                          <td className="py-3 pr-4 text-right">
+                            ${p.avgPrice.toLocaleString("en-US", { maximumFractionDigits: 6 })}
+                          </td>
+                          <td className="py-3 pr-4 text-right">
+                            ${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}
                           </td>
                           <td className={`py-3 pr-4 text-right ${pnlColor}`}>
-                            {pnlPct >= 0 ? "+" : "-"}{Math.abs(pnlPct).toFixed(2)}%
+                            {pnlValue >= 0 ? "+" : "-"}$
+                            {Math.abs(pnlValue).toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                          </td>
+                          <td className={`py-3 pr-4 text-right ${pnlColor}`}>
+                            {pnlPct >= 0 ? "+" : "-"}
+                            {Math.abs(pnlPct).toFixed(2)}%
                           </td>
                           <td className="py-3 text-right">
                             <div className="inline-flex items-center gap-2">
-                              <Button size="sm" variant="outline" onClick={() => goScan(p.symbol)} title="Scan">
+                              <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan">
                                 <Search className="w-4 h-4 mr-1" /> Scan
                               </Button>
                               {user && (
-                                <Button size="sm" variant="destructive" onClick={() => handleDelete(p.symbol)} title="Delete">
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => handleDelete(sym)}
+                                  title="Delete"
+                                >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
                               )}
@@ -371,6 +440,7 @@ export default function Portfolio() {
                 placeholder="BTCUSDT"
                 value={form.symbol}
                 onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+                autoComplete="off"
               />
 
               <label className="text-sm text-muted-foreground mt-4 block">Quantity</label>
@@ -382,6 +452,7 @@ export default function Portfolio() {
                 placeholder="e.g., 0.5"
                 value={form.qty}
                 onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
+                autoComplete="off"
               />
 
               <label className="text-sm text-muted-foreground mt-4 block">Average Entry Price (USDT)</label>
@@ -393,6 +464,7 @@ export default function Portfolio() {
                 placeholder="e.g., 42000"
                 value={form.avgPrice}
                 onChange={(e) => setForm((f) => ({ ...f, avgPrice: e.target.value }))}
+                autoComplete="off"
               />
 
               <div className="flex justify-end gap-2 mt-6">
@@ -405,7 +477,8 @@ export default function Portfolio() {
               </div>
 
               <p className="text-xs text-muted-foreground mt-3">
-                Tip: Use Binance spot symbols like <span className="font-mono">BTCUSDT</span>, <span className="font-mono">ETHUSDT</span>.
+                Tip: Use Binance spot symbols like <span className="font-mono">BTCUSDT</span>,{" "}
+                <span className="font-mono">ETHUSDT</span>.
               </p>
             </div>
           </div>
