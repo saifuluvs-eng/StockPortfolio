@@ -1,5 +1,14 @@
-api/**
-!api/
-!api/index.ts
-!api/ping.ts
-!api/all.js
+# .vercelignore — keep build lean, DO NOT ignore /api
+node_modules
+.vscode
+.DS_Store
+.env
+.env.*
+.git
+.gitignore
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist
+build
+coverage
