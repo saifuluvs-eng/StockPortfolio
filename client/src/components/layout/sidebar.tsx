@@ -28,7 +28,7 @@ function SidebarItem({
   children,
 }: {
   to: string;
-  activeWhen?: string | RegExp; // optional custom matcher
+  activeWhen?: string | RegExp;
   children: React.ReactNode;
 }) {
   const [location] = useLocation();
@@ -56,27 +56,25 @@ export function Sidebar() {
         top: 0,
       }}
     >
-      <div style={{ fontWeight: 800, marginBottom: 16, fontSize: 20, color: "#e0e0e0" }}>
-        Dashboard
-      </div>
-
       <nav style={{ display: "grid", gap: 8 }}>
-        {/* 1) Dashboard */}
+        {/* Dashboard */}
         <SidebarItem to="/dashboard">Dashboard</SidebarItem>
 
-        {/* 2) Charts/Scan (single menu item) */}
-        {/* Active when path starts with /charts OR /scan */}
+        {/* Charts / Scan (single menu item, active for /charts or /scan) */}
         <SidebarItem to="/charts" activeWhen={/^\/(charts|scan)(\/|$)/}>
           Charts / Scan
         </SidebarItem>
 
-        {/* 3) Gainers */}
+        {/* Gainers */}
         <SidebarItem to="/gainers">Gainers</SidebarItem>
 
-        {/* 4) High Potential */}
+        {/* High Potential */}
         <SidebarItem to="/high-potential">High Potential</SidebarItem>
 
-        {/* 5) AI Insights */}
+        {/* Portfolio (added) */}
+        <SidebarItem to="/portfolio">Portfolio</SidebarItem>
+
+        {/* AI Insights */}
         <SidebarItem to="/ai-insights">AI Insights</SidebarItem>
       </nav>
     </aside>
