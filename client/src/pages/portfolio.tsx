@@ -12,6 +12,7 @@ import {
   EyeIcon,
   Bell,
   X,
+  Brain,
 } from "lucide-react";
 import LiveSummary from "@/components/home/LiveSummary";
 import { apiRequest } from "@/lib/queryClient";
@@ -32,6 +33,10 @@ type PortfolioAPI = {
   positions: Position[];
 };
 
+type AiOverviewData = {
+  signals: any[];
+};
+
 export default function Portfolio() {
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -42,10 +47,10 @@ export default function Portfolio() {
     refetchInterval: 15000,
   });
 
-  const { data: watchlist } = useQuery<any[]>({
-    queryKey: ["/api/watchlist"],
-    enabled: !!user,
-    refetchInterval: 30000,
+  // (for card count) – optional, mirrors Dashboard
+  const { data: aiOverview } = useQuery<AiOverviewData>({
+    queryKey: ["/api/ai/market-overview"],
+    refetchInterval: 120000,
   });
 
   const totalValue = data?.totalValue ?? 0;
@@ -53,7 +58,7 @@ export default function Portfolio() {
   const totalPnLPercent = data?.totalPnLPercent ?? 0;
   const positions = Array.isArray(data?.positions) ? data!.positions : [];
 
-  // ---- Add Position Modal state ----
+  // ---- Add Position Modal state (unchanged) ----
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ symbol: "", qty: "", avgPrice: "" });
@@ -83,49 +88,41 @@ export default function Portfolio() {
       symbol: form.symbol.trim().toUpperCase(),
       qty: Number(form.qty),
       avgPrice: Number(form.avgPrice),
-      // conservative defaults until backend recomputes:
       livePrice: Number(form.avgPrice),
       pnl: 0,
     };
 
-    // optimistic update (so you SEE the row immediately)
+    // optimistic update
     const key = ["/api/portfolio"];
     const prev = qc.getQueryData<PortfolioAPI>(key);
     qc.setQueryData<PortfolioAPI>(key, (old) => {
-      const base = old ?? {
-        totalValue: 0,
-        totalPnL: 0,
-        totalPnLPercent: 0,
-        positions: [],
-      };
+      const base = old ?? { totalValue: 0, totalPnL: 0, totalPnLPercent: 0, positions: [] };
       return { ...base, positions: [newPos, ...base.positions] };
     });
 
     try {
-      // Backend contract: POST /api/portfolio { action:"add", position:{symbol, qty, avgPrice} }
       const res = await apiRequest("POST", "/api/portfolio", {
         action: "add",
         position: { symbol: newPos.symbol, qty: newPos.qty, avgPrice: newPos.avgPrice },
       });
-
       if (!res.ok) {
-        // rollback on failure
         qc.setQueryData(key, prev);
         const msg = await res.text().catch(() => "Request failed");
         throw new Error(msg || `HTTP ${res.status}`);
       }
-
-      // re-fetch to get canonical values from server
       await qc.invalidateQueries({ queryKey: key });
       setOpen(false);
       setForm({ symbol: "", qty: "", avgPrice: "" });
     } catch (err) {
       console.error("Add position failed:", err);
-      alert("Could not add position. If you have a different API route/body, tell me and I’ll adjust.");
+      alert("Could not add position. If your API is different, tell me and I’ll align it.");
     } finally {
       setSaving(false);
     }
   }
+
+  // helper: shared compact height for all four cards
+  const compactCard = "p-4 h-[110px] flex flex-col justify-between";
 
   return (
     <div className="flex-1 overflow-hidden">
@@ -134,9 +131,7 @@ export default function Portfolio() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Your Portfolio</h1>
-            <p className="text-muted-foreground mt-1">
-              Positions, P&amp;L, and live performance.
-            </p>
+            <p className="text-muted-foreground mt-1">Positions, P&amp;L, and live performance.</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -156,22 +151,22 @@ export default function Portfolio() {
           <LiveSummary symbols={["BTCUSDT", "ETHUSDT"]} />
         </div>
 
-        {/* Stat cards */}
-        <div className="grid items-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+        {/* Stat cards — RECTANGULAR + rename Watchlist -> AI Insights */}
+        <div className="grid items-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-8">
           {/* Total Value */}
           <Card
             className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10"
             style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}
           >
-            <CardContent className="p-6 h-full flex flex-col justify-between">
+            <CardContent className={compactCard}>
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-foreground mb-1">Total Value</h3>
-                  <p className="text-2xl font-bold text-foreground" data-testid="portfolio-total-value">
+                  <p className="text-xl font-bold text-foreground" data-testid="portfolio-total-value">
                     ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
-                <TrendingUp className="w-8 h-8 text-primary" />
+                <TrendingUp className="w-7 h-7 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -181,25 +176,18 @@ export default function Portfolio() {
             className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10"
             style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}
           >
-            <CardContent className="p-6 h-full flex flex-col justify-between">
+            <CardContent className={compactCard}>
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-foreground mb-1">Total P&amp;L</h3>
-                  <p
-                    className={`text-2xl font-bold ${totalPnL >= 0 ? "text-green-500" : "text-red-500"}`}
-                    data-testid="portfolio-total-pnl"
-                  >
+                <p className={`text-xl font-bold ${totalPnL >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="portfolio-total-pnl">
                     {totalPnL >= 0 ? "+" : ""}${totalPnL.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
-                  <p
-                    className={`text-xs ${totalPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`}
-                    data-testid="portfolio-total-pnl-percent"
-                  >
-                    {totalPnLPercent >= 0 ? "+" : ""}
-                    {totalPnLPercent.toFixed(2)}%
+                  <p className={`text-xs ${totalPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="portfolio-total-pnl-percent">
+                    {totalPnLPercent >= 0 ? "+" : ""}{totalPnLPercent.toFixed(2)}%
                   </p>
                 </div>
-                <Activity className="w-8 h-8 text-emerald-600" />
+                <Activity className="w-7 h-7 text-emerald-600" />
               </div>
             </CardContent>
           </Card>
@@ -209,11 +197,11 @@ export default function Portfolio() {
             className="dashboard-card neon-hover bg-gradient-to-br from-purple-500/5 to-purple-500/10"
             style={{ "--neon-glow": "hsl(280, 80%, 60%)" } as React.CSSProperties}
           >
-            <CardContent className="p-6 h-full flex flex-col justify-between">
+            <CardContent className={compactCard}>
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-foreground mb-1">Positions</h3>
-                  <p className="text-2xl font-bold text-foreground" data-testid="portfolio-positions-count">
+                  <p className="text-xl font-bold text-foreground" data-testid="portfolio-positions-count">
                     {positions.length}
                   </p>
                   <p className="text-xs text-muted-foreground">Active holdings</p>
@@ -222,46 +210,29 @@ export default function Portfolio() {
             </CardContent>
           </Card>
 
-          {/* Watchlist count */}
-          <Card
-            className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/5 to-blue-500/10"
-            style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}
-          >
-            <CardContent className="p-6 h-full flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground mb-1">Watchlist</h3>
-                  <p className="text-2xl font-bold text-foreground">
-                    {Array.isArray(watchlist) ? watchlist.length : 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Coins tracked</p>
+          {/* AI Insights (renamed from Watchlist) */}
+          <Link href="/ai-insights" className="block">
+            <Card
+              className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 cursor-pointer"
+              style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}
+            >
+              <CardContent className={compactCard}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">AI Insights</h3>
+                    <p className="text-xl font-bold text-foreground">
+                      {aiOverview?.signals?.length ?? 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">Active insights</p>
+                  </div>
+                  <Brain className="w-7 h-7 text-indigo-500" />
                 </div>
-                <EyeIcon className="w-8 h-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Alerts count */}
-          <Card
-            className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10"
-            style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}
-          >
-            <CardContent className="p-6 h-full flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground mb-1">Smart Alerts</h3>
-                  <p className="text-2xl font-bold text-foreground">
-                    {watchlist ? Math.min(Array.isArray(watchlist) ? watchlist.length : 0, 3) : 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Active alerts</p>
-                </div>
-                <Bell className="w-8 h-8 text-orange-500" />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
-        {/* Holdings table */}
+        {/* Holdings table (no structural changes yet; coming in Step 2) */}
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Holdings</CardTitle>
@@ -343,15 +314,13 @@ export default function Portfolio() {
         </Card>
       </div>
 
-      {/* ---- Add Position Modal (now solid & readable) ---- */}
+      {/* ---- Add Position Modal (solid) ---- */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          {/* darker backdrop */}
           <div
             className="absolute inset-0 bg-black/80"
             onClick={() => (!saving ? setOpen(false) : null)}
           />
-          {/* solid panel */}
           <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl">
             <div className="p-5 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground">Add Position</h3>
