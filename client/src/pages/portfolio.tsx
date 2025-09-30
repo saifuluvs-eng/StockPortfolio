@@ -9,8 +9,6 @@ import {
   Activity,
   PlusCircle,
   Eye,
-  EyeIcon,
-  Bell,
   X,
   Brain,
 } from "lucide-react";
@@ -118,11 +116,12 @@ export default function Portfolio() {
     }
   }
 
-  // FORCE ultra-compact card height:
-  // - !p-2 overrides CardContent default padding
-  // - h-[48px] gives ~one-line height
-  // - items-center keeps content vertically centered
-  const compactRow = "!p-2 h-[48px] min-h-0 flex items-center justify-between";
+  // Enforce SHORT cards:
+  //  - Card:   override any theme min-height with !min-h-[64px] + inline minHeight
+  //  - Content: remove padding, center items horizontally in one row
+  const cardClampClass = "dashboard-card neon-hover !min-h-[64px]";
+  const cardClampStyle: React.CSSProperties = { minHeight: 64 };
+  const rowContentClass = "!p-2 h-[64px] min-h-0 flex items-center justify-between";
 
   return (
     <div className="flex-1 overflow-hidden">
@@ -151,11 +150,11 @@ export default function Portfolio() {
           <LiveSummary symbols={["BTCUSDT", "ETHUSDT"]} />
         </div>
 
-        {/* Stat cards — super compact height, one-line layout */}
+        {/* Stat cards — clamped height */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6">
           {/* Total Value */}
-          <Card className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10">
-            <CardContent className={compactRow}>
+          <Card className={`${cardClampClass} bg-gradient-to-br from-primary/5 to-primary/10`} style={cardClampStyle}>
+            <CardContent className={rowContentClass}>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
                 <div className="leading-tight">
@@ -169,8 +168,8 @@ export default function Portfolio() {
           </Card>
 
           {/* Total P&L */}
-          <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10">
-            <CardContent className={compactRow}>
+          <Card className={`${cardClampClass} bg-gradient-to-br from-emerald-500/5 to-emerald-500/10`} style={cardClampStyle}>
+            <CardContent className={rowContentClass}>
               <div className="flex items-center gap-2">
                 <Activity className="w-5 h-5 text-emerald-600" />
                 <div className="leading-tight">
@@ -194,8 +193,8 @@ export default function Portfolio() {
           </Card>
 
           {/* Positions */}
-          <Card className="dashboard-card neon-hover bg-gradient-to-br from-purple-500/5 to-purple-500/10">
-            <CardContent className={compactRow}>
+          <Card className={`${cardClampClass} bg-gradient-to-br from-purple-500/5 to-purple-500/10`} style={cardClampStyle}>
+            <CardContent className={rowContentClass}>
               <div className="leading-tight">
                 <div className="text-sm font-semibold text-foreground">Positions</div>
                 <div className="text-base font-bold text-foreground" data-testid="portfolio-positions-count">
@@ -207,8 +206,8 @@ export default function Portfolio() {
 
           {/* AI Insights → link */}
           <Link href="/ai-insights" className="block">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 cursor-pointer">
-              <CardContent className={compactRow}>
+            <Card className={`${cardClampClass} bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 cursor-pointer`} style={cardClampStyle}>
+              <CardContent className={rowContentClass}>
                 <div className="flex items-center gap-2">
                   <Brain className="w-5 h-5 text-indigo-500" />
                   <div className="leading-tight">
@@ -223,7 +222,7 @@ export default function Portfolio() {
           </Link>
         </div>
 
-        {/* Holdings table (unchanged in this step) */}
+        {/* Holdings table (unchanged for this step) */}
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Holdings</CardTitle>
