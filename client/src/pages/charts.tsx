@@ -86,6 +86,25 @@ function mapResolution(res: string): string {
   }
 }
 
+/** Map our res to Binance Kline interval */
+function toBinanceInterval(res: string): string {
+  switch (mapResolution(res)) {
+    case "1": return "1m";
+    case "3": return "3m";
+    case "5": return "5m";
+    case "15": return "15m";
+    case "30": return "30m";
+    case "60": return "1h";
+    case "120": return "2h";
+    case "240": return "4h";
+    case "480": return "8h";
+    case "1D": return "1d";
+    case "1W": return "1w";
+    case "1M": return "1M";
+    default: return "1h";
+  }
+}
+
 /** Update the current URL’s query params without reloading */
 function updateUrlQuery(next: Record<string, string | undefined>) {
   if (typeof window === "undefined") return;
@@ -116,26 +135,138 @@ function toUsdtPair(baseOrPair: string): string {
   return up.endsWith("USDT") ? up : `${up}USDT`;
 }
 
-/**
- * Minimal, robust chart using TradingView’s public widget (iframe).
- * - Enforces base-ticker input and auto-uses USDT pairs.
- * - EMA/RSI/MACD toggles are appended as separate `studies` params.
- */
+/* ------------------------- indicator calculations ------------------------- */
+
+type Candle = {
+  openTime: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  closeTime: number;
+};
+
+function ema(values: number[], period: number): number[] {
+  const out: number[] = [];
+  if (values.length === 0) return out;
+  const k = 2 / (period + 1);
+  let prev = values[0];
+  out.push(prev);
+  for (let i = 1; i < values.length; i++) {
+    const v = values[i] * k + prev * (1 - k);
+    out.push(v);
+    prev = v;
+  }
+  return out;
+}
+
+function sma(values: number[], period: number): number[] {
+  const out: number[] = [];
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    if (i >= period - 1) out.push(sum / period);
+    else out.push(values[i]); // seed
+  }
+  return out;
+}
+
+function rsi(values: number[], period = 14): number[] {
+  const out: number[] = [];
+  let gains = 0;
+  let losses = 0;
+
+  for (let i = 1; i <= period; i++) {
+    const diff = values[i] - values[i - 1];
+    if (diff >= 0) gains += diff;
+    else losses -= diff;
+  }
+  gains /= period;
+  losses /= period;
+  let rs = losses === 0 ? 100 : gains / losses;
+  out[period] = 100 - 100 / (1 + rs);
+
+  for (let i = period + 1; i < values.length; i++) {
+    const diff = values[i] - values[i - 1];
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? -diff : 0;
+    gains = (gains * (period - 1) + gain) / period;
+    losses = (losses * (period - 1) + loss) / period;
+    rs = losses === 0 ? 100 : gains / losses;
+    out[i] = 100 - 100 / (1 + rs);
+  }
+
+  // fill leading
+  for (let i = 0; i < period; i++) out[i] = out[period] ?? 50;
+  return out;
+}
+
+function macd(values: number[], fast = 12, slow = 26, signal = 9) {
+  const emaFast = ema(values, fast);
+  const emaSlow = ema(values, slow);
+  const macdLine = values.map((_, i) => (emaFast[i] ?? 0) - (emaSlow[i] ?? 0));
+  const signalLine = ema(macdLine, signal);
+  const histogram = macdLine.map((v, i) => v - (signalLine[i] ?? 0));
+  return { macdLine, signalLine, histogram };
+}
+
+function stoch(highs: number[], lows: number[], closes: number[], kPeriod = 14, dPeriod = 3) {
+  const k: number[] = [];
+  for (let i = 0; i < closes.length; i++) {
+    const start = Math.max(0, i - kPeriod + 1);
+    const hh = Math.max(...highs.slice(start, i + 1));
+    const ll = Math.min(...lows.slice(start, i + 1));
+    const denom = hh - ll === 0 ? 1 : hh - ll;
+    k.push(((closes[i] - ll) / denom) * 100);
+  }
+  const d = sma(k, dPeriod);
+  return { k, d };
+}
+
+function atr(highs: number[], lows: number[], closes: number[], period = 14): number[] {
+  const trs: number[] = [];
+  for (let i = 0; i < closes.length; i++) {
+    if (i === 0) {
+      trs.push(highs[i] - lows[i]);
+    } else {
+      const tr = Math.max(
+        highs[i] - lows[i],
+        Math.abs(highs[i] - closes[i - 1]),
+        Math.abs(lows[i] - closes[i - 1])
+      );
+      trs.push(tr);
+    }
+  }
+  return ema(trs, period);
+}
+
+type TIStatus = "Bullish" | "Bearish" | "Neutral";
+
+function cmpWithBuffer(a: number, b: number, bufferRatio = 0.002): TIStatus {
+  // buffer ~0.2% to avoid flip-flop
+  if (a > b * (1 + bufferRatio)) return "Bullish";
+  if (a < b * (1 - bufferRatio)) return "Bearish";
+  return "Neutral";
+}
+
+/* ---------------------------------- page --------------------------------- */
+
 export default function Charts() {
   const search = typeof window !== "undefined" ? window.location.search : "";
   const params = useMemo(() => new URLSearchParams(search), [search]);
 
   // Read pair from URL (?s=), default to BTCUSDT
   const rawPair = params.get("s");
-  const pair = toUsdtPair(safeString(rawPair, "BTCUSDT")); // ensure USDT
-  const pairNoSlash = safeReplace(pair, "/", "");
-  const base = safeReplace(pairNoSlash, /USDT$/, "");
+  const initialPair = toUsdtPair(safeString(rawPair, "BTCUSDT"));
+  const initialBase = safeReplace(initialPair, /USDT$/, "");
 
   // Resolution / timeframe from URL (?res=)
   const rawRes = params.get("res");
-  const resolution = mapResolution(safeString(rawRes, "60"));
+  const initialRes = mapResolution(safeString(rawRes, "60"));
 
-  // Indicator toggles from URL (?ind=comma,list)
+  // Indicators URL (?ind=)
   const rawInd = safeString(params.get("ind"), "");
   const initialSet = new Set(
     rawInd
@@ -143,20 +274,26 @@ export default function Charts() {
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean)
   );
+
+  // UI state
+  const [baseInput, setBaseInput] = useState<string>(initialBase);
+  const [resSelect, setResSelect] = useState<string>(initialRes);
+  const [inputError, setInputError] = useState<string>("");
+
+  // Toggle state (for chart studies)
   const [emaOn, setEmaOn] = useState<boolean>(initialSet.has("ema"));
   const [rsiOn, setRsiOn] = useState<boolean>(initialSet.has("rsi"));
   const [macdOn, setMacdOn] = useState<boolean>(initialSet.has("macd"));
 
-  // UI state
-  const [baseInput, setBaseInput] = useState<string>(base);
-  const [resSelect, setResSelect] = useState<string>(resolution);
-  const [inputError, setInputError] = useState<string>("");
+  // The currently active pair we render chart + indicators for
+  const [currentPair, setCurrentPair] = useState<string>(initialPair);
+  const currentBase = currentPair.replace(/USDT$/, "");
 
-  // TradingView symbol
+  // TradingView symbol using the currentPair
   const exchange = "BINANCE";
-  const tvSymbol = `${exchange}:${pairNoSlash}`;
+  const tvSymbol = `${exchange}:${currentPair}`;
 
-  // Build studies list (TradingView built-in IDs)
+  // Chart studies list (only affects the iframe visual)
   const studies = useMemo(() => {
     const arr: string[] = [];
     if (emaOn) arr.push("MAExp@tv-basicstudies"); // EMA
@@ -165,11 +302,11 @@ export default function Charts() {
     return arr;
   }, [emaOn, rsiOn, macdOn]);
 
-  // Build iframe URL (IMPORTANT: append each `studies` separately)
+  // Build iframe URL (append each study)
   const iframeSrc = useMemo(() => {
     const u = new URL("https://s.tradingview.com/widgetembed/");
     u.searchParams.set("symbol", tvSymbol);
-    u.searchParams.set("interval", resSelect || resolution);
+    u.searchParams.set("interval", resSelect);
     u.searchParams.set("theme", "dark");
     u.searchParams.set("style", "1");
     u.searchParams.set("timezone", "Etc/UTC");
@@ -177,21 +314,17 @@ export default function Charts() {
     u.searchParams.set("hide_side_toolbar", "0");
     u.searchParams.set("allow_symbol_change", "1");
     u.searchParams.set("save_image", "0");
-    // Append studies individually. If none selected, we add nothing.
     for (const s of studies) u.searchParams.append("studies", s);
     return u.toString();
-  }, [tvSymbol, resSelect, resolution, studies]);
+  }, [tvSymbol, resSelect, studies]);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  // Ensure iframe updates whenever iframeSrc changes
   useEffect(() => {
-    if (iframeRef.current) {
-      iframeRef.current.src = iframeSrc;
-    }
+    if (iframeRef.current) iframeRef.current.src = iframeSrc;
   }, [iframeSrc]);
 
-  // Keep URL shareable for indicators
+  // Sync indicator toggles to URL (?ind=)
   useEffect(() => {
     const enabled: string[] = [];
     if (emaOn) enabled.push("ema");
@@ -200,7 +333,7 @@ export default function Charts() {
     updateUrlQuery({ ind: enabled.join(",") || undefined });
   }, [emaOn, rsiOn, macdOn]);
 
-  // Handlers
+  // Handlers for toolbar
   function applyBaseTicker() {
     const cleanedBase = sanitizeBaseTicker(baseInput);
     if (!cleanedBase) {
@@ -209,7 +342,9 @@ export default function Charts() {
     }
     setInputError("");
     const nextPair = toUsdtPair(cleanedBase);
+    setCurrentPair(nextPair); // local state for chart + indicators
     updateUrlQuery({ s: nextPair });
+    // refresh iframe immediately
     const u = new URL(iframeSrc);
     u.searchParams.set("symbol", `${exchange}:${nextPair}`);
     if (iframeRef.current) iframeRef.current.src = u.toString();
@@ -237,10 +372,165 @@ export default function Charts() {
     }
   }
 
-  function toggleIndicator(kind: "ema" | "rsi" | "macd") {
-    if (kind === "ema") setEmaOn((v) => !v);
-    if (kind === "rsi") setRsiOn((v) => !v);
-    if (kind === "macd") setMacdOn((v) => !v);
+  /* ---------------------------- Technical panel --------------------------- */
+
+  const [tiLoading, setTiLoading] = useState(false);
+  const [tiError, setTiError] = useState<string | null>(null);
+  const [tiData, setTiData] = useState<{
+    close: number;
+    ema20: number;
+    ema50: number;
+    ema200: number;
+    sma20: number;
+    rsi14: number;
+    macd: number;
+    macdSignal: number;
+    macdHist: number;
+    stochK: number;
+    stochD: number;
+    atr: number;
+    atrPct: number;
+    updatedAt: number;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        setTiLoading(true);
+        setTiError(null);
+
+        const interval = toBinanceInterval(resSelect);
+        const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(
+          currentPair
+        )}&interval=${interval}&limit=500`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Binance error: ${res.status}`);
+        const rows: any[] = await res.json();
+
+        // Parse candles
+        const candles: Candle[] = rows.map((r) => ({
+          openTime: r[0],
+          open: parseFloat(r[1]),
+          high: parseFloat(r[2]),
+          low: parseFloat(r[3]),
+          close: parseFloat(r[4]),
+          volume: parseFloat(r[5]),
+          closeTime: r[6],
+        }));
+
+        if (candles.length < 50) throw new Error("Not enough data returned.");
+
+        const closes = candles.map((c) => c.close);
+        const highs = candles.map((c) => c.high);
+        const lows = candles.map((c) => c.low);
+
+        const ema20Arr = ema(closes, 20);
+        const ema50Arr = ema(closes, 50);
+        const ema200Arr = ema(closes, 200);
+        const sma20Arr = sma(closes, 20);
+        const rsiArr = rsi(closes, 14);
+        const { macdLine, signalLine, histogram } = macd(closes, 12, 26, 9);
+        const { k: stochKArr, d: stochDArr } = stoch(highs, lows, closes, 14, 3);
+        const atrArr = atr(highs, lows, closes, 14);
+
+        const last = closes.length - 1;
+
+        const data = {
+          close: closes[last],
+          ema20: ema20Arr[last],
+          ema50: ema50Arr[last],
+          ema200: ema200Arr[last],
+          sma20: sma20Arr[last],
+          rsi14: rsiArr[last],
+          macd: macdLine[last],
+          macdSignal: signalLine[last],
+          macdHist: histogram[last],
+          stochK: stochKArr[last],
+          stochD: stochDArr[last],
+          atr: atrArr[last],
+          atrPct: (atrArr[last] / closes[last]) * 100,
+          updatedAt: candles[last].closeTime,
+        };
+
+        if (!cancelled) setTiData(data);
+      } catch (e: any) {
+        if (!cancelled) setTiError(e?.message || "Failed to load indicators.");
+      } finally {
+        if (!cancelled) setTiLoading(false);
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPair, resSelect]);
+
+  // Build statuses
+  const statuses = useMemo(() => {
+    if (!tiData) return [];
+    const s: { name: string; value: string; status: TIStatus; note?: string }[] = [];
+
+    const px = tiData.close;
+    const sEma20 = cmpWithBuffer(px, tiData.ema20);
+    const sEma50 = cmpWithBuffer(px, tiData.ema50);
+    const sEma200 = cmpWithBuffer(px, tiData.ema200);
+    const sSma20 = cmpWithBuffer(px, tiData.sma20);
+
+    const rsiStat: TIStatus = tiData.rsi14 > 60 ? "Bullish" : tiData.rsi14 < 40 ? "Bearish" : "Neutral";
+    const macdStat: TIStatus = tiData.macd > tiData.macdSignal ? "Bullish" : tiData.macd < tiData.macdSignal ? "Bearish" : "Neutral";
+    const stochStat: TIStatus =
+      tiData.stochK < 20 ? "Bullish" : tiData.stochK > 80 ? "Bearish" : "Neutral";
+
+    s.push({ name: "Price vs EMA20", value: `${px.toFixed(2)} / ${tiData.ema20.toFixed(2)}`, status: sEma20 });
+    s.push({ name: "Price vs EMA50", value: `${px.toFixed(2)} / ${tiData.ema50.toFixed(2)}`, status: sEma50 });
+    s.push({ name: "Price vs EMA200", value: `${px.toFixed(2)} / ${tiData.ema200.toFixed(2)}`, status: sEma200 });
+    s.push({ name: "Price vs SMA20", value: `${px.toFixed(2)} / ${tiData.sma20.toFixed(2)}`, status: sSma20 });
+
+    s.push({ name: "RSI (14)", value: tiData.rsi14.toFixed(2), status: rsiStat });
+    s.push({
+      name: "MACD (12,26,9)",
+      value: `MACD ${tiData.macd.toFixed(4)}  Signal ${tiData.macdSignal.toFixed(4)}  Hist ${tiData.macdHist.toFixed(4)}`,
+      status: macdStat,
+    });
+    s.push({
+      name: "Stoch (14,3)",
+      value: `%K ${tiData.stochK.toFixed(2)}  %D ${tiData.stochD.toFixed(2)}`,
+      status: stochStat,
+    });
+    s.push({
+      name: "ATR (14)",
+      value: `${tiData.atr.toFixed(2)} (${tiData.atrPct.toFixed(2)}%)`,
+      status: "Neutral",
+      note: "Higher % = more volatility",
+    });
+
+    return s;
+  }, [tiData]);
+
+  function StatusPill({ st }: { st: TIStatus }) {
+    const bg =
+      st === "Bullish" ? "#12381f" : st === "Bearish" ? "#3a181a" : "#262626";
+    const bd =
+      st === "Bullish" ? "#1d6b35" : st === "Bearish" ? "#6b1d22" : "#3a3a3a";
+    const txt =
+      st === "Bullish" ? "#9ef7bb" : st === "Bearish" ? "#ffb3b3" : "#ddd";
+    const icon = st === "Bullish" ? "▲" : st === "Bearish" ? "▼" : "→";
+    return (
+      <span
+        style={{
+          background: bg,
+          border: `1px solid ${bd}`,
+          color: txt,
+          padding: "2px 8px",
+          borderRadius: 999,
+          fontSize: 12,
+        }}
+      >
+        {icon} {st}
+      </span>
+    );
   }
 
   return (
@@ -338,7 +628,7 @@ export default function Charts() {
             </select>
           </div>
 
-          {/* Indicator toggles */}
+          {/* Indicator toggles (for chart visual only) */}
           <div
             style={{
               display: "flex",
@@ -350,13 +640,13 @@ export default function Charts() {
               padding: "8px 12px",
             }}
           >
-            <span style={{ fontSize: 12, opacity: 0.75 }}>Indicators:</span>
+            <span style={{ fontSize: 12, opacity: 0.75 }}>Chart Indicators:</span>
 
             <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input
                 type="checkbox"
                 checked={emaOn}
-                onChange={() => toggleIndicator("ema")}
+                onChange={() => setEmaOn((v) => !v)}
               />
               <span style={{ fontSize: 13 }}>EMA</span>
             </label>
@@ -365,7 +655,7 @@ export default function Charts() {
               <input
                 type="checkbox"
                 checked={rsiOn}
-                onChange={() => toggleIndicator("rsi")}
+                onChange={() => setRsiOn((v) => !v)}
               />
               <span style={{ fontSize: 13 }}>RSI</span>
             </label>
@@ -374,7 +664,7 @@ export default function Charts() {
               <input
                 type="checkbox"
                 checked={macdOn}
-                onChange={() => toggleIndicator("macd")}
+                onChange={() => setMacdOn((v) => !v)}
               />
               <span style={{ fontSize: 13 }}>MACD</span>
             </label>
@@ -390,10 +680,10 @@ export default function Charts() {
             }}
           >
             <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Pair:&nbsp;<code style={{ fontSize: 13 }}>{pairNoSlash}</code>
+              Pair:&nbsp;<code style={{ fontSize: 13 }}>{currentPair}</code>
             </div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Base:&nbsp;<code style={{ fontSize: 13 }}>{base || "(empty)"} </code>
+              Base:&nbsp;<code style={{ fontSize: 13 }}>{currentBase}</code>
             </div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>
               Res:&nbsp;<code style={{ fontSize: 13 }}>{resSelect}</code>
@@ -440,11 +730,110 @@ export default function Charts() {
           />
         </div>
 
+        {/* Technical Indicators Panel */}
+        <section
+          style={{
+            marginTop: 18,
+            background: "#151515",
+            border: "1px solid #2a2a2a",
+            borderRadius: 12,
+            padding: 12,
+            maxWidth: 1200,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <h2 style={{ margin: 0, fontSize: 18 }}>Technical Indicators</h2>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              (updates with {currentPair} · {resSelect})
+            </span>
+          </div>
+
+          {tiLoading ? (
+            <div style={{ marginTop: 10, opacity: 0.8 }}>Loading…</div>
+          ) : tiError ? (
+            <div
+              style={{
+                marginTop: 10,
+                background: "#2a1717",
+                border: "1px solid #5a2a2a",
+                color: "#ffb3b3",
+                padding: "8px 12px",
+                borderRadius: 8,
+              }}
+            >
+              {tiError}
+            </div>
+          ) : tiData ? (
+            <div
+              style={{
+                marginTop: 12,
+                display: "grid",
+                gridTemplateColumns: "minmax(220px, 1.2fr) minmax(160px, 1fr) minmax(120px, .8fr)",
+                gap: 10,
+              }}
+            >
+              {statuses.map((row, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "contents",
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "#181818",
+                      border: "1px solid #2e2e2e",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                    }}
+                  >
+                    <div style={{ fontSize: 13, opacity: 0.85 }}>{row.name}</div>
+                    {row.note ? (
+                      <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
+                        {row.note}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div
+                    style={{
+                      background: "#181818",
+                      border: "1px solid #2e2e2e",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                      fontSize: 13,
+                    }}
+                  >
+                    {row.value}
+                  </div>
+                  <div
+                    style={{
+                      background: "#181818",
+                      border: "1px solid #2e2e2e",
+                      borderRadius: 10,
+                      padding: "10px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <StatusPill st={row.status} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {tiData ? (
+            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.65 }}>
+              Last update: {new Date(tiData.updatedAt).toLocaleString()}
+            </div>
+          ) : null}
+        </section>
+
         <p style={{ marginTop: 16, opacity: 0.85 }}>
-          Indicators now load via separate <code>studies</code> params. If you
-          ever uncheck all, we send no <code>studies</code> param (cleaner; no
-          schema warnings). Next, we can add EMA presets (like 20/50) if you
-          want.
+          This panel uses Binance public candles to compute indicators on the
+          fly. Change the base ticker or resolution and the table will refresh.
         </p>
       </main>
     </ErrorBoundary>
