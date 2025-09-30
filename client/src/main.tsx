@@ -2,8 +2,7 @@
 import "./lib/disableLocalWs";
 import React from "react";
 import { createRoot } from "react-dom/client";
-import "./index.css";
-import "@/styles/tokens.css"; // <-- use alias so Vite resolves it consistently
+import "./index.css"; // we'll import tokens.css from here in the next step
 
 import { FirebaseAuthProvider } from "./hooks/useFirebaseAuth";
 import { Router } from "wouter";
