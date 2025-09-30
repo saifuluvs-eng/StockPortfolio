@@ -1,17 +1,116 @@
 // client/src/pages/scan.tsx
 import React, { useMemo, useState } from "react";
-import { Page, Toolbar, Card, StatGrid, StatBox } from "../components/Layout";
+
+/**
+ * Local lightweight wrappers so we don't depend on ../components/Layout.
+ * (Keeps build green regardless of folder casing/paths.)
+ */
+function Page(props: React.PropsWithChildren) {
+  return (
+    <main
+      style={{
+        padding: 16,
+        background: "#0f0f0f",
+        color: "#e0e0e0",
+        minHeight: "100vh",
+        fontFamily:
+          "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+      }}
+    >
+      {props.children}
+    </main>
+  );
+}
+
+function Toolbar(props: React.PropsWithChildren) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        flexWrap: "wrap",
+        alignItems: "center",
+        background: "#161616",
+        border: "1px solid #2a2a2a",
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 12,
+        maxWidth: 1200,
+      }}
+    >
+      {props.children}
+    </div>
+  );
+}
+
+function Card(
+  props: React.PropsWithChildren<{ inset?: boolean; style?: React.CSSProperties }>
+) {
+  return (
+    <div
+      style={{
+        background: props.inset ? "#151515" : "#181818",
+        border: `1px solid ${props.inset ? "#2a2a2a" : "#2e2e2e"}`,
+        borderRadius: 10,
+        padding: 12,
+        ...(props.style || {}),
+      }}
+    >
+      {props.children}
+    </div>
+  );
+}
+
+function StatGrid(props: React.PropsWithChildren) {
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, minmax(160px, 1fr))",
+        gap: 12,
+        maxWidth: 1200,
+        marginBottom: 12,
+      }}
+    >
+      {props.children}
+    </div>
+  );
+}
+
+function StatBox({
+  label,
+  value,
+  valueStyle,
+}: {
+  label: string;
+  value: React.ReactNode;
+  valueStyle?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        background: "#171717",
+        border: "1px solid #2a2a2a",
+        borderRadius: 12,
+        padding: "12px 14px",
+      }}
+    >
+      <div style={{ opacity: 0.7, fontSize: 12, marginBottom: 6 }}>{label}</div>
+      <div style={{ fontWeight: 600, fontSize: 16, ...(valueStyle || {}) }}>
+        {value}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Scan Page
- * - Uses the same theme wrappers (Page/Toolbar/Card) as Charts
  * - Minimal, safe client-side scan that fetches Binance 24h stats for entered coins
- * - Pure UI parity first; you can extend scan logic later
  */
 
 type Row = {
-  base: string;            // e.g., BTC
-  pair: string;            // e.g., BTCUSDT
+  base: string; // e.g., BTC
+  pair: string; // e.g., BTCUSDT
   lastPrice: number;
   highPrice: number;
   lowPrice: number;
@@ -152,8 +251,16 @@ export default function Scan() {
             onChange={(e) => setCoinsInput(e.target.value)}
             placeholder="BTC, ETH, AVAX"
             rows={2}
-            className="app-input"
-            style={{ minWidth: 260, resize: "vertical" }}
+            style={{
+              background: "#0e0e0e",
+              color: "#e0e0e0",
+              border: "1px solid #333",
+              borderRadius: 8,
+              padding: "8px 10px",
+              outline: "none",
+              minWidth: 260,
+              resize: "vertical",
+            }}
           />
         </div>
 
@@ -163,7 +270,15 @@ export default function Scan() {
           <select
             value={timeframe}
             onChange={(e) => setTimeframe(e.target.value)}
-            className="app-select"
+            style={{
+              background: "#0e0e0e",
+              color: "#e0e0e0",
+              border: "1px solid #333",
+              borderRadius: 8,
+              padding: "8px 10px",
+              outline: "none",
+              minWidth: 180,
+            }}
           >
             {TIMEFRAMES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -175,25 +290,38 @@ export default function Scan() {
 
         {/* Run button */}
         <div style={{ alignSelf: "end" }}>
-          <button className="app-button" onClick={runScan} disabled={loading}>
+          <button
+            onClick={runScan}
+            disabled={loading}
+            style={{
+              background: "#232323",
+              color: "#e0e0e0",
+              border: "1px solid #333",
+              borderRadius: 8,
+              padding: "8px 12px",
+              cursor: "pointer",
+            }}
+          >
             {loading ? "Scanning…" : "Run Scan"}
           </button>
         </div>
       </Toolbar>
 
-      {/* Stats row (visual parity with Charts stat boxes) */}
+      {/* Stats row */}
       <StatGrid>
         <StatBox label="Coins" value={summary.coins} />
         <StatBox label="Advancers" value={summary.advancers} />
         <StatBox label="Decliners" value={summary.decliners} />
         <StatBox
           label="Avg 24h %"
-          value={
-            rows.length ? `${summary.avgChange.toFixed(2)}%` : "—"
-          }
+          value={rows.length ? `${summary.avgChange.toFixed(2)}%` : "—"}
           valueStyle={{
             color:
-              rows.length && summary.avgChange >= 0 ? "#9ef7bb" : rows.length ? "#ffb3b3" : undefined,
+              rows.length && summary.avgChange >= 0
+                ? "#9ef7bb"
+                : rows.length
+                ? "#ffb3b3"
+                : undefined,
           }}
         />
       </StatGrid>
@@ -276,7 +404,7 @@ const thStyle: React.CSSProperties = {
   fontSize: 12,
   opacity: 0.75,
   padding: "10px 10px",
-  borderBottom: "1px solid var(--border)",
+  borderBottom: "1px solid #2a2a2a",
 };
 
 const thStyleRight: React.CSSProperties = {
@@ -286,7 +414,7 @@ const thStyleRight: React.CSSProperties = {
 
 const tdStyle: React.CSSProperties = {
   padding: "10px 10px",
-  borderBottom: "1px solid var(--border)",
+  borderBottom: "1px solid #2a2a2a",
   fontSize: 13,
 };
 
