@@ -16,18 +16,13 @@ const active: React.CSSProperties = {
   border: "1px solid #2a2a2a",
 };
 
-function SidebarLink({
-  to,
-  children,
-}: {
-  to: string;
-  children: React.ReactNode;
-}) {
+function SidebarItem({ to, children }: { to: string; children: React.ReactNode }) {
   const [location] = useLocation();
   const isActive = location === to;
+  // Wouter's <Link> renders an <a>, so pass styles directly to Link
   return (
-    <Link href={to}>
-      <a style={isActive ? { ...baseLink, ...active } : baseLink}>{children}</a>
+    <Link to={to} style={isActive ? { ...baseLink, ...active } : baseLink}>
+      {children}
     </Link>
   );
 }
@@ -51,14 +46,14 @@ export function Sidebar() {
       </div>
 
       <nav style={{ display: "grid", gap: 6 }}>
-        <SidebarLink to="/home">Home</SidebarLink>
-        <SidebarLink to="/charts">Charts</SidebarLink>
-        <SidebarLink to="/scan">Scan</SidebarLink>
-        <SidebarLink to="/gainers">Gainers</SidebarLink>
-        <SidebarLink to="/high-potential">High Potential</SidebarLink>
-        <SidebarLink to="/portfolio">Portfolio</SidebarLink>
-        <SidebarLink to="/ai-insights">AI Insights</SidebarLink>
-        <SidebarLink to="/landing">Landing</SidebarLink>
+        <SidebarItem to="/home">Home</SidebarItem>
+        <SidebarItem to="/charts">Charts</SidebarItem>
+        <SidebarItem to="/scan">Scan</SidebarItem>
+        <SidebarItem to="/gainers">Gainers</SidebarItem>
+        <SidebarItem to="/high-potential">High Potential</SidebarItem>
+        <SidebarItem to="/portfolio">Portfolio</SidebarItem>
+        <SidebarItem to="/ai-insights">AI Insights</SidebarItem>
+        <SidebarItem to="/landing">Landing</SidebarItem>
       </nav>
     </aside>
   );
