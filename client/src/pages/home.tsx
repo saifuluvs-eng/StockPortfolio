@@ -1,4 +1,3 @@
-// client/src/pages/Dashboard.tsx
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -188,17 +187,15 @@ export default function Home() {
           )}
         </div>
 
-        {/* Live market summary (Binance direct) */}
+        {/* Live market summary (Binance direct)
+            If you DON'T want these two large panels here, simply delete this line. */}
         <LiveSummary symbols={["BTCUSDT", "ETHUSDT"]} />
 
-        {/* Dashboard Cards */}
+        {/* Dashboard Cards — 8 tiles only (Positions & Market Status removed) */}
         <div className="grid items-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
-          {/* Portfolio */}
+          {/* 1) Portfolio */}
           <Link href="/portfolio" className="block h-full">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10"
-              style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}
-            >
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
@@ -207,15 +204,9 @@ export default function Home() {
                       ${nf2.format(portfolioValue)}
                     </p>
                     <div className="flex items-center space-x-1 mt-1">
-                      <TrendingUp
-                        className={`w-3 h-3 ${portfolioPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`}
-                      />
-                      <span
-                        className={`text-xs ${portfolioPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`}
-                        data-testid="text-portfolio-change"
-                      >
-                        {portfolioPnLPercent >= 0 ? "+" : ""}
-                        {nf2.format(portfolioPnLPercent)}%
+                      <TrendingUp className={`w-3 h-3 ${portfolioPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`} />
+                      <span className={`text-xs ${portfolioPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="text-portfolio-change">
+                        {portfolioPnLPercent >= 0 ? "+" : ""}{nf2.format(portfolioPnLPercent)}%
                       </span>
                     </div>
                   </div>
@@ -225,12 +216,9 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* Scanner */}
+          {/* 2) Scanner */}
           <Link href="/charts" className="block h-full">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-accent/5 to-accent/10"
-              style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}
-            >
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-accent/5 to-accent/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
@@ -245,20 +233,15 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* High Potential (count, 30m refresh) */}
+          {/* 3) High Potential (count, 30m refresh) */}
           <Link href="/high-potential" className="block h-full">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-red-500/5 to-red-500/10"
-              style={{ "--neon-glow": "hsl(0, 80%, 60%)" } as React.CSSProperties}
-            >
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-red-500/5 to-red-500/10" style={{ "--neon-glow": "hsl(0, 80%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">High Potential</h3>
                     <p className="text-sm text-muted-foreground">Top opportunities</p>
-                    <p className="text-lg font-bold text-foreground mt-2">
-                      {highPotentialData?.results?.length || 0}
-                    </p>
+                    <p className="text-lg font-bold text-foreground mt-2">{highPotentialData?.results?.length || 0}</p>
                     <p className="text-xs text-muted-foreground">Active signals</p>
                   </div>
                   <Star className="w-8 h-8 text-red-500" />
@@ -267,20 +250,15 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* Gainers (Top 3 + 24h%) */}
+          {/* 4) Gainers (Top 3 + 24h%) */}
           <Link href="/gainers" className="block h-full">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-green-500/5 to-green-500/10"
-              style={{ "--neon-glow": "hsl(142, 70%, 50%)" } as React.CSSProperties}
-            >
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-green-500/5 to-green-500/10" style={{ "--neon-glow": "hsl(142, 70%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Top Gainers</h3>
                     <p className="text-sm text-muted-foreground">Market leaders</p>
-                    <p className="text-sm font-semibold text-foreground mt-2">
-                      {gainersDisplay}
-                    </p>
+                    <p className="text-sm font-semibold text-foreground mt-2">{gainersDisplay}</p>
                     <p className="text-xs text-muted-foreground mt-1">24h change</p>
                   </div>
                   <Award className="w-8 h-8 text-green-500" />
@@ -289,24 +267,15 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* Total P&L (% overall from portfolio) */}
+          {/* 5) Total P&L (% overall) */}
           <Link href="/portfolio" className="block h-full">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10"
-              style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}
-            >
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Total P&L</h3>
-                    <p
-                      className={`text-2xl font-bold ${
-                        portfolioPnLPercent >= 0 ? "text-green-500" : "text-red-500"
-                      }`}
-                      data-testid="text-total-pnl-percent"
-                    >
-                      {portfolioPnLPercent >= 0 ? "+" : ""}
-                      {nf2.format(portfolioPnLPercent)}%
+                    <p className={`text-2xl font-bold ${portfolioPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="text-total-pnl-percent">
+                      {portfolioPnLPercent >= 0 ? "+" : ""}{nf2.format(portfolioPnLPercent)}%
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Overall performance</p>
                   </div>
@@ -316,21 +285,15 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* Watchlist */}
+          {/* 6) Watchlist */}
           <Link href="/watchlist" className="block h-full">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/5 to-blue-500/10"
-              data-testid="card-watchlist"
-              style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}
-            >
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Watchlist</h3>
                     <p className="text-sm text-muted-foreground">Track favorites</p>
-                    <p className="text-lg font-bold text-foreground mt-2">
-                      {Array.isArray(watchlist) ? watchlist.length : 0}
-                    </p>
+                    <p className="text-lg font-bold text-foreground mt-2">{Array.isArray(watchlist) ? watchlist.length : 0}</p>
                     <p className="text-xs text-muted-foreground">Coins tracked</p>
                   </div>
                   <Eye className="w-8 h-8 text-blue-500" />
@@ -339,21 +302,15 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* Smart Alerts */}
+          {/* 7) Smart Alerts */}
           <Link href="/alerts" className="block h-full">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10"
-              data-testid="card-alerts"
-              style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}
-            >
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10" data-testid="card-alerts" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Smart Alerts</h3>
                     <p className="text-sm text-muted-foreground">Price notifications</p>
-                    <p className="text-lg font-bold text-foreground mt-2">
-                      {watchlist ? Math.min(Array.isArray(watchlist) ? watchlist.length : 0, 3) : 0}
-                    </p>
+                    <p className="text-lg font-bold text-foreground mt-2">{watchlist ? Math.min(Array.isArray(watchlist) ? watchlist.length : 0, 3) : 0}</p>
                     <p className="text-xs text-muted-foreground">Active alerts</p>
                   </div>
                   <Bell className="w-8 h-8 text-orange-500" />
@@ -362,20 +319,15 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* AI Signals */}
+          {/* 8) AI Signals */}
           <Link href="/ai-insights" className="block h-full">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10"
-              style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}
-            >
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
                     <p className="text-sm text-muted-foreground">Market analysis</p>
-                    <p className="text-lg font-bold text-foreground mt-2" data-testid="text-ai-signals">
-                      {aiOverview?.signals?.length || 0}
-                    </p>
+                    <p className="text-lg font-bold text-foreground mt-2" data-testid="text-ai-signals">{aiOverview?.signals?.length || 0}</p>
                     <p className="text-xs text-green-500">Active insights</p>
                   </div>
                   <Brain className="w-8 h-8 text-indigo-500" />
@@ -399,16 +351,11 @@ export default function Home() {
                 <span className="text-sm text-muted-foreground">BTC/USDT</span>
                 <div className="text-right">
                   <p className="font-semibold" data-testid="text-btc-price">
-                    $
-                    {nf2.format(
-                      prices.BTCUSDT ?? parseFloat((btcTicker as any)?.price || "0")
-                    )}
+                    ${nf2.format(prices.BTCUSDT ?? parseFloat((btcTicker as any)?.price || "0"))}
                   </p>
                   <p
                     className={`text-sm ${
-                      parseFloat((btcChange as any).priceChangePercent || "0") >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
+                      parseFloat((btcChange as any).priceChangePercent || "0") >= 0 ? "text-green-500" : "text-red-500"
                     }`}
                     data-testid="text-btc-change"
                   >
@@ -421,16 +368,11 @@ export default function Home() {
                 <span className="text-sm text-muted-foreground">ETH/USDT</span>
                 <div className="text-right">
                   <p className="font-semibold" data-testid="text-eth-price">
-                    $
-                    {nf2.format(
-                      prices.ETHUSDT ?? parseFloat((ethTicker as any)?.price || "0")
-                    )}
+                    ${nf2.format(prices.ETHUSDT ?? parseFloat((ethTicker as any)?.price || "0"))}
                   </p>
                   <p
                     className={`text-sm ${
-                      parseFloat((ethChange as any).priceChangePercent || "0") >= 0
-                        ? "text-green-500"
-                        : "text-red-500"
+                      parseFloat((ethChange as any).priceChangePercent || "0") >= 0 ? "text-green-500" : "text-red-500"
                     }`}
                     data-testid="text-eth-change"
                   >
@@ -451,9 +393,7 @@ export default function Home() {
                   <Button size="sm" data-testid="button-view-portfolio">View Portfolio</Button>
                 </Link>
                 <Link href="/charts">
-                  <Button size="sm" variant="outline" data-testid="button-start-scanning">
-                    Start Scanning
-                  </Button>
+                  <Button size="sm" variant="outline" data-testid="button-start-scanning">Start Scanning</Button>
                 </Link>
               </div>
             </CardContent>
