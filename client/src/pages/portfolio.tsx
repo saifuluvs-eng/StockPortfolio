@@ -21,7 +21,7 @@ type Position = {
   symbol: string;
   qty: number;
   avgPrice: number;
-  livePrice: number;
+  livePrice: number; // server fallback only
   pnl: number;
 };
 
@@ -41,7 +41,7 @@ export default function Portfolio() {
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Per-user portfolio
+  // per-user portfolio
   const { data, isLoading } = useQuery<PortfolioAPI>({
     queryKey: ["/api/portfolio", user?.uid],
     enabled: !!user,
@@ -63,8 +63,9 @@ export default function Portfolio() {
   const totalPnLPercent = data?.totalPnLPercent ?? 0;
   const positions = Array.isArray(data?.positions) ? data!.positions : [];
 
-  // ----- LIVE PRICES via your existing /ws -----
-  const [live, setLive] = useState<Record<string, number>>({});
+  // ---------- LIVE PRICES ----------
+  // Source A: your /ws (if it emits these symbols)
+  const [liveWS, setLiveWS] = useState<Record<string, number>>({});
   useEffect(() => {
     if (!user || positions.length === 0) return;
 
@@ -72,7 +73,6 @@ export default function Portfolio() {
     const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
 
     ws.onopen = () => {
-      // subscribe to all symbols we have
       const symbols = Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase())));
       symbols.forEach((s) => ws.send(JSON.stringify({ type: "subscribe", symbol: s })));
     };
@@ -81,8 +81,7 @@ export default function Portfolio() {
       try {
         const msg = JSON.parse(event.data);
         if (msg?.type === "price_update" && msg?.data && typeof msg.data === "object") {
-          // msg.data is a map like { BTCUSDT: 1234.5, ETHUSDT: ... }
-          setLive((prev) => {
+          setLiveWS((prev) => {
             let changed = false;
             const next = { ...prev };
             for (const [sym, price] of Object.entries(msg.data)) {
@@ -100,13 +99,61 @@ export default function Portfolio() {
     };
 
     return () => {
-      try {
-        ws.close();
-      } catch {}
+      try { ws.close(); } catch {}
     };
   }, [user, positions.map((p) => p.symbol).sort().join(",")]);
 
-  // ----- Add / Delete -----
+  // Source B: Binance REST polling (covers all symbols reliably)
+  const [liveHTTP, setLiveHTTP] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (positions.length === 0) return;
+
+    const symbols = Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase())));
+    if (symbols.length === 0) return;
+
+    let cancelled = false;
+
+    async function fetchPrices() {
+      try {
+        // batch endpoint: /api/v3/ticker/price?symbols=["BTCUSDT","ETHUSDT"]
+        const url =
+          "https://api.binance.com/api/v3/ticker/price?symbols=" +
+          encodeURIComponent(JSON.stringify(symbols));
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const arr: Array<{ symbol: string; price: string }> = await res.json();
+        if (cancelled) return;
+
+        setLiveHTTP((prev) => {
+          const next = { ...prev };
+          for (const row of arr) {
+            const p = Number(row.price);
+            if (Number.isFinite(p)) next[row.symbol.toUpperCase()] = p;
+          }
+          return next;
+        });
+      } catch {
+        // ignore network hiccups
+      }
+    }
+
+    fetchPrices();
+    const id = setInterval(fetchPrices, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [positions.map((p) => p.symbol).sort().join(",")]);
+
+  // unified getter for a symbol’s latest price
+  function currentPriceFor(sym: string, fallback: number) {
+    const S = sym.toUpperCase();
+    if (Number.isFinite(liveWS[S])) return liveWS[S];
+    if (Number.isFinite(liveHTTP[S])) return liveHTTP[S];
+    return fallback;
+  }
+
+  // ---------- Add / Delete ----------
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ symbol: "", qty: "", avgPrice: "" });
@@ -117,7 +164,7 @@ export default function Portfolio() {
     return s.length >= 2 && Number.isFinite(q) && q > 0 && Number.isFinite(a) && a > 0;
   }, [form]);
 
-  // Clear the form whenever we open the modal
+  // open modal with cleared fields each time
   const openAdd = () => {
     setForm({ symbol: "", qty: "", avgPrice: "" });
     setOpen(true);
@@ -127,9 +174,7 @@ export default function Portfolio() {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, [open]);
 
   async function handleCreate() {
@@ -140,7 +185,7 @@ export default function Portfolio() {
       symbol: form.symbol.trim().toUpperCase(),
       qty: Number(form.qty),
       avgPrice: Number(form.avgPrice),
-      livePrice: Number(form.avgPrice),
+      livePrice: Number(form.avgPrice), // temporary; table uses live sources above
       pnl: 0,
     };
 
@@ -190,11 +235,14 @@ export default function Portfolio() {
     );
 
     try {
-      const res = await fetch(`/api/portfolio?uid=${encodeURIComponent(user.uid)}&symbol=${encodeURIComponent(symbol)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "delete", uid: user.uid, symbol }),
-      });
+      const res = await fetch(
+        `/api/portfolio?uid=${encodeURIComponent(user.uid)}&symbol=${encodeURIComponent(symbol)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete", uid: user.uid, symbol }),
+        }
+      );
 
       if (!res.ok) {
         qc.setQueryData(key, prev);
@@ -214,7 +262,7 @@ export default function Portfolio() {
     setLocation(`/charts/${encodeURIComponent(symbol)}`);
   }
 
-  // short cards
+  // short stat cards
   const cardClampClass = "dashboard-card neon-hover !min-h-[64px]";
   const cardClampStyle: React.CSSProperties = { minHeight: 64 };
   const rowContentClass = "!p-2 h-[64px] min-h-0 flex items-center justify-between";
@@ -370,7 +418,7 @@ export default function Portfolio() {
                   <tbody>
                     {positions.map((p) => {
                       const sym = p.symbol.toUpperCase();
-                      const current = Number.isFinite(live[sym]) ? live[sym] : (p.livePrice ?? p.avgPrice);
+                      const current = currentPriceFor(sym, p.livePrice ?? p.avgPrice);
                       const pnlValue = (current - p.avgPrice) * p.qty;
                       const pnlPct = p.avgPrice > 0 ? ((current - p.avgPrice) / p.avgPrice) * 100 : 0;
                       const pnlColor = pnlValue >= 0 ? "text-green-500" : "text-red-500";
