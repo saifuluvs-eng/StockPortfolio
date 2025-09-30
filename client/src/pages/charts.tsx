@@ -119,7 +119,8 @@ function toUsdtPair(baseOrPair: string): string {
 
 /**
  * Minimal, robust chart using TradingView’s public widget (iframe).
- * Now enforces base-ticker input and auto-uses USDT pairs.
+ * - Enforces base-ticker input and auto-uses USDT pairs.
+ * - Adds safe toggles for EMA, RSI, MACD using TradingView built-ins.
  */
 export default function Charts() {
   const search = typeof window !== "undefined" ? window.location.search : "";
@@ -135,6 +136,18 @@ export default function Charts() {
   const rawRes = params.get("res");
   const resolution = mapResolution(safeString(rawRes, "60"));
 
+  // Indicator toggles from URL (?ind=comma,list) so they persist/share
+  const rawInd = safeString(params.get("ind"), "");
+  const initialSet = new Set(
+    rawInd
+      .split(",")
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean)
+  );
+  const [emaOn, setEmaOn] = useState<boolean>(initialSet.has("ema"));
+  const [rsiOn, setRsiOn] = useState<boolean>(initialSet.has("rsi"));
+  const [macdOn, setMacdOn] = useState<boolean>(initialSet.has("macd"));
+
   // UI state (input only accepts base tickers like BTC, ETH, AVAX)
   const [baseInput, setBaseInput] = useState<string>(base);
   const [resSelect, setResSelect] = useState<string>(resolution);
@@ -143,6 +156,17 @@ export default function Charts() {
   // Build TradingView symbol (BINANCE:BTCUSDT)
   const exchange = "BINANCE";
   const tvSymbol = `${exchange}:${pairNoSlash}`;
+
+  // Build studies list for TradingView widget
+  // IDs are TradingView's built-in study identifiers.
+  // (We keep defaults to avoid fragile overrides.)
+  const studies = useMemo(() => {
+    const arr: string[] = [];
+    if (emaOn) arr.push("MAExp@tv-basicstudies"); // Exponential Moving Average
+    if (rsiOn) arr.push("RSI@tv-basicstudies");   // Relative Strength Index
+    if (macdOn) arr.push("MACD@tv-basicstudies"); // MACD
+    return arr;
+  }, [emaOn, rsiOn, macdOn]);
 
   // Build iframe URL
   const iframeSrc = useMemo(() => {
@@ -156,10 +180,10 @@ export default function Charts() {
     u.searchParams.set("hide_side_toolbar", "0");
     u.searchParams.set("allow_symbol_change", "1");
     u.searchParams.set("save_image", "0");
-    // keep studies empty for now; we’ll add them later
-    u.searchParams.set("studies", "");
+    // studies: comma-separated list of study IDs (leave empty if none)
+    u.searchParams.set("studies", studies.join(","));
     return u.toString();
-  }, [tvSymbol, resSelect, resolution]);
+  }, [tvSymbol, resSelect, resolution, studies]);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -169,6 +193,15 @@ export default function Charts() {
       iframeRef.current.src = iframeSrc;
     }
   }, [iframeSrc]);
+
+  // Sync indicators to URL (?ind=ema,rsi,macd) for shareable links
+  useEffect(() => {
+    const enabled: string[] = [];
+    if (emaOn) enabled.push("ema");
+    if (rsiOn) enabled.push("rsi");
+    if (macdOn) enabled.push("macd");
+    updateUrlQuery({ ind: enabled.join(",") || undefined });
+  }, [emaOn, rsiOn, macdOn]);
 
   // Handlers
   function applyBaseTicker() {
@@ -185,7 +218,6 @@ export default function Charts() {
     const u = new URL(iframeSrc);
     u.searchParams.set("symbol", `${exchange}:${nextPair}`);
     if (iframeRef.current) iframeRef.current.src = u.toString();
-    // also sync local state display (read-only info at right)
   }
 
   function applyResolution(nextRes: string) {
@@ -209,6 +241,12 @@ export default function Charts() {
       e.preventDefault();
       applyBaseTicker();
     }
+  }
+
+  function toggleIndicator(kind: "ema" | "rsi" | "macd") {
+    if (kind === "ema") setEmaOn((v) => !v);
+    if (kind === "rsi") setRsiOn((v) => !v);
+    if (kind === "macd") setMacdOn((v) => !v);
   }
 
   return (
@@ -240,6 +278,7 @@ export default function Charts() {
             maxWidth: 1200,
           }}
         >
+          {/* Base ticker input (auto-USDT) */}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <label style={{ fontSize: 12, opacity: 0.75 }}>
               Base ticker (auto-USDT)
@@ -275,6 +314,7 @@ export default function Charts() {
             </button>
           </div>
 
+          {/* Resolution */}
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <label style={{ fontSize: 12, opacity: 0.75 }}>Resolution</label>
             <select
@@ -304,6 +344,48 @@ export default function Charts() {
             </select>
           </div>
 
+          {/* Indicator toggles */}
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              background: "#131313",
+              border: "1px dashed #333",
+              borderRadius: 10,
+              padding: "8px 12px",
+            }}
+          >
+            <span style={{ fontSize: 12, opacity: 0.75 }}>Indicators:</span>
+
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={emaOn}
+                onChange={() => toggleIndicator("ema")}
+              />
+              <span style={{ fontSize: 13 }}>EMA</span>
+            </label>
+
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={rsiOn}
+                onChange={() => toggleIndicator("rsi")}
+              />
+              <span style={{ fontSize: 13 }}>RSI</span>
+            </label>
+
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={macdOn}
+                onChange={() => toggleIndicator("macd")}
+              />
+              <span style={{ fontSize: 13 }}>MACD</span>
+            </label>
+          </div>
+
           {/* Quick read-only info */}
           <div
             style={{
@@ -314,12 +396,10 @@ export default function Charts() {
             }}
           >
             <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Pair:&nbsp;
-              <code style={{ fontSize: 13 }}>{pairNoSlash}</code>
+              Pair:&nbsp;<code style={{ fontSize: 13 }}>{pairNoSlash}</code>
             </div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>
-              Base:&nbsp;
-              <code style={{ fontSize: 13 }}>{base || "(empty)"} </code>
+              Base:&nbsp;<code style={{ fontSize: 13 }}>{base || "(empty)"} </code>
             </div>
             <div style={{ fontSize: 12, opacity: 0.75 }}>
               Res:&nbsp;<code style={{ fontSize: 13 }}>{resSelect}</code>
@@ -362,15 +442,17 @@ export default function Charts() {
             src={iframeSrc}
             style={{ width: "100%", height: "100%", border: "0" }}
             allow="clipboard-write; fullscreen"
+            // keep sandbox permissive enough for TV to run
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-pointer-lock allow-downloads"
           />
         </div>
 
         <p style={{ marginTop: 16, opacity: 0.85 }}>
           Type a base ticker like <code>BTC</code>, <code>ETH</code>, or{" "}
-          <code>AVAX</code>. We’ll automatically load the{" "}
-          <code>USDT</code> pair (e.g., <code>BTCUSDT</code>). Next, we can add
-          indicator toggles (EMA/RSI/MACD) safely.
+          <code>AVAX</code>. We auto-use the <code>USDT</code> pair. Toggle{" "}
+          <code>EMA</code>, <code>RSI</code>, <code>MACD</code> as needed. Next
+          step, we can add preset EMA pairs (e.g., 20/50) and keep everything
+          just as safe.
         </p>
       </main>
     </ErrorBoundary>
