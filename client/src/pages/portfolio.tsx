@@ -118,8 +118,11 @@ export default function Portfolio() {
     }
   }
 
-  // shared compact height for all four cards (reduced ~40%)
-  const compactCard = "p-3 h-[66px] flex flex-col justify-between";
+  // FORCE ultra-compact card height:
+  // - !p-2 overrides CardContent default padding
+  // - h-[48px] gives ~one-line height
+  // - items-center keeps content vertically centered
+  const compactRow = "!p-2 h-[48px] min-h-0 flex items-center justify-between";
 
   return (
     <div className="flex-1 overflow-hidden">
@@ -148,95 +151,79 @@ export default function Portfolio() {
           <LiveSummary symbols={["BTCUSDT", "ETHUSDT"]} />
         </div>
 
-        {/* Stat cards — RECTANGULAR & shorter */}
-        <div className="grid items-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-8">
+        {/* Stat cards — super compact height, one-line layout */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6">
           {/* Total Value */}
-          <Card
-            className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10"
-            style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}
-          >
-            <CardContent className={compactCard}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground leading-tight">Total Value</h3>
-                  <p className="text-lg font-bold text-foreground" data-testid="portfolio-total-value">
+          <Card className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardContent className={compactRow}>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+                <div className="leading-tight">
+                  <div className="text-sm font-semibold text-foreground">Total Value</div>
+                  <div className="text-base font-bold text-foreground" data-testid="portfolio-total-value">
                     ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
+                  </div>
                 </div>
-                <TrendingUp className="w-6 h-6 text-primary" />
               </div>
             </CardContent>
           </Card>
 
           {/* Total P&L */}
-          <Card
-            className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10"
-            style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}
-          >
-            <CardContent className={compactCard}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground leading-tight">Total P&amp;L</h3>
-                  <p
-                    className={`text-lg font-bold ${totalPnL >= 0 ? "text-green-500" : "text-red-500"}`}
+          <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10">
+            <CardContent className={compactRow}>
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-600" />
+                <div className="leading-tight">
+                  <div className="text-sm font-semibold text-foreground">Total P&amp;L</div>
+                  <div
+                    className={`text-base font-bold ${totalPnL >= 0 ? "text-green-500" : "text-red-500"}`}
                     data-testid="portfolio-total-pnl"
                   >
                     {totalPnL >= 0 ? "+" : ""}${totalPnL.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </p>
-                  <p
+                  </div>
+                  <div
                     className={`text-[11px] ${totalPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`}
                     data-testid="portfolio-total-pnl-percent"
                   >
                     {totalPnLPercent >= 0 ? "+" : ""}
                     {totalPnLPercent.toFixed(2)}%
-                  </p>
-                </div>
-                <Activity className="w-6 h-6 text-emerald-600" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Positions count */}
-          <Card
-            className="dashboard-card neon-hover bg-gradient-to-br from-purple-500/5 to-purple-500/10"
-            style={{ "--neon-glow": "hsl(280, 80%, 60%)" } as React.CSSProperties}
-          >
-            <CardContent className={compactCard}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground leading-tight">Positions</h3>
-                  <p className="text-lg font-bold text-foreground" data-testid="portfolio-positions-count">
-                    {positions.length}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">Active holdings</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* AI Insights (renamed) */}
-          <Link href="/ai-insights" className="block">
-            <Card
-              className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 cursor-pointer"
-              style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}
-            >
-              <CardContent className={compactCard}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground leading-tight">AI Insights</h3>
-                    <p className="text-lg font-bold text-foreground">
-                      {aiOverview?.signals?.length ?? 0}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">Active insights</p>
                   </div>
-                  <Brain className="w-6 h-6 text-indigo-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Positions */}
+          <Card className="dashboard-card neon-hover bg-gradient-to-br from-purple-500/5 to-purple-500/10">
+            <CardContent className={compactRow}>
+              <div className="leading-tight">
+                <div className="text-sm font-semibold text-foreground">Positions</div>
+                <div className="text-base font-bold text-foreground" data-testid="portfolio-positions-count">
+                  {positions.length}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* AI Insights → link */}
+          <Link href="/ai-insights" className="block">
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 cursor-pointer">
+              <CardContent className={compactRow}>
+                <div className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-indigo-500" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-semibold text-foreground">AI Insights</div>
+                    <div className="text-base font-bold text-foreground">
+                      {aiOverview?.signals?.length ?? 0}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </Link>
         </div>
 
-        {/* Holdings table (unchanged for this step) */}
+        {/* Holdings table (unchanged in this step) */}
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Holdings</CardTitle>
@@ -318,7 +305,7 @@ export default function Portfolio() {
         </Card>
       </div>
 
-      {/* ---- Add Position Modal (solid) ---- */}
+      {/* ---- Add Position Modal ---- */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
