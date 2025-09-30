@@ -47,7 +47,6 @@ export default function Portfolio() {
     refetchInterval: 15000,
   });
 
-  // (for card count) – optional, mirrors Dashboard
   const { data: aiOverview } = useQuery<AiOverviewData>({
     queryKey: ["/api/ai/market-overview"],
     refetchInterval: 120000,
@@ -58,7 +57,7 @@ export default function Portfolio() {
   const totalPnLPercent = data?.totalPnLPercent ?? 0;
   const positions = Array.isArray(data?.positions) ? data!.positions : [];
 
-  // ---- Add Position Modal state (unchanged) ----
+  // ---- Add Position Modal state ----
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ symbol: "", qty: "", avgPrice: "" });
@@ -69,7 +68,6 @@ export default function Portfolio() {
     return s.length >= 2 && Number.isFinite(q) && q > 0 && Number.isFinite(a) && a > 0;
   }, [form]);
 
-  // prevent body scroll when modal open
   useEffect(() => {
     if (open) {
       const prev = document.body.style.overflow;
@@ -92,7 +90,6 @@ export default function Portfolio() {
       pnl: 0,
     };
 
-    // optimistic update
     const key = ["/api/portfolio"];
     const prev = qc.getQueryData<PortfolioAPI>(key);
     qc.setQueryData<PortfolioAPI>(key, (old) => {
@@ -121,8 +118,8 @@ export default function Portfolio() {
     }
   }
 
-  // helper: shared compact height for all four cards
-  const compactCard = "p-4 h-[110px] flex flex-col justify-between";
+  // shared compact height for all four cards (reduced ~40%)
+  const compactCard = "p-3 h-[66px] flex flex-col justify-between";
 
   return (
     <div className="flex-1 overflow-hidden">
@@ -151,7 +148,7 @@ export default function Portfolio() {
           <LiveSummary symbols={["BTCUSDT", "ETHUSDT"]} />
         </div>
 
-        {/* Stat cards — RECTANGULAR + rename Watchlist -> AI Insights */}
+        {/* Stat cards — RECTANGULAR & shorter */}
         <div className="grid items-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-8">
           {/* Total Value */}
           <Card
@@ -161,12 +158,12 @@ export default function Portfolio() {
             <CardContent className={compactCard}>
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-foreground mb-1">Total Value</h3>
-                  <p className="text-xl font-bold text-foreground" data-testid="portfolio-total-value">
+                  <h3 className="font-semibold text-foreground leading-tight">Total Value</h3>
+                  <p className="text-lg font-bold text-foreground" data-testid="portfolio-total-value">
                     ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 </div>
-                <TrendingUp className="w-7 h-7 text-primary" />
+                <TrendingUp className="w-6 h-6 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -179,15 +176,22 @@ export default function Portfolio() {
             <CardContent className={compactCard}>
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-foreground mb-1">Total P&amp;L</h3>
-                <p className={`text-xl font-bold ${totalPnL >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="portfolio-total-pnl">
+                  <h3 className="font-semibold text-foreground leading-tight">Total P&amp;L</h3>
+                  <p
+                    className={`text-lg font-bold ${totalPnL >= 0 ? "text-green-500" : "text-red-500"}`}
+                    data-testid="portfolio-total-pnl"
+                  >
                     {totalPnL >= 0 ? "+" : ""}${totalPnL.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
-                  <p className={`text-xs ${totalPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="portfolio-total-pnl-percent">
-                    {totalPnLPercent >= 0 ? "+" : ""}{totalPnLPercent.toFixed(2)}%
+                  <p
+                    className={`text-[11px] ${totalPnLPercent >= 0 ? "text-green-500" : "text-red-500"}`}
+                    data-testid="portfolio-total-pnl-percent"
+                  >
+                    {totalPnLPercent >= 0 ? "+" : ""}
+                    {totalPnLPercent.toFixed(2)}%
                   </p>
                 </div>
-                <Activity className="w-7 h-7 text-emerald-600" />
+                <Activity className="w-6 h-6 text-emerald-600" />
               </div>
             </CardContent>
           </Card>
@@ -200,17 +204,17 @@ export default function Portfolio() {
             <CardContent className={compactCard}>
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-foreground mb-1">Positions</h3>
-                  <p className="text-xl font-bold text-foreground" data-testid="portfolio-positions-count">
+                  <h3 className="font-semibold text-foreground leading-tight">Positions</h3>
+                  <p className="text-lg font-bold text-foreground" data-testid="portfolio-positions-count">
                     {positions.length}
                   </p>
-                  <p className="text-xs text-muted-foreground">Active holdings</p>
+                  <p className="text-[11px] text-muted-foreground">Active holdings</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* AI Insights (renamed from Watchlist) */}
+          {/* AI Insights (renamed) */}
           <Link href="/ai-insights" className="block">
             <Card
               className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 cursor-pointer"
@@ -219,20 +223,20 @@ export default function Portfolio() {
               <CardContent className={compactCard}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-foreground mb-1">AI Insights</h3>
-                    <p className="text-xl font-bold text-foreground">
+                    <h3 className="font-semibold text-foreground leading-tight">AI Insights</h3>
+                    <p className="text-lg font-bold text-foreground">
                       {aiOverview?.signals?.length ?? 0}
                     </p>
-                    <p className="text-xs text-muted-foreground">Active insights</p>
+                    <p className="text-[11px] text-muted-foreground">Active insights</p>
                   </div>
-                  <Brain className="w-7 h-7 text-indigo-500" />
+                  <Brain className="w-6 h-6 text-indigo-500" />
                 </div>
               </CardContent>
             </Card>
           </Link>
         </div>
 
-        {/* Holdings table (no structural changes yet; coming in Step 2) */}
+        {/* Holdings table (unchanged for this step) */}
         <Card className="border-border">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Holdings</CardTitle>
