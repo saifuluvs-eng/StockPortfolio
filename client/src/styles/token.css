@@ -1,0 +1,93 @@
+:root {
+  --bg: #0f0f0f;
+  --panel: #151515;
+  --card: #181818;
+  --toolbar: #161616;
+
+  --border: #2a2a2a;
+  --border-soft: #2e2e2e;
+
+  --text: #e0e0e0;
+  --muted: rgba(224,224,224,0.75);
+  --muted-2: rgba(224,224,224,0.6);
+
+  --accent: #232323;
+
+  --radius-xl: 12px;
+  --radius-lg: 10px;
+  --radius-pill: 999px;
+
+  --font: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+html, body, #root {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+
+/* Small, consistent primitives you can reuse */
+.app-toolbar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--toolbar);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 12px;
+  margin-bottom: 12px;
+  max-width: 1200px;
+}
+
+.app-card {
+  background: var(--card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+}
+
+.app-card--inset {
+  background: var(--panel);
+  border: 1px solid var(--border);
+}
+
+.app-input, .app-select {
+  background: #0e0e0e;
+  color: var(--text);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 10px;
+  outline: none;
+  min-width: 180px;
+}
+
+.app-button {
+  background: var(--accent);
+  color: var(--text);
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 12px;
+  max-width: 1200px;
+  margin-bottom: 12px;
+}
+
+.stat-box {
+  background: #171717;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 12px 14px;
+}
+.stat-box__label {
+  opacity: 0.7; font-size: 12px; margin-bottom: 6px;
+}
+.stat-box__value {
+  font-weight: 600; font-size: 16px;
+}
