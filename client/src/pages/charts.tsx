@@ -99,13 +99,12 @@ function updateUrlQuery(next: Record<string, string | undefined>) {
 
 /** Convert user text to a clean base ticker (letters only, uppercase) */
 function sanitizeBaseTicker(input: string): string {
-  // Keep only A–Z letters; users may paste "btc/usdt", "btc usdt", etc.
-  const lettersOnly = (input || "")
-    .toUpperCase()
-    .replace(/[^A-Z]/g, " ") // non-letters → spaces
-    .trim()
-    .split(/\s+/)[0] || ""; // take first token
-  // If user typed a full pair like BTCUSDT, strip trailing USDT to get base
+  const lettersOnly =
+    (input || "")
+      .toUpperCase()
+      .replace(/[^A-Z]/g, " ")
+      .trim()
+      .split(/\s+/)[0] || "";
   if (lettersOnly.endsWith("USDT")) return lettersOnly.slice(0, -4);
   return lettersOnly;
 }
@@ -120,7 +119,7 @@ function toUsdtPair(baseOrPair: string): string {
 /**
  * Minimal, robust chart using TradingView’s public widget (iframe).
  * - Enforces base-ticker input and auto-uses USDT pairs.
- * - Adds safe toggles for EMA, RSI, MACD using TradingView built-ins.
+ * - EMA/RSI/MACD toggles are appended as separate `studies` params.
  */
 export default function Charts() {
   const search = typeof window !== "undefined" ? window.location.search : "";
@@ -129,14 +128,14 @@ export default function Charts() {
   // Read pair from URL (?s=), default to BTCUSDT
   const rawPair = params.get("s");
   const pair = toUsdtPair(safeString(rawPair, "BTCUSDT")); // ensure USDT
-  const pairNoSlash = safeReplace(pair, "/", ""); // safety (shouldn’t contain '/')
-  const base = safeReplace(pairNoSlash, /USDT$/, ""); // base only (e.g., BTC)
+  const pairNoSlash = safeReplace(pair, "/", "");
+  const base = safeReplace(pairNoSlash, /USDT$/, "");
 
   // Resolution / timeframe from URL (?res=)
   const rawRes = params.get("res");
   const resolution = mapResolution(safeString(rawRes, "60"));
 
-  // Indicator toggles from URL (?ind=comma,list) so they persist/share
+  // Indicator toggles from URL (?ind=comma,list)
   const rawInd = safeString(params.get("ind"), "");
   const initialSet = new Set(
     rawInd
@@ -148,40 +147,38 @@ export default function Charts() {
   const [rsiOn, setRsiOn] = useState<boolean>(initialSet.has("rsi"));
   const [macdOn, setMacdOn] = useState<boolean>(initialSet.has("macd"));
 
-  // UI state (input only accepts base tickers like BTC, ETH, AVAX)
+  // UI state
   const [baseInput, setBaseInput] = useState<string>(base);
   const [resSelect, setResSelect] = useState<string>(resolution);
   const [inputError, setInputError] = useState<string>("");
 
-  // Build TradingView symbol (BINANCE:BTCUSDT)
+  // TradingView symbol
   const exchange = "BINANCE";
   const tvSymbol = `${exchange}:${pairNoSlash}`;
 
-  // Build studies list for TradingView widget
-  // IDs are TradingView's built-in study identifiers.
-  // (We keep defaults to avoid fragile overrides.)
+  // Build studies list (TradingView built-in IDs)
   const studies = useMemo(() => {
     const arr: string[] = [];
-    if (emaOn) arr.push("MAExp@tv-basicstudies"); // Exponential Moving Average
-    if (rsiOn) arr.push("RSI@tv-basicstudies");   // Relative Strength Index
+    if (emaOn) arr.push("MAExp@tv-basicstudies"); // EMA
+    if (rsiOn) arr.push("RSI@tv-basicstudies");   // RSI
     if (macdOn) arr.push("MACD@tv-basicstudies"); // MACD
     return arr;
   }, [emaOn, rsiOn, macdOn]);
 
-  // Build iframe URL
+  // Build iframe URL (IMPORTANT: append each `studies` separately)
   const iframeSrc = useMemo(() => {
     const u = new URL("https://s.tradingview.com/widgetembed/");
     u.searchParams.set("symbol", tvSymbol);
     u.searchParams.set("interval", resSelect || resolution);
     u.searchParams.set("theme", "dark");
-    u.searchParams.set("style", "1"); // standard candles
+    u.searchParams.set("style", "1");
     u.searchParams.set("timezone", "Etc/UTC");
     u.searchParams.set("withdateranges", "1");
     u.searchParams.set("hide_side_toolbar", "0");
     u.searchParams.set("allow_symbol_change", "1");
     u.searchParams.set("save_image", "0");
-    // studies: comma-separated list of study IDs (leave empty if none)
-    u.searchParams.set("studies", studies.join(","));
+    // Append studies individually. If none selected, we add nothing.
+    for (const s of studies) u.searchParams.append("studies", s);
     return u.toString();
   }, [tvSymbol, resSelect, resolution, studies]);
 
@@ -194,7 +191,7 @@ export default function Charts() {
     }
   }, [iframeSrc]);
 
-  // Sync indicators to URL (?ind=ema,rsi,macd) for shareable links
+  // Keep URL shareable for indicators
   useEffect(() => {
     const enabled: string[] = [];
     if (emaOn) enabled.push("ema");
@@ -211,10 +208,8 @@ export default function Charts() {
       return;
     }
     setInputError("");
-    const nextPair = toUsdtPair(cleanedBase); // e.g., BTC → BTCUSDT
-    // reflect in URL
+    const nextPair = toUsdtPair(cleanedBase);
     updateUrlQuery({ s: nextPair });
-    // refresh iframe immediately
     const u = new URL(iframeSrc);
     u.searchParams.set("symbol", `${exchange}:${nextPair}`);
     if (iframeRef.current) iframeRef.current.src = u.toString();
@@ -230,7 +225,6 @@ export default function Charts() {
   }
 
   function onBaseChange(e: React.ChangeEvent<HTMLInputElement>) {
-    // live-restrict to letters only, uppercase
     const next = e.target.value.toUpperCase().replace(/[^A-Z]/g, "");
     setBaseInput(next);
     if (inputError && next) setInputError("");
@@ -442,17 +436,15 @@ export default function Charts() {
             src={iframeSrc}
             style={{ width: "100%", height: "100%", border: "0" }}
             allow="clipboard-write; fullscreen"
-            // keep sandbox permissive enough for TV to run
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-pointer-lock allow-downloads"
           />
         </div>
 
         <p style={{ marginTop: 16, opacity: 0.85 }}>
-          Type a base ticker like <code>BTC</code>, <code>ETH</code>, or{" "}
-          <code>AVAX</code>. We auto-use the <code>USDT</code> pair. Toggle{" "}
-          <code>EMA</code>, <code>RSI</code>, <code>MACD</code> as needed. Next
-          step, we can add preset EMA pairs (e.g., 20/50) and keep everything
-          just as safe.
+          Indicators now load via separate <code>studies</code> params. If you
+          ever uncheck all, we send no <code>studies</code> param (cleaner; no
+          schema warnings). Next, we can add EMA presets (like 20/50) if you
+          want.
         </p>
       </main>
     </ErrorBoundary>
