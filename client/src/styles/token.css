@@ -52,7 +52,7 @@ html, body, #root {
   border: 1px solid var(--border);
 }
 
-.app-input, .app-select {
+.app-input, .app-select, textarea.app-input {
   background: #0e0e0e;
   color: var(--text);
   border: 1px solid #333;
