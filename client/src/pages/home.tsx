@@ -90,14 +90,8 @@ async function qHighPotentialCount(): Promise<{ count: number | null; ts: number
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
   });
+  if (Array.isArray(post)) return { count: post.length, ts: Date.now() };
   if (post && Array.isArray(post.results)) return { count: post.results.length, ts: Date.now() };
-
-  const arr = await safeJson<any[]>(apiUrl("/api/scanner/high-potential"));
-  if (Array.isArray(arr)) return { count: arr.length, ts: Date.now() };
-
-  const obj = await safeJson<any>(apiUrl("/api/scanner/high-potential"));
-  if (obj && Array.isArray(obj.results)) return { count: obj.results.length, ts: Date.now() };
-
   return { count: null, ts: Date.now() };
 }
 

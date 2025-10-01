@@ -1,6 +1,6 @@
 // client/src/pages/high-potential.tsx
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -161,6 +161,7 @@ export default function HighPotential() {
   const [results, setResults] = useState<ScanResult[]>([]);
   const { toast } = useToast();
   const { isAuthenticated, signInWithGoogle } = useAuth();
+  const queryClient = useQueryClient();
 
   const scanMutation = useMutation({
     mutationFn: async (): Promise<ScanResult[]> => {
@@ -191,6 +192,7 @@ export default function HighPotential() {
     },
     onSuccess: (data) => {
       setResults(data);
+      queryClient.invalidateQueries({ queryKey: ["high-potential-count"], exact: false });
       toast({
         title: "Scan Complete",
         description: `Found ${data.length} high potential coins`,
