@@ -1,7 +1,6 @@
 // client/src/pages/charts.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AppLayout } from "@/components/layout/app-layout";
 import TradingViewChart from "@/components/scanner/trading-view-chart";
 import TechnicalIndicators from "@/components/scanner/technical-indicators";
 import {
@@ -571,8 +570,8 @@ export default function Charts() {
   );
 
   return (
-    <AppLayout>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
         <header className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div>
@@ -901,7 +900,7 @@ export default function Charts() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </div>
   );
 }
 
