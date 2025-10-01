@@ -36,15 +36,13 @@ const isVercel = typeof window !== "undefined" && /vercel\.app$/i.test(window.lo
 const networkEnabled = !isVercel || !!API_BASE;
 
 // ---------- Types (defensive) ----------
-type PortfolioSummary = { totalValue?: number | string; totalPnlPercent?: number | string };
-type PortfolioPosition = {
-  symbol?: string;
-  qty?: number | string;
-  entryPrice?: number | string;
-  entry?: number | string;
-  livePrice?: number | string;
-  live?: number | string;
-  [k: string]: any;
+type PortfolioSummary = {
+  totalValue?: number | string;
+  totalPnL?: number | string;
+  totalPnLPercent?: number | string;
+  dayChange?: number | string;
+  dayChangePercent?: number | string;
+  positions?: unknown;
 };
 type GainerItem = {
   symbol?: string; pair?: string; ticker?: string;
@@ -80,26 +78,10 @@ async function safeJson<T>(url: string, init?: RequestInit): Promise<T | null> {
 
 // ---------- Query Functions (respect API_BASE / networkEnabled) ----------
 async function qPortfolioSummary(): Promise<{ totalValue: number | null; totalPnlPercent: number | null }> {
-  const s = await safeJson<PortfolioSummary>(apiUrl("/api/portfolio/summary"));
-  const sv = toNum(s?.totalValue ?? null);
-  const sp = toNum(s?.totalPnlPercent ?? null);
-  if (sv !== null || sp !== null) return { totalValue: sv ?? null, totalPnlPercent: sp ?? null };
-
-  const list = await safeJson<PortfolioPosition[]>(apiUrl("/api/portfolio"));
-  if (!Array.isArray(list)) return { totalValue: null, totalPnlPercent: null };
-
-  let value = 0, cost = 0;
-  for (const p of list) {
-    const qty = toNum(p.qty) ?? 0;
-    const entry = toNum(p.entryPrice ?? p.entry) ?? 0;
-    const live = toNum(p.livePrice ?? p.live) ?? 0;
-    if (qty > 0) {
-      if (live > 0) value += qty * live;
-      if (entry > 0) cost += qty * entry;
-    }
-  }
-  const pct = cost > 0 ? ((value - cost) / cost) * 100 : null;
-  return { totalValue: Number.isFinite(value) ? value : null, totalPnlPercent: pct !== null && Number.isFinite(pct) ? pct : null };
+  const summary = await safeJson<PortfolioSummary>(apiUrl("/api/portfolio"));
+  const totalValue = toNum(summary?.totalValue ?? null);
+  const totalPnlPercent = toNum(summary?.totalPnLPercent ?? summary?.totalPnlPercent ?? null);
+  return { totalValue: totalValue ?? null, totalPnlPercent: totalPnlPercent ?? null };
 }
 
 async function qHighPotentialCount(): Promise<{ count: number | null; ts: number }> {
@@ -202,10 +184,10 @@ export default function Home() {
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
   const { data: port } = useQuery({
-    queryKey: ["portfolio-summary", API_BASE],
+    queryKey: ["portfolio-summary", API_BASE, !!user],
     queryFn: qPortfolioSummary,
     refetchInterval: 120_000,
-    enabled: networkEnabled, // compute only when network is allowed
+    enabled: networkEnabled && !!user, // compute only when network is allowed and user is signed in
   });
 
   const { data: hp } = useQuery({
