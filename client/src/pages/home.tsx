@@ -48,7 +48,12 @@ type GainerItem = {
   symbol?: string; pair?: string; ticker?: string;
   change24h?: number | string; priceChangePercent?: number | string;
 };
-type AiOverviewData = { signals?: any[] };
+type AiOverviewData = {
+  overallSentiment?: string;
+  keyInsights?: unknown;
+  tradingRecommendations?: unknown;
+  riskAssessment?: string;
+};
 
 // ---------- Utils ----------
 const nf2 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -120,7 +125,18 @@ async function qWatchlistCount(): Promise<number | null> {
 
 async function qAiSignals(): Promise<number | null> {
   const ai = await safeJson<AiOverviewData>(apiUrl("/api/ai/market-overview"));
-  if (ai && Array.isArray(ai.signals)) return ai.signals.length;
+  if (!ai) return null;
+
+  const keyInsights = Array.isArray(ai.keyInsights)
+    ? ai.keyInsights.filter((insight) => typeof insight === "string" && insight.trim() !== "")
+    : null;
+  if (keyInsights && keyInsights.length > 0) return keyInsights.length;
+
+  const recs = Array.isArray(ai.tradingRecommendations)
+    ? ai.tradingRecommendations.filter((rec) => typeof rec === "string" && rec.trim() !== "")
+    : null;
+  if (recs && recs.length > 0) return recs.length;
+
   return null;
 }
 
