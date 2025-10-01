@@ -61,7 +61,7 @@ function Router() {
 
       {/* CHARTS + SCAN */}
       <Route path="/charts/:symbol?" component={withLayout(Charts)} />
-      <Route path="/scan/:symbol?" component={withLayout(Scan)} /> {/* ✅ now points to Scan */}
+      <Route path="/scan/:symbol?" component={Scan} /> {/* ✅ now points to Scan */}
 
       {/* 404 */}
       <Route component={NotFound} />

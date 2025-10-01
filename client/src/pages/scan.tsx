@@ -1,107 +1,28 @@
 // client/src/pages/scan.tsx
 import React, { useMemo, useState } from "react";
-
-/**
- * Local lightweight wrappers so we don't depend on ../components/Layout.
- * (Keeps build green regardless of folder casing/paths.)
- */
-function Page(props: React.PropsWithChildren) {
-  return (
-    <main
-      style={{
-        padding: 16,
-        background: "#0f0f0f",
-        color: "#e0e0e0",
-        minHeight: "100vh",
-        fontFamily:
-          "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-      }}
-    >
-      {props.children}
-    </main>
-  );
-}
-
-function Toolbar(props: React.PropsWithChildren) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        gap: 12,
-        flexWrap: "wrap",
-        alignItems: "center",
-        background: "#161616",
-        border: "1px solid #2a2a2a",
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-        maxWidth: 1200,
-      }}
-    >
-      {props.children}
-    </div>
-  );
-}
-
-function Card(
-  props: React.PropsWithChildren<{ inset?: boolean; style?: React.CSSProperties }>
-) {
-  return (
-    <div
-      style={{
-        background: props.inset ? "#151515" : "#181818",
-        border: `1px solid ${props.inset ? "#2a2a2a" : "#2e2e2e"}`,
-        borderRadius: 10,
-        padding: 12,
-        ...(props.style || {}),
-      }}
-    >
-      {props.children}
-    </div>
-  );
-}
-
-function StatGrid(props: React.PropsWithChildren) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(160px, 1fr))",
-        gap: 12,
-        maxWidth: 1200,
-        marginBottom: 12,
-      }}
-    >
-      {props.children}
-    </div>
-  );
-}
-
-function StatBox({
-  label,
-  value,
-  valueStyle,
-}: {
-  label: string;
-  value: React.ReactNode;
-  valueStyle?: React.CSSProperties;
-}) {
-  return (
-    <div
-      style={{
-        background: "#171717",
-        border: "1px solid #2a2a2a",
-        borderRadius: 12,
-        padding: "12px 14px",
-      }}
-    >
-      <div style={{ opacity: 0.7, fontSize: 12, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontWeight: 600, fontSize: 16, ...(valueStyle || {}) }}>
-        {value}
-      </div>
-    </div>
-  );
-}
+import { AppLayout } from "@/components/layout/app-layout";
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Textarea,
+} from "@/components/ui";
+import { ScannerSummaryStats } from "@/components/scanner/scan-summary-stats";
 
 /**
  * Scan Page
@@ -148,6 +69,7 @@ export default function Scan() {
   // UI filters
   const [coinsInput, setCoinsInput] = useState<string>("BTC, ETH, AVAX");
   const [timeframe, setTimeframe] = useState<string>("60"); // 1Hr default
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
@@ -177,6 +99,16 @@ export default function Scan() {
       avgChange: sum / rows.length,
     };
   }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    if (!searchTerm.trim()) return rows;
+    const q = searchTerm.trim().toLowerCase();
+    return rows.filter(
+      (r) =>
+        r.base.toLowerCase().includes(q) ||
+        r.pair.toLowerCase().includes(q)
+    );
+  }, [rows, searchTerm]);
 
   async function runScan() {
     try {
@@ -237,194 +169,166 @@ export default function Scan() {
     }
   }
 
+  const hasResults = rows.length > 0;
+  const hasFilteredResults = filteredRows.length > 0;
+
   return (
-    <Page>
-      <h1 style={{ marginTop: 0 }}>Scan</h1>
+    <AppLayout>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <header className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold text-foreground">Scan</h1>
+          <p className="text-sm text-muted-foreground">
+            Lightweight Binance market scanner for quick 24h performance checks.
+          </p>
+        </header>
 
-      {/* Filters / Toolbar */}
-      <Toolbar>
-        {/* Coins input */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 12, opacity: 0.75 }}>Coin Names</label>
-          <textarea
-            value={coinsInput}
-            onChange={(e) => setCoinsInput(e.target.value)}
-            placeholder="BTC, ETH, AVAX"
-            rows={2}
-            style={{
-              background: "#0e0e0e",
-              color: "#e0e0e0",
-              border: "1px solid #333",
-              borderRadius: 8,
-              padding: "8px 10px",
-              outline: "none",
-              minWidth: 260,
-              resize: "vertical",
-            }}
-          />
-        </div>
+        <Card className="border-border/60 bg-card/60">
+          <CardHeader className="pb-4">
+            <div>
+              <CardTitle className="text-xl font-semibold">Scanner Controls</CardTitle>
+              <CardDescription>
+                Enter coins, choose a timeframe, and fetch the latest Binance 24h stats.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] md:items-end">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Coin Names
+                </label>
+                <Textarea
+                  value={coinsInput}
+                  onChange={(e) => setCoinsInput(e.target.value)}
+                  placeholder="BTC, ETH, AVAX"
+                  className="min-h-[104px]"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Separate coins with commas or new lines.
+                </p>
+              </div>
 
-        {/* Timeframe (visual parity with Charts) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <label style={{ fontSize: 12, opacity: 0.75 }}>Timeframe</label>
-          <select
-            value={timeframe}
-            onChange={(e) => setTimeframe(e.target.value)}
-            style={{
-              background: "#0e0e0e",
-              color: "#e0e0e0",
-              border: "1px solid #333",
-              borderRadius: 8,
-              padding: "8px 10px",
-              outline: "none",
-              minWidth: 180,
-            }}
-          >
-            {TIMEFRAMES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Timeframe
+                </label>
+                <Select value={timeframe} onValueChange={setTimeframe}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="Timeframe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEFRAMES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        {/* Run button */}
-        <div style={{ alignSelf: "end" }}>
-          <button
-            onClick={runScan}
-            disabled={loading}
-            style={{
-              background: "#232323",
-              color: "#e0e0e0",
-              border: "1px solid #333",
-              borderRadius: 8,
-              padding: "8px 12px",
-              cursor: "pointer",
-            }}
-          >
-            {loading ? "Scanning…" : "Run Scan"}
-          </button>
-        </div>
-      </Toolbar>
+              <div className="flex md:justify-end">
+                <Button
+                  onClick={runScan}
+                  disabled={loading}
+                  className="h-11 w-full md:w-auto"
+                >
+                  {loading ? "Scanning…" : "Run Scan"}
+                </Button>
+              </div>
+            </div>
 
-      {/* Stats row */}
-      <StatGrid>
-        <StatBox label="Coins" value={summary.coins} />
-        <StatBox label="Advancers" value={summary.advancers} />
-        <StatBox label="Decliners" value={summary.decliners} />
-        <StatBox
-          label="Avg 24h %"
-          value={rows.length ? `${summary.avgChange.toFixed(2)}%` : "—"}
-          valueStyle={{
-            color:
-              rows.length && summary.avgChange >= 0
-                ? "#9ef7bb"
-                : rows.length
-                ? "#ffb3b3"
-                : undefined,
-          }}
+            <div className="flex flex-col gap-2 md:w-72">
+              <label className="text-sm font-medium text-muted-foreground">
+                Filter Results
+              </label>
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search coin or pair"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <ScannerSummaryStats
+          coins={summary.coins}
+          advancers={summary.advancers}
+          decliners={summary.decliners}
+          avgChange={summary.avgChange}
+          hasResults={hasResults}
         />
-      </StatGrid>
 
-      {/* Results Table */}
-      <Card inset>
-        {error ? (
-          <div
-            style={{
-              background: "#2a1717",
-              border: "1px solid #5a2a2a",
-              color: "#ffb3b3",
-              padding: "8px 12px",
-              borderRadius: 8,
-              marginBottom: 10,
-            }}
-          >
-            {error}
-          </div>
-        ) : null}
+        <Card className="border-border/60 bg-card/60">
+          <CardHeader className="pb-0">
+            <CardTitle className="text-xl font-semibold">Scan Results</CardTitle>
+            <CardDescription>
+              {loading
+                ? "Fetching latest data…"
+                : hasResults
+                ? `Showing ${hasFilteredResults ? filteredRows.length : rows.length} of ${rows.length} pairs.`
+                : "Results will appear after you run a scan."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error ? (
+              <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {error}
+              </div>
+            ) : null}
 
-        {!rows.length && !loading ? (
-          <div style={{ opacity: 0.8 }}>
-            No results yet. Enter coin names and click <b>Run Scan</b>.
-          </div>
-        ) : null}
+            {!hasResults && !loading ? (
+              <div className="rounded-lg border border-border/60 bg-card/50 px-4 py-3 text-sm text-muted-foreground">
+                No results yet. Enter coin names and click <span className="font-semibold text-foreground">Run Scan</span>.
+              </div>
+            ) : null}
 
-        {rows.length ? (
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "separate",
-                borderSpacing: 0,
-                minWidth: 680,
-              }}
-            >
-              <thead>
-                <tr>
-                  <th style={thStyle}>Coin</th>
-                  <th style={thStyle}>Pair</th>
-                  <th style={thStyleRight}>Last Price</th>
-                  <th style={thStyleRight}>24h High</th>
-                  <th style={thStyleRight}>24h Low</th>
-                  <th style={thStyleRight}>24h %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.pair}>
-                    <td style={tdStyle}>{r.base}</td>
-                    <td style={tdStyleMono}>{r.pair}</td>
-                    <td style={tdStyleRight}>{r.lastPrice.toFixed(6)}</td>
-                    <td style={tdStyleRight}>{r.highPrice.toFixed(6)}</td>
-                    <td style={tdStyleRight}>{r.lowPrice.toFixed(6)}</td>
-                    <td
-                      style={{
-                        ...tdStyleRight,
-                        color:
-                          r.priceChangePercent >= 0 ? "#9ef7bb" : "#ffb3b3",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {r.priceChangePercent.toFixed(2)}%
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-      </Card>
-    </Page>
+            {hasResults && !hasFilteredResults && !loading ? (
+              <div className="rounded-lg border border-border/60 bg-card/50 px-4 py-3 text-sm text-muted-foreground">
+                No pairs match your current filter.
+              </div>
+            ) : null}
+
+            {hasFilteredResults ? (
+              <Table className="min-w-[720px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Coin</TableHead>
+                    <TableHead>Pair</TableHead>
+                    <TableHead className="text-right">Last Price</TableHead>
+                    <TableHead className="text-right">24h High</TableHead>
+                    <TableHead className="text-right">24h Low</TableHead>
+                    <TableHead className="text-right">24h %</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.map((r) => (
+                    <TableRow key={r.pair}>
+                      <TableCell className="font-medium text-foreground">{r.base}</TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">{r.pair}</TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        {r.lastPrice.toFixed(6)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        {r.highPrice.toFixed(6)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        {r.lowPrice.toFixed(6)}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right font-mono text-sm font-semibold ${
+                          r.priceChangePercent >= 0 ? "text-emerald-400" : "text-red-400"
+                        }`}
+                      >
+                        {r.priceChangePercent.toFixed(2)}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : null}
+          </CardContent>
+        </Card>
+      </div>
+    </AppLayout>
   );
 }
-
-/* table cell styles */
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  fontSize: 12,
-  opacity: 0.75,
-  padding: "10px 10px",
-  borderBottom: "1px solid #2a2a2a",
-};
-
-const thStyleRight: React.CSSProperties = {
-  ...thStyle,
-  textAlign: "right",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "10px 10px",
-  borderBottom: "1px solid #2a2a2a",
-  fontSize: 13,
-};
-
-const tdStyleRight: React.CSSProperties = {
-  ...tdStyle,
-  textAlign: "right",
-  fontVariantNumeric: "tabular-nums",
-};
-
-const tdStyleMono: React.CSSProperties = {
-  ...tdStyle,
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-};
