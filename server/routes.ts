@@ -274,9 +274,9 @@ export function registerRoutes(app: Express): void {
     try {
       const userId = (req as any).user.id;
       const { symbol, timeframe, filters } = req.body;
-      
+
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
-      
+
       // Save scan history
       await storage.createScanHistory({
         userId,
@@ -284,7 +284,7 @@ export function registerRoutes(app: Express): void {
         filters: { symbol, timeframe, ...filters },
         results: analysis,
       });
-      
+
       res.json(analysis);
     } catch (error) {
       console.error("Error performing scan:", error);
@@ -292,11 +292,26 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  app.get('/api/scanner/history', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.id;
+      const { type } = req.query;
+      const history = await storage.getScanHistory(
+        userId,
+        typeof type === 'string' && type.length > 0 ? type : undefined,
+      );
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching scan history:", error);
+      res.status(500).json({ message: "Failed to fetch scan history" });
+    }
+  });
+
   app.post('/api/scanner/high-potential', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.id;
       const filters = req.body;
-      
+
       const results = await technicalIndicators.scanHighPotential(filters);
       
       // Save scan history
@@ -333,7 +348,7 @@ export function registerRoutes(app: Express): void {
         ...req.body,
         userId,
       });
-      
+
       const item = await storage.addToWatchlist(validatedData);
       res.json(item);
     } catch (error) {
@@ -343,6 +358,18 @@ export function registerRoutes(app: Express): void {
       } else {
         res.status(500).json({ message: "Failed to add to watchlist" });
       }
+    }
+  });
+
+  app.delete('/api/watchlist/:symbol', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.id;
+      const symbol = req.params.symbol;
+      const removed = await storage.removeFromWatchlist(userId, symbol);
+      res.json({ success: removed });
+    } catch (error) {
+      console.error("Error removing from watchlist:", error);
+      res.status(500).json({ message: "Failed to remove from watchlist" });
     }
   });
 }
