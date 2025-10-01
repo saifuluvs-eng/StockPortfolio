@@ -1,4 +1,5 @@
 import { FormEvent, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -20,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import TradingViewChart from "@/components/scanner/trading-view-chart";
 import TechnicalIndicators from "@/components/scanner/technical-indicators";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import {
   DEFAULT_SPOT_SYMBOL,
   displayPairFromSymbol,
@@ -35,10 +37,13 @@ import {
   formatVolume,
   getRecommendationColor,
   getScoreColor,
+  formatRelativeTime,
 } from "@/lib/scan-format";
 import { useSpotTicker } from "@/hooks/useSpotTicker";
 import { useSymbolTimeframeWorkspace } from "@/hooks/useSymbolTimeframeWorkspace";
 import { useScannerAnalysis } from "@/hooks/useScannerAnalysis";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import {
   Activity,
   BarChart3,
@@ -49,7 +54,10 @@ import {
   Sparkles,
   TrendingDown,
   TrendingUp,
+  History,
+  Star,
 } from "lucide-react";
+import type { ScanHistoryItem, WatchlistItem } from "@/types/scanner";
 
 const DEFAULT_SYMBOL = DEFAULT_SPOT_SYMBOL;
 
@@ -67,6 +75,8 @@ function buildAnalysePath(symbol: string, timeframe: string) {
 
 export default function Analyse() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { isAuthenticated, signInWithGoogle } = useAuth();
 
   const {
     selectedSymbol,
@@ -86,10 +96,98 @@ export default function Analyse() {
   });
 
   const priceData = useSpotTicker(selectedSymbol);
-  const { scanResult, runScan, isScanning } = useScannerAnalysis({
+  const { scanResult, setScanResult, runScan, isScanning } = useScannerAnalysis({
     selectedSymbol,
     selectedTimeframe,
   });
+
+  const watchlistQuery = useQuery({
+    queryKey: ["watchlist"],
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/watchlist");
+      return (await res.json()) as WatchlistItem[];
+    },
+  });
+
+  const historyQuery = useQuery({
+    queryKey: ["scan-history"],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/scanner/history");
+      return (await res.json()) as ScanHistoryItem[];
+    },
+  });
+
+  const addToWatchlist = useMutation({
+    mutationFn: async (symbol: string) => {
+      const res = await apiRequest("POST", "/api/watchlist", { symbol });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Added to watchlist",
+        description: `${displayPairFromSymbol(selectedSymbol)} is now on your radar.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+    onError: (error: unknown) => {
+      if (error instanceof Error && isUnauthorizedError(error)) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to manage your watchlist.",
+          variant: "destructive",
+        });
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
+        return;
+      }
+      toast({
+        title: "Could not add symbol",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeFromWatchlist = useMutation({
+    mutationFn: async (symbol: string) => {
+      const res = await apiRequest("DELETE", `/api/watchlist/${symbol}`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Removed from watchlist",
+        description: `${displayPairFromSymbol(selectedSymbol)} was removed from your list.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+    onError: (error: unknown) => {
+      if (error instanceof Error && isUnauthorizedError(error)) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to manage your watchlist.",
+          variant: "destructive",
+        });
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
+        return;
+      }
+      toast({
+        title: "Could not update watchlist",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const watchlistSymbols = (watchlistQuery.data || []).map((item) =>
+    (item.symbol || "").toUpperCase(),
+  );
+  const symbolInWatchlist = watchlistSymbols.includes(selectedSymbol.toUpperCase());
 
   const formattedPair = useMemo(
     () => displayPairFromSymbol(selectedSymbol),
@@ -151,6 +249,63 @@ export default function Analyse() {
       return;
     }
     runScan();
+  };
+
+  const handleToggleWatchlist = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Log in to manage your watchlist and save scans.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (symbolInWatchlist) {
+      removeFromWatchlist.mutate(selectedSymbol);
+    } else {
+      addToWatchlist.mutate(selectedSymbol);
+    }
+  };
+
+  const handleLoadFromHistory = (item: ScanHistoryItem) => {
+    if (!isAuthenticated) return;
+    const filters = item.filters || {};
+    const result = item.results;
+    const symbol = ensureUsdtSymbol(
+      result?.symbol || filters.symbol || selectedSymbol,
+      DEFAULT_SYMBOL,
+    );
+    const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
+    setSymbol(symbol);
+    if (frontendTimeframe) {
+      setTimeframe(frontendTimeframe);
+    }
+    if (result) {
+      setScanResult(result);
+    }
+    setSearchInput(symbol.replace(/USDT$/i, ""));
+    toast({
+      title: "Scan loaded",
+      description: `Restored ${displayPairFromSymbol(symbol)} (${frontendTimeframe})`,
+    });
+  };
+
+  const handleSelectWatchlist = (item: WatchlistItem) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please log in to manage your watchlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const normalized = ensureUsdtSymbol(item.symbol, DEFAULT_SYMBOL);
+    setSymbol(normalized);
+    setSearchInput(normalized.replace(/USDT$/i, ""));
+    toast({
+      title: "Symbol loaded",
+      description: `Loaded ${displayPairFromSymbol(normalized)} from watchlist`,
+    });
   };
 
   const priceSummary = (
@@ -274,7 +429,7 @@ export default function Analyse() {
               </Select>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" variant="outline" className="h-10 md:h-12">
                 Apply selection
               </Button>
@@ -286,6 +441,22 @@ export default function Analyse() {
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
                 {isScanning ? "Scanning..." : "Run analysis"}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleToggleWatchlist}
+                variant={symbolInWatchlist ? "secondary" : "outline"}
+                className="h-10 md:h-12"
+                disabled={
+                  addToWatchlist.isPending || removeFromWatchlist.isPending || isScanning
+                }
+              >
+                <Star
+                  className={`mr-2 h-4 w-4 ${
+                    symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""
+                  }`}
+                />
+                {symbolInWatchlist ? "Watching" : "Add to watchlist"}
               </Button>
             </div>
           </form>
@@ -418,6 +589,114 @@ export default function Analyse() {
         <div className="flex flex-col gap-6">
           <Card className="border-border/70 bg-card/70">
             <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <History className="h-5 w-5 text-primary" />
+                Recent scans
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!isAuthenticated ? (
+                <p className="text-sm text-muted-foreground">
+                  Sign in to keep a searchable log of every analysis you run.
+                </p>
+              ) : historyQuery.isLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, idx) => (
+                    <Skeleton key={idx} className="h-16 rounded-xl" />
+                  ))}
+                </div>
+              ) : historyQuery.error ? (
+                <p className="text-sm text-red-400">Could not load scan history right now.</p>
+              ) : (historyQuery.data?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Run your first scan to start building your decision history.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {historyQuery.data!.slice(0, 6).map((item) => {
+                    const filters = item.filters || {};
+                    const result = item.results;
+                    const symbol = ensureUsdtSymbol(
+                      result?.symbol || filters.symbol || selectedSymbol,
+                      DEFAULT_SYMBOL,
+                    );
+                    const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {displayPairFromSymbol(symbol)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => handleLoadFromHistory(item)}>
+                          Load
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70 bg-card/70">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <Star className="h-5 w-5 text-primary" />
+                Watchlist
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!isAuthenticated ? (
+                <p className="text-sm text-muted-foreground">
+                  Sign in to curate a personalized watchlist and jump back into symbols instantly.
+                </p>
+              ) : watchlistQuery.isLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <Skeleton key={idx} className="h-10 rounded-xl" />
+                  ))}
+                </div>
+              ) : watchlistQuery.error ? (
+                <p className="text-sm text-red-400">Unable to load watchlist right now.</p>
+              ) : (watchlistQuery.data?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No symbols yet. Tap "Add to watchlist" above to build your list.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {watchlistQuery.data!.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => handleSelectWatchlist(item)}
+                      className={`flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/60 px-4 py-2 text-left transition hover:border-primary/60 hover:bg-primary/5 ${
+                        item.symbol.toUpperCase() === selectedSymbol.toUpperCase()
+                          ? "border-primary/60"
+                          : ""
+                      }`}
+                    >
+                      <span className="text-sm font-medium text-foreground">
+                        {displayPairFromSymbol(item.symbol)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatRelativeTime(item.createdAt)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70 bg-card/70">
+            <CardHeader className="pb-3">
               <CardTitle className="text-lg">Upcoming migrations</CardTitle>
               <CardDescription>
                 Track progress as we lift features from Charts &amp; Scan into this consolidated workspace.
@@ -429,9 +708,9 @@ export default function Analyse() {
                   <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
                   Search, timeframe sync &amp; TradingView embed
                 </li>
-                <li className="flex items-start gap-2 text-muted-foreground">
-                  <span className="mt-1 h-2 w-2 rounded-full bg-muted-foreground/50" />
-                  Watchlist + history panels (next)
+                <li className="flex items-start gap-2">
+                  <span className="mt-1 h-2 w-2 rounded-full bg-primary" />
+                  Watchlist + history panels
                 </li>
                 <li className="flex items-start gap-2 text-muted-foreground">
                   <span className="mt-1 h-2 w-2 rounded-full bg-muted-foreground/50" />
@@ -460,7 +739,7 @@ export default function Analyse() {
                   in lockstep.
                 </p>
                 <p>
-                  • Once watchlist, history, and scanner blocks land, we&apos;ll schedule the cutover and remove `/charts`.
+                  • Once the ideas feed and intraday scanner blocks land, we&apos;ll schedule the cutover and remove `/charts`.
                 </p>
               </ScrollArea>
             </CardContent>
