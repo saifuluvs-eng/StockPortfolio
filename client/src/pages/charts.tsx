@@ -570,236 +570,235 @@ export default function Charts() {
   );
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
-        <header className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
-                <BarChart3 className="h-7 w-7 text-primary" />
-                Decision Hub
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Real-time charts, quantitative scans, and idea discovery in one cockpit.
-              </p>
-            </div>
-            <Button
-              variant={symbolInWatchlist ? "secondary" : "outline"}
-              onClick={handleToggleWatchlist}
-              disabled={addToWatchlist.isPending || removeFromWatchlist.isPending}
-            >
-              <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
-              <span className="ml-2">
-                {symbolInWatchlist ? "Watching" : "Add to Watchlist"}
-              </span>
-            </Button>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
+      <header className="flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
+              <BarChart3 className="h-7 w-7 text-primary" />
+              Decision Hub
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Real-time charts, quantitative scans, and idea discovery in one cockpit.
+            </p>
           </div>
-        </header>
+          <Button
+            variant={symbolInWatchlist ? "secondary" : "outline"}
+            onClick={handleToggleWatchlist}
+            disabled={addToWatchlist.isPending || removeFromWatchlist.isPending}
+          >
+            <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
+            <span className="ml-2">
+              {symbolInWatchlist ? "Watching" : "Add to Watchlist"}
+            </span>
+          </Button>
+        </div>
+      </header>
 
-        <Card>
-          <CardContent className="space-y-4 pt-6">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex min-w-64 flex-1 gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="Enter coin (BTC, ETH, SOL...)"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="pl-10"
-                    data-testid="input-search-symbol"
-                    disabled={!isAuthenticated}
-                  />
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                </div>
-                <Button
-                  onClick={handleSearch}
-                  variant="outline"
-                  className="px-4"
-                  data-testid="button-search-coin"
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex min-w-64 flex-1 gap-2">
+              <div className="relative flex-1">
+                <Input
+                  placeholder="Enter coin (BTC, ETH, SOL...)"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="pl-10"
+                  data-testid="input-search-symbol"
                   disabled={!isAuthenticated}
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
+                />
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               </div>
-
-              <div className="flex items-center space-x-2">
-                <label className="text-sm font-medium text-foreground">Timeframe</label>
-                <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                  <SelectTrigger className="w-32" data-testid="select-timeframe">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIMEFRAMES.map((tf) => (
-                      <SelectItem key={tf.value} value={tf.value}>
-                        {tf.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               <Button
-                onClick={handleScan}
-                disabled={scanMutation.isPending || !isAuthenticated}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                data-testid="button-scan"
+                onClick={handleSearch}
+                variant="outline"
+                className="px-4"
+                data-testid="button-search-coin"
+                disabled={!isAuthenticated}
               >
-                <RefreshCw className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`} />
-                {scanMutation.isPending ? "Scanning..." : "Run Analysis"}
+                <Search className="h-4 w-4" />
               </Button>
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Activity className="h-3 w-3" />
-              Currently viewing <span className="font-medium text-foreground">{displayPair(selectedSymbol)}</span>
-              <span className="text-muted-foreground">
-                ({timeframeConfig?.display ?? selectedTimeframe})
-              </span>
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-foreground">Timeframe</label>
+              <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                <SelectTrigger className="w-32" data-testid="select-timeframe">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEFRAMES.map((tf) => (
+                    <SelectItem key={tf.value} value={tf.value}>
+                      {tf.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
 
-        {priceSummaryCards}
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="flex flex-col gap-6">
-            <Card className="border-border/70 bg-card/70">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <TradingViewChart
-                  key={`${selectedSymbol}-${selectedTimeframe}`}
-                  symbol={selectedSymbol}
-                  interval={selectedTimeframe}
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/70 bg-card/70">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  High Potential Ideas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {!isAuthenticated ? (
-                  <p className="text-sm text-muted-foreground">
-                    Sign in to view AI-powered high potential setups tailored to your timeframe.
-                  </p>
-                ) : highPotentialQuery.isLoading ? (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {Array.from({ length: 4 }).map((_, idx) => (
-                      <Skeleton key={idx} className="h-20 rounded-xl" />
-                    ))}
-                  </div>
-                ) : highPotentialQuery.error ? (
-                  <p className="text-sm text-red-400">
-                    Could not fetch high potential ideas right now.
-                  </p>
-                ) : (highPotentialQuery.data?.length ?? 0) === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No standout opportunities detected. Try rescanning with different filters.
-                  </p>
-                ) : (
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {highPotentialQuery.data!.map((item) => (
-                      <button
-                        key={item.symbol}
-                        type="button"
-                        onClick={() => {
-                          setSelectedSymbol(item.symbol);
-                          setSearchInput(item.symbol.replace(/USDT$/i, ""));
-                          toast({
-                            title: "Symbol loaded",
-                            description: `Loaded ${displayPair(item.symbol)} from high potential list`,
-                          });
-                        }}
-                        className="group flex w-full flex-col rounded-xl border border-border/60 bg-card/60 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">
-                              {displayPair(item.symbol)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Score {item.totalScore > 0 ? "+" : ""}{item.totalScore}
-                            </p>
-                          </div>
-                          <Badge className={getRecommendationColor(item.recommendation)}>
-                            {item.recommendation.replace(/_/g, " ").toUpperCase()}
-                          </Badge>
-                        </div>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Tap to load chart &amp; run full breakdown.
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <Button
+              onClick={handleScan}
+              disabled={scanMutation.isPending || !isAuthenticated}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              data-testid="button-scan"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`} />
+              {scanMutation.isPending ? "Scanning..." : "Run Analysis"}
+            </Button>
           </div>
 
-          <div className="flex flex-col gap-6">
-            <Card className="h-[560px] border-border/70 bg-card/70">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                  <ListChecks className="h-5 w-5 text-primary" />
-                  Breakdown Technicals
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="h-full overflow-hidden p-0">
-                <ScrollArea className="h-full px-4 pb-4">
-                  {scanResult ? (
-                    <TechnicalIndicators analysis={scanResult} />
-                  ) : (
-                    <div className="py-12 text-center text-muted-foreground">
-                      <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
-                      <h3 className="text-lg font-medium">No analysis yet</h3>
-                      <p className="mx-auto mt-1 max-w-xs text-sm">
-                        Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
-                      </p>
-                    </div>
-                  )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Activity className="h-3 w-3" />
+            Currently viewing <span className="font-medium text-foreground">{displayPair(selectedSymbol)}</span>
+            <span className="text-muted-foreground">
+              ({timeframeConfig?.display ?? selectedTimeframe})
+            </span>
+          </div>
+        </CardContent>
+      </Card>
 
-            <Card className="border-border/70 bg-card/70">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                  <History className="h-5 w-5 text-primary" />
-                  Recent Scans
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {!isAuthenticated ? (
-                  <p className="text-sm text-muted-foreground">
-                    Sign in to keep a searchable log of every analysis you run.
-                  </p>
-                ) : historyQuery.isLoading ? (
-                  <div className="space-y-3">
-                    {Array.from({ length: 4 }).map((_, idx) => (
-                      <Skeleton key={idx} className="h-16 rounded-xl" />
-                    ))}
-                  </div>
-                ) : historyQuery.error ? (
-                  <p className="text-sm text-red-400">
-                    Could not load scan history right now.
-                  </p>
-                ) : (historyQuery.data?.length ?? 0) === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Run your first scan to start building your decision history.
-                  </p>
+      {priceSummaryCards}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="flex flex-col gap-6">
+          <Card className="border-border/70 bg-card/70">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <TradingViewChart
+                key={`${selectedSymbol}-${selectedTimeframe}`}
+                symbol={selectedSymbol}
+                interval={selectedTimeframe}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70 bg-card/70">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <Sparkles className="h-5 w-5 text-primary" />
+                High Potential Ideas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!isAuthenticated ? (
+                <p className="text-sm text-muted-foreground">
+                  Sign in to view AI-powered high potential setups tailored to your timeframe.
+                </p>
+              ) : highPotentialQuery.isLoading ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {Array.from({ length: 4 }).map((_, idx) => (
+                    <Skeleton key={idx} className="h-20 rounded-xl" />
+                  ))}
+                </div>
+              ) : highPotentialQuery.error ? (
+                <p className="text-sm text-red-400">
+                  Could not fetch high potential ideas right now.
+                </p>
+              ) : (highPotentialQuery.data?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No standout opportunities detected. Try rescanning with different filters.
+                </p>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {highPotentialQuery.data!.map((item) => (
+                    <button
+                      key={item.symbol}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSymbol(item.symbol);
+                        setSearchInput(item.symbol.replace(/USDT$/i, ""));
+                        toast({
+                          title: "Symbol loaded",
+                          description: `Loaded ${displayPair(item.symbol)} from high potential list`,
+                        });
+                      }}
+                      className="group flex w-full flex-col rounded-xl border border-border/60 bg-card/60 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {displayPair(item.symbol)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Score {item.totalScore > 0 ? "+" : ""}{item.totalScore}
+                          </p>
+                        </div>
+                        <Badge className={getRecommendationColor(item.recommendation)}>
+                          {item.recommendation.replace(/_/g, " ").toUpperCase()}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Tap to load chart &amp; run full breakdown.
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <Card className="h-[560px] border-border/70 bg-card/70">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <ListChecks className="h-5 w-5 text-primary" />
+                Breakdown Technicals
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="h-full overflow-hidden p-0">
+              <ScrollArea className="h-full px-4 pb-4">
+                {scanResult ? (
+                  <TechnicalIndicators analysis={scanResult} />
                 ) : (
-                  <div className="space-y-3">
-                    {historyQuery.data!.slice(0, 6).map((item) => {
-                      const filters = item.filters || {};
-                      const result = item.results;
-                      const symbol = toUsdtSymbol(
+                  <div className="py-12 text-center text-muted-foreground">
+                    <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
+                    <h3 className="text-lg font-medium">No analysis yet</h3>
+                    <p className="mx-auto mt-1 max-w-xs text-sm">
+                      Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
+                    </p>
+                  </div>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border/70 bg-card/70">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <History className="h-5 w-5 text-primary" />
+                Recent Scans
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!isAuthenticated ? (
+                <p className="text-sm text-muted-foreground">
+                  Sign in to keep a searchable log of every analysis you run.
+                </p>
+              ) : historyQuery.isLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, idx) => (
+                    <Skeleton key={idx} className="h-16 rounded-xl" />
+                  ))}
+                </div>
+              ) : historyQuery.error ? (
+                <p className="text-sm text-red-400">
+                  Could not load scan history right now.
+                </p>
+              ) : (historyQuery.data?.length ?? 0) === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Run your first scan to start building your decision history.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {historyQuery.data!.slice(0, 6).map((item) => {
+                    const filters = item.filters || {};
+                    const result = item.results;
+                    const symbol = toUsdtSymbol(
                         result?.symbol || filters.symbol || selectedSymbol,
                       );
                       const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
@@ -899,7 +898,6 @@ export default function Charts() {
             </Card>
           </div>
         </div>
-      </div>
     </div>
   );
 }
