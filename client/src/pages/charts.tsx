@@ -1,1328 +1,947 @@
 // client/src/pages/charts.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AppLayout } from "@/components/layout/app-layout";
+import TradingViewChart from "@/components/scanner/trading-view-chart";
+import TechnicalIndicators from "@/components/scanner/technical-indicators";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { useAuth } from "@/hooks/useAuth";
+import { useRoute, useLocation } from "wouter";
+import {
+  Activity,
+  BarChart3,
+  Clock3,
+  DollarSign,
+  History,
+  ListChecks,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Star,
+  Target,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
+import { formatDistanceToNowStrict } from "date-fns";
+import { openSpotTickerStream } from "@/lib/binanceWs";
 
-/**
- * Inline Error Boundary so the page never goes fully black.
- */
-class ErrorBoundary extends React.Component<
-  React.PropsWithChildren,
-  { hasError: boolean; msg?: string }
-> {
-  constructor(props: React.PropsWithChildren) {
-    super(props);
-    this.state = { hasError: false, msg: undefined };
-  }
-
-  static getDerivedStateFromError(err: unknown) {
-    return {
-      hasError: true,
-      msg: err instanceof Error ? err.message : String(err),
-    };
-  }
-
-  componentDidCatch(error: unknown, info: unknown) {
-    console.error("Charts ErrorBoundary caught:", error, info);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <main style={{ padding: 16 }}>
-          <h2 style={{ margin: 0 }}>Something went wrong on this page.</h2>
-          <pre
-            style={{
-              whiteSpace: "pre-wrap",
-              background: "#222",
-              color: "#eee",
-              padding: 12,
-              borderRadius: 8,
-            }}
-          >
-            {this.state.msg}
-          </pre>
-        </main>
-      );
-    }
-    return this.props.children;
-  }
+interface PriceData {
+  symbol: string;
+  lastPrice: string;
+  priceChange: string;
+  priceChangePercent: string;
+  volume: string;
+  quoteVolume: string;
+  highPrice: string;
+  lowPrice: string;
 }
 
-/** Safe helpers */
-function safeString(val: unknown, fallback = ""): string {
-  return typeof val === "string" ? val : fallback;
-}
-function safeReplace(
-  val: unknown,
-  pattern: string | RegExp,
-  replacement: string
-): string {
-  return safeString(val).replace(pattern as any, replacement);
+interface ScanIndicator {
+  value?: number;
+  signal?: "bullish" | "bearish" | "neutral";
+  score?: number;
+  tier?: number;
+  description?: string;
 }
 
-/** Map our numeric/letter res to TradingView’s interval strings */
-function mapResolution(res: string): string {
-  switch (res) {
-    case "15":
-    case "30":
-    case "60":
-    case "240":
-      return res; // minutes
-    case "1D":
-      return "1D";
-    case "1W":
-      return "1W";
-    default:
-      return "60";
-  }
+interface ScanResult {
+  symbol: string;
+  price: number;
+  indicators: Record<string, ScanIndicator>;
+  totalScore: number;
+  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
+  meta?: Record<string, unknown> | null;
 }
 
-/** Map our res to Binance Kline interval */
-function toBinanceInterval(res: string): string {
-  switch (mapResolution(res)) {
-    case "15":
-      return "15m";
-    case "30":
-      return "30m";
-    case "60":
-      return "1h";
-    case "240":
-      return "4h";
-    case "1D":
-      return "1d";
-    case "1W":
-      return "1w";
-    default:
-      return "1h";
-  }
+interface WatchlistItem {
+  id: string;
+  symbol: string;
+  createdAt?: number | string | null;
 }
 
-/** Update the current URL’s query params without reloading */
-function updateUrlQuery(next: Record<string, string | undefined>) {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  for (const [k, v] of Object.entries(next)) {
-    if (v === undefined || v === null || v === "") url.searchParams.delete(k);
-    else url.searchParams.set(k, v);
-  }
-  window.history.replaceState({}, "", url.toString());
+interface ScanHistoryItem {
+  id: string;
+  scanType: string;
+  filters?: { symbol?: string; timeframe?: string } | null;
+  results?: ScanResult | null;
+  createdAt?: number | string | null;
 }
 
-/** Convert user text to a clean base ticker (letters only, uppercase) */
-function sanitizeBaseTicker(input: string): string {
-  const lettersOnly =
-    (input || "")
-      .toUpperCase()
-      .replace(/[^A-Z]/g, " ")
-      .trim()
-      .split(/\s+/)[0] || "";
-  if (lettersOnly.endsWith("USDT")) return lettersOnly.slice(0, -4);
-  return lettersOnly;
+interface HighPotentialFilters {
+  timeframe?: string;
+  minScore?: number;
+  minVolume?: string;
+  excludeStablecoins?: boolean;
+  limit?: number;
 }
 
-/** Build a USDT pair from base; if already ends with USDT, keep it */
-function toUsdtPair(baseOrPair: string): string {
-  const up = (baseOrPair || "").toUpperCase().replace(/[^A-Z]/g, "");
-  if (!up) return "BTCUSDT";
-  return up.endsWith("USDT") ? up : `${up}USDT`;
+const DEFAULT_TIMEFRAME = "240"; // 4h
+const DEFAULT_SYMBOL = "BTCUSDT";
+
+const TIMEFRAMES = [
+  { value: "15", label: "15min", display: "15m", backend: "15m" },
+  { value: "60", label: "1hr", display: "1h", backend: "1h" },
+  { value: "240", label: "4hr", display: "4h", backend: "4h" },
+  { value: "D", label: "1Day", display: "1D", backend: "1d" },
+  { value: "W", label: "1Week", display: "1W", backend: "1w" },
+] as const;
+
+function toUsdtSymbol(input: string) {
+  const coin = (input || "").trim().toUpperCase();
+  if (!coin) return DEFAULT_SYMBOL;
+  return coin.endsWith("USDT") ? coin : `${coin}USDT`;
 }
 
-/* ------------------------- indicator calculations ------------------------- */
-type Candle = {
-  openTime: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-  closeTime: number;
-};
-
-function ema(values: number[], period: number): number[] {
-  const out: number[] = [];
-  if (values.length === 0) return out;
-  const k = 2 / (period + 1);
-  let prev = values[0];
-  out.push(prev);
-  for (let i = 1; i < values.length; i++) {
-    const v = values[i] * k + prev * (1 - k);
-    out.push(v);
-    prev = v;
-  }
-  return out;
+function displayPair(sym: string) {
+  const s = (sym || "").toUpperCase();
+  return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : (s || DEFAULT_SYMBOL);
 }
 
-function sma(values: number[], period: number): number[] {
-  const out: number[] = [];
-  let sum = 0;
-  for (let i = 0; i < values.length; i++) {
-    sum += values[i];
-    if (i >= period) sum -= values[i - period];
-    if (i >= period - 1) out.push(sum / period);
-    else out.push(values[i]); // seed
-  }
-  return out;
+function toFrontendTimeframe(value: string | undefined) {
+  if (!value) return DEFAULT_TIMEFRAME;
+  const match = TIMEFRAMES.find((tf) => tf.backend === value || tf.value === value);
+  return match?.value ?? DEFAULT_TIMEFRAME;
 }
 
-function rsi(values: number[], period = 14): number[] {
-  const out: number[] = [];
-  if (values.length < 2) return values.map(() => 50);
-  let gains = 0;
-  let losses = 0;
-  for (let i = 1; i <= period && i < values.length; i++) {
-    const diff = values[i] - values[i - 1];
-    if (diff >= 0) gains += diff;
-    else losses -= diff;
-  }
-  gains /= period;
-  losses /= period;
-  let rs = losses === 0 ? 100 : gains / losses;
-  out[period] = 100 - 100 / (1 + rs);
-  for (let i = period + 1; i < values.length; i++) {
-    const diff = values[i] - values[i - 1];
-    const gain = diff > 0 ? diff : 0;
-    const loss = diff < 0 ? -diff : 0;
-    gains = (gains * (period - 1) + gain) / period;
-    losses = (losses * (period - 1) + loss) / period;
-    rs = losses === 0 ? 100 : gains / losses;
-    out[i] = 100 - 100 / (1 + rs);
-  }
-  for (let i = 0; i < period && i < values.length; i++) out[i] = out[period] ?? 50;
-  return out;
+function formatRelativeTime(input?: number | string | null) {
+  if (!input && input !== 0) return "";
+  const date = typeof input === "number" ? new Date(input * 1000) : new Date(input);
+  if (Number.isNaN(date.getTime())) return "";
+  return formatDistanceToNowStrict(date, { addSuffix: true });
 }
 
-function macd(values: number[], fast = 12, slow = 26, signal = 9) {
-  const emaFast = ema(values, fast);
-  const emaSlow = ema(values, slow);
-  const macdLine = values.map((_, i) => (emaFast[i] ?? 0) - (emaSlow[i] ?? 0));
-  const signalLine = ema(macdLine, signal);
-  const histogram = macdLine.map((v, i) => v - (signalLine[i] ?? 0));
-  return { macdLine, signalLine, histogram };
-}
-
-function stoch(
-  highs: number[],
-  lows: number[],
-  closes: number[],
-  kPeriod = 14,
-  dPeriod = 3
-) {
-  const k: number[] = [];
-  for (let i = 0; i < closes.length; i++) {
-    const start = Math.max(0, i - kPeriod + 1);
-    const hh = Math.max(...highs.slice(start, i + 1));
-    const ll = Math.min(...lows.slice(start, i + 1));
-    const denom = hh - ll === 0 ? 1 : hh - ll;
-    k.push(((closes[i] - ll) / denom) * 100);
-  }
-  const d = sma(k, dPeriod);
-  return { k, d };
-}
-
-function atr(
-  highs: number[],
-  lows: number[],
-  closes: number[],
-  period = 14
-): number[] {
-  const trs: number[] = [];
-  for (let i = 0; i < closes.length; i++) {
-    if (i === 0) {
-      trs.push(highs[i] - lows[i]);
-    } else {
-      const tr = Math.max(
-        highs[i] - lows[i],
-        Math.abs(highs[i] - closes[i - 1]),
-        Math.abs(lows[i] - closes[i - 1])
-      );
-      trs.push(tr);
-    }
-  }
-  return ema(trs, period);
-}
-
-/** Bollinger Bands */
-function bollinger(
-  values: number[],
-  period = 20,
-  mult = 2
-): { mid: number[]; upper: number[]; lower: number[] } {
-  const mid = sma(values, period);
-  const upper: number[] = [];
-  const lower: number[] = [];
-
-  // Rolling stddev using sum/sumsq
-  let sum = 0;
-  let sumSq = 0;
-  for (let i = 0; i < values.length; i++) {
-    sum += values[i];
-    sumSq += values[i] * values[i];
-    if (i >= period) {
-      sum -= values[i - period];
-      sumSq -= values[i - period] * values[i - 1];
-      sumSq += values[i - period] * values[i - period]; // keep typescript calm; adjusted above line
-    }
-    let mean = values[i];
-    let std = 0;
-    if (i >= period - 1) {
-      mean = sum / period;
-      const variance = sumSq / period - mean * mean;
-      std = Math.sqrt(Math.max(variance, 0));
-    }
-    upper.push(mean + mult * std);
-    lower.push(mean - mult * std);
-  }
-  return { mid, upper, lower };
-}
-
-/** ADX (+DI, -DI) with Wilder's smoothing */
-function adx(
-  highs: number[],
-  lows: number[],
-  closes: number[],
-  period = 14
-): { adx: number[]; plusDI: number[]; minusDI: number[] } {
-  const len = closes.length;
-  const tr: number[] = [];
-  const plusDM: number[] = [];
-  const minusDM: number[] = [];
-
-  for (let i = 0; i < len; i++) {
-    if (i === 0) {
-      tr.push(highs[i] - lows[i]);
-      plusDM.push(0);
-      minusDM.push(0);
-    } else {
-      const upMove = highs[i] - highs[i - 1];
-      const downMove = lows[i - 1] - lows[i];
-      plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
-      minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
-
-      const trVal = Math.max(
-        highs[i] - lows[i],
-        Math.abs(highs[i] - closes[i - 1]),
-        Math.abs(lows[i] - closes[i - 1])
-      );
-      tr.push(trVal);
-    }
-  }
-
-  const rma = (vals: number[], p: number) => {
-    const out: number[] = [];
-    let prev = vals.slice(0, p).reduce((a, b) => a + b, 0);
-    out[p - 1] = prev;
-    for (let i = p; i < vals.length; i++) {
-      prev = prev - prev / p + vals[i];
-      out[i] = prev;
-    }
-    for (let i = 0; i < p - 1; i++) out[i] = vals[i];
-    return out;
-  };
-
-  const atrRma = rma(tr, period);
-  const plusDMRma = rma(plusDM, period);
-  const minusDMRma = rma(minusDM, period);
-
-  const plusDI: number[] = [];
-  const minusDI: number[] = [];
-  const dx: number[] = [];
-
-  for (let i = 0; i < len; i++) {
-    const atrVal = atrRma[i] || 1;
-    const pdi = (plusDMRma[i] / atrVal) * 100;
-    const mdi = (minusDMRma[i] / atrVal) * 100;
-    plusDI.push(pdi);
-    minusDI.push(mdi);
-    const denom = pdi + mdi === 0 ? 1 : pdi + mdi;
-    dx.push((Math.abs(pdi - mdi) / denom) * 100);
-  }
-
-  const adxArr = rma(dx, period).map((v, i) =>
-    i >= period - 1 ? v / period : v
-  );
-
-  return { adx: adxArr, plusDI, minusDI };
-}
-
-/** OBV + simple smoothing */
-function obv(closes: number[], volumes: number[]): { obv: number[] } {
-  const out: number[] = [];
-  let cur = 0;
-  out.push(cur);
-  for (let i = 1; i < closes.length; i++) {
-    if (closes[i] > closes[i - 1]) cur += volumes[i];
-    else if (closes[i] < closes[i - 1]) cur -= volumes[i];
-    out.push(cur);
-  }
-  return { obv: out };
-}
-
-/** VWAP (session from beginning of fetched data) */
-function vwap(
-  highs: number[],
-  lows: number[],
-  closes: number[],
-  volumes: number[]
-): number[] {
-  const out: number[] = [];
-  let cumPV = 0;
-  let cumVol = 0;
-  for (let i = 0; i < closes.length; i++) {
-    const tp = (highs[i] + lows[i] + closes[i]) / 3;
-    cumPV += tp * volumes[i];
-    cumVol += volumes[i];
-    out.push(cumVol === 0 ? closes[i] : cumPV / cumVol);
-  }
-  return out;
-}
-
-/** Supertrend (period p, multiplier m). Returns upper/lower bands and trend dir. */
-function supertrend(
-  highs: number[],
-  lows: number[],
-  closes: number[],
-  p = 10,
-  m = 3
-): { trend: number[]; upper: number[]; lower: number[]; line: number[] } {
-  const len = closes.length;
-  const atrArr = atr(highs, lows, closes, p);
-  const upper: number[] = new Array(len).fill(0);
-  const lower: number[] = new Array(len).fill(0);
-  const trend: number[] = new Array(len).fill(1); // 1 up, -1 down
-  const line: number[] = new Array(len).fill(0);
-
-  for (let i = 0; i < len; i++) {
-    const hl2 = (highs[i] + lows[i]) / 2;
-    const basicUpper = hl2 + m * (atrArr[i] ?? 0);
-    const basicLower = hl2 - m * (atrArr[i] ?? 0);
-
-    if (i === 0) {
-      upper[i] = basicUpper;
-      lower[i] = basicLower;
-      trend[i] = 1;
-      line[i] = lower[i];
-      continue;
-    }
-
-    upper[i] =
-      basicUpper < upper[i - 1] || closes[i - 1] > upper[i - 1]
-        ? basicUpper
-        : upper[i - 1];
-
-    lower[i] =
-      basicLower > lower[i - 1] || closes[i - 1] < lower[i - 1]
-        ? basicLower
-        : lower[i - 1];
-
-    if (closes[i] > upper[i - 1]) {
-      trend[i] = 1;
-    } else if (closes[i] < lower[i - 1]) {
-      trend[i] = -1;
-    } else {
-      trend[i] = trend[i - 1];
-    }
-
-    line[i] = trend[i] === 1 ? lower[i] : upper[i];
-  }
-
-  return { trend, upper, lower, line };
-}
-
-type TIStatus = "Bullish" | "Bearish" | "Neutral";
-function cmpWithBuffer(a: number, b: number, bufferRatio = 0.002): TIStatus {
-  if (a > b * (1 + bufferRatio)) return "Bullish";
-  if (a < b * (1 - bufferRatio)) return "Bearish";
-  return "Neutral";
-}
-
-/* ---------------------------------- page --------------------------------- */
 export default function Charts() {
-  const search = typeof window !== "undefined" ? window.location.search : "";
-  const params = useMemo(() => new URLSearchParams(search), [search]);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { isAuthenticated, signInWithGoogle } = useAuth();
 
-  // Read pair from URL (?s=), default to BTCUSDT
-  const rawPair = params.get("s");
-  const initialPair = toUsdtPair(safeString(rawPair, "BTCUSDT"));
-  const initialBase = safeReplace(initialPair, /USDT$/, "");
+  const [matchWithParam, params] = useRoute("/charts/:symbol?");
+  const [, setLocation] = useLocation();
+  const urlParams = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : "",
+  );
+  const querySymbol = urlParams.get("symbol");
+  const shouldAutoScan = urlParams.get("scan") === "true";
+  const queryTimeframe = urlParams.get("tf");
 
-  // Timeframe from URL (?res=) - default 1Hr
-  const rawRes = params.get("res");
-  const initialRes = mapResolution(safeString(rawRes, "60"));
+  const initialSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
+  const initialTimeframe = toFrontendTimeframe(queryTimeframe || undefined);
 
-  // Indicators URL (?ind=)
-  const rawInd = safeString(params.get("ind"), "");
-  const initialSet = new Set(
-    rawInd
-      .split(",")
-      .map((s) => s.trim().toLowerCase())
-      .filter(Boolean)
+  const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
+  const [searchInput, setSearchInput] = useState<string>(() => {
+    const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
+    return base || "BTC";
+  });
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+
+  useEffect(() => {
+    const nextSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
+    if (nextSymbol !== selectedSymbol) {
+      setSelectedSymbol(nextSymbol);
+    }
+    const nextTimeframe = toFrontendTimeframe(queryTimeframe || undefined);
+    if (nextTimeframe !== selectedTimeframe) {
+      setSelectedTimeframe(nextTimeframe);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.symbol, querySymbol, queryTimeframe]);
+
+  useEffect(() => {
+    if (matchWithParam) {
+      const target = `/charts/${selectedSymbol}?tf=${selectedTimeframe}`;
+      if (!window.location.hash.endsWith(target)) {
+        setLocation(target);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol, selectedTimeframe]);
+
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+  useEffect(() => {
+    setPriceData(null);
+    let active = true;
+    const unsubscribe = openSpotTickerStream([selectedSymbol], (ticker) => {
+      if (!active) return;
+      if ((ticker.symbol || "").toUpperCase() !== selectedSymbol.toUpperCase()) return;
+      setPriceData({
+        symbol: ticker.symbol,
+        lastPrice: ticker.lastPrice,
+        priceChange: ticker.priceChange,
+        priceChangePercent: ticker.priceChangePercent,
+        highPrice: ticker.highPrice,
+        lowPrice: ticker.lowPrice,
+        volume: ticker.volume,
+        quoteVolume: ticker.quoteVolume,
+      });
+    });
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [selectedSymbol]);
+
+  const latestPrice =
+    (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
+  const showLoadingState = !latestPrice;
+  const priceChange = showLoadingState ? 0 : parseFloat(latestPrice?.priceChangePercent || "0");
+  const isPositive = priceChange > 0;
+  const loadingMessage = showLoadingState ? "Loading..." : "...";
+
+  const scanMutation = useMutation({
+    mutationFn: async () => {
+      const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
+      const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
+      const res = await apiRequest("POST", "/api/scanner/scan", {
+        symbol: selectedSymbol,
+        timeframe: backendTimeframe,
+      });
+      return (await res.json()) as ScanResult;
+    },
+    onSuccess: (data) => {
+      setScanResult(data);
+      toast({
+        title: "Analysis complete",
+        description: `Technical breakdown ready for ${displayPair(data.symbol)}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+    },
+    onError: (error: unknown) => {
+      if (error instanceof Error && isUnauthorizedError(error)) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign back in to analyze symbols.",
+          variant: "destructive",
+        });
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
+        return;
+      }
+      toast({
+        title: "Analysis failed",
+        description: "Could not analyze the symbol. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const hasScannedRef = useRef(false);
+  useEffect(() => {
+    if (scanResult) hasScannedRef.current = true;
+  }, [scanResult]);
+
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      !scanMutation.isPending &&
+      !hasScannedRef.current &&
+      ((selectedSymbol === DEFAULT_SYMBOL && !scanResult) || shouldAutoScan)
+    ) {
+      const timer = setTimeout(() => {
+        scanMutation.mutate();
+        hasScannedRef.current = true;
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, selectedSymbol]);
+
+  useEffect(() => {
+    if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
+      scanMutation.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTimeframe, isAuthenticated]);
+
+  const watchlistQuery = useQuery({
+    queryKey: ["watchlist"],
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/watchlist");
+      return (await res.json()) as WatchlistItem[];
+    },
+  });
+
+  const historyQuery = useQuery({
+    queryKey: ["scan-history"],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/scanner/history");
+      return (await res.json()) as ScanHistoryItem[];
+    },
+  });
+
+  const timeframeConfig = useMemo(
+    () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
+    [selectedTimeframe],
   );
 
-  // UI state
-  const [baseInput, setBaseInput] = useState<string>(initialBase);
-  const [resSelect, setResSelect] = useState<string>(initialRes);
-  const [inputError, setInputError] = useState<string>("");
+  const highPotentialQuery = useQuery({
+    queryKey: ["high-potential", timeframeConfig?.backend],
+    enabled: isAuthenticated,
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      const payload: HighPotentialFilters = {
+        timeframe: timeframeConfig?.backend || "4h",
+        minScore: 18,
+        minVolume: "1M",
+        excludeStablecoins: true,
+        limit: 8,
+      };
+      const res = await apiRequest("POST", "/api/scanner/high-potential", payload);
+      const data = (await res.json()) as ScanResult[];
+      return Array.isArray(data) ? data.slice(0, 6) : [];
+    },
+  });
 
-  // Toggle state (for chart studies)
-  const [emaOn, setEmaOn] = useState<boolean>(initialSet.has("ema"));
-  const [rsiOn, setRsiOn] = useState<boolean>(initialSet.has("rsi"));
-  const [macdOn, setMacdOn] = useState<boolean>(initialSet.has("macd"));
+  const addToWatchlist = useMutation({
+    mutationFn: async (symbol: string) => {
+      const res = await apiRequest("POST", "/api/watchlist", { symbol });
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Added to watchlist",
+        description: `${displayPair(selectedSymbol)} is now on your radar.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+    onError: (error: unknown) => {
+      if (error instanceof Error && isUnauthorizedError(error)) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to manage your watchlist.",
+          variant: "destructive",
+        });
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
+        return;
+      }
+      toast({
+        title: "Could not add symbol",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
 
-  // The currently active pair we render chart + indicators for
-  const [currentPair, setCurrentPair] = useState<string>(initialPair);
-  const currentBase = currentPair.replace(/USDT$/, "");
+  const removeFromWatchlist = useMutation({
+    mutationFn: async (symbol: string) => {
+      const res = await apiRequest("DELETE", `/api/watchlist/${symbol}`);
+      return await res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Removed from watchlist",
+        description: `${displayPair(selectedSymbol)} was removed from your list.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+    },
+    onError: (error: unknown) => {
+      if (error instanceof Error && isUnauthorizedError(error)) {
+        toast({
+          title: "Sign in required",
+          description: "Please sign in to manage your watchlist.",
+          variant: "destructive",
+        });
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
+        return;
+      }
+      toast({
+        title: "Could not update watchlist",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
 
-  // TradingView symbol using the currentPair
-  const exchange = "BINANCE";
-  const tvSymbol = `${exchange}:${currentPair}`;
+  const watchlistSymbols = (watchlistQuery.data || []).map((item) =>
+    (item.symbol || "").toUpperCase(),
+  );
+  const symbolInWatchlist = watchlistSymbols.includes(selectedSymbol.toUpperCase());
 
-  // Chart studies list (only affects the iframe visual)
-  const studies = useMemo(() => {
-    const arr: string[] = [];
-    if (emaOn) arr.push("MAExp@tv-basicstudies"); // EMA
-    if (rsiOn) arr.push("RSI@tv-basicstudies"); // RSI
-    if (macdOn) arr.push("MACD@tv-basicstudies"); // MACD
-    return arr;
-  }, [emaOn, rsiOn, macdOn]);
-
-  // Build iframe URL (append each study)
-  const iframeSrc = useMemo(() => {
-    const u = new URL("https://s.tradingview.com/widgetembed/");
-    u.searchParams.set("symbol", tvSymbol);
-    u.searchParams.set("interval", resSelect);
-    u.searchParams.set("theme", "dark");
-    u.searchParams.set("style", "1");
-    u.searchParams.set("timezone", "Etc/UTC");
-    u.searchParams.set("withdateranges", "1");
-    u.searchParams.set("hide_side_toolbar", "0");
-    u.searchParams.set("allow_symbol_change", "1");
-    u.searchParams.set("save_image", "0");
-    for (const s of studies) u.searchParams.append("studies", s);
-    return u.toString();
-  }, [tvSymbol, resSelect, studies]);
-
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  useEffect(() => {
-    if (iframeRef.current) iframeRef.current.src = iframeSrc;
-  }, [iframeSrc]);
-
-  // Sync indicator toggles to URL (?ind=)
-  useEffect(() => {
-    const enabled: string[] = [];
-    if (emaOn) enabled.push("ema");
-    if (rsiOn) enabled.push("rsi");
-    if (macdOn) enabled.push("macd");
-    updateUrlQuery({ ind: enabled.join(",") || undefined });
-  }, [emaOn, rsiOn, macdOn]);
-
-  // Handlers for toolbar
-  function applyBaseTicker() {
-    const cleanedBase = sanitizeBaseTicker(baseInput);
-    if (!cleanedBase) {
-      setInputError("Enter a coin name like BTC, ETH, AVAX.");
+  const handleToggleWatchlist = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Log in to manage your watchlist and save scans.",
+        variant: "destructive",
+      });
       return;
     }
-    setInputError("");
-    const nextPair = toUsdtPair(cleanedBase);
-    setCurrentPair(nextPair);
-    updateUrlQuery({ s: nextPair });
-
-    const u = new URL(iframeSrc);
-    u.searchParams.set("symbol", `${exchange}:${nextPair}`);
-    if (iframeRef.current) iframeRef.current.src = u.toString();
-  }
-
-  function applyResolution(nextRes: string) {
-    const mapped = mapResolution(nextRes);
-    setResSelect(mapped);
-    updateUrlQuery({ res: mapped });
-    const u = new URL(iframeSrc);
-    u.searchParams.set("interval", mapped);
-    if (iframeRef.current) iframeRef.current.src = u.toString();
-  }
-
-  function onBaseChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const next = e.target.value.toUpperCase().replace(/[^A-Z]/g, "");
-    setBaseInput(next);
-    if (inputError && next) setInputError("");
-  }
-
-  function onBaseKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      applyBaseTicker();
+    if (symbolInWatchlist) {
+      removeFromWatchlist.mutate(selectedSymbol);
+    } else {
+      addToWatchlist.mutate(selectedSymbol);
     }
-  }
+  };
 
-  /* ---------------------------- 24hr box stats ---------------------------- */
-  const [boxStats, setBoxStats] = useState<{
-    symbol: string;
-    lastPrice: number;
-    highPrice: number;
-    lowPrice: number;
-    priceChangePercent: number;
-  } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function fetch24h() {
-      try {
-        const url = `https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(
-          currentPair
-        )}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Binance 24hr error: ${res.status}`);
-        const j = await res.json();
-        const data = {
-          symbol: j.symbol,
-          lastPrice: parseFloat(j.lastPrice),
-          highPrice: parseFloat(j.highPrice),
-          lowPrice: parseFloat(j.lowPrice),
-          priceChangePercent: parseFloat(j.priceChangePercent),
-        };
-        if (!cancelled) setBoxStats(data);
-      } catch (e) {
-        if (!cancelled) setBoxStats(null);
-      }
+  const handleSearch = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Feature locked",
+        description: "Please log in to search for other coins.",
+        variant: "destructive",
+      });
+      return;
     }
-    fetch24h();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentPair]);
-
-  /* ---------------------------- Technical panel --------------------------- */
-  const [tiLoading, setTiLoading] = useState(false);
-  const [tiError, setTiError] = useState<string | null>(null);
-  const [tiData, setTiData] = useState<{
-    close: number;
-
-    ema20: number;
-    ema50: number;
-    ema200: number;
-    sma20: number;
-    sma50: number;
-    sma200: number;
-
-    rsi14: number;
-    macd: number;
-    macdSignal: number;
-    macdHist: number;
-
-    stochK: number;
-    stochD: number;
-
-    atr: number;
-    atrPct: number;
-
-    bbMid: number;
-    bbUpper: number;
-    bbLower: number;
-
-    adx: number;
-    diPlus: number;
-    diMinus: number;
-
-    obv: number;
-    obvSma: number;
-
-    vwap: number;
-
-    // EMA Ribbon
-    emaRibbon: Record<number, number>;
-
-    // Supertrend
-    stTrend: number; // 1 up, -1 down
-    stLine: number;
-
-    // Cross summaries
-    ema20gt50: boolean;
-    ema20gt50_prev: boolean;
-    sma50gt200: boolean;
-    sma50gt200_prev: boolean;
-
-    updatedAt: number;
-  } | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      try {
-        setTiLoading(true);
-        setTiError(null);
-
-        const interval = toBinanceInterval(resSelect);
-        const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(
-          currentPair
-        )}&interval=${interval}&limit=500`;
-
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Binance error: ${res.status}`);
-        const rows: any[] = await res.json();
-
-        const candles: Candle[] = rows.map((r) => ({
-          openTime: r[0],
-          open: parseFloat(r[1]),
-          high: parseFloat(r[2]),
-          low: parseFloat(r[3]),
-          close: parseFloat(r[4]),
-          volume: parseFloat(r[5]),
-          closeTime: r[6],
-        }));
-        if (candles.length < 220) throw new Error("Not enough data returned.");
-
-        const closes = candles.map((c) => c.close);
-        const highs = candles.map((c) => c.high);
-        const lows = candles.map((c) => c.low);
-        const volumes = candles.map((c) => c.volume);
-
-        // Core sets
-        const ema20Arr = ema(closes, 20);
-        const ema50Arr = ema(closes, 50);
-        const ema200Arr = ema(closes, 200);
-        const sma20Arr = sma(closes, 20);
-        const sma50Arr = sma(closes, 50);
-        const sma200Arr = sma(closes, 200);
-
-        const rsiArr = rsi(closes, 14);
-        const { macdLine, signalLine, histogram } = macd(closes, 12, 26, 9);
-        const { k: stochKArr, d: stochDArr } = stoch(highs, lows, closes, 14, 3);
-        const atrArr = atr(highs, lows, closes, 14);
-
-        const { mid: bbMidArr, upper: bbUpperArr, lower: bbLowerArr } = bollinger(
-          closes,
-          20,
-          2
-        );
-
-        const { adx: adxArr, plusDI, minusDI } = adx(highs, lows, closes, 14);
-
-        const { obv: obvArr } = obv(closes, volumes);
-        const obvSmaArr = sma(obvArr, 10);
-
-        const vwapArr = vwap(highs, lows, closes, volumes);
-
-        // EMA Ribbon (8/13/21/34/55)
-        const ribbonPeriods = [8, 13, 21, 34, 55];
-        const emaRibbon: Record<number, number> = {};
-        for (const p of ribbonPeriods) {
-          emaRibbon[p] = ema(closes, p)[closes.length - 1];
-        }
-        const prevEma20 = ema20Arr[closes.length - 2];
-        const prevEma50 = ema50Arr[closes.length - 2];
-        const prevSma50 = sma50Arr[closes.length - 2];
-        const prevSma200 = sma200Arr[closes.length - 2];
-
-        // Supertrend (10, 3)
-        const st = supertrend(highs, lows, closes, 10, 3);
-
-        const last = closes.length - 1;
-        const data = {
-          close: closes[last],
-
-          ema20: ema20Arr[last],
-          ema50: ema50Arr[last],
-          ema200: ema200Arr[last],
-          sma20: sma20Arr[last],
-          sma50: sma50Arr[last],
-          sma200: sma200Arr[last],
-
-          rsi14: rsiArr[last],
-          macd: macdLine[last],
-          macdSignal: signalLine[last],
-          macdHist: histogram[last],
-
-          stochK: stochKArr[last],
-          stochD: stochDArr[last],
-
-          atr: atrArr[last],
-          atrPct: (atrArr[last] / closes[last]) * 100,
-
-          bbMid: bbMidArr[last],
-          bbUpper: bbUpperArr[last],
-          bbLower: bbLowerArr[last],
-
-          adx: adxArr[last],
-          diPlus: plusDI[last],
-          diMinus: minusDI[last],
-
-          obv: obvArr[last],
-          obvSma: obvSmaArr[last],
-
-          vwap: vwapArr[last],
-
-          emaRibbon,
-
-          stTrend: st.trend[last],
-          stLine: st.line[last],
-
-          ema20gt50: ema20Arr[last] > ema50Arr[last],
-          ema20gt50_prev: prevEma20 > prevEma50,
-          sma50gt200: sma50Arr[last] > sma200Arr[last],
-          sma50gt200_prev: prevSma50 > prevSma200,
-
-          updatedAt: candles[last].closeTime,
-        };
-
-        if (!cancelled) setTiData(data);
-      } catch (e: any) {
-        if (!cancelled) setTiError(e?.message || "Failed to load indicators.");
-      } finally {
-        if (!cancelled) setTiLoading(false);
-      }
+    const raw = (searchInput || "").trim().toUpperCase();
+    if (!raw) {
+      toast({
+        title: "Invalid input",
+        description: "Enter a coin symbol (e.g., BTC, ETH, SOL)",
+        variant: "destructive",
+      });
+      return;
     }
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [currentPair, resSelect]);
-
-  // Build statuses
-  const statuses = useMemo(() => {
-    if (!tiData) return [];
-
-    const s: { name: string; value: string; status: TIStatus; note?: string }[] =
-      [];
-
-    const px = tiData.close;
-
-    // MAs
-    const sEma20 = cmpWithBuffer(px, tiData.ema20);
-    const sEma50 = cmpWithBuffer(px, tiData.ema50);
-    const sEma200 = cmpWithBuffer(px, tiData.ema200);
-    const sSma20 = cmpWithBuffer(px, tiData.sma20);
-
-    // RSI
-    const rsiStat: TIStatus =
-      tiData.rsi14 > 60 ? "Bullish" : tiData.rsi14 < 40 ? "Bearish" : "Neutral";
-
-    // MACD
-    const macdStat: TIStatus =
-      tiData.macd > tiData.macdSignal
-        ? "Bullish"
-        : tiData.macd < tiData.macdSignal
-        ? "Bearish"
-        : "Neutral";
-
-    // Stoch
-    const stochStat: TIStatus =
-      tiData.stochK < 20 ? "Bullish" : tiData.stochK > 80 ? "Bearish" : "Neutral";
-
-    // ATR (volatility only)
-    const atrNote = "Higher % = more volatility";
-
-    // Bollinger Bands
-    const bbStat: TIStatus =
-      px < tiData.bbLower ? "Bullish" : px > tiData.bbUpper ? "Bearish" : "Neutral";
-
-    // ADX: trend strength + direction from DI
-    const trendStrong = tiData.adx >= 25;
-    const adxNote = "ADX ≥ 25 indicates stronger trend";
-    const adxStat: TIStatus = trendStrong
-      ? tiData.diPlus > tiData.diMinus
-        ? "Bullish"
-        : tiData.diMinus > tiData.diPlus
-        ? "Bearish"
-        : "Neutral"
-      : "Neutral";
-
-    // OBV vs its SMA
-    const obvStat = cmpWithBuffer(tiData.obv, tiData.obvSma, 0.0);
-
-    // VWAP
-    const vwapStat = cmpWithBuffer(px, tiData.vwap);
-
-    // EMA Ribbon summary
-    const ribbonOrder = [8, 13, 21, 34, 55].map((p) => tiData.emaRibbon[p]);
-    const ribbonBull =
-      ribbonOrder[0] > ribbonOrder[1] &&
-      ribbonOrder[1] > ribbonOrder[2] &&
-      ribbonOrder[2] > ribbonOrder[3] &&
-      ribbonOrder[3] > ribbonOrder[4];
-    const ribbonBear =
-      ribbonOrder[0] < ribbonOrder[1] &&
-      ribbonOrder[1] < ribbonOrder[2] &&
-      ribbonOrder[2] < ribbonOrder[3] &&
-      ribbonOrder[3] < ribbonOrder[4];
-    const ribbonStat: TIStatus = ribbonBull ? "Bullish" : ribbonBear ? "Bearish" : "Neutral";
-
-    // Supertrend
-    const stStat: TIStatus = tiData.stTrend === 1 ? "Bullish" : "Bearish";
-    const stNote = "Supertrend (10,3): price vs trailing line";
-
-    // MA Cross Summary
-    const ema20x50_now = tiData.ema20gt50;
-    const ema20x50_prev = tiData.ema20gt50_prev;
-    const emaCrossNote =
-      ema20x50_now && !ema20x50_prev
-        ? "EMA20 crossed ABOVE EMA50 (Golden)"
-        : !ema20x50_now && ema20x50_prev
-        ? "EMA20 crossed BELOW EMA50 (Death)"
-        : ema20x50_now
-        ? "EMA20 > EMA50"
-        : "EMA20 < EMA50";
-    const emaCrossStat: TIStatus = ema20x50_now ? "Bullish" : "Bearish";
-
-    const sma50x200_now = tiData.sma50gt200;
-    const sma50x200_prev = tiData.sma50gt200_prev;
-    const smaCrossNote =
-      sma50x200_now && !sma50x200_prev
-        ? "SMA50 crossed ABOVE SMA200 (Golden)"
-        : !sma50x200_now && sma50x200_prev
-        ? "SMA50 crossed BELOW SMA200 (Death)"
-        : sma50x200_now
-        ? "SMA50 > SMA200"
-        : "SMA50 < SMA200";
-    const smaCrossStat: TIStatus = sma50x200_now ? "Bullish" : "Bearish";
-
-    // Push rows
-    s.push({
-      name: "MA Cross (EMA20 vs EMA50)",
-      value: emaCrossNote,
-      status: emaCrossStat,
+    const fullSymbol = toUsdtSymbol(raw);
+    setSelectedSymbol(fullSymbol);
+    setSearchInput("");
+    toast({
+      title: "Symbol updated",
+      description: `Loading ${displayPair(fullSymbol)} chart`,
     });
-    s.push({
-      name: "MA Cross (SMA50 vs SMA200)",
-      value: smaCrossNote,
-      status: smaCrossStat,
-    });
+  };
 
-    s.push({
-      name: "EMA Ribbon (8/13/21/34/55)",
-      value: ribbonBull ? "Aligned Up" : ribbonBear ? "Aligned Down" : "Mixed",
-      status: ribbonStat,
-      note: "Aligned = stronger trend bias",
-    });
+  const handleScan = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Feature locked",
+        description: "Please sign in to run scans.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const raw = (searchInput || "").trim().toUpperCase();
+    if (raw && raw !== selectedSymbol && raw !== displayPair(selectedSymbol).replace("/USDT", "")) {
+      const fullSymbol = toUsdtSymbol(raw);
+      setSelectedSymbol(fullSymbol);
+      setSearchInput("");
+      toast({
+        title: "Symbol updated",
+        description: `Analyzing ${displayPair(fullSymbol)}`,
+      });
+      setTimeout(() => scanMutation.mutate(), 100);
+      return;
+    }
+    if (!selectedSymbol) {
+      toast({
+        title: "Invalid symbol",
+        description: "Select a valid symbol first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    scanMutation.mutate();
+  };
 
-    s.push({
-      name: "Supertrend (10,3)",
-      value: `Trend ${tiData.stTrend === 1 ? "Up" : "Down"} · Line ${tiData.stLine.toFixed(2)} · Px ${px.toFixed(2)}`,
-      status: stStat,
-      note: stNote,
-    });
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSearch();
+  };
 
-    s.push({
-      name: "Price vs EMA20",
-      value: `${px.toFixed(2)} / ${tiData.ema20.toFixed(2)}`,
-      status: sEma20,
-    });
-    s.push({
-      name: "Price vs EMA50",
-      value: `${px.toFixed(2)} / ${tiData.ema50.toFixed(2)}`,
-      status: sEma50,
-    });
-    s.push({
-      name: "Price vs EMA200",
-      value: `${px.toFixed(2)} / ${tiData.ema200.toFixed(2)}`,
-      status: sEma200,
-    });
-    s.push({
-      name: "Price vs SMA20",
-      value: `${px.toFixed(2)} / ${tiData.sma20.toFixed(2)}`,
-      status: sSma20,
-    });
+  const priceSummaryCards = (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Current Price</p>
+              <p className="text-lg font-bold text-foreground" data-testid="current-price">
+                {showLoadingState
+                  ? loadingMessage
+                  : formatPrice(latestPrice?.lastPrice)}
+              </p>
+            </div>
+            <DollarSign className="h-5 w-5 text-primary" />
+          </div>
+        </CardContent>
+      </Card>
 
-    s.push({
-      name: "RSI (14)",
-      value: tiData.rsi14.toFixed(2),
-      status: rsiStat,
-    });
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">24h Change</p>
+              <p className={`text-lg font-bold ${isPositive ? "text-green-500" : "text-red-500"}`}>
+                {showLoadingState ? loadingMessage : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`}
+              </p>
+            </div>
+            {isPositive ? (
+              <TrendingUp className="h-5 w-5 text-green-500" />
+            ) : (
+              <TrendingDown className="h-5 w-5 text-red-500" />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-    s.push({
-      name: "MACD (12,26,9)",
-      value: `MACD ${tiData.macd.toFixed(4)}  Signal ${tiData.macdSignal.toFixed(
-        4
-      )}  Hist ${tiData.macdHist.toFixed(4)}`,
-      status: macdStat,
-    });
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">24h Volume</p>
+              <p className="text-lg font-bold text-foreground">
+                {showLoadingState ? loadingMessage : formatVolume(latestPrice?.quoteVolume)}
+              </p>
+            </div>
+            <Target className="h-5 w-5 text-secondary" />
+          </div>
+        </CardContent>
+      </Card>
 
-    s.push({
-      name: "Stoch (14,3)",
-      value: `%K ${tiData.stochK.toFixed(2)}  %D ${tiData.stochD.toFixed(2)}`,
-      status: stochStat,
-    });
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Today&apos;s Range</p>
+              <p className="text-sm font-medium text-foreground">
+                {showLoadingState ? (
+                  loadingMessage
+                ) : (
+                  <>
+                    {formatPrice(latestPrice?.lowPrice)} - {formatPrice(latestPrice?.highPrice)}
+                  </>
+                )}
+              </p>
+            </div>
+            <Clock3 className="h-5 w-5 text-accent" />
+          </div>
+        </CardContent>
+      </Card>
 
-    s.push({
-      name: "ATR (14)",
-      value: `${tiData.atr.toFixed(2)} (${tiData.atrPct.toFixed(2)}%)`,
-      status: "Neutral",
-      note: atrNote,
-    });
-
-    s.push({
-      name: "Bollinger Bands (20,2)",
-      value: `U ${tiData.bbUpper.toFixed(2)}  M ${tiData.bbMid.toFixed(
-        2
-      )}  L ${tiData.bbLower.toFixed(2)}`,
-      status: bbStat,
-      note: "Outside bands = stretched; mean reversion risk",
-    });
-
-    s.push({
-      name: "ADX (14) + DI",
-      value: `ADX ${tiData.adx.toFixed(2)}  +DI ${tiData.diPlus.toFixed(
-        1
-      )}  -DI ${tiData.diMinus.toFixed(1)}`,
-      status: adxStat,
-      note: adxNote,
-    });
-
-    s.push({
-      name: "OBV (vs SMA 10)",
-      value: `OBV ${Math.round(tiData.obv)}  SMA ${Math.round(tiData.obvSma)}`,
-      status: obvStat,
-      note: "Above SMA = positive flow",
-    });
-
-    s.push({
-      name: "VWAP",
-      value: `${px.toFixed(2)} / ${tiData.vwap.toFixed(2)}`,
-      status: vwapStat,
-      note: "Above VWAP = intraperiod strength",
-    });
-
-    return s;
-  }, [tiData]);
-
-  function StatusPill({ st }: { st: TIStatus }) {
-    const bg = st === "Bullish" ? "#12381f" : st === "Bearish" ? "#3a181a" : "#262626";
-    const bd = st === "Bullish" ? "#1d6b35" : st === "Bearish" ? "#6b1d22" : "#3a3a3a";
-    const txt = st === "Bullish" ? "#9ef7bb" : st === "Bearish" ? "#ffb3b3" : "#ddd";
-    const icon = st === "Bullish" ? "▲" : st === "Bearish" ? "▼" : "→";
-    return (
-      <span
-        style={{
-          background: bg,
-          border: `1px solid ${bd}`,
-          color: txt,
-          padding: "2px 8px",
-          borderRadius: 999,
-          fontSize: 12,
-        }}
-      >
-        {icon} {st}
-      </span>
-    );
-  }
+      {scanResult && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Overall Analysis</p>
+                <div className="mt-1 flex items-center space-x-2">
+                  <span
+                    className={`text-lg font-bold ${getScoreColor(scanResult.totalScore)}`}
+                    data-testid="text-total-score"
+                  >
+                    {scanResult.totalScore > 0 ? "+" : ""}
+                    {scanResult.totalScore}
+                  </span>
+                  <Badge
+                    className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`}
+                    data-testid="badge-recommendation"
+                  >
+                    {scanResult.recommendation.replace(/_/g, " ").toUpperCase()}
+                  </Badge>
+                </div>
+              </div>
+              <div>
+                <Progress
+                  value={Math.max(0, Math.min(100, ((scanResult.totalScore + 30) / 60) * 100))}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
 
   return (
-    <ErrorBoundary>
-      <main
-        style={{
-          padding: 16,
-          color: "#e0e0e0",
-          background: "#0f0f0f",
-          minHeight: "100vh",
-          fontFamily:
-            "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-        }}
-      >
-        <h1 style={{ marginTop: 0 }}>Charts</h1>
-
-        {/* Toolbar */}
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-            alignItems: "center",
-            background: "#161616",
-            border: "1px solid #2a2a2a",
-            borderRadius: 12,
-            padding: 12,
-            marginBottom: 12,
-            maxWidth: 1200,
-          }}
-        >
-          {/* Coin Name input (auto-USDT) */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontSize: 12, opacity: 0.75 }}>Coin Name</label>
-            <input
-              value={baseInput}
-              onChange={onBaseChange}
-              onKeyDown={onBaseKeyDown}
-              placeholder="BTC, ETH, AVAX"
-              maxLength={10}
-              style={{
-                background: "#0e0e0e",
-                color: "#e0e0e0",
-                border: "1px solid #333",
-                borderRadius: 8,
-                padding: "8px 10px",
-                minWidth: 180,
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={applyBaseTicker}
-              style={{
-                background: "#232323",
-                color: "#e0e0e0",
-                border: "1px solid #333",
-                borderRadius: 8,
-                padding: "8px 12px",
-                cursor: "pointer",
-              }}
+    <AppLayout>
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+        <header className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
+                <BarChart3 className="h-7 w-7 text-primary" />
+                Decision Hub
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Real-time charts, quantitative scans, and idea discovery in one cockpit.
+              </p>
+            </div>
+            <Button
+              variant={symbolInWatchlist ? "secondary" : "outline"}
+              onClick={handleToggleWatchlist}
+              disabled={addToWatchlist.isPending || removeFromWatchlist.isPending}
             >
-              Apply
-            </button>
+              <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
+              <span className="ml-2">
+                {symbolInWatchlist ? "Watching" : "Add to Watchlist"}
+              </span>
+            </Button>
           </div>
+        </header>
 
-          {/* Timeframe */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontSize: 12, opacity: 0.75 }}>Timeframe</label>
-            <select
-              value={resSelect}
-              onChange={(e) => applyResolution(e.target.value)}
-              style={{
-                background: "#0e0e0e",
-                color: "#e0e0e0",
-                border: "1px solid #333",
-                borderRadius: 8,
-                padding: "8px 10px",
-                outline: "none",
-              }}
-            >
-              <option value="15">15min</option>
-              <option value="30">30min</option>
-              <option value="60">1Hr</option>
-              <option value="240">4hr</option>
-              <option value="1D">1D</option>
-              <option value="1W">1W</option>
-            </select>
-          </div>
-        </div>
-
-        {/* FOUR BOXES: Coin Name | Current Price | 24hr high/low | 24hr % */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, minmax(160px, 1fr))",
-            gap: 12,
-            maxWidth: 1200,
-            marginBottom: 12,
-          }}
-        >
-          <div
-            style={{
-              background: "#171717",
-              border: "1px solid #2a2a2a",
-              borderRadius: 12,
-              padding: "12px 14px",
-            }}
-          >
-            <div style={{ opacity: 0.7, fontSize: 12, marginBottom: 6 }}>
-              Coin Name
-            </div>
-            <div style={{ fontWeight: 600, fontSize: 16 }}>{currentBase}</div>
-          </div>
-
-          <div
-            style={{
-              background: "#171717",
-              border: "1px solid #2a2a2a",
-              borderRadius: 12,
-              padding: "12px 14px",
-            }}
-          >
-            <div style={{ opacity: 0.7, fontSize: 12, marginBottom: 6 }}>
-              Current Price
-            </div>
-            <div style={{ fontWeight: 600, fontSize: 16 }}>
-              {boxStats ? boxStats.lastPrice.toFixed(4) : "—"}
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: "#171717",
-              border: "1px solid #2a2a2a",
-              borderRadius: 12,
-              padding: "12px 14px",
-            }}
-          >
-            <div style={{ opacity: 0.7, fontSize: 12, marginBottom: 6 }}>
-              24hr high / 24hr low
-            </div>
-            <div style={{ fontWeight: 600, fontSize: 16 }}>
-              {boxStats
-                ? `${boxStats.highPrice.toFixed(4)} / ${boxStats.lowPrice.toFixed(
-                    4
-                  )}`
-                : "—"}
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: "#171717",
-              border: "1px solid #2a2a2a",
-              borderRadius: 12,
-              padding: "12px 14px",
-            }}
-          >
-            <div style={{ opacity: 0.7, fontSize: 12, marginBottom: 6 }}>
-              24hr %
-            </div>
-            <div
-              style={{
-                fontWeight: 600,
-                fontSize: 16,
-                color:
-                  boxStats && boxStats.priceChangePercent >= 0
-                    ? "#9ef7bb"
-                    : "#ffb3b3",
-              }}
-            >
-              {boxStats
-                ? `${boxStats.priceChangePercent.toFixed(2)}%`
-                : "—"}
-            </div>
-          </div>
-        </div>
-
-        {/* Chart */}
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 1200,
-            height: 600,
-            borderRadius: 12,
-            overflow: "hidden",
-            border: "1px solid #2a2a2a",
-            background: "#0b0b0b",
-          }}
-        >
-          <iframe
-            ref={iframeRef}
-            title="TradingView Chart"
-            src={iframeSrc}
-            style={{ width: "100%", height: "100%", border: "0" }}
-            allow="clipboard-write; fullscreen"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-pointer-lock allow-downloads"
-          />
-        </div>
-
-        {/* Inline validation message */}
-        {/* (kept after chart so it doesn't push layout when typing) */}
-        {inputError ? (
-          <div
-            style={{
-              background: "#2a1717",
-              border: "1px solid #5a2a2a",
-              color: "#ffb3b3",
-              padding: "8px 12px",
-              borderRadius: 8,
-              margin: "12px 0",
-              maxWidth: 1200,
-            }}
-          >
-            {inputError}
-          </div>
-        ) : null}
-
-        {/* Technical Indicators Panel */}
-        <section
-          style={{
-            marginTop: 6,
-            background: "#151515",
-            border: "1px solid #2a2a2a",
-            borderRadius: 12,
-            padding: 12,
-            maxWidth: 1200,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Technical Indicators</h2>
-            <span style={{ fontSize: 12, opacity: 0.7 }}>
-              (updates with {currentPair} · {resSelect})
-            </span>
-          </div>
-
-          {tiLoading ? (
-            <div style={{ marginTop: 10, opacity: 0.8 }}>Loading…</div>
-          ) : tiError ? (
-            <div
-              style={{
-                marginTop: 10,
-                background: "#2a1717",
-                border: "1px solid #5a2a2a",
-                color: "#ffb3b3",
-                padding: "8px 12px",
-                borderRadius: 8,
-              }}
-            >
-              {tiError}
-            </div>
-          ) : tiData ? (
-            <div
-              style={{
-                marginTop: 12,
-                display: "grid",
-                gridTemplateColumns:
-                  "minmax(220px, 1.2fr) minmax(160px, 1fr) minmax(120px, .8fr)",
-                gap: 10,
-              }}
-            >
-              {statuses.map((row, idx) => (
-                <div key={idx} style={{ display: "contents" }}>
-                  <div
-                    style={{
-                      background: "#181818",
-                      border: "1px solid #2e2e2e",
-                      borderRadius: 10,
-                      padding: "10px 12px",
-                    }}
-                  >
-                    <div style={{ fontSize: 13, opacity: 0.85 }}>{row.name}</div>
-                    {row.note ? (
-                      <div style={{ fontSize: 11, opacity: 0.6, marginTop: 2 }}>
-                        {row.note}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div
-                    style={{
-                      background: "#181818",
-                      border: "1px solid #2e2e2e",
-                      borderRadius: 10,
-                      padding: "10px 12px",
-                      fontFamily:
-                        "ui-monospace, SFMono-Regular, Menlo, monospace",
-                      fontSize: 13,
-                    }}
-                  >
-                    {row.value}
-                  </div>
-                  <div
-                    style={{
-                      background: "#181818",
-                      border: "1px solid #2e2e2e",
-                      borderRadius: 10,
-                      padding: "10px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <StatusPill st={row.status} />
-                  </div>
+        <Card>
+          <CardContent className="space-y-4 pt-6">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex min-w-64 flex-1 gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Enter coin (BTC, ETH, SOL...)"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="pl-10"
+                    data-testid="input-search-symbol"
+                    disabled={!isAuthenticated}
+                  />
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 </div>
-              ))}
-            </div>
-          ) : null}
+                <Button
+                  onClick={handleSearch}
+                  variant="outline"
+                  className="px-4"
+                  data-testid="button-search-coin"
+                  disabled={!isAuthenticated}
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
 
-          {tiData ? (
-            <div style={{ marginTop: 10, fontSize: 12, opacity: 0.65 }}>
-              Last update: {new Date(tiData.updatedAt).toLocaleString()}
-            </div>
-          ) : null}
-        </section>
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-foreground">Timeframe</label>
+                <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                  <SelectTrigger className="w-32" data-testid="select-timeframe">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEFRAMES.map((tf) => (
+                      <SelectItem key={tf.value} value={tf.value}>
+                        {tf.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-        <p style={{ marginTop: 16, opacity: 0.85 }}>
-          This panel uses Binance public candles to compute indicators on the fly.
-          Change the coin or timeframe and the table will refresh.
-        </p>
-      </main>
-    </ErrorBoundary>
+              <Button
+                onClick={handleScan}
+                disabled={scanMutation.isPending || !isAuthenticated}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                data-testid="button-scan"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`} />
+                {scanMutation.isPending ? "Scanning..." : "Run Analysis"}
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Activity className="h-3 w-3" />
+              Currently viewing <span className="font-medium text-foreground">{displayPair(selectedSymbol)}</span>
+              <span className="text-muted-foreground">
+                ({timeframeConfig?.display ?? selectedTimeframe})
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {priceSummaryCards}
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="flex flex-col gap-6">
+            <Card className="border-border/70 bg-card/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <TradingViewChart
+                  key={`${selectedSymbol}-${selectedTimeframe}`}
+                  symbol={selectedSymbol}
+                  interval={selectedTimeframe}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70 bg-card/70">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  High Potential Ideas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {!isAuthenticated ? (
+                  <p className="text-sm text-muted-foreground">
+                    Sign in to view AI-powered high potential setups tailored to your timeframe.
+                  </p>
+                ) : highPotentialQuery.isLoading ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <Skeleton key={idx} className="h-20 rounded-xl" />
+                    ))}
+                  </div>
+                ) : highPotentialQuery.error ? (
+                  <p className="text-sm text-red-400">
+                    Could not fetch high potential ideas right now.
+                  </p>
+                ) : (highPotentialQuery.data?.length ?? 0) === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No standout opportunities detected. Try rescanning with different filters.
+                  </p>
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {highPotentialQuery.data!.map((item) => (
+                      <button
+                        key={item.symbol}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSymbol(item.symbol);
+                          setSearchInput(item.symbol.replace(/USDT$/i, ""));
+                          toast({
+                            title: "Symbol loaded",
+                            description: `Loaded ${displayPair(item.symbol)} from high potential list`,
+                          });
+                        }}
+                        className="group flex w-full flex-col rounded-xl border border-border/60 bg-card/60 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {displayPair(item.symbol)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Score {item.totalScore > 0 ? "+" : ""}{item.totalScore}
+                            </p>
+                          </div>
+                          <Badge className={getRecommendationColor(item.recommendation)}>
+                            {item.recommendation.replace(/_/g, " ").toUpperCase()}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Tap to load chart &amp; run full breakdown.
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <Card className="h-[560px] border-border/70 bg-card/70">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                  <ListChecks className="h-5 w-5 text-primary" />
+                  Breakdown Technicals
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="h-full overflow-hidden p-0">
+                <ScrollArea className="h-full px-4 pb-4">
+                  {scanResult ? (
+                    <TechnicalIndicators analysis={scanResult} />
+                  ) : (
+                    <div className="py-12 text-center text-muted-foreground">
+                      <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
+                      <h3 className="text-lg font-medium">No analysis yet</h3>
+                      <p className="mx-auto mt-1 max-w-xs text-sm">
+                        Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
+                      </p>
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70 bg-card/70">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                  <History className="h-5 w-5 text-primary" />
+                  Recent Scans
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {!isAuthenticated ? (
+                  <p className="text-sm text-muted-foreground">
+                    Sign in to keep a searchable log of every analysis you run.
+                  </p>
+                ) : historyQuery.isLoading ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <Skeleton key={idx} className="h-16 rounded-xl" />
+                    ))}
+                  </div>
+                ) : historyQuery.error ? (
+                  <p className="text-sm text-red-400">
+                    Could not load scan history right now.
+                  </p>
+                ) : (historyQuery.data?.length ?? 0) === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Run your first scan to start building your decision history.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {historyQuery.data!.slice(0, 6).map((item) => {
+                      const filters = item.filters || {};
+                      const result = item.results;
+                      const symbol = toUsdtSymbol(
+                        result?.symbol || filters.symbol || selectedSymbol,
+                      );
+                      const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
+                      return (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {displayPair(symbol)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedSymbol(symbol);
+                              setSelectedTimeframe(frontendTimeframe);
+                              if (result) {
+                                setScanResult(result);
+                              }
+                              toast({
+                                title: "Scan loaded",
+                                description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
+                              });
+                            }}
+                          >
+                            Load
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70 bg-card/70">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                  <Star className="h-5 w-5 text-primary" />
+                  Watchlist
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {!isAuthenticated ? (
+                  <p className="text-sm text-muted-foreground">
+                    Sign in to curate a personalized watchlist and jump back into symbols instantly.
+                  </p>
+                ) : watchlistQuery.isLoading ? (
+                  <div className="space-y-2">
+                    {Array.from({ length: 5 }).map((_, idx) => (
+                      <Skeleton key={idx} className="h-10 rounded-xl" />
+                    ))}
+                  </div>
+                ) : watchlistQuery.error ? (
+                  <p className="text-sm text-red-400">Unable to load watchlist right now.</p>
+                ) : (watchlistQuery.data?.length ?? 0) === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No symbols yet. Tap "Add to Watchlist" on any chart to build your list.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {watchlistQuery.data!.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSymbol(item.symbol);
+                          setSearchInput(item.symbol.replace(/USDT$/i, ""));
+                          toast({
+                            title: "Symbol loaded",
+                            description: `Loaded ${displayPair(item.symbol)} from watchlist`,
+                          });
+                        }}
+                        className={`flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/60 px-4 py-2 text-left transition hover:border-primary/60 hover:bg-primary/5 ${
+                          item.symbol.toUpperCase() === selectedSymbol.toUpperCase()
+                            ? "border-primary/60"
+                            : ""
+                        }`}
+                      >
+                        <span className="text-sm font-medium text-foreground">
+                          {displayPair(item.symbol)}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatRelativeTime(item.createdAt)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
   );
+}
+
+function formatPrice(price?: string) {
+  const num = parseFloat(price || "0");
+  if (Number.isNaN(num)) return "$0.00";
+  if (num >= 1000)
+    return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  if (num >= 1) return `$${num.toFixed(4)}`;
+  return `$${num.toFixed(8)}`;
+}
+
+function formatVolume(volume?: string) {
+  const num = parseFloat(volume || "0");
+  if (Number.isNaN(num)) return "$0.00";
+  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
+  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+  if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
+  return `$${num.toFixed(2)}`;
+}
+
+function getScoreColor(score: number) {
+  if (score >= 10) return "text-green-600";
+  if (score >= 5) return "text-green-500";
+  if (score <= -10) return "text-red-600";
+  if (score <= -5) return "text-red-500";
+  return "text-yellow-500";
+}
+
+function getRecommendationColor(recommendation: string) {
+  switch (recommendation) {
+    case "strong_buy":
+      return "bg-green-600 text-white";
+    case "buy":
+      return "bg-green-500 text-white";
+    case "strong_sell":
+      return "bg-red-600 text-white";
+    case "sell":
+      return "bg-red-500 text-white";
+    default:
+      return "bg-yellow-500 text-black";
+  }
 }
