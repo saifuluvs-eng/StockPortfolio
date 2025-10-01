@@ -133,10 +133,30 @@ export default function Charts() {
   const { isAuthenticated, signInWithGoogle } = useAuth();
 
   const [matchWithParam, params] = useRoute("/charts/:symbol?");
-  const [, setLocation] = useLocation();
-  const urlParams = new URLSearchParams(
-    typeof window !== "undefined" ? window.location.search : "",
+  const [location, setLocation] = useLocation();
+
+  const locationInfo = useMemo(() => {
+    const rawLocation = location ?? "";
+    const withoutHash = rawLocation.startsWith("#")
+      ? rawLocation.slice(1)
+      : rawLocation;
+    const [pathPart = "", searchPart = ""] = withoutHash.split("?");
+    const normalizedPath = pathPart
+      ? pathPart.startsWith("/")
+        ? pathPart
+        : `/${pathPart}`
+      : "/";
+    return {
+      path: normalizedPath,
+      search: searchPart,
+    };
+  }, [location]);
+
+  const urlParams = useMemo(
+    () => new URLSearchParams(locationInfo.search),
+    [locationInfo.search],
   );
+
   const querySymbol = urlParams.get("symbol");
   const shouldAutoScan = urlParams.get("scan") === "true";
   const queryTimeframe = urlParams.get("tf");
@@ -146,6 +166,7 @@ export default function Charts() {
 
   const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
+  const syncingFromQueryRef = useRef(false);
   const [searchInput, setSearchInput] = useState<string>(() => {
     const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
     return base || "BTC";
@@ -155,24 +176,39 @@ export default function Charts() {
   useEffect(() => {
     const nextSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
     if (nextSymbol !== selectedSymbol) {
+      syncingFromQueryRef.current = true;
       setSelectedSymbol(nextSymbol);
     }
     const nextTimeframe = toFrontendTimeframe(queryTimeframe || undefined);
     if (nextTimeframe !== selectedTimeframe) {
+      syncingFromQueryRef.current = true;
       setSelectedTimeframe(nextTimeframe);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.symbol, querySymbol, queryTimeframe]);
 
   useEffect(() => {
-    if (matchWithParam) {
-      const target = `/charts/${selectedSymbol}?tf=${selectedTimeframe}`;
-      if (!window.location.hash.endsWith(target)) {
-        setLocation(target);
-      }
+    if (!matchWithParam) return;
+
+    if (syncingFromQueryRef.current) {
+      syncingFromQueryRef.current = false;
+      return;
+    }
+
+    const nextParams = new URLSearchParams(locationInfo.search);
+    nextParams.set("tf", selectedTimeframe);
+    const queryString = nextParams.toString();
+    const targetPath = `/charts/${selectedSymbol}`;
+    const target = queryString ? `${targetPath}?${queryString}` : targetPath;
+    const current = `${locationInfo.path}${
+      locationInfo.search ? `?${locationInfo.search}` : ""
+    }`;
+
+    if (current !== target) {
+      setLocation(target);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSymbol, selectedTimeframe]);
+  }, [selectedSymbol, selectedTimeframe, locationInfo.path, locationInfo.search, matchWithParam]);
 
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   useEffect(() => {
