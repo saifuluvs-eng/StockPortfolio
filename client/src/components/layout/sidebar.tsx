@@ -60,8 +60,8 @@ export function Sidebar() {
         {/* Dashboard */}
         <SidebarItem to="/dashboard">Dashboard</SidebarItem>
 
-        {/* Analyse (single menu item, active for /charts or /analyse) */}
-        <SidebarItem to="/analyse" activeWhen={/^\/(charts|analyse)(\/|$)/}>
+        {/* Analyse */}
+        <SidebarItem to="/analyse" activeWhen={/^\/analyse(\/|$)/}>
           Analyse
         </SidebarItem>
 

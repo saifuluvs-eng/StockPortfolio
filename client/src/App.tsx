@@ -17,7 +17,6 @@ import Portfolio from "@/pages/portfolio";
 import HighPotential from "@/pages/high-potential";
 import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
-import Charts from "@/pages/charts";
 import Analyse from "@/pages/analyse";
 
 // (keep for later) Protected HOC
@@ -62,8 +61,14 @@ function Router() {
       {/* ANALYSE */}
       <Route path="/analyse/:symbol?" component={withLayout(Analyse)} />
 
-      {/* CHARTS */}
-      <Route path="/charts/:symbol?" component={withLayout(Charts)} />
+      {/* Legacy charts redirect */}
+      <Route path="/charts/:symbol?">
+        {(params) => {
+          const symbolSegment = params?.symbol ? `/${params.symbol}` : "";
+          const search = typeof window !== "undefined" ? window.location.search : "";
+          return <Redirect to={`/analyse${symbolSegment}${search}`} />;
+        }}
+      </Route>
 
       {/* 404 */}
       <Route component={NotFound} />

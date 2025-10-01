@@ -291,7 +291,7 @@ export default function Home() {
           </Link>
 
           {/* 2) Scanner */}
-          <Link href="/charts" className="block h-full">
+          <Link href="/analyse" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-accent/5 to-accent/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
@@ -456,7 +456,7 @@ export default function Home() {
               </div>
               <div className="mt-4 flex space-x-2">
                 <Link href="/portfolio"><Button size="sm" data-testid="button-view-portfolio">View Portfolio</Button></Link>
-                <Link href="/charts"><Button size="sm" variant="outline" data-testid="button-start-scanning">Start Scanning</Button></Link>
+                <Link href="/analyse"><Button size="sm" variant="outline" data-testid="button-start-scanning">Start Scanning</Button></Link>
               </div>
             </CardContent>
           </Card>

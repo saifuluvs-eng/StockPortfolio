@@ -259,7 +259,7 @@ export default function Portfolio() {
   }
 
   function goScan(symbol: string) {
-    setLocation(`/charts/${encodeURIComponent(symbol)}`);
+    setLocation(`/analyse/${encodeURIComponent(symbol)}`);
   }
 
   // short stat cards
@@ -278,7 +278,7 @@ export default function Portfolio() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link href="/charts">
+            <Link href="/analyse">
               <Button variant="outline" size="sm">
                 <Eye className="w-4 h-4 mr-2" /> Open Scanner
               </Button>
@@ -359,7 +359,7 @@ export default function Portfolio() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Holdings</CardTitle>
             <div className="flex items-center gap-2">
-              <Link href="/charts">
+              <Link href="/analyse">
                 <Button variant="outline" size="sm">
                   <Eye className="w-4 h-4 mr-2" /> Scan Market
                 </Button>
