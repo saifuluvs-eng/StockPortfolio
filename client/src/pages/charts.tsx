@@ -1,4 +1,3 @@
-// client/src/pages/charts.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import TradingViewChart from "@/components/scanner/trading-view-chart";
