@@ -23,7 +23,6 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { useRoute, useLocation } from "wouter";
 import {
   Activity,
   BarChart3,
@@ -39,212 +38,75 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
-import { formatDistanceToNowStrict } from "date-fns";
-import { openSpotTickerStream } from "@/lib/binanceWs";
+import { DEFAULT_SPOT_SYMBOL, displayPairFromSymbol, ensureUsdtSymbol } from "@/lib/symbols";
 import {
-  DEFAULT_SPOT_SYMBOL,
-  baseAssetFromUsdt,
-  displayPairFromSymbol,
-  ensureUsdtSymbol,
-} from "@/lib/symbols";
+  DEFAULT_TIMEFRAME,
+  SCANNER_TIMEFRAMES,
+  toFrontendTimeframe,
+} from "@/lib/timeframes";
+import {
+  formatPrice,
+  formatVolume,
+  getRecommendationColor,
+  getScoreColor,
+  formatRelativeTime,
+} from "@/lib/scan-format";
+import { useSpotTicker } from "@/hooks/useSpotTicker";
+import { useSymbolTimeframeWorkspace } from "@/hooks/useSymbolTimeframeWorkspace";
+import { useScannerAnalysis } from "@/hooks/useScannerAnalysis";
+import type {
+  HighPotentialFilters,
+  ScanHistoryItem,
+  ScanResult,
+  WatchlistItem,
+} from "@/types/scanner";
 
-interface PriceData {
-  symbol: string;
-  lastPrice: string;
-  priceChange: string;
-  priceChangePercent: string;
-  volume: string;
-  quoteVolume: string;
-  highPrice: string;
-  lowPrice: string;
-}
-
-interface ScanIndicator {
-  value?: number;
-  signal?: "bullish" | "bearish" | "neutral";
-  score?: number;
-  tier?: number;
-  description?: string;
-}
-
-interface ScanResult {
-  symbol: string;
-  price: number;
-  indicators: Record<string, ScanIndicator>;
-  totalScore: number;
-  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
-  meta?: Record<string, unknown> | null;
-}
-
-interface WatchlistItem {
-  id: string;
-  symbol: string;
-  createdAt?: number | string | null;
-}
-
-interface ScanHistoryItem {
-  id: string;
-  scanType: string;
-  filters?: { symbol?: string; timeframe?: string } | null;
-  results?: ScanResult | null;
-  createdAt?: number | string | null;
-}
-
-interface HighPotentialFilters {
-  timeframe?: string;
-  minScore?: number;
-  minVolume?: string;
-  excludeStablecoins?: boolean;
-  limit?: number;
-}
-
-const DEFAULT_TIMEFRAME = "240"; // 4h
 const DEFAULT_SYMBOL = DEFAULT_SPOT_SYMBOL;
-
-const TIMEFRAMES = [
-  { value: "15", label: "15min", display: "15m", backend: "15m" },
-  { value: "60", label: "1hr", display: "1h", backend: "1h" },
-  { value: "240", label: "4hr", display: "4h", backend: "4h" },
-  { value: "D", label: "1Day", display: "1D", backend: "1d" },
-  { value: "W", label: "1Week", display: "1W", backend: "1w" },
-] as const;
-
 const displayPair = displayPairFromSymbol;
-
-function toFrontendTimeframe(value: string | undefined) {
-  if (!value) return DEFAULT_TIMEFRAME;
-  const match = TIMEFRAMES.find((tf) => tf.backend === value || tf.value === value);
-  return match?.value ?? DEFAULT_TIMEFRAME;
-}
-
-function formatRelativeTime(input?: number | string | null) {
-  if (!input && input !== 0) return "";
-  const date = typeof input === "number" ? new Date(input * 1000) : new Date(input);
-  if (Number.isNaN(date.getTime())) return "";
-  return formatDistanceToNowStrict(date, { addSuffix: true });
-}
 
 export default function Charts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated, signInWithGoogle } = useAuth();
 
-  const [matchWithParam, params] = useRoute("/charts/:symbol?");
-  const [, setLocation] = useLocation();
   const urlParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : "",
   );
-  const querySymbol = urlParams.get("symbol");
   const shouldAutoScan = urlParams.get("scan") === "true";
-  const queryTimeframe = urlParams.get("tf");
 
-  const initialSymbol = ensureUsdtSymbol(
-    params?.symbol || querySymbol || undefined,
-    DEFAULT_SYMBOL,
-  );
-  const initialTimeframe = toFrontendTimeframe(queryTimeframe || undefined);
-
-  const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
-  const [searchInput, setSearchInput] = useState<string>(() => {
-    const base = baseAssetFromUsdt(initialSymbol);
-    return base || "BTC";
+  const {
+    selectedSymbol,
+    selectedTimeframe,
+    searchInput,
+    setSearchInput,
+    setSymbol,
+    setTimeframe,
+  } = useSymbolTimeframeWorkspace({
+    routePattern: "/charts/:symbol?",
+    buildPath: (symbol, timeframe) => `/charts/${symbol}?tf=${timeframe}`,
+    defaultSymbol: DEFAULT_SYMBOL,
+    defaultTimeframe: DEFAULT_TIMEFRAME,
+    parseSymbol: (value) => ensureUsdtSymbol(value, DEFAULT_SYMBOL),
+    parseTimeframe: (value) => toFrontendTimeframe(value),
+    querySymbolParam: "symbol",
   });
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
-  useEffect(() => {
-    const nextSymbol = ensureUsdtSymbol(
-      params?.symbol || querySymbol || undefined,
-      DEFAULT_SYMBOL,
-    );
-    if (nextSymbol !== selectedSymbol) {
-      setSelectedSymbol(nextSymbol);
-    }
-    const nextTimeframe = toFrontendTimeframe(queryTimeframe || undefined);
-    if (nextTimeframe !== selectedTimeframe) {
-      setSelectedTimeframe(nextTimeframe);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params?.symbol, querySymbol, queryTimeframe]);
+  const { scanResult, setScanResult, runScan, isScanning } = useScannerAnalysis({
+    selectedSymbol,
+    selectedTimeframe,
+  });
 
-  useEffect(() => {
-    if (matchWithParam) {
-      const target = `/charts/${selectedSymbol}?tf=${selectedTimeframe}`;
-      if (!window.location.hash.endsWith(target)) {
-        setLocation(target);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSymbol, selectedTimeframe]);
-
-  const [priceData, setPriceData] = useState<PriceData | null>(null);
-  useEffect(() => {
-    setPriceData(null);
-    let active = true;
-    const unsubscribe = openSpotTickerStream([selectedSymbol], (ticker) => {
-      if (!active) return;
-      if ((ticker.symbol || "").toUpperCase() !== selectedSymbol.toUpperCase()) return;
-      setPriceData({
-        symbol: ticker.symbol,
-        lastPrice: ticker.lastPrice,
-        priceChange: ticker.priceChange,
-        priceChangePercent: ticker.priceChangePercent,
-        highPrice: ticker.highPrice,
-        lowPrice: ticker.lowPrice,
-        volume: ticker.volume,
-        quoteVolume: ticker.quoteVolume,
-      });
-    });
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, [selectedSymbol]);
-
+  const priceData = useSpotTicker(selectedSymbol);
   const latestPrice =
-    (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
+    (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase()
+      ? priceData
+      : null;
   const showLoadingState = !latestPrice;
-  const priceChange = showLoadingState ? 0 : parseFloat(latestPrice?.priceChangePercent || "0");
+  const priceChange = showLoadingState
+    ? 0
+    : parseFloat(latestPrice?.priceChangePercent || "0");
   const isPositive = priceChange > 0;
   const loadingMessage = showLoadingState ? "Loading..." : "...";
-
-  const scanMutation = useMutation({
-    mutationFn: async () => {
-      const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
-      const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
-      const res = await apiRequest("POST", "/api/scanner/scan", {
-        symbol: selectedSymbol,
-        timeframe: backendTimeframe,
-      });
-      return (await res.json()) as ScanResult;
-    },
-    onSuccess: (data) => {
-      setScanResult(data);
-      toast({
-        title: "Analysis complete",
-        description: `Technical breakdown ready for ${displayPair(data.symbol)}`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
-    },
-    onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
-        toast({
-          title: "Sign in required",
-          description: "Please sign back in to analyze symbols.",
-          variant: "destructive",
-        });
-        signInWithGoogle().catch((authError) => {
-          console.error("Failed to sign in after unauthorized error", authError);
-        });
-        return;
-      }
-      toast({
-        title: "Analysis failed",
-        description: "Could not analyze the symbol. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
 
   const hasScannedRef = useRef(false);
   useEffect(() => {
@@ -254,26 +116,31 @@ export default function Charts() {
   useEffect(() => {
     if (
       isAuthenticated &&
-      !scanMutation.isPending &&
+      !isScanning &&
       !hasScannedRef.current &&
       ((selectedSymbol === DEFAULT_SYMBOL && !scanResult) || shouldAutoScan)
     ) {
       const timer = setTimeout(() => {
-        scanMutation.mutate();
+        runScan();
         hasScannedRef.current = true;
       }, 250);
       return () => clearTimeout(timer);
     }
     return undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, selectedSymbol]);
+  }, [
+    isAuthenticated,
+    isScanning,
+    runScan,
+    scanResult,
+    selectedSymbol,
+    shouldAutoScan,
+  ]);
 
   useEffect(() => {
-    if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
-      scanMutation.mutate();
+    if (isAuthenticated && hasScannedRef.current && !isScanning) {
+      runScan({ timeframe: selectedTimeframe });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTimeframe, isAuthenticated]);
+  }, [isAuthenticated, isScanning, runScan, selectedTimeframe]);
 
   const watchlistQuery = useQuery({
     queryKey: ["watchlist"],
@@ -295,7 +162,7 @@ export default function Charts() {
   });
 
   const timeframeConfig = useMemo(
-    () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
+    () => SCANNER_TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
     [selectedTimeframe],
   );
 
@@ -421,7 +288,7 @@ export default function Charts() {
       return;
     }
     const fullSymbol = ensureUsdtSymbol(raw, DEFAULT_SYMBOL);
-    setSelectedSymbol(fullSymbol);
+    setSymbol(fullSymbol);
     setSearchInput("");
     toast({
       title: "Symbol updated",
@@ -442,13 +309,13 @@ export default function Charts() {
     if (raw) {
       const fullSymbol = ensureUsdtSymbol(raw, DEFAULT_SYMBOL);
       if (fullSymbol !== selectedSymbol) {
-        setSelectedSymbol(fullSymbol);
+        setSymbol(fullSymbol);
         setSearchInput("");
         toast({
           title: "Symbol updated",
           description: `Analyzing ${displayPair(fullSymbol)}`,
         });
-        setTimeout(() => scanMutation.mutate(), 100);
+        setTimeout(() => runScan({ symbol: fullSymbol }), 100);
         return;
       }
     }
@@ -460,7 +327,7 @@ export default function Charts() {
       });
       return;
     }
-    scanMutation.mutate();
+    runScan();
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -628,12 +495,12 @@ export default function Charts() {
 
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-foreground">Timeframe</label>
-              <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+              <Select value={selectedTimeframe} onValueChange={setTimeframe}>
                 <SelectTrigger className="w-32" data-testid="select-timeframe">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TIMEFRAMES.map((tf) => (
+                  {SCANNER_TIMEFRAMES.map((tf) => (
                     <SelectItem key={tf.value} value={tf.value}>
                       {tf.label}
                     </SelectItem>
@@ -644,12 +511,12 @@ export default function Charts() {
 
             <Button
               onClick={handleScan}
-              disabled={scanMutation.isPending || !isAuthenticated}
+              disabled={isScanning || !isAuthenticated}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               data-testid="button-scan"
             >
-              <RefreshCw className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`} />
-              {scanMutation.isPending ? "Scanning..." : "Run Analysis"}
+              <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
+              {isScanning ? "Scanning..." : "Run Analysis"}
             </Button>
           </div>
 
@@ -713,7 +580,7 @@ export default function Charts() {
                       key={item.symbol}
                       type="button"
                       onClick={() => {
-                        setSelectedSymbol(item.symbol);
+                        setSymbol(item.symbol);
                         setSearchInput(item.symbol.replace(/USDT$/i, ""));
                         toast({
                           title: "Symbol loaded",
@@ -824,8 +691,8 @@ export default function Charts() {
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            setSelectedSymbol(symbol);
-                            setSelectedTimeframe(frontendTimeframe);
+                            setSymbol(symbol);
+                            setTimeframe(frontendTimeframe);
                             if (result) {
                               setScanResult(result);
                             }
@@ -876,7 +743,7 @@ export default function Charts() {
                         key={item.id}
                         type="button"
                         onClick={() => {
-                          setSelectedSymbol(item.symbol);
+                          setSymbol(item.symbol);
                           setSearchInput(item.symbol.replace(/USDT$/i, ""));
                           toast({
                             title: "Symbol loaded",
