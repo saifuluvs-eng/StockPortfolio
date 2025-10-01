@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,6 +42,10 @@ import {
 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { openSpotTickerStream } from "@/lib/binanceWs";
+
+const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
+const isVercel = typeof window !== "undefined" && /vercel\.app$/i.test(window.location.hostname);
+const networkEnabled = !isVercel || !!API_BASE;
 
 interface PriceData {
   symbol: string;
@@ -213,6 +218,7 @@ export default function Analyse() {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   useEffect(() => {
     setPriceData(null);
+    if (!networkEnabled) return;
     let active = true;
     const unsubscribe = openSpotTickerStream([selectedSymbol], (ticker) => {
       if (!active) return;
@@ -232,7 +238,7 @@ export default function Analyse() {
       active = false;
       unsubscribe?.();
     };
-  }, [selectedSymbol]);
+  }, [selectedSymbol, networkEnabled]);
 
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
@@ -286,6 +292,7 @@ export default function Analyse() {
   }, [scanResult]);
 
   useEffect(() => {
+    if (!networkEnabled) return undefined;
     if (
       isAuthenticated &&
       !scanMutation.isPending &&
@@ -300,18 +307,19 @@ export default function Analyse() {
     }
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, selectedSymbol]);
+  }, [isAuthenticated, selectedSymbol, networkEnabled]);
 
   useEffect(() => {
+    if (!networkEnabled) return;
     if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
       scanMutation.mutate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTimeframe, isAuthenticated]);
+  }, [selectedTimeframe, isAuthenticated, networkEnabled]);
 
   const watchlistQuery = useQuery({
     queryKey: ["watchlist"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && networkEnabled,
     staleTime: 60_000,
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/watchlist");
@@ -321,7 +329,7 @@ export default function Analyse() {
 
   const historyQuery = useQuery({
     queryKey: ["scan-history"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && networkEnabled,
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/scanner/history");
       return (await res.json()) as ScanHistoryItem[];
@@ -335,7 +343,7 @@ export default function Analyse() {
 
   const highPotentialQuery = useQuery({
     queryKey: ["high-potential", timeframeConfig?.backend],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && networkEnabled,
     staleTime: 10 * 60_000,
     queryFn: async () => {
       const payload: HighPotentialFilters = {
@@ -421,6 +429,14 @@ export default function Analyse() {
   const symbolInWatchlist = watchlistSymbols.includes(selectedSymbol.toUpperCase());
 
   const handleToggleWatchlist = () => {
+    if (!networkEnabled) {
+      toast({
+        title: "Backend required",
+        description: "Log into a backend-enabled deployment to manage your watchlist.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!isAuthenticated) {
       toast({
         title: "Sign in required",
@@ -437,6 +453,14 @@ export default function Analyse() {
   };
 
   const handleSearch = () => {
+    if (!networkEnabled) {
+      toast({
+        title: "Backend required",
+        description: "Connect this dashboard to your backend build before searching symbols.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!isAuthenticated) {
       toast({
         title: "Feature locked",
@@ -464,6 +488,14 @@ export default function Analyse() {
   };
 
   const handleScan = () => {
+    if (!networkEnabled) {
+      toast({
+        title: "Backend required",
+        description: "Provide a backend URL (VITE_API_BASE) to run scans from Vercel.",
+        variant: "destructive",
+      });
+      return;
+    }
     if (!isAuthenticated) {
       toast({
         title: "Feature locked",
@@ -607,6 +639,19 @@ export default function Analyse() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
+      {!networkEnabled && (
+        <Alert
+          variant="destructive"
+          className="border-destructive/50 bg-destructive/10"
+          data-testid="alert-backend-required"
+        >
+          <AlertTitle>Backend required for analysis</AlertTitle>
+          <AlertDescription>
+            You&apos;re on the Vercel-only build. Launch the backend-connected deployment or set
+            <code>VITE_API_BASE</code> so you can sign in and run scans.
+          </AlertDescription>
+        </Alert>
+      )}
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
@@ -621,7 +666,11 @@ export default function Analyse() {
           <Button
             variant={symbolInWatchlist ? "secondary" : "outline"}
             onClick={handleToggleWatchlist}
-            disabled={addToWatchlist.isPending || removeFromWatchlist.isPending}
+            disabled={
+              addToWatchlist.isPending ||
+              removeFromWatchlist.isPending ||
+              !networkEnabled
+            }
           >
             <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
             <span className="ml-2">
@@ -643,7 +692,7 @@ export default function Analyse() {
                   onKeyPress={handleKeyPress}
                   className="pl-10"
                   data-testid="input-search-symbol"
-                  disabled={!isAuthenticated}
+                  disabled={!isAuthenticated || !networkEnabled}
                 />
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               </div>
@@ -652,7 +701,7 @@ export default function Analyse() {
                 variant="outline"
                 className="px-4"
                 data-testid="button-search-coin"
-                disabled={!isAuthenticated}
+                disabled={!isAuthenticated || !networkEnabled}
               >
                 <Search className="h-4 w-4" />
               </Button>
@@ -676,7 +725,7 @@ export default function Analyse() {
 
             <Button
               onClick={handleScan}
-              disabled={scanMutation.isPending || !isAuthenticated}
+              disabled={scanMutation.isPending || !isAuthenticated || !networkEnabled}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               data-testid="button-scan"
             >
@@ -720,7 +769,12 @@ export default function Analyse() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {!isAuthenticated ? (
+              {!networkEnabled ? (
+                <p className="text-sm text-muted-foreground">
+                  Connect this dashboard to your backend (set <code>VITE_API_BASE</code>) to
+                  surface high potential ideas.
+                </p>
+              ) : !isAuthenticated ? (
                 <p className="text-sm text-muted-foreground">
                   Sign in to view AI-powered high potential setups tailored to your timeframe.
                 </p>
