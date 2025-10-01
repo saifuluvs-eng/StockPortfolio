@@ -222,6 +222,7 @@ export default function Analyse() {
         description: `Technical breakdown ready for ${displayPair(data.symbol)}`,
       });
       queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+      queryClient.invalidateQueries({ queryKey: ["high-potential"] });
     },
     onError: (error: unknown) => {
       if (error instanceof Error && isUnauthorizedError(error)) {
@@ -709,6 +710,8 @@ export default function Analyse() {
                       type="button"
                       onClick={() => {
                         setSelectedSymbol(item.symbol);
+                        setSelectedTimeframe(timeframeConfig?.value ?? DEFAULT_TIMEFRAME);
+                        setScanResult(null);
                         setSearchInput(item.symbol.replace(/USDT$/i, ""));
                         toast({
                           title: "Symbol loaded",
@@ -871,6 +874,7 @@ export default function Analyse() {
                         type="button"
                         onClick={() => {
                           setSelectedSymbol(item.symbol);
+                          setScanResult(null);
                           setSearchInput(item.symbol.replace(/USDT$/i, ""));
                           toast({
                             title: "Symbol loaded",
