@@ -1,4 +1,4 @@
-import { FormEvent, useMemo } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
@@ -61,6 +61,10 @@ import type { ScanHistoryItem, WatchlistItem } from "@/types/scanner";
 
 const DEFAULT_SYMBOL = DEFAULT_SPOT_SYMBOL;
 
+function isNotFoundError(error: unknown) {
+  return error instanceof Error && /^404/.test(error.message || "");
+}
+
 function buildAnalysePath(symbol: string, timeframe: string) {
   const cleanSymbol = ensureUsdtSymbol(symbol, DEFAULT_SYMBOL);
   const pathSymbol = cleanSymbol === DEFAULT_SYMBOL ? "" : `/${cleanSymbol}`;
@@ -101,22 +105,41 @@ export default function Analyse() {
     selectedTimeframe,
   });
 
+  const [watchlistUnavailable, setWatchlistUnavailable] = useState(false);
+  const [historyUnavailable, setHistoryUnavailable] = useState(false);
+
   const watchlistQuery = useQuery({
     queryKey: ["watchlist"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !watchlistUnavailable,
     staleTime: 60_000,
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/watchlist");
-      return (await res.json()) as WatchlistItem[];
+      try {
+        const res = await apiRequest("GET", "/api/watchlist");
+        return (await res.json()) as WatchlistItem[];
+      } catch (error) {
+        if (isNotFoundError(error)) {
+          setWatchlistUnavailable(true);
+          return [];
+        }
+        throw error;
+      }
     },
   });
 
   const historyQuery = useQuery({
     queryKey: ["scan-history"],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !historyUnavailable,
     queryFn: async () => {
-      const res = await apiRequest("GET", "/api/scanner/history");
-      return (await res.json()) as ScanHistoryItem[];
+      try {
+        const res = await apiRequest("GET", "/api/scanner/history");
+        return (await res.json()) as ScanHistoryItem[];
+      } catch (error) {
+        if (isNotFoundError(error)) {
+          setHistoryUnavailable(true);
+          return [];
+        }
+        throw error;
+      }
     },
   });
 
@@ -133,6 +156,14 @@ export default function Analyse() {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
     onError: (error: unknown) => {
+      if (isNotFoundError(error)) {
+        setWatchlistUnavailable(true);
+        toast({
+          title: "Watchlist unavailable",
+          description: "The watchlist service isn’t deployed in this environment yet.",
+        });
+        return;
+      }
       if (error instanceof Error && isUnauthorizedError(error)) {
         toast({
           title: "Sign in required",
@@ -165,6 +196,14 @@ export default function Analyse() {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
     onError: (error: unknown) => {
+      if (isNotFoundError(error)) {
+        setWatchlistUnavailable(true);
+        toast({
+          title: "Watchlist unavailable",
+          description: "The watchlist service isn’t deployed in this environment yet.",
+        });
+        return;
+      }
       if (error instanceof Error && isUnauthorizedError(error)) {
         toast({
           title: "Sign in required",
@@ -252,6 +291,13 @@ export default function Analyse() {
   };
 
   const handleToggleWatchlist = () => {
+    if (watchlistUnavailable) {
+      toast({
+        title: "Watchlist unavailable",
+        description: "This environment doesn’t have watchlist APIs yet.",
+      });
+      return;
+    }
     if (!isAuthenticated) {
       toast({
         title: "Sign in required",
@@ -268,7 +314,7 @@ export default function Analyse() {
   };
 
   const handleLoadFromHistory = (item: ScanHistoryItem) => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || historyUnavailable) return;
     const filters = item.filters || {};
     const result = item.results;
     const symbol = ensureUsdtSymbol(
@@ -291,6 +337,13 @@ export default function Analyse() {
   };
 
   const handleSelectWatchlist = (item: WatchlistItem) => {
+    if (watchlistUnavailable) {
+      toast({
+        title: "Watchlist unavailable",
+        description: "This environment doesn’t have watchlist APIs yet.",
+      });
+      return;
+    }
     if (!isAuthenticated) {
       toast({
         title: "Sign in required",
@@ -378,6 +431,35 @@ export default function Analyse() {
     </div>
   );
 
+  const hasScannedRef = useRef(false);
+  useEffect(() => {
+    if (scanResult) {
+      hasScannedRef.current = true;
+    }
+  }, [scanResult]);
+
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      !isScanning &&
+      !hasScannedRef.current &&
+      selectedSymbol === DEFAULT_SYMBOL
+    ) {
+      const timer = setTimeout(() => {
+        runScan();
+        hasScannedRef.current = true;
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [isAuthenticated, isScanning, runScan, selectedSymbol]);
+
+  useEffect(() => {
+    if (isAuthenticated && hasScannedRef.current && !isScanning) {
+      runScan({ timeframe: selectedTimeframe });
+    }
+  }, [isAuthenticated, isScanning, runScan, selectedTimeframe]);
+
   return (
     <div className="space-y-6 pb-10">
       <Card>
@@ -448,7 +530,10 @@ export default function Analyse() {
                 variant={symbolInWatchlist ? "secondary" : "outline"}
                 className="h-10 md:h-12"
                 disabled={
-                  addToWatchlist.isPending || removeFromWatchlist.isPending || isScanning
+                  watchlistUnavailable ||
+                  addToWatchlist.isPending ||
+                  removeFromWatchlist.isPending ||
+                  isScanning
                 }
               >
                 <Star
@@ -595,7 +680,11 @@ export default function Analyse() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {!isAuthenticated ? (
+              {historyUnavailable ? (
+                <p className="text-sm text-muted-foreground">
+                  Scan history isn’t deployed in this environment yet.
+                </p>
+              ) : !isAuthenticated ? (
                 <p className="text-sm text-muted-foreground">
                   Sign in to keep a searchable log of every analysis you run.
                 </p>
@@ -653,7 +742,11 @@ export default function Analyse() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {!isAuthenticated ? (
+              {watchlistUnavailable ? (
+                <p className="text-sm text-muted-foreground">
+                  The watchlist service isn’t deployed in this environment yet.
+                </p>
+              ) : !isAuthenticated ? (
                 <p className="text-sm text-muted-foreground">
                   Sign in to curate a personalized watchlist and jump back into symbols instantly.
                 </p>
@@ -681,6 +774,7 @@ export default function Analyse() {
                           ? "border-primary/60"
                           : ""
                       }`}
+                      disabled={watchlistUnavailable}
                     >
                       <span className="text-sm font-medium text-foreground">
                         {displayPairFromSymbol(item.symbol)}
