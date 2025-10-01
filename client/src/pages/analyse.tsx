@@ -17,9 +17,15 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocation, useRoute } from "wouter";
+import {
+  DEFAULT_SPOT_SYMBOL,
+  baseAssetFromUsdt,
+  displayPairFromSymbol,
+  ensureUsdtSymbol,
+} from "@/lib/symbols";
 
 const DEFAULT_TIMEFRAME = "240"; // 4h
-const DEFAULT_SYMBOL = "BTCUSDT";
+const DEFAULT_SYMBOL = DEFAULT_SPOT_SYMBOL;
 
 const TIMEFRAMES = [
   { value: "15", label: "15 minutes", display: "15m" },
@@ -31,19 +37,6 @@ const TIMEFRAMES = [
 
 type TimeframeValue = (typeof TIMEFRAMES)[number]["value"];
 
-function toUsdtSymbol(raw: string | undefined | null): string {
-  const trimmed = (raw ?? "").trim().toUpperCase();
-  if (!trimmed) return DEFAULT_SYMBOL;
-  return trimmed.endsWith("USDT") ? trimmed : `${trimmed}USDT`;
-}
-
-function fromUsdtSymbol(symbol: string): string {
-  if (!symbol) return "";
-  return symbol.toUpperCase().endsWith("USDT")
-    ? symbol.toUpperCase().slice(0, -4)
-    : symbol.toUpperCase();
-}
-
 function toFrontendTimeframe(value: string | undefined | null): TimeframeValue {
   if (!value) return DEFAULT_TIMEFRAME;
   const match = TIMEFRAMES.find((tf) => tf.value === value);
@@ -51,7 +44,7 @@ function toFrontendTimeframe(value: string | undefined | null): TimeframeValue {
 }
 
 function buildAnalysePath(symbol: string, timeframe: TimeframeValue) {
-  const cleanSymbol = toUsdtSymbol(symbol);
+  const cleanSymbol = ensureUsdtSymbol(symbol, DEFAULT_SYMBOL);
   const pathSymbol = cleanSymbol === DEFAULT_SYMBOL ? "" : `/${cleanSymbol}`;
   const searchParams = new URLSearchParams();
   if (timeframe && timeframe !== DEFAULT_TIMEFRAME) {
@@ -66,7 +59,7 @@ export default function Analyse() {
   const [match, params] = useRoute("/analyse/:symbol?");
 
   const [selectedSymbol, setSelectedSymbol] = useState<string>(() =>
-    toUsdtSymbol(params?.symbol),
+    ensureUsdtSymbol(params?.symbol, DEFAULT_SYMBOL),
   );
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeValue>(
     () => {
@@ -76,12 +69,12 @@ export default function Analyse() {
     },
   );
   const [searchInput, setSearchInput] = useState<string>(() =>
-    fromUsdtSymbol(selectedSymbol) || "BTC",
+    baseAssetFromUsdt(selectedSymbol) || "BTC",
   );
 
   useEffect(() => {
     if (!match) return;
-    const nextSymbol = toUsdtSymbol(params?.symbol);
+    const nextSymbol = ensureUsdtSymbol(params?.symbol, DEFAULT_SYMBOL);
     const queryTimeframe = (() => {
       if (typeof window === "undefined") return DEFAULT_TIMEFRAME;
       const search = new URLSearchParams(window.location.search);
@@ -90,17 +83,16 @@ export default function Analyse() {
 
     setSelectedSymbol(nextSymbol);
     setSelectedTimeframe(queryTimeframe);
-    setSearchInput(fromUsdtSymbol(nextSymbol));
+    setSearchInput(baseAssetFromUsdt(nextSymbol) || "BTC");
   }, [location, match, params?.symbol]);
 
   const formattedPair = useMemo(() => {
-    const upper = selectedSymbol.toUpperCase();
-    return upper.endsWith("USDT") ? `${upper.slice(0, -4)}/USDT` : upper;
+    return displayPairFromSymbol(selectedSymbol);
   }, [selectedSymbol]);
 
   const handleApply = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const nextSymbol = toUsdtSymbol(searchInput);
+    const nextSymbol = ensureUsdtSymbol(searchInput, DEFAULT_SYMBOL);
     setSelectedSymbol(nextSymbol);
     const nextPath = buildAnalysePath(searchInput, selectedTimeframe);
     setLocation(nextPath);

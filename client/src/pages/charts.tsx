@@ -41,6 +41,12 @@ import {
 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { openSpotTickerStream } from "@/lib/binanceWs";
+import {
+  DEFAULT_SPOT_SYMBOL,
+  baseAssetFromUsdt,
+  displayPairFromSymbol,
+  ensureUsdtSymbol,
+} from "@/lib/symbols";
 
 interface PriceData {
   symbol: string;
@@ -93,7 +99,7 @@ interface HighPotentialFilters {
 }
 
 const DEFAULT_TIMEFRAME = "240"; // 4h
-const DEFAULT_SYMBOL = "BTCUSDT";
+const DEFAULT_SYMBOL = DEFAULT_SPOT_SYMBOL;
 
 const TIMEFRAMES = [
   { value: "15", label: "15min", display: "15m", backend: "15m" },
@@ -103,16 +109,7 @@ const TIMEFRAMES = [
   { value: "W", label: "1Week", display: "1W", backend: "1w" },
 ] as const;
 
-function toUsdtSymbol(input: string) {
-  const coin = (input || "").trim().toUpperCase();
-  if (!coin) return DEFAULT_SYMBOL;
-  return coin.endsWith("USDT") ? coin : `${coin}USDT`;
-}
-
-function displayPair(sym: string) {
-  const s = (sym || "").toUpperCase();
-  return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : (s || DEFAULT_SYMBOL);
-}
+const displayPair = displayPairFromSymbol;
 
 function toFrontendTimeframe(value: string | undefined) {
   if (!value) return DEFAULT_TIMEFRAME;
@@ -141,19 +138,25 @@ export default function Charts() {
   const shouldAutoScan = urlParams.get("scan") === "true";
   const queryTimeframe = urlParams.get("tf");
 
-  const initialSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
+  const initialSymbol = ensureUsdtSymbol(
+    params?.symbol || querySymbol || undefined,
+    DEFAULT_SYMBOL,
+  );
   const initialTimeframe = toFrontendTimeframe(queryTimeframe || undefined);
 
   const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
   const [searchInput, setSearchInput] = useState<string>(() => {
-    const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
+    const base = baseAssetFromUsdt(initialSymbol);
     return base || "BTC";
   });
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
   useEffect(() => {
-    const nextSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
+    const nextSymbol = ensureUsdtSymbol(
+      params?.symbol || querySymbol || undefined,
+      DEFAULT_SYMBOL,
+    );
     if (nextSymbol !== selectedSymbol) {
       setSelectedSymbol(nextSymbol);
     }
@@ -417,7 +420,7 @@ export default function Charts() {
       });
       return;
     }
-    const fullSymbol = toUsdtSymbol(raw);
+    const fullSymbol = ensureUsdtSymbol(raw, DEFAULT_SYMBOL);
     setSelectedSymbol(fullSymbol);
     setSearchInput("");
     toast({
@@ -436,16 +439,18 @@ export default function Charts() {
       return;
     }
     const raw = (searchInput || "").trim().toUpperCase();
-    if (raw && raw !== selectedSymbol && raw !== displayPair(selectedSymbol).replace("/USDT", "")) {
-      const fullSymbol = toUsdtSymbol(raw);
-      setSelectedSymbol(fullSymbol);
-      setSearchInput("");
-      toast({
-        title: "Symbol updated",
-        description: `Analyzing ${displayPair(fullSymbol)}`,
-      });
-      setTimeout(() => scanMutation.mutate(), 100);
-      return;
+    if (raw) {
+      const fullSymbol = ensureUsdtSymbol(raw, DEFAULT_SYMBOL);
+      if (fullSymbol !== selectedSymbol) {
+        setSelectedSymbol(fullSymbol);
+        setSearchInput("");
+        toast({
+          title: "Symbol updated",
+          description: `Analyzing ${displayPair(fullSymbol)}`,
+        });
+        setTimeout(() => scanMutation.mutate(), 100);
+        return;
+      }
     }
     if (!selectedSymbol) {
       toast({
@@ -797,43 +802,44 @@ export default function Charts() {
                   {historyQuery.data!.slice(0, 6).map((item) => {
                     const filters = item.filters || {};
                     const result = item.results;
-                    const symbol = toUsdtSymbol(
-                        result?.symbol || filters.symbol || selectedSymbol,
-                      );
-                      const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">
-                              {displayPair(symbol)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedSymbol(symbol);
-                              setSelectedTimeframe(frontendTimeframe);
-                              if (result) {
-                                setScanResult(result);
-                              }
-                              toast({
-                                title: "Scan loaded",
-                                description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
-                              });
-                            }}
-                          >
-                            Load
-                          </Button>
+                    const symbol = ensureUsdtSymbol(
+                      result?.symbol || filters.symbol || selectedSymbol,
+                      DEFAULT_SYMBOL,
+                    );
+                    const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {displayPair(symbol)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
+                          </p>
                         </div>
-                      );
-                    })}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedSymbol(symbol);
+                            setSelectedTimeframe(frontendTimeframe);
+                            if (result) {
+                              setScanResult(result);
+                            }
+                            toast({
+                              title: "Scan loaded",
+                              description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
+                            });
+                          }}
+                        >
+                          Load
+                        </Button>
+                      </div>
+                    );
+                  })}
                   </div>
                 )}
               </CardContent>
