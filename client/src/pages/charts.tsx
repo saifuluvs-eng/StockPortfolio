@@ -569,11 +569,8 @@ export default function Charts() {
     </div>
   );
 
-  const pageWrapperClassName =
-    "mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6";
-
   return (
-    <div className={pageWrapperClassName}>
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
