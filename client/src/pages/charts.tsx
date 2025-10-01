@@ -1,112 +1,211 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+// client/src/pages/charts.tsx
+import { useState, useEffect, useRef } from "react";
+import { useMutation } from "@tanstack/react-query";
 import TradingViewChart from "@/components/scanner/trading-view-chart";
 import TechnicalIndicators from "@/components/scanner/technical-indicators";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Button,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { useRoute, useLocation } from "wouter";
 import {
-  Activity,
   BarChart3,
-  Clock3,
-  DollarSign,
-  History,
-  ListChecks,
-  RefreshCw,
-  Search,
-  Sparkles,
-  Star,
-  Target,
-  TrendingDown,
   TrendingUp,
+  TrendingDown,
+  Activity,
+  DollarSign,
+  Target,
+  Search
 } from "lucide-react";
-import { DEFAULT_SPOT_SYMBOL, displayPairFromSymbol, ensureUsdtSymbol } from "@/lib/symbols";
-import {
-  DEFAULT_TIMEFRAME,
-  SCANNER_TIMEFRAMES,
-  toFrontendTimeframe,
-} from "@/lib/timeframes";
-import {
-  formatPrice,
-  formatVolume,
-  getRecommendationColor,
-  getScoreColor,
-  formatRelativeTime,
-} from "@/lib/scan-format";
-import { useSpotTicker } from "@/hooks/useSpotTicker";
-import { useSymbolTimeframeWorkspace } from "@/hooks/useSymbolTimeframeWorkspace";
-import { useScannerAnalysis } from "@/hooks/useScannerAnalysis";
-import type {
-  HighPotentialFilters,
-  ScanHistoryItem,
-  ScanResult,
-  WatchlistItem,
-} from "@/types/scanner";
 
-const DEFAULT_SYMBOL = DEFAULT_SPOT_SYMBOL;
-const displayPair = displayPairFromSymbol;
+import { openSpotTickerStream } from "../lib/binanceWs";
+
+interface PriceData {
+  symbol: string;
+  lastPrice: string;
+  priceChange: string;
+  priceChangePercent: string;
+  volume: string;
+  quoteVolume: string;
+  highPrice: string;
+  lowPrice: string;
+}
+
+interface ScanResult {
+  symbol: string;
+  price: number;
+  indicators: {
+    [key: string]: {
+      value: number;
+      signal: "bullish" | "bearish" | "neutral";
+      score: number;
+      tier: number;
+      description: string;
+    };
+  };
+  totalScore: number;
+  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
+}
+
+const DEFAULT_TIMEFRAME = "240"; // 4h
+const DEFAULT_SYMBOL = "BTCUSDT";
+
+const TIMEFRAMES = [
+  { value: "15", label: "15min", display: "15m", backend: "15m" },
+  { value: "60", label: "1hr", display: "1h", backend: "1h" },
+  { value: "240", label: "4hr", display: "4h", backend: "4h" },
+  { value: "D", label: "1Day", display: "1D", backend: "1d" },
+  { value: "W", label: "1Week", display: "1W", backend: "1w" }
+];
+
+function toUsdtSymbol(input: string) {
+  const coin = (input || "").trim().toUpperCase();
+  if (!coin) return DEFAULT_SYMBOL;
+  return coin.endsWith("USDT") ? coin : `${coin}USDT`;
+}
+
+function displayPair(sym: string) {
+  const s = (sym || "").toUpperCase();
+  return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : (s || DEFAULT_SYMBOL);
+}
 
 export default function Charts() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { isAuthenticated, signInWithGoogle } = useAuth();
 
-  const urlParams = new URLSearchParams(
-    typeof window !== "undefined" ? window.location.search : "",
-  );
+  // Route support: /#/charts and /#/charts/:symbol
+  const [matchWithParam, params] = useRoute("/charts/:symbol?");
+  const [, setLocation] = useLocation();
+
+  // Also honour ?symbol= and ?scan=true
+  const urlParams = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
+  const querySymbol = urlParams.get("symbol");
   const shouldAutoScan = urlParams.get("scan") === "true";
 
-  const {
-    selectedSymbol,
-    selectedTimeframe,
-    searchInput,
-    setSearchInput,
-    setSymbol,
-    setTimeframe,
-  } = useSymbolTimeframeWorkspace({
-    routePattern: "/charts/:symbol?",
-    buildPath: (symbol, timeframe) => `/charts/${symbol}?tf=${timeframe}`,
-    defaultSymbol: DEFAULT_SYMBOL,
-    defaultTimeframe: DEFAULT_TIMEFRAME,
-    parseSymbol: (value) => ensureUsdtSymbol(value, DEFAULT_SYMBOL),
-    parseTimeframe: (value) => toFrontendTimeframe(value),
-    querySymbolParam: "symbol",
-  });
+  const initialSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
 
-  const { scanResult, setScanResult, runScan, isScanning } = useScannerAnalysis({
-    selectedSymbol,
-    selectedTimeframe,
+  // State
+  const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
+  const [selectedTimeframe, setSelectedTimeframe] = useState(DEFAULT_TIMEFRAME);
+  const [showTechnicals] = useState(true);
+  const [searchInput, setSearchInput] = useState<string>(() => {
+    const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
+    return base || "BTC";
   });
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
 
-  const priceData = useSpotTicker(selectedSymbol);
+  // Keep state in sync when navigating directly to /charts/:symbol
+  useEffect(() => {
+    const next = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
+    if (next !== selectedSymbol) {
+      setSelectedSymbol(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params?.symbol, querySymbol]);
+
+  // Push to /charts/:symbol so deep links work
+  useEffect(() => {
+    if (matchWithParam) {
+      const target = `/charts/${selectedSymbol}`;
+      if (!window.location.hash.endsWith(target)) {
+        setLocation(target);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSymbol]);
+
+  // Live price data
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+
+  useEffect(() => {
+    setPriceData(null);
+    let active = true;
+
+    const unsubscribe = openSpotTickerStream([selectedSymbol], (t) => {
+      if (!active) return;
+      if ((t.symbol || "").toUpperCase() !== selectedSymbol.toUpperCase()) return;
+
+      setPriceData({
+        symbol: t.symbol,
+        lastPrice: t.lastPrice,
+        priceChange: t.priceChange,
+        priceChangePercent: t.priceChangePercent,
+        highPrice: t.highPrice,
+        lowPrice: t.lowPrice,
+        volume: t.volume,
+        quoteVolume: t.quoteVolume
+      });
+    });
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [selectedSymbol]);
+
   const latestPrice =
-    (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase()
-      ? priceData
-      : null;
+    (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
   const showLoadingState = !latestPrice;
-  const priceChange = showLoadingState
-    ? 0
-    : parseFloat(latestPrice?.priceChangePercent || "0");
-  const isPositive = priceChange > 0;
-  const loadingMessage = showLoadingState ? "Loading..." : "...";
+  const getLoadingMessage = () => (!latestPrice ? "Loading..." : "...");
+
+  // --- Scanner logic ---
+  const [hasAutoScanned, setHasAutoScanned] = useState(false);
+
+  const scanMutation = useMutation({
+    mutationFn: async () => {
+      const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
+      const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
+
+      const res = await apiRequest("POST", "/api/scanner/scan", {
+        symbol: selectedSymbol,
+        timeframe: backendTimeframe
+      });
+
+      if (!res.ok) {
+        throw new Error("Scan failed");
+      }
+      return res.json();
+    },
+    onSuccess: (data: ScanResult) => {
+      setScanResult(data);
+    },
+    onError: (error: unknown) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive"
+        });
+        signInWithGoogle().catch((authError) => {
+          console.error("Failed to sign in after unauthorized error", authError);
+        });
+        return;
+      }
+      toast({
+        title: "Analysis Failed",
+        description: "Failed to analyze symbol. Please try again.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  useEffect(() => {
+    if (isAuthenticated && !scanMutation.isPending && !hasAutoScanned) {
+      if ((selectedSymbol === DEFAULT_SYMBOL && !scanResult) || (shouldAutoScan && (params?.symbol || querySymbol))) {
+        const timer = setTimeout(() => {
+          scanMutation.mutate();
+          setHasAutoScanned(true);
+        }, 200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isAuthenticated, selectedSymbol, scanResult, scanMutation, shouldAutoScan, params?.symbol, querySymbol, hasAutoScanned]);
 
   const hasScannedRef = useRef(false);
   useEffect(() => {
@@ -114,703 +213,340 @@ export default function Charts() {
   }, [scanResult]);
 
   useEffect(() => {
-    if (
-      isAuthenticated &&
-      !isScanning &&
-      !hasScannedRef.current &&
-      ((selectedSymbol === DEFAULT_SYMBOL && !scanResult) || shouldAutoScan)
-    ) {
-      const timer = setTimeout(() => {
-        runScan();
-        hasScannedRef.current = true;
-      }, 250);
-      return () => clearTimeout(timer);
+    if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
+      scanMutation.mutate();
     }
-    return undefined;
-  }, [
-    isAuthenticated,
-    isScanning,
-    runScan,
-    scanResult,
-    selectedSymbol,
-    shouldAutoScan,
-  ]);
+  }, [selectedTimeframe, isAuthenticated]); // re-scan on timeframe change
 
-  useEffect(() => {
-    if (isAuthenticated && hasScannedRef.current && !isScanning) {
-      runScan({ timeframe: selectedTimeframe });
-    }
-  }, [isAuthenticated, isScanning, runScan, selectedTimeframe]);
-
-  const watchlistQuery = useQuery({
-    queryKey: ["watchlist"],
-    enabled: isAuthenticated,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/watchlist");
-      return (await res.json()) as WatchlistItem[];
-    },
-  });
-
-  const historyQuery = useQuery({
-    queryKey: ["scan-history"],
-    enabled: isAuthenticated,
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/scanner/history");
-      return (await res.json()) as ScanHistoryItem[];
-    },
-  });
-
-  const timeframeConfig = useMemo(
-    () => SCANNER_TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
-    [selectedTimeframe],
-  );
-
-  const highPotentialQuery = useQuery({
-    queryKey: ["high-potential", timeframeConfig?.backend],
-    enabled: isAuthenticated,
-    staleTime: 10 * 60_000,
-    queryFn: async () => {
-      const payload: HighPotentialFilters = {
-        timeframe: timeframeConfig?.backend || "4h",
-        minScore: 18,
-        minVolume: "1M",
-        excludeStablecoins: true,
-        limit: 8,
-      };
-      const res = await apiRequest("POST", "/api/scanner/high-potential", payload);
-      const data = (await res.json()) as ScanResult[];
-      return Array.isArray(data) ? data.slice(0, 6) : [];
-    },
-  });
-
-  const addToWatchlist = useMutation({
-    mutationFn: async (symbol: string) => {
-      const res = await apiRequest("POST", "/api/watchlist", { symbol });
-      return await res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Added to watchlist",
-        description: `${displayPair(selectedSymbol)} is now on your radar.`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
-    },
-    onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
-        toast({
-          title: "Sign in required",
-          description: "Please sign in to manage your watchlist.",
-          variant: "destructive",
-        });
-        signInWithGoogle().catch((authError) => {
-          console.error("Failed to sign in after unauthorized error", authError);
-        });
-        return;
-      }
-      toast({
-        title: "Could not add symbol",
-        description: "Please try again in a moment.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const removeFromWatchlist = useMutation({
-    mutationFn: async (symbol: string) => {
-      const res = await apiRequest("DELETE", `/api/watchlist/${symbol}`);
-      return await res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Removed from watchlist",
-        description: `${displayPair(selectedSymbol)} was removed from your list.`,
-      });
-      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
-    },
-    onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
-        toast({
-          title: "Sign in required",
-          description: "Please sign in to manage your watchlist.",
-          variant: "destructive",
-        });
-        signInWithGoogle().catch((authError) => {
-          console.error("Failed to sign in after unauthorized error", authError);
-        });
-        return;
-      }
-      toast({
-        title: "Could not update watchlist",
-        description: "Please try again in a moment.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const watchlistSymbols = (watchlistQuery.data || []).map((item) =>
-    (item.symbol || "").toUpperCase(),
-  );
-  const symbolInWatchlist = watchlistSymbols.includes(selectedSymbol.toUpperCase());
-
-  const handleToggleWatchlist = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Sign in required",
-        description: "Log in to manage your watchlist and save scans.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (symbolInWatchlist) {
-      removeFromWatchlist.mutate(selectedSymbol);
-    } else {
-      addToWatchlist.mutate(selectedSymbol);
-    }
-  };
-
+  // --- UI handlers ---
   const handleSearch = () => {
     if (!isAuthenticated) {
       toast({
-        title: "Feature locked",
+        title: "Feature Locked",
         description: "Please log in to search for other coins.",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
     const raw = (searchInput || "").trim().toUpperCase();
     if (!raw) {
       toast({
-        title: "Invalid input",
-        description: "Enter a coin symbol (e.g., BTC, ETH, SOL)",
-        variant: "destructive",
+        title: "Invalid Input",
+        description: "Please enter a coin symbol (e.g., BTC, ETH, SOL)",
+        variant: "destructive"
       });
       return;
     }
-    const fullSymbol = ensureUsdtSymbol(raw, DEFAULT_SYMBOL);
-    setSymbol(fullSymbol);
+    const fullSymbol = toUsdtSymbol(raw);
+    setSelectedSymbol(fullSymbol);
     setSearchInput("");
     toast({
-      title: "Symbol updated",
-      description: `Loading ${displayPair(fullSymbol)} chart`,
+      title: "Symbol Updated",
+      description: `Loading ${displayPair(fullSymbol)} chart`
     });
   };
 
   const handleScan = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Feature locked",
-        description: "Please sign in to run scans.",
-        variant: "destructive",
-      });
-      return;
-    }
     const raw = (searchInput || "").trim().toUpperCase();
-    if (raw) {
-      const fullSymbol = ensureUsdtSymbol(raw, DEFAULT_SYMBOL);
-      if (fullSymbol !== selectedSymbol) {
-        setSymbol(fullSymbol);
-        setSearchInput("");
-        toast({
-          title: "Symbol updated",
-          description: `Analyzing ${displayPair(fullSymbol)}`,
-        });
-        setTimeout(() => runScan({ symbol: fullSymbol }), 100);
-        return;
-      }
+    if (raw && raw !== selectedSymbol && raw !== displayPair(selectedSymbol).replace("/USDT", "")) {
+      const fullSymbol = toUsdtSymbol(raw);
+      setSelectedSymbol(fullSymbol);
+      setSearchInput("");
+      toast({
+        title: "Symbol Updated & Scanning",
+        description: `Analyzing ${displayPair(fullSymbol)}`
+      });
+      setTimeout(() => scanMutation.mutate(), 100);
+      return;
     }
     if (!selectedSymbol) {
       toast({
-        title: "Invalid symbol",
-        description: "Select a valid symbol first.",
-        variant: "destructive",
+        title: "Invalid Symbol",
+        description: "Please select a valid symbol",
+        variant: "destructive"
       });
       return;
     }
-    runScan();
+    scanMutation.mutate();
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSearch();
   };
 
-  const priceSummaryCards = (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Current Price</p>
-              <p className="text-lg font-bold text-foreground" data-testid="current-price">
-                {showLoadingState
-                  ? loadingMessage
-                  : formatPrice(latestPrice?.lastPrice)}
-              </p>
-            </div>
-            <DollarSign className="h-5 w-5 text-primary" />
-          </div>
-        </CardContent>
-      </Card>
+  const handleTimeframeChange = (timeframe: string) => setSelectedTimeframe(timeframe);
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">24h Change</p>
-              <p className={`text-lg font-bold ${isPositive ? "text-green-500" : "text-red-500"}`}>
-                {showLoadingState ? loadingMessage : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`}
-              </p>
-            </div>
-            {isPositive ? (
-              <TrendingUp className="h-5 w-5 text-green-500" />
-            ) : (
-              <TrendingDown className="h-5 w-5 text-red-500" />
-            )}
-          </div>
-        </CardContent>
-      </Card>
+  // --- format helpers ---
+  const formatPrice = (price?: string) => {
+    const num = parseFloat(price || "0");
+    if (Number.isNaN(num)) return "$0.00";
+    if (num >= 1000) return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+    if (num >= 1) return `$${num.toFixed(4)}`;
+    return `$${num.toFixed(8)}`;
+  };
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">24h Volume</p>
-              <p className="text-lg font-bold text-foreground">
-                {showLoadingState ? loadingMessage : formatVolume(latestPrice?.quoteVolume)}
-              </p>
-            </div>
-            <Target className="h-5 w-5 text-secondary" />
-          </div>
-        </CardContent>
-      </Card>
+  const formatVolume = (volume?: string) => {
+    const num = parseFloat(volume || "0");
+    if (Number.isNaN(num)) return "$0.00";
+    if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
+    return `$${num.toFixed(2)}`;
+  };
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Today&apos;s Range</p>
-              <p className="text-sm font-medium text-foreground">
-                {showLoadingState ? (
-                  loadingMessage
-                ) : (
-                  <>
-                    {formatPrice(latestPrice?.lowPrice)} - {formatPrice(latestPrice?.highPrice)}
-                  </>
-                )}
-              </p>
-            </div>
-            <Clock3 className="h-5 w-5 text-accent" />
-          </div>
-        </CardContent>
-      </Card>
+  const getScoreColor = (score: number) => {
+    if (score >= 10) return "text-green-600";
+    if (score >= 5) return "text-green-500";
+    if (score <= -10) return "text-red-600";
+    if (score <= -5) return "text-red-500";
+    return "text-yellow-500";
+  };
 
-      {scanResult && (
+  const getRecommendationColor = (recommendation: string) => {
+    switch (recommendation) {
+      case "strong_buy":
+        return "bg-green-600 text-white";
+      case "buy":
+        return "bg-green-500 text-white";
+      case "strong_sell":
+        return "bg-red-600 text-white";
+      case "sell":
+        return "bg-red-500 text-white";
+      default:
+        return "bg-yellow-500 text-black";
+    }
+  };
+
+  const priceChange = showLoadingState ? 0 : parseFloat(latestPrice?.priceChangePercent || "0");
+  const isPositive = priceChange > 0;
+
+  return (
+    <div className="flex-1 overflow-hidden">
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-primary" />
+              SCAN
+            </h1>
+            <p className="text-muted-foreground">Professional trading charts with technical analysis</p>
+          </div>
+        </div>
+
+        {/* Scanner Controls */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-wrap items-center gap-4 mb-3">
+              <div className="flex-1 min-w-64 flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Enter coin (BTC, ETH, SOL...)"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="pl-10"
+                    data-testid="input-search-symbol"
+                    disabled={!isAuthenticated}
+                  />
+                  <Search className="w-4 h-4 absolute left-3 top-3 text-muted-foreground" />
+                </div>
+                <Button
+                  onClick={handleSearch}
+                  variant="outline"
+                  className="px-4"
+                  data-testid="button-search-coin"
+                  disabled={!isAuthenticated}
+                >
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-foreground">Timeframe:</label>
+                <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                  <SelectTrigger className="w-32" data-testid="select-timeframe">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEFRAMES.map((tf) => (
+                      <SelectItem key={tf.value} value={tf.value}>
+                        {tf.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                onClick={handleScan}
+                disabled={scanMutation.isPending || !isAuthenticated}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                data-testid="button-scan"
+              >
+                <Search className="w-4 h-4 mr-2" />
+                {scanMutation.isPending ? "Scanning..." : "Scan"}
+              </Button>
+            </div>
+
+            {/* Current Symbol Display */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Activity className="w-3 h-3" />
+              Currently Viewing:{" "}
+              <span className="font-medium text-foreground">{displayPair(selectedSymbol)}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Price Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Current Price</p>
+                  <p className="text-lg font-bold text-foreground" data-testid="current-price">
+                    {showLoadingState ? getLoadingMessage() : formatPrice(latestPrice?.lastPrice)}
+                  </p>
+                </div>
+                <DollarSign className="w-5 h-5 text-primary" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">24h Change</p>
+                  <div className="flex items-center gap-1">
+                    <p className={`text-lg font-bold ${isPositive ? "text-green-500" : "text-red-500"}`}>
+                      {showLoadingState ? getLoadingMessage() : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`}
+                    </p>
+                  </div>
+                </div>
+                {isPositive ? <TrendingUp className="w-5 h-5 text-green-500" /> : <TrendingDown className="w-5 h-5 text-red-500" />}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">24h Volume</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {showLoadingState ? getLoadingMessage() : formatVolume(latestPrice?.quoteVolume)}
+                  </p>
+                </div>
+                <Target className="w-5 h-5 text-secondary" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Today's High/Low</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {showLoadingState ? (
+                      getLoadingMessage()
+                    ) : (
+                      <>
+                        {formatPrice(latestPrice?.lowPrice)} - {formatPrice(latestPrice?.highPrice)}
+                      </>
+                    )}
+                  </p>
+                </div>
+                <Target className="w-5 h-5 text-accent" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Overall Analysis Card */}
+          {scanResult && (
+            <Card>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Overall Analysis</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <span className={`text-lg font-bold ${getScoreColor(scanResult.totalScore)}`} data-testid="text-total-score">
+                        {scanResult.totalScore > 0 ? "+" : ""}
+                        {scanResult.totalScore}
+                      </span>
+                      <Badge className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`} data-testid="badge-recommendation">
+                        {scanResult.recommendation.replace(/_/g, " ").toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Progress value={Math.max(0, Math.min(100, ((scanResult.totalScore + 30) / 60) * 100))} className="h-2 mb-1" />
+                    <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Main Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Technical Indicators - Left */}
+          {showTechnicals && (
+            <div className="lg:col-span-1">
+              <Card className="border-border h-[560px] flex flex-col overflow-hidden">
+                <CardHeader className="shrink-0">
+                  <CardTitle className="text-lg font-bold">Breakdown Technicals</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 min-h-0 overflow-y-auto p-4">
+                  {scanResult ? (
+                    <TechnicalIndicators analysis={scanResult} />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">No Analysis Available</h3>
+                      <p>Click "Scan" to analyze technical indicators and get detailed insights</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* TradingView Chart - Right */}
+          <div className={`${showTechnicals ? "lg:col-span-2" : "lg:col-span-3"}`}>
+            <TradingViewChart
+              key={`${selectedSymbol}-${selectedTimeframe}-${showTechnicals}-dark-v3`}
+              symbol={selectedSymbol}
+              interval={selectedTimeframe}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
         <Card>
           <CardContent className="p-4">
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
-                <p className="text-sm text-muted-foreground">Overall Analysis</p>
-                <div className="mt-1 flex items-center space-x-2">
-                  <span
-                    className={`text-lg font-bold ${getScoreColor(scanResult.totalScore)}`}
-                    data-testid="text-total-score"
-                  >
-                    {scanResult.totalScore > 0 ? "+" : ""}
-                    {scanResult.totalScore}
-                  </span>
-                  <Badge
-                    className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`}
-                    data-testid="badge-recommendation"
-                  >
-                    {scanResult.recommendation.replace(/_/g, " ").toUpperCase()}
-                  </Badge>
-                </div>
+                <h4 className="font-medium text-foreground mb-1">Current Analysis</h4>
+                <p className="text-muted-foreground">
+                  {isPositive ? "Bullish momentum" : "Bearish pressure"} detected on {displayPair(selectedSymbol)}
+                </p>
               </div>
               <div>
-                <Progress
-                  value={Math.max(0, Math.min(100, ((scanResult.totalScore + 30) / 60) * 100))}
-                  className="h-2"
-                />
-                <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
+                <h4 className="font-medium text-foreground mb-1">Technical Indicators</h4>
+                <p className="text-muted-foreground">RSI, MACD, and Bollinger Bands are {showTechnicals ? "active" : "disabled"}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-foreground mb-1">Data Source</h4>
+                <p className="text-muted-foreground">Live price from Binance (direct WebSocket)</p>
               </div>
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
     </div>
   );
-
-  return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
-              <BarChart3 className="h-7 w-7 text-primary" />
-              Decision Hub
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Real-time charts, quantitative scans, and idea discovery in one cockpit.
-            </p>
-          </div>
-          <Button
-            variant={symbolInWatchlist ? "secondary" : "outline"}
-            onClick={handleToggleWatchlist}
-            disabled={addToWatchlist.isPending || removeFromWatchlist.isPending}
-          >
-            <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
-            <span className="ml-2">
-              {symbolInWatchlist ? "Watching" : "Add to Watchlist"}
-            </span>
-          </Button>
-        </div>
-      </header>
-
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex min-w-64 flex-1 gap-2">
-              <div className="relative flex-1">
-                <Input
-                  placeholder="Enter coin (BTC, ETH, SOL...)"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="pl-10"
-                  data-testid="input-search-symbol"
-                  disabled={!isAuthenticated}
-                />
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              </div>
-              <Button
-                onClick={handleSearch}
-                variant="outline"
-                className="px-4"
-                data-testid="button-search-coin"
-                disabled={!isAuthenticated}
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-foreground">Timeframe</label>
-              <Select value={selectedTimeframe} onValueChange={setTimeframe}>
-                <SelectTrigger className="w-32" data-testid="select-timeframe">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SCANNER_TIMEFRAMES.map((tf) => (
-                    <SelectItem key={tf.value} value={tf.value}>
-                      {tf.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              onClick={handleScan}
-              disabled={isScanning || !isAuthenticated}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              data-testid="button-scan"
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
-              {isScanning ? "Scanning..." : "Run Analysis"}
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Activity className="h-3 w-3" />
-            Currently viewing <span className="font-medium text-foreground">{displayPair(selectedSymbol)}</span>
-            <span className="text-muted-foreground">
-              ({timeframeConfig?.display ?? selectedTimeframe})
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {priceSummaryCards}
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="flex flex-col gap-6">
-          <Card className="border-border/70 bg-card/70">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <TradingViewChart
-                key={`${selectedSymbol}-${selectedTimeframe}`}
-                symbol={selectedSymbol}
-                interval={selectedTimeframe}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/70 bg-card/70">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                <Sparkles className="h-5 w-5 text-primary" />
-                High Potential Ideas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {!isAuthenticated ? (
-                <p className="text-sm text-muted-foreground">
-                  Sign in to view AI-powered high potential setups tailored to your timeframe.
-                </p>
-              ) : highPotentialQuery.isLoading ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {Array.from({ length: 4 }).map((_, idx) => (
-                    <Skeleton key={idx} className="h-20 rounded-xl" />
-                  ))}
-                </div>
-              ) : highPotentialQuery.error ? (
-                <p className="text-sm text-red-400">
-                  Could not fetch high potential ideas right now.
-                </p>
-              ) : (highPotentialQuery.data?.length ?? 0) === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No standout opportunities detected. Try rescanning with different filters.
-                </p>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {highPotentialQuery.data!.map((item) => (
-                    <button
-                      key={item.symbol}
-                      type="button"
-                      onClick={() => {
-                        setSymbol(item.symbol);
-                        setSearchInput(item.symbol.replace(/USDT$/i, ""));
-                        toast({
-                          title: "Symbol loaded",
-                          description: `Loaded ${displayPair(item.symbol)} from high potential list`,
-                        });
-                      }}
-                      className="group flex w-full flex-col rounded-xl border border-border/60 bg-card/60 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            {displayPair(item.symbol)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Score {item.totalScore > 0 ? "+" : ""}{item.totalScore}
-                          </p>
-                        </div>
-                        <Badge className={getRecommendationColor(item.recommendation)}>
-                          {item.recommendation.replace(/_/g, " ").toUpperCase()}
-                        </Badge>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Tap to load chart &amp; run full breakdown.
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <Card className="h-[560px] border-border/70 bg-card/70">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                <ListChecks className="h-5 w-5 text-primary" />
-                Breakdown Technicals
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-full overflow-hidden p-0">
-              <ScrollArea className="h-full px-4 pb-4">
-                {scanResult ? (
-                  <TechnicalIndicators analysis={scanResult} />
-                ) : (
-                  <div className="py-12 text-center text-muted-foreground">
-                    <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
-                    <h3 className="text-lg font-medium">No analysis yet</h3>
-                    <p className="mx-auto mt-1 max-w-xs text-sm">
-                      Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
-                    </p>
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/70 bg-card/70">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                <History className="h-5 w-5 text-primary" />
-                Recent Scans
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {!isAuthenticated ? (
-                <p className="text-sm text-muted-foreground">
-                  Sign in to keep a searchable log of every analysis you run.
-                </p>
-              ) : historyQuery.isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 4 }).map((_, idx) => (
-                    <Skeleton key={idx} className="h-16 rounded-xl" />
-                  ))}
-                </div>
-              ) : historyQuery.error ? (
-                <p className="text-sm text-red-400">
-                  Could not load scan history right now.
-                </p>
-              ) : (historyQuery.data?.length ?? 0) === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Run your first scan to start building your decision history.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {historyQuery.data!.slice(0, 6).map((item) => {
-                    const filters = item.filters || {};
-                    const result = item.results;
-                    const symbol = ensureUsdtSymbol(
-                      result?.symbol || filters.symbol || selectedSymbol,
-                      DEFAULT_SYMBOL,
-                    );
-                    const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            {displayPair(symbol)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSymbol(symbol);
-                            setTimeframe(frontendTimeframe);
-                            if (result) {
-                              setScanResult(result);
-                            }
-                            toast({
-                              title: "Scan loaded",
-                              description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
-                            });
-                          }}
-                        >
-                          Load
-                        </Button>
-                      </div>
-                    );
-                  })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/70 bg-card/70">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                  <Star className="h-5 w-5 text-primary" />
-                  Watchlist
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {!isAuthenticated ? (
-                  <p className="text-sm text-muted-foreground">
-                    Sign in to curate a personalized watchlist and jump back into symbols instantly.
-                  </p>
-                ) : watchlistQuery.isLoading ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 5 }).map((_, idx) => (
-                      <Skeleton key={idx} className="h-10 rounded-xl" />
-                    ))}
-                  </div>
-                ) : watchlistQuery.error ? (
-                  <p className="text-sm text-red-400">Unable to load watchlist right now.</p>
-                ) : (watchlistQuery.data?.length ?? 0) === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No symbols yet. Tap "Add to Watchlist" on any chart to build your list.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {watchlistQuery.data!.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          setSymbol(item.symbol);
-                          setSearchInput(item.symbol.replace(/USDT$/i, ""));
-                          toast({
-                            title: "Symbol loaded",
-                            description: `Loaded ${displayPair(item.symbol)} from watchlist`,
-                          });
-                        }}
-                        className={`flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/60 px-4 py-2 text-left transition hover:border-primary/60 hover:bg-primary/5 ${
-                          item.symbol.toUpperCase() === selectedSymbol.toUpperCase()
-                            ? "border-primary/60"
-                            : ""
-                        }`}
-                      >
-                        <span className="text-sm font-medium text-foreground">
-                          {displayPair(item.symbol)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatRelativeTime(item.createdAt)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-    </div>
-  );
-}
-
-function formatPrice(price?: string) {
-  const num = parseFloat(price || "0");
-  if (Number.isNaN(num)) return "$0.00";
-  if (num >= 1000)
-    return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  if (num >= 1) return `$${num.toFixed(4)}`;
-  return `$${num.toFixed(8)}`;
-}
-
-function formatVolume(volume?: string) {
-  const num = parseFloat(volume || "0");
-  if (Number.isNaN(num)) return "$0.00";
-  if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-  if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
-  if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
-  return `$${num.toFixed(2)}`;
-}
-
-function getScoreColor(score: number) {
-  if (score >= 10) return "text-green-600";
-  if (score >= 5) return "text-green-500";
-  if (score <= -10) return "text-red-600";
-  if (score <= -5) return "text-red-500";
-  return "text-yellow-500";
-}
-
-function getRecommendationColor(recommendation: string) {
-  switch (recommendation) {
-    case "strong_buy":
-      return "bg-green-600 text-white";
-    case "buy":
-      return "bg-green-500 text-white";
-    case "strong_sell":
-      return "bg-red-600 text-white";
-    case "sell":
-      return "bg-red-500 text-white";
-    default:
-      return "bg-yellow-500 text-black";
-  }
 }
