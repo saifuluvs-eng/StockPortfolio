@@ -1,7 +1,3 @@
-# Ignore everything in /api except the single route we need now
-api/**
-!api/portfolio.js
-
 # Usual ignores
 node_modules
 .vscode
