@@ -1,4 +1,4 @@
-import { storage } from '../storage';
+import { storage } from "../../server/storage";
 import { 
   type PortfolioPosition, 
   type TradeTransaction, 
@@ -74,9 +74,9 @@ export class PortfolioService {
     }
 
     // Get current market prices for all symbols
-    const symbols = positions.map(p => p.symbol);
+    const symbols = positions.map((position) => position.symbol);
     const marketDataList = await this.getLatestPrices(symbols);
-    const marketDataMap = new Map(marketDataList.map(md => [md.symbol, md]));
+    const marketDataMap = new Map(marketDataList.map((entry) => [entry.symbol, entry] as const));
 
     // Calculate enriched positions
     const enrichedPositions: EnrichedPosition[] = [];
@@ -117,7 +117,7 @@ export class PortfolioService {
     }
 
     // Calculate allocations
-    enrichedPositions.forEach(pos => {
+    enrichedPositions.forEach((pos) => {
       pos.allocation = totalValue > 0 ? (pos.marketValue / totalValue) * 100 : 0;
     });
 
@@ -192,19 +192,19 @@ export class PortfolioService {
     const totalReturnPercent = currentSummary.totalPnLPercent;
     
     // Calculate win/loss metrics
-    const winningTrades = trades.filter(t => t.pnl > 0);
-    const losingTrades = trades.filter(t => t.pnl < 0);
+    const winningTrades = trades.filter((t) => t.pnl > 0);
+    const losingTrades = trades.filter((t) => t.pnl < 0);
     
     const winRate = trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0;
-    const avgWinPercent = winningTrades.length > 0 
-      ? winningTrades.reduce((sum, t) => sum + t.pnlPercent, 0) / winningTrades.length 
+    const avgWinPercent = winningTrades.length > 0
+      ? winningTrades.reduce((sum, t) => sum + t.pnlPercent, 0) / winningTrades.length
       : 0;
     const avgLossPercent = losingTrades.length > 0
       ? losingTrades.reduce((sum, t) => sum + Math.abs(t.pnlPercent), 0) / losingTrades.length
       : 0;
 
-    const bestTrade = trades.length > 0 ? Math.max(...trades.map(t => t.pnl)) : 0;
-    const worstTrade = trades.length > 0 ? Math.min(...trades.map(t => t.pnl)) : 0;
+    const bestTrade = trades.length > 0 ? Math.max(...trades.map((t) => t.pnl)) : 0;
+    const worstTrade = trades.length > 0 ? Math.min(...trades.map((t) => t.pnl)) : 0;
 
     return {
       totalReturn,
@@ -258,7 +258,7 @@ export class PortfolioService {
       totalPnlPercent: summary.totalPnLPercent,
       dayChange: summary.dayChange,
       dayChangePercent: summary.dayChangePercent,
-      positions: summary.positions.map(p => ({
+      positions: summary.positions.map((p) => ({
         symbol: p.symbol,
         quantity: p.quantity,
         currentPrice: p.currentPrice,
@@ -275,7 +275,7 @@ export class PortfolioService {
    */
   private async getLatestPrices(symbols: string[]): Promise<MarketData[]> {
     // Convert base symbols to trading pairs (BTC -> BTCUSDT, ETH -> ETHUSDT)
-    const tradingPairs = symbols.map(symbol => {
+    const tradingPairs = symbols.map((symbol) => {
       // If already a trading pair, use as is
       if (symbol.includes('USDT') || symbol.includes('BTC') || symbol.includes('ETH')) {
         return symbol.endsWith('USDT') ? symbol : symbol + 'USDT';
@@ -411,7 +411,7 @@ export class PortfolioService {
    */
   private async updatePortfolioFromTransaction(userId: string, transaction: TradeTransaction): Promise<void> {
     const existingPositions = await storage.getPortfolioPositions(userId);
-    const existingPosition = existingPositions.find(p => p.symbol === transaction.symbol);
+    const existingPosition = existingPositions.find((p) => p.symbol === transaction.symbol);
     
     const quantity = transaction.quantity;
     const price = transaction.price;

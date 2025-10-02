@@ -16,13 +16,11 @@ type PortfolioDB = {
   users: Record<string, PortfolioUser>;
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __PORTFOLIO_DB__?: PortfolioDB;
-}
+type GlobalWithPortfolioDb = typeof globalThis & { __PORTFOLIO_DB__?: PortfolioDB };
 
-const db: PortfolioDB = globalThis.__PORTFOLIO_DB__ ?? { users: {} };
-globalThis.__PORTFOLIO_DB__ = db;
+const globalWithPortfolioDb = globalThis as GlobalWithPortfolioDb;
+const db: PortfolioDB = globalWithPortfolioDb.__PORTFOLIO_DB__ ?? { users: {} };
+globalWithPortfolioDb.__PORTFOLIO_DB__ = db;
 
 function getQueryParam(req: VercelRequest, key: string): string | null {
   try {
