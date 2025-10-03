@@ -340,6 +340,9 @@ export default function Analyse() {
     },
   });
 
+  const watchlistItems = Array.isArray(watchlistQuery.data)
+    ? watchlistQuery.data
+    : [];
   const historyQuery = useQuery({
     queryKey: ["scan-history"],
     enabled: isAuthenticated && networkEnabled,
@@ -436,7 +439,7 @@ export default function Analyse() {
     },
   });
 
-  const watchlistSymbols = (watchlistQuery.data || []).map((item) =>
+  const watchlistSymbols = watchlistItems.map((item) =>
     (item.symbol || "").toUpperCase(),
   );
   const symbolInWatchlist = watchlistSymbols.includes(selectedSymbol.toUpperCase());
@@ -959,13 +962,13 @@ export default function Analyse() {
                   </div>
                 ) : watchlistQuery.error ? (
                   <p className="text-sm text-red-400">Unable to load watchlist right now.</p>
-                ) : (watchlistQuery.data?.length ?? 0) === 0 ? (
+                ) : watchlistItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No symbols yet. Tap "Add to Watchlist" on any chart to build your list.
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {watchlistQuery.data!.map((item) => (
+                    {watchlistItems.map((item) => (
                       <button
                         key={item.id}
                         type="button"
