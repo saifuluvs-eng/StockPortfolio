@@ -1,3 +1,4 @@
+import "./initApiBase";
 // client/src/main.tsx
 import "./lib/disableLocalWs";
 import React from "react";
