@@ -29,12 +29,63 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
+const marketTickerHandler = async (req, res) => {
+  const symbol = req.params.symbol?.toUpperCase();
+
+  if (!symbol) {
+    res.status(400).json({ error: "invalid_symbol" });
+    return;
+  }
+
+  const url = `https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      res.status(502).json({ error: "upstream_error", status: response.status });
+      return;
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({
+      error: "ticker_error",
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
+app.get("/market/ticker/:symbol", marketTickerHandler);
+app.get("/api/market/ticker/:symbol", marketTickerHandler);
+
 app.get("/api/time", (_req, res) => {
   res.json({ now: new Date().toISOString() });
 });
 
 app.post("/api/echo", (req, res) => {
   res.json({ echo: req.body ?? null });
+});
+
+app.get("/api/market/gainers", (_req, res) => {
+  res.json({ gainers: [] });
+});
+
+app.get("/api/watchlist", (_req, res) => {
+  res.json({ items: [] });
+});
+
+app.get("/api/scanner/high-potential", (_req, res) => {
+  res.json({ results: [] });
+});
+
+app.get("/api/ai/market-overview", (_req, res) => {
+  res.json({ summary: "Market overview data not available" });
 });
 
 app.use((req, res) => {
