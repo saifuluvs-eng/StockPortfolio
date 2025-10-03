@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -108,21 +107,8 @@ const TIMEFRAMES = [
 ] as const;
 
 function BackendWarningBanner({ status }: { status: boolean | null }) {
-  if (status === null || status === true) return null;
-
-  return (
-    <Alert
-      variant="destructive"
-      className="border-destructive/50 bg-destructive/10"
-      data-testid="alert-backend-required"
-    >
-      <AlertTitle>Backend required for analysis</AlertTitle>
-      <AlertDescription>
-        You&apos;re on the Vercel-only build. Launch the backend-connected deployment or set
-        <code>VITE_API_BASE</code> so you can sign in and run scans.
-      </AlertDescription>
-    </Alert>
-  );
+  // TEMP: hide banner until backend integration is ready again
+  return null;
 }
 
 function toUsdtSymbol(input: string) {
