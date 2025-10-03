@@ -91,9 +91,9 @@ export default function Portfolio() {
     if (!networkEnabled) return;
     if (typeof window === "undefined") return;
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsBase = API_BASE ? API_BASE.replace(/^http/, "ws") : `${protocol}://${window.location.host}`;
-    const ws = new WebSocket(`${wsBase}/ws`);
+    const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
+    const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
       const symbols = Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase())));
@@ -124,7 +124,7 @@ export default function Portfolio() {
     return () => {
       try { ws.close(); } catch {}
     };
-  }, [user, API_BASE, networkEnabled, positionsKey]);
+  }, [user, networkEnabled, positionsKey]);
 
   // Source B: Binance REST polling (covers all symbols reliably)
   const [liveHTTP, setLiveHTTP] = useState<Record<string, number>>({});
