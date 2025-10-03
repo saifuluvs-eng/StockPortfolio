@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { WebSocketServer } from "ws";
+import { randomUUID } from "node:crypto";
 
 dotenv.config();
 
@@ -20,6 +21,9 @@ app.use(
   }),
 );
 app.use(express.json());
+
+// Simple in-memory store for demo purposes; persists only for the process lifetime
+const memory = { portfolio: [] };
 
 app.get("/", (_req, res) => {
   res.json({ message: "Stock Portfolio backend is running" });
@@ -70,6 +74,46 @@ app.get("/api/time", (_req, res) => {
 
 app.post("/api/echo", (req, res) => {
   res.json({ echo: req.body ?? null });
+});
+
+app.get("/api/portfolio", (_req, res) => {
+  res.json(memory.portfolio);
+});
+
+app.post("/api/portfolio", (req, res) => {
+  const { symbol, qty = null, entry = null, createdAt = new Date().toISOString() } = req.body ?? {};
+
+  const trimmedSymbol = typeof symbol === "string" ? symbol.trim().toUpperCase() : "";
+
+  if (!trimmedSymbol) {
+    res.status(400).json({ error: "invalid_symbol" });
+    return;
+  }
+
+  const row = {
+    id: randomUUID(),
+    symbol: trimmedSymbol,
+    qty,
+    entry,
+    createdAt,
+  };
+
+  memory.portfolio.push(row);
+
+  res.status(201).json(row);
+});
+
+app.delete("/api/portfolio/:id", (req, res) => {
+  const { id } = req.params;
+  const index = memory.portfolio.findIndex((item) => item.id === id);
+
+  if (index === -1) {
+    res.status(404).json({ error: "not_found" });
+    return;
+  }
+
+  const [removed] = memory.portfolio.splice(index, 1);
+  res.json(removed);
 });
 
 app.get("/api/market/gainers", (_req, res) => {
