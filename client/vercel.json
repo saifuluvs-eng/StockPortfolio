@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://crypto-backend-wat1.onrender.com/api/:match*"
+    }
+  ]
+}
