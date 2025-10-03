@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useBackendHealth } from "@/hooks/use-backend-health";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -30,10 +31,6 @@ import {
 // ---------- Config ----------
 const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
 const apiUrl = (path: string) => `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
-const isVercel = typeof window !== "undefined" && /vercel\.app$/i.test(window.location.hostname);
-// Enable network queries only if we have a backend when running on Vercel.
-// (Locally, relative /api may work through your dev proxy.)
-const networkEnabled = !isVercel || !!API_BASE;
 
 // ---------- Types (defensive) ----------
 type PortfolioSummary = {
@@ -143,6 +140,8 @@ async function qAiSignals(): Promise<number | null> {
 export default function Home() {
   // SINGLE useAuth() — no duplicate signOut
   const { user, signInWithGoogle, signOut } = useAuth();
+  const backendStatus = useBackendHealth();
+  const networkEnabled = backendStatus === true;
   const displayName = (user?.displayName?.trim() ?? user?.email ?? "Trader");
   const firstName = displayName.split(" ")[0] || displayName;
 
@@ -176,7 +175,8 @@ export default function Home() {
   }, [ethTicker]);
 
   useEffect(() => {
-    if (isVercel && !API_BASE) return; // /ws blocked on Vercel without external backend
+    if (!networkEnabled) return;
+    if (typeof window === "undefined") return;
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const wsBase = API_BASE ? API_BASE.replace(/^http/, "ws") : `${protocol}://${window.location.host}`;
     const ws = new WebSocket(`${wsBase}/ws`);
@@ -191,7 +191,7 @@ export default function Home() {
       ws.send(JSON.stringify({ type: "subscribe", symbol: "ETHUSDT" }));
     };
     return () => ws.close();
-  }, [API_BASE, isVercel]);
+  }, [API_BASE, networkEnabled]);
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
   const { data: port } = useQuery({
