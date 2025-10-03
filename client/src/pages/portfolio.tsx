@@ -17,6 +17,9 @@ import {
 import LiveSummary from "@/components/home/LiveSummary";
 import { useEffect, useMemo, useState } from "react";
 
+const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
+const isVercel = typeof window !== "undefined" && /vercel\.app$/i.test(window.location.hostname);
+
 type Position = {
   symbol: string;
   qty: number;
@@ -68,9 +71,11 @@ export default function Portfolio() {
   const [liveWS, setLiveWS] = useState<Record<string, number>>({});
   useEffect(() => {
     if (!user || positions.length === 0) return;
+    if (isVercel && !API_BASE) return;
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+    const wsBase = API_BASE ? API_BASE.replace(/^http/, "ws") : `${protocol}://${window.location.host}`;
+    const ws = new WebSocket(`${wsBase}/ws`);
 
     ws.onopen = () => {
       const symbols = Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase())));
@@ -101,7 +106,7 @@ export default function Portfolio() {
     return () => {
       try { ws.close(); } catch {}
     };
-  }, [user, positions.map((p) => p.symbol).sort().join(",")]);
+  }, [user, API_BASE, isVercel, positions.map((p) => p.symbol).sort().join(",")]);
 
   // Source B: Binance REST polling (covers all symbols reliably)
   const [liveHTTP, setLiveHTTP] = useState<Record<string, number>>({});

@@ -176,9 +176,10 @@ export default function Home() {
   }, [ethTicker]);
 
   useEffect(() => {
-    if (isVercel) return; // /ws blocked on Vercel
+    if (isVercel && !API_BASE) return; // /ws blocked on Vercel without external backend
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${protocol}://${window.location.host}/ws`);
+    const wsBase = API_BASE ? API_BASE.replace(/^http/, "ws") : `${protocol}://${window.location.host}`;
+    const ws = new WebSocket(`${wsBase}/ws`);
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -190,7 +191,7 @@ export default function Home() {
       ws.send(JSON.stringify({ type: "subscribe", symbol: "ETHUSDT" }));
     };
     return () => ws.close();
-  }, []);
+  }, [API_BASE, isVercel]);
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
   const { data: port } = useQuery({
