@@ -177,9 +177,9 @@ export default function Home() {
   useEffect(() => {
     if (!networkEnabled) return;
     if (typeof window === "undefined") return;
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsBase = API_BASE ? API_BASE.replace(/^http/, "ws") : `${protocol}://${window.location.host}`;
-    const ws = new WebSocket(`${wsBase}/ws`);
+    const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
+    const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
+    const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -191,7 +191,7 @@ export default function Home() {
       ws.send(JSON.stringify({ type: "subscribe", symbol: "ETHUSDT" }));
     };
     return () => ws.close();
-  }, [API_BASE, networkEnabled]);
+  }, [networkEnabled]);
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
   const { data: port } = useQuery({
