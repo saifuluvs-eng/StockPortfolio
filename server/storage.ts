@@ -49,7 +49,7 @@ const usersCollection = adminFirestore.collection("users");
 
 function mapTimestamp(value: unknown): Date | null | undefined {
   if (value instanceof Timestamp) {
-    return value.toDate();
+    return (value as Timestamp).toDate();
   }
 
   if (value instanceof Date) {
@@ -100,7 +100,7 @@ function buildUserPayload(userData: UpsertUser): Record<string, unknown> {
   const { id: _id, ...rest } = userData;
   const payload: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(rest)) {
+  for (const [key, value] of Object.entries(rest) as [string, unknown][]) {
     if (value !== undefined) {
       payload[key] = value;
     }
