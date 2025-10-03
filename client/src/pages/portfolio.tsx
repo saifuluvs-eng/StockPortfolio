@@ -16,10 +16,10 @@ import {
 } from "lucide-react";
 import LiveSummary from "@/components/home/LiveSummary";
 import { useEffect, useMemo, useState } from "react";
+import { useBackendHealth } from "@/hooks/use-backend-health";
 
 const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
 const apiUrl = (path: string) => `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
-const isVercel = typeof window !== "undefined" && /vercel\.app$/i.test(window.location.hostname);
 
 type Position = {
   symbol: string;
@@ -44,11 +44,13 @@ export default function Portfolio() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
+  const backendStatus = useBackendHealth();
+  const networkEnabled = backendStatus === true;
 
   // per-user portfolio
   const { data, isLoading } = useQuery<PortfolioAPI>({
     queryKey: [apiUrl("/api/portfolio"), user?.uid],
-    enabled: !!user,
+    enabled: !!user && networkEnabled,
     refetchInterval: 15000,
     queryFn: async () => {
       const res = await fetch(
@@ -68,6 +70,7 @@ export default function Portfolio() {
       if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load AI overview"));
       return res.json();
     },
+    enabled: networkEnabled,
   });
 
   const totalValue = data?.totalValue ?? 0;
@@ -78,9 +81,15 @@ export default function Portfolio() {
   // ---------- LIVE PRICES ----------
   // Source A: your /ws (if it emits these symbols)
   const [liveWS, setLiveWS] = useState<Record<string, number>>({});
+  const positionsKey = useMemo(
+    () => positions.map((p) => p.symbol).sort().join(","),
+    [positions],
+  );
+
   useEffect(() => {
     if (!user || positions.length === 0) return;
-    if (isVercel && !API_BASE) return;
+    if (!networkEnabled) return;
+    if (typeof window === "undefined") return;
 
     const protocol = window.location.protocol === "https:" ? "wss" : "ws";
     const wsBase = API_BASE ? API_BASE.replace(/^http/, "ws") : `${protocol}://${window.location.host}`;
@@ -115,7 +124,7 @@ export default function Portfolio() {
     return () => {
       try { ws.close(); } catch {}
     };
-  }, [user, API_BASE, isVercel, positions.map((p) => p.symbol).sort().join(",")]);
+  }, [user, API_BASE, networkEnabled, positionsKey]);
 
   // Source B: Binance REST polling (covers all symbols reliably)
   const [liveHTTP, setLiveHTTP] = useState<Record<string, number>>({});
@@ -157,7 +166,7 @@ export default function Portfolio() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [positions.map((p) => p.symbol).sort().join(",")]);
+  }, [positionsKey]);
 
   // unified getter for a symbol’s latest price
   function currentPriceFor(sym: string, fallback: number) {

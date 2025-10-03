@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { useBackendHealth } from "@/hooks/use-backend-health";
 import { useRoute, useLocation } from "wouter";
 import {
   Activity,
@@ -44,8 +45,6 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { openSpotTickerStream } from "@/lib/binanceWs";
 
 const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
-const isVercel = typeof window !== "undefined" && /vercel\.app$/i.test(window.location.hostname);
-const networkEnabled = !isVercel || !!API_BASE;
 
 interface PriceData {
   symbol: string;
@@ -108,6 +107,24 @@ const TIMEFRAMES = [
   { value: "W", label: "1Week", display: "1W", backend: "1w" },
 ] as const;
 
+function BackendWarningBanner({ status }: { status: boolean | null }) {
+  if (status === null || status === true) return null;
+
+  return (
+    <Alert
+      variant="destructive"
+      className="border-destructive/50 bg-destructive/10"
+      data-testid="alert-backend-required"
+    >
+      <AlertTitle>Backend required for analysis</AlertTitle>
+      <AlertDescription>
+        You&apos;re on the Vercel-only build. Launch the backend-connected deployment or set
+        <code>VITE_API_BASE</code> so you can sign in and run scans.
+      </AlertDescription>
+    </Alert>
+  );
+}
+
 function toUsdtSymbol(input: string) {
   const coin = (input || "").trim().toUpperCase();
   if (!coin) return DEFAULT_SYMBOL;
@@ -136,6 +153,10 @@ export default function Analyse() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated, signInWithGoogle } = useAuth();
+  const backendStatus = useBackendHealth();
+  const networkEnabled = backendStatus === true;
+  const backendOffline = backendStatus === false;
+  const backendPending = backendStatus === null;
 
   const [matchWithParam, params] = useRoute("/analyse/:symbol?");
   const [location, setLocation] = useLocation();
@@ -436,11 +457,13 @@ export default function Analyse() {
 
   const handleToggleWatchlist = () => {
     if (!networkEnabled) {
-      toast({
-        title: "Backend required",
-        description: "Log into a backend-enabled deployment to manage your watchlist.",
-        variant: "destructive",
-      });
+      if (backendOffline) {
+        toast({
+          title: "Backend required",
+          description: "Log into a backend-enabled deployment to manage your watchlist.",
+          variant: "destructive",
+        });
+      }
       return;
     }
     if (!isAuthenticated) {
@@ -460,11 +483,13 @@ export default function Analyse() {
 
   const handleSearch = () => {
     if (!networkEnabled) {
-      toast({
-        title: "Backend required",
-        description: "Connect this dashboard to your backend build before searching symbols.",
-        variant: "destructive",
-      });
+      if (backendOffline) {
+        toast({
+          title: "Backend required",
+          description: "Connect this dashboard to your backend build before searching symbols.",
+          variant: "destructive",
+        });
+      }
       return;
     }
     if (!isAuthenticated) {
@@ -495,11 +520,13 @@ export default function Analyse() {
 
   const handleScan = () => {
     if (!networkEnabled) {
-      toast({
-        title: "Backend required",
-        description: "Provide a backend URL (VITE_API_BASE) to run scans from Vercel.",
-        variant: "destructive",
-      });
+      if (backendOffline) {
+        toast({
+          title: "Backend required",
+          description: "Provide a backend URL (VITE_API_BASE) to run scans from Vercel.",
+          variant: "destructive",
+        });
+      }
       return;
     }
     if (!isAuthenticated) {
@@ -645,19 +672,7 @@ export default function Analyse() {
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6">
-      {!networkEnabled && (
-        <Alert
-          variant="destructive"
-          className="border-destructive/50 bg-destructive/10"
-          data-testid="alert-backend-required"
-        >
-          <AlertTitle>Backend required for analysis</AlertTitle>
-          <AlertDescription>
-            You&apos;re on the Vercel-only build. Launch the backend-connected deployment or set
-            <code>VITE_API_BASE</code> so you can sign in and run scans.
-          </AlertDescription>
-        </Alert>
-      )}
+      <BackendWarningBanner status={backendStatus} />
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
@@ -775,7 +790,7 @@ export default function Analyse() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {!networkEnabled ? (
+              {backendOffline ? (
                 <p className="text-sm text-muted-foreground">
                   Connect this dashboard to your backend (set <code>VITE_API_BASE</code>) to
                   surface high potential ideas.
@@ -784,7 +799,7 @@ export default function Analyse() {
                 <p className="text-sm text-muted-foreground">
                   Sign in to view AI-powered high potential setups tailored to your timeframe.
                 </p>
-              ) : highPotentialQuery.isLoading ? (
+              ) : backendPending || highPotentialQuery.isLoading ? (
                 <div className="grid gap-3 md:grid-cols-2">
                   {Array.from({ length: 4 }).map((_, idx) => (
                     <Skeleton key={idx} className="h-20 rounded-xl" />
