@@ -85,7 +85,17 @@ app.get("/api/scanner/high-potential", (_req, res) => {
   res.json({ data: [] });
 });
 
+app.post("/api/scanner/high-potential", (_req, res) => {
+  // Expected shape: { data: [{ symbol: string; score: number; reason: string }] }
+  res.json({ data: [] });
+});
+
 app.get("/api/scanner/history", (_req, res) => {
+  // Expected shape: { data: [{ date: string; symbol: string; score: number }] }
+  res.json({ data: [] });
+});
+
+app.post("/api/scanner/history", (_req, res) => {
   // Expected shape: { data: [{ date: string; symbol: string; score: number }] }
   res.json({ data: [] });
 });
