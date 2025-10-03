@@ -40,8 +40,10 @@ export default function LiveSummary({ symbols = ["BTCUSDT", "ETHUSDT"] }: Props)
   const [tickers, setTickers] = useState<Record<string, Ticker>>({});
 
   useEffect(() => {
-    const unsubscribe = openSpotTickerStream(symbols, (t) => {
-      setTickers((prev) => ({ ...prev, [t.symbol]: t }));
+    const unsubscribe = openSpotTickerStream(symbols, {
+      onMessage: (t) => {
+        setTickers((prev) => ({ ...prev, [t.symbol]: t }));
+      },
     });
     return unsubscribe;
   }, [symbols.join("|")]); // stable enough for this simple case
