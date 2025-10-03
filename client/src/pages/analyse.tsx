@@ -220,19 +220,21 @@ export default function Analyse() {
     setPriceData(null);
     if (!networkEnabled) return;
     let active = true;
-    const unsubscribe = openSpotTickerStream([selectedSymbol], (ticker) => {
-      if (!active) return;
-      if ((ticker.symbol || "").toUpperCase() !== selectedSymbol.toUpperCase()) return;
-      setPriceData({
-        symbol: ticker.symbol,
-        lastPrice: ticker.lastPrice,
-        priceChange: ticker.priceChange,
-        priceChangePercent: ticker.priceChangePercent,
-        highPrice: ticker.highPrice,
-        lowPrice: ticker.lowPrice,
-        volume: ticker.volume,
-        quoteVolume: ticker.quoteVolume,
-      });
+    const unsubscribe = openSpotTickerStream(selectedSymbol, {
+      onMessage: (ticker) => {
+        if (!active) return;
+        if ((ticker.symbol || "").toUpperCase() !== selectedSymbol.toUpperCase()) return;
+        setPriceData({
+          symbol: ticker.symbol,
+          lastPrice: ticker.lastPrice,
+          priceChange: ticker.priceChange,
+          priceChangePercent: ticker.priceChangePercent,
+          highPrice: ticker.highPrice,
+          lowPrice: ticker.lowPrice,
+          volume: ticker.volume,
+          quoteVolume: ticker.quoteVolume,
+        });
+      },
     });
     return () => {
       active = false;
