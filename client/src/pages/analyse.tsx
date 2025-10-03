@@ -251,10 +251,14 @@ export default function Analyse() {
     mutationFn: async () => {
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
       const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
-      const res = await apiRequest("POST", "/api/scanner/scan", {
-        symbol: selectedSymbol,
-        timeframe: backendTimeframe,
-      });
+      const res = await apiRequest(
+        "POST",
+        `${API_BASE || ""}/api/scanner/scan`,
+        {
+          symbol: selectedSymbol,
+          timeframe: backendTimeframe,
+        },
+      );
       return (await res.json()) as ScanResult;
     },
     onSuccess: (data) => {
