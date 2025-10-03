@@ -330,19 +330,32 @@ export default function Analyse() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTimeframe, isAuthenticated, networkEnabled]);
 
-  const watchlistQuery = useQuery({
+  const watchlistQuery = useQuery<WatchlistItem[]>({
     queryKey: ["watchlist"],
     enabled: isAuthenticated && networkEnabled,
     staleTime: 60_000,
     queryFn: async () => {
       const res = await apiRequest("GET", "/api/watchlist");
-      return (await res.json()) as WatchlistItem[];
+      const data = (await res.json()) as
+        | WatchlistItem[]
+        | { items?: unknown }
+        | null
+        | undefined;
+
+      if (Array.isArray(data)) {
+        return data;
+      }
+
+      const items = data && typeof data === "object" ? (data as { items?: unknown }).items : null;
+      if (Array.isArray(items)) {
+        return items;
+      }
+
+      return [];
     },
   });
 
-  const watchlistItems = Array.isArray(watchlistQuery.data)
-    ? watchlistQuery.data
-    : [];
+  const watchlistItems = watchlistQuery.data ?? [];
   const historyQuery = useQuery({
     queryKey: ["scan-history"],
     enabled: isAuthenticated && networkEnabled,
