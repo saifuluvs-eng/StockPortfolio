@@ -1,6 +1,8 @@
 // client/src/components/charts/TradingViewChart.tsx
 import { useEffect, useRef } from "react";
 
+import { buildTvConfig } from "@/lib/tradingview";
+
 type Props = {
   symbol: string;              // e.g. "BTCUSDT"
   timeframe: string;           // "15" | "60" | "240" | "D" | "W"
@@ -51,10 +53,13 @@ export default function TradingViewChart({
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetRef = useRef<any>(null);
+  const containerIdRef = useRef<string>(
+    `tv-chart-${Math.random().toString(36).slice(2)}`,
+  );
 
   // Convert props to TradingView format
   const tvSymbol = `BINANCE:${(symbol || "BTCUSDT").toUpperCase()}`;
-  const tvInterval = (timeframe || "240").toString(); // TradingView accepts "240","60","15","D","W"
+  const tvInterval = (timeframe || "4h").toString();
 
   useEffect(() => {
     let cancelled = false;
@@ -69,17 +74,19 @@ export default function TradingViewChart({
 
         // Clear previous widget to avoid duplicate mounts
         containerRef.current.innerHTML = "";
-        widgetRef.current = new window.TradingView.widget({
+        containerRef.current.id = containerIdRef.current;
+
+        const cfg = buildTvConfig({
           symbol: tvSymbol,
-          interval: tvInterval,
-          container_id: containerRef.current, // we can pass the element itself
-          autosize: true,
-          width: "100%",
-          height,
-          timezone: "Etc/UTC",
+          timeframe: tvInterval,
+          containerId: containerIdRef.current,
           theme: theme === "dark" ? "dark" : "light",
-          style: "1", // Candles
           locale: "en",
+        });
+
+        Object.assign(cfg, {
+          timezone: "Etc/UTC",
+          style: "1",
           toolbar_bg: "transparent",
           hide_side_toolbar: false,
           hide_top_toolbar: false,
@@ -87,10 +94,11 @@ export default function TradingViewChart({
           details: true,
           hotlist: false,
           calendar: false,
-          studies: [], // you can push indicators here if needed
-          // IMPORTANT: keep library stable, don't re-inject script
+          studies: [],
           allow_symbol_change: false,
         });
+
+        widgetRef.current = new (window as any).TradingView.widget(cfg);
       } catch (e) {
         // Soft fail so the page doesn’t crash
         // eslint-disable-next-line no-console
@@ -117,6 +125,7 @@ export default function TradingViewChart({
   return (
     <div
       ref={containerRef}
+      id={containerIdRef.current}
       style={{ width: "100%", height }}
       data-testid="tradingview-container"
     />
