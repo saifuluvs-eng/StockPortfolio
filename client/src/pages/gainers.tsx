@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { api } from "@/lib/api";
 
@@ -16,39 +16,22 @@ type SpotGainerResponse = {
   rows: SpotGainerRow[];
 };
 
-async function fetchFromAppAPI(): Promise<SpotGainerRow[] | null> {
+async function fetchGainers(): Promise<SpotGainerResponse> {
   try {
     const res = await api("/api/market/gainers");
-    if (!res.ok) return null;
+    if (!res.ok) {
+      throw new Error("Failed to fetch gainers");
+    }
+
     const data: unknown = await res.json();
     if (typeof data === "object" && data !== null && Array.isArray((data as SpotGainerResponse).rows)) {
-      return (data as SpotGainerResponse).rows;
+      return data as SpotGainerResponse;
     }
-    return null;
-  } catch {
-    return null;
-  }
-}
 
-async function fetchFromBinance(): Promise<SpotGainerRow[]> {
-  try {
-    const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
-    if (!res.ok) return [];
-    const stats = (await res.json()) as any[];
-    return stats
-      .filter((t) => typeof t?.symbol === "string" && t.symbol.endsWith("USDT"))
-      .map((t) => ({
-        symbol: String(t.symbol),
-        price: Number(t.lastPrice ?? 0),
-        changePct: Number(t.priceChangePercent ?? 0),
-        volume: Number(t.quoteVolume ?? 0),
-        high: Number(t.highPrice ?? 0),
-        low: Number(t.lowPrice ?? 0),
-      }))
-      .sort((a, b) => b.changePct - a.changePct)
-      .slice(0, 120);
-  } catch {
-    return [];
+    throw new Error("Invalid gainers response");
+  } catch (error) {
+    console.error(error);
+    return { rows: [] };
   }
 }
 
@@ -57,22 +40,27 @@ const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
 export default function Gainers() {
   const { data, isLoading } = useQuery<SpotGainerResponse>({
     queryKey: ["gainers", "spot-usdt"],
-    queryFn: async () => {
-      const appRows = await fetchFromAppAPI();
-      if (appRows && appRows.length) {
-        return { rows: appRows };
-      }
-
-      const fallback = await fetchFromBinance();
-      return { rows: fallback };
-    },
+    queryFn: fetchGainers,
     staleTime: 30_000,
   });
 
-  const rows = useMemo(
-    () => (data?.rows ?? []).filter((r) => typeof r.symbol === "string" && r.symbol.endsWith("USDT")),
-    [data],
-  );
+  const cleaned = useMemo(() => {
+    return (data?.rows ?? []).filter((r: any): r is SpotGainerRow => {
+      return (
+        r &&
+        typeof r.symbol === "string" &&
+        /USDT$/.test(r.symbol) &&
+        Number.isFinite(r.price) &&
+        r.price > 0 &&
+        Number.isFinite(r.volume) &&
+        r.volume > 0 &&
+        Number.isFinite(r.high) &&
+        r.high > 0 &&
+        Number.isFinite(r.low) &&
+        r.low > 0
+      );
+    });
+  }, [data]);
 
   if (isLoading) {
     return (
@@ -85,7 +73,7 @@ export default function Gainers() {
     );
   }
 
-  if (!rows.length) {
+  if (!cleaned.length) {
     return (
       <main className="p-4 text-zinc-200">
         <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
@@ -115,7 +103,7 @@ export default function Gainers() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => (
+              {cleaned.map((r, i) => (
                 <tr key={r.symbol} className="border-t border-zinc-900">
                   <td className="py-3 px-4 whitespace-nowrap">{i + 1}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{r.symbol}</td>
