@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshCw, Brain, Zap, TrendingUp, Flame } from "lucide-react";
+import { api } from "@/lib/api";
 
 type Insight = {
   title: string;
@@ -77,7 +78,7 @@ export default function AIInsights() {
     mutationFn: async () => {
       // 1) Try your API if it exists
       try {
-        const r = await fetch("/api/ai/insights");
+        const r = await api("/api/ai/insights");
         if (r.ok) {
           return (await r.json()) as { insights: Insight[]; table?: Binance24hr[] };
         }

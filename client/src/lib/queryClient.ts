@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getFirebaseIdToken } from "@/lib/firebase";
+import { api } from "@/lib/api";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -28,7 +29,7 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const res = await api(url, {
     method,
     headers: await buildHeaders(data),
     body: data ? JSON.stringify(data) : undefined,
@@ -46,9 +47,8 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const token = await getFirebaseIdToken();
     const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
-    const res = await fetch(queryKey.join("/") as string, {
-      headers,
-    });
+    const [path] = queryKey as [string, ...unknown[]];
+    const res = await api(path, { headers });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;

@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-
-const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
-const HEALTH_URL = `${API_BASE || ""}/api/health`;
+import { api } from "@/lib/api";
 
 let cachedStatus: boolean | undefined;
 let pendingProbe: Promise<boolean> | null = null;
@@ -11,7 +9,7 @@ async function probeBackend(): Promise<boolean> {
   const timeoutId = setTimeout(() => controller.abort(), 4000);
 
   try {
-    const response = await fetch(HEALTH_URL, { signal: controller.signal });
+    const response = await api("/api/health", { signal: controller.signal });
     return response.ok;
   } catch {
     return false;

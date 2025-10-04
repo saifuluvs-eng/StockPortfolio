@@ -17,9 +17,7 @@ import {
 import LiveSummary from "@/components/home/LiveSummary";
 import { useEffect, useMemo, useState } from "react";
 import { useBackendHealth } from "@/hooks/use-backend-health";
-
-const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
-const apiUrl = (path: string) => `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
+import { api } from "@/lib/api";
 
 type Position = {
   symbol: string;
@@ -49,24 +47,23 @@ export default function Portfolio() {
 
   // per-user portfolio
   const { data, isLoading } = useQuery<PortfolioAPI>({
-    queryKey: [apiUrl("/api/portfolio"), user?.uid],
+    queryKey: ["/api/portfolio", user?.uid],
     enabled: !!user && networkEnabled,
     refetchInterval: 15000,
     queryFn: async () => {
-      const res = await fetch(
-        apiUrl(`/api/portfolio?uid=${encodeURIComponent(user!.uid)}`)
+      const res = await api(
+        `/api/portfolio?uid=${encodeURIComponent(user!.uid)}`
       );
       if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load portfolio"));
       return res.json();
     },
   });
 
-  const aiOverviewUrl = apiUrl("/api/ai/market-overview");
   const { data: aiOverview } = useQuery<AiOverviewData>({
-    queryKey: [aiOverviewUrl],
+    queryKey: ["/api/ai/market-overview"],
     refetchInterval: 120000,
     queryFn: async () => {
-      const res = await fetch(aiOverviewUrl);
+      const res = await api("/api/ai/market-overview");
       if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load AI overview"));
       return res.json();
     },
@@ -212,7 +209,7 @@ export default function Portfolio() {
       pnl: 0,
     };
 
-    const key = [apiUrl("/api/portfolio"), user.uid];
+    const key = ["/api/portfolio", user.uid];
     const prev = qc.getQueryData<PortfolioAPI>(key);
     qc.setQueryData<PortfolioAPI>(key, (old) => {
       const base = old ?? { totalValue: 0, totalPnL: 0, totalPnLPercent: 0, positions: [] };
@@ -220,7 +217,7 @@ export default function Portfolio() {
     });
 
     try {
-      const res = await fetch(apiUrl(`/api/portfolio?uid=${encodeURIComponent(user.uid)}`), {
+      const res = await api(`/api/portfolio?uid=${encodeURIComponent(user.uid)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -249,7 +246,7 @@ export default function Portfolio() {
 
   async function handleDelete(symbol: string) {
     if (!user) return;
-    const key = [apiUrl("/api/portfolio"), user.uid];
+    const key = ["/api/portfolio", user.uid];
     const prev = qc.getQueryData<PortfolioAPI>(key);
 
     // optimistic remove
@@ -258,10 +255,8 @@ export default function Portfolio() {
     );
 
     try {
-      const res = await fetch(
-        apiUrl(
-          `/api/portfolio?uid=${encodeURIComponent(user.uid)}&symbol=${encodeURIComponent(symbol)}`
-        ),
+      const res = await api(
+        `/api/portfolio?uid=${encodeURIComponent(user.uid)}&symbol=${encodeURIComponent(symbol)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

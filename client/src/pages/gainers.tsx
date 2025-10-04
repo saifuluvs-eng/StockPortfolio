@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { RefreshCw, TrendingUp, Trophy, Medal, BarChart3 } from "lucide-react";
+import { api } from "@/lib/api";
 
 type GainerData = {
   symbol: string;
@@ -27,7 +28,7 @@ function safeNum(n: unknown, fallback = 0): number {
 async function fetchFromAppAPI(limit: number, isAuthenticated: boolean): Promise<GainerData[] | null> {
   const url = isAuthenticated ? "/api/market/gainers" : `/api/market/gainers?limit=${limit}`;
   try {
-    const res = await fetch(url);
+    const res = await api(url);
     if (!res.ok) return null; // trigger fallback
     const data = await res.json();
     return Array.isArray(data) ? (data as GainerData[]) : null;
