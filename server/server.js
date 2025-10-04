@@ -1,11 +1,85 @@
-import http from "http";
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import { WebSocketServer } from "ws";
-import { randomUUID } from "node:crypto";
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import http from 'http';
+import { WebSocketServer } from 'ws';
+import {
+  MACD,
+  RSI,
+  EMA,
+  SMA,
+  BollingerBands,
+  Stochastic,
+  ADX,
+  ATR,
+  MFI,
+  OBV,
+  CCI,
+} from 'technicalindicators';
+import { randomUUID } from 'node:crypto';
 
-dotenv.config();
+const intervalMap = (tf) =>
+  ({
+    '15m': '15m',
+    '30m': '30m',
+    '1h': '1h',
+    '2h': '2h',
+    '3h': '3h',
+    '4h': '4h',
+    '6h': '6h',
+    '8h': '8h',
+    '12h': '12h',
+    '1d': '1d',
+    '1D': '1d',
+    '1day': '1d',
+    '1Day': '1d',
+    '1w': '1w',
+    '1W': '1w',
+    '1M': '1M',
+    '1m': '1M',
+  }[String(tf)] || '4h');
+
+const fmt = (v) =>
+  typeof v === 'string'
+    ? v
+    : v == null || Number.isNaN(+v)
+    ? '—'
+    : (+v).toFixed(2);
+
+async function getKlines(symbol, timeframe, limit = 500) {
+  const interval = intervalMap(timeframe);
+  const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(
+    symbol,
+  )}&interval=${interval}&limit=${limit}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('klines_failed');
+  const rows = await r.json();
+  const opens = [];
+  const highs = [];
+  const lows = [];
+  const closes = [];
+  const volumes = [];
+  for (const k of rows) {
+    opens.push(+k[1]);
+    highs.push(+k[2]);
+    lows.push(+k[3]);
+    closes.push(+k[4]);
+    volumes.push(+k[5]);
+  }
+  return { opens, highs, lows, closes, volumes, lastClose: closes.at(-1) };
+}
+
+function classify(value, { gt, lt }) {
+  const n = +value;
+  if (Number.isNaN(n)) return 'neutral';
+  if (gt != null && n > gt) return 'bullish';
+  if (lt != null && n < lt) return 'bearish';
+  return 'neutral';
+}
+
+function push(arr, title, value, signal = 'neutral', reason = '') {
+  arr.push({ title, value: fmt(value), signal, reason });
+}
 
 const PORT = Number.parseInt(process.env.PORT ?? "4000", 10);
 const allowedOrigin = process.env.ALLOWED_ORIGIN ?? "*";
@@ -15,43 +89,12 @@ const app = express();
 app.use(
   cors({
     origin:
-      allowedOrigin === "*"
-        ? "*"
-        : allowedOrigin.split(",").map((origin) => origin.trim()).filter(Boolean),
+      allowedOrigin === '*'
+        ? '*'
+        : allowedOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
   }),
 );
 app.use(express.json());
-
-// helper to produce a UI-friendly scan object
-function makeScanResult(symbol = "BTCUSDT", timeframe = "4h") {
-  symbol = String(symbol).toUpperCase();
-  timeframe = String(timeframe);
-  const checks = [
-    { key: "RSI", title: "RSI", value: "55.0", signal: "bullish", reason: "RSI > 50" },
-    { key: "MACD", title: "MACD", value: "0.00", signal: "neutral", reason: "Flat MACD" },
-    {
-      key: "Trend",
-      title: "Trend",
-      value: "Mixed",
-      signal: "neutral",
-      reason: "MA cross pending",
-    },
-  ];
-  return {
-    id: randomUUID(),
-    ts: Date.now(),
-    // top-level fields commonly read by the UI / toast:
-    symbol, // toast should use this
-    timeframe,
-    overallLabel: "neutral",
-    overallScore: "0",
-    // duplicates in shapes some UIs expect:
-    summary: { label: "neutral", score: "0" },
-    checks, // original name
-    breakdown: checks, // alias for “Breakdown Technicals”
-    technicals: checks, // extra alias (harmless if unused)
-  };
-}
 
 // ensure memory store exists once
 const memory = globalThis.__MEM__ ?? (globalThis.__MEM__ = { portfolio: [], scans: [] });
@@ -167,17 +210,115 @@ app.get("/api/watchlist", (_req, res) => {
 
 app.post("/api/watchlist", (req, res) => res.json({ data: [] }));
 
-app.post("/api/scanner/scan", async (req, res) => {
+app.post('/api/scanner/scan', async (req, res) => {
   try {
-    const body = req.body || {};
-    const symbol = body.symbol || "BTCUSDT";
-    const timeframe = body.timeframe || "4h";
-    const result = makeScanResult(symbol, timeframe);
+    const { symbol = 'BTCUSDT', timeframe = '4h' } = req.body || {};
+    const sym = String(symbol).toUpperCase();
+    const tf = String(timeframe);
+    const { opens, highs, lows, closes, volumes, lastClose } = await getKlines(sym, tf, 500);
+
+    const out = [];
+    const rsi = RSI.calculate({ values: closes, period: 14 }).at(-1);
+    push(out, 'RSI', rsi, classify(rsi, { gt: 60, lt: 40 }), rsi > 60 ? 'RSI > 60' : rsi < 40 ? 'RSI < 40' : 'RSI neutral');
+
+    const macd =
+      MACD.calculate({
+        values: closes,
+        fastPeriod: 12,
+        slowPeriod: 26,
+        signalPeriod: 9,
+        SimpleMAOscillator: false,
+        SimpleMASignal: false,
+      }).at(-1) || {};
+    const macdSignal =
+      macd.MACD > macd.signal ? 'bullish' : macd.MACD < macd.signal ? 'bearish' : 'neutral';
+    push(out, 'MACD', macd.MACD, macdSignal, `MACD ${fmt(macd.MACD)} vs signal ${fmt(macd.signal)}`);
+
+    const ema20 = EMA.calculate({ period: 20, values: closes }).at(-1);
+    const ema50 = EMA.calculate({ period: 50, values: closes }).at(-1);
+    const ema200 = EMA.calculate({ period: 200, values: closes }).at(-1);
+    push(out, 'EMA 20', ema20, lastClose > ema20 ? 'bullish' : 'bearish', lastClose > ema20 ? 'Price > EMA20' : 'Price < EMA20');
+    push(out, 'EMA 50', ema50, lastClose > ema50 ? 'bullish' : 'bearish', lastClose > ema50 ? 'Price > EMA50' : 'Price < EMA50');
+    push(out, 'EMA 200', ema200, lastClose > ema200 ? 'bullish' : 'bearish', lastClose > ema200 ? 'Price > EMA200' : 'Price < EMA200');
+    push(out, 'EMA 20/50 Cross', ema20 - ema50, ema20 > ema50 ? 'bullish' : 'bearish', ema20 > ema50 ? 'EMA20 > EMA50' : 'EMA20 < EMA50');
+    push(out, 'EMA 50/200 Cross', ema50 - ema200, ema50 > ema200 ? 'bullish' : 'bearish', ema50 > ema200 ? 'EMA50 > EMA200' : 'EMA50 < EMA200');
+
+    const sma20 = SMA.calculate({ period: 20, values: closes }).at(-1);
+    const sma50 = SMA.calculate({ period: 50, values: closes }).at(-1);
+    push(out, 'SMA 20', sma20, lastClose > sma20 ? 'bullish' : 'bearish', lastClose > sma20 ? 'Price > SMA20' : 'Price < SMA20');
+    push(out, 'SMA 50', sma50, lastClose > sma50 ? 'bullish' : 'bearish', lastClose > sma50 ? 'Price > SMA50' : 'Price < SMA50');
+
+    const bb = BollingerBands.calculate({ period: 20, stdDev: 2, values: closes }).at(-1) || {};
+    const bbSig = lastClose > bb.upper ? 'bearish' : lastClose < bb.lower ? 'bullish' : 'neutral';
+    push(
+      out,
+      'Bollinger',
+      `${fmt(bb.lower)}–${fmt(bb.upper)}`,
+      bbSig,
+      lastClose > bb.upper
+        ? 'Above upper band'
+        : lastClose < bb.lower
+        ? 'Below lower band'
+        : 'Inside bands',
+    );
+
+    const stoch =
+      Stochastic.calculate({ high: highs, low: lows, close: closes, period: 14, signalPeriod: 3 }).at(-1) || {};
+    const k = stoch.k;
+    const d = stoch.d;
+    const stSig = k > 80 ? 'bearish' : k < 20 ? 'bullish' : 'neutral';
+    push(out, 'Stochastic %K', k, stSig, k > 80 ? 'Overbought' : k < 20 ? 'Oversold' : 'Mid-range');
+    push(out, 'Stochastic %D', d, 'neutral', 'Signal line');
+
+    const adx = ADX.calculate({ high: highs, low: lows, close: closes, period: 14 }).at(-1) || {};
+    push(out, 'ADX', adx.adx, classify(adx.adx, { gt: 25 }), adx.adx > 25 ? 'Strong trend' : 'Weak/No trend');
+
+    const atr = ATR.calculate({ high: highs, low: lows, close: closes, period: 14 }).at(-1);
+    push(out, 'ATR (14)', atr, 'neutral', 'Volatility');
+
+    const mfi = MFI.calculate({ high: highs, low: lows, close: closes, volume: volumes, period: 14 }).at(-1);
+    push(out, 'MFI', mfi, classify(mfi, { gt: 60, lt: 40 }), mfi > 60 ? 'Money inflow' : mfi < 40 ? 'Money outflow' : 'Balanced');
+
+    const obv = OBV.calculate({ close: closes, volume: volumes }).at(-1);
+    push(out, 'OBV', obv, 'neutral', 'Volume trend');
+
+    const cci = CCI.calculate({ open: opens, high: highs, low: lows, close: closes, period: 20 }).at(-1);
+    const cciSig = cci > 100 ? 'bullish' : cci < -100 ? 'bearish' : 'neutral';
+    push(out, 'CCI', cci, cciSig, cci > 100 ? '> 100' : cci < -100 ? '< -100' : '≈ 0');
+
+    let cumPV = 0;
+    let cumV = 0;
+    for (let i = 0; i < closes.length; i += 1) {
+      const tp = (highs[i] + lows[i] + closes[i]) / 3;
+      cumPV += tp * volumes[i];
+      cumV += volumes[i];
+    }
+    const vwap = cumPV / (cumV || 1);
+    push(out, 'VWAP', vwap, lastClose > vwap ? 'bullish' : 'bearish', lastClose > vwap ? 'Price > VWAP' : 'Price < VWAP');
+
+    const score = out.reduce(
+      (s, item) => s + (item.signal === 'bullish' ? 1 : item.signal === 'bearish' ? -1 : 0),
+      0,
+    );
+
+    const result = {
+      id: randomUUID(),
+      ts: Date.now(),
+      symbol: sym,
+      timeframe: tf,
+      summary: { label: score > 2 ? 'bullish' : score < -2 ? 'bearish' : 'neutral', score: String(score) },
+      overallLabel: score > 2 ? 'bullish' : score < -2 ? 'bearish' : 'neutral',
+      overallScore: String(score),
+      checks: out,
+      breakdown: out,
+      technicals: out,
+    };
+
     memory.scans.push(result);
-    res.set("cache-control", "no-store");
+    res.set('cache-control', 'no-store');
     res.json({ data: [result] });
   } catch (e) {
-    console.error("[scan] error:", e);
+    console.error('[scan] error:', e);
     res.json({ data: [] });
   }
 });
