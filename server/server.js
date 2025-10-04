@@ -82,18 +82,25 @@ function push(arr, title, value, signal = 'neutral', reason = '') {
 }
 
 const PORT = Number.parseInt(process.env.PORT ?? "4000", 10);
-const allowedOrigin = process.env.ALLOWED_ORIGIN ?? "*";
+const ALLOW_ORIGINS = [
+  "https://stock-portfolio-khaki-nine.vercel.app",
+  "http://localhost:5173",
+];
 
 const app = express();
 
 app.use(
   cors({
-    origin:
-      allowedOrigin === '*'
-        ? '*'
-        : allowedOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      return cb(null, ALLOW_ORIGINS.includes(origin));
+    },
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: false,
   }),
 );
+app.options("*", cors());
 app.use(express.json());
 
 // ensure memory store exists once
