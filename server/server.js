@@ -146,8 +146,33 @@ app.post("/api/scanner/high-potential", (_req, res) => {
   res.json({ data: [] });
 });
 
-app.post("/api/scanner/scan", (_req, res) => {
-  res.json({ data: [] });
+app.post("/api/scanner/scan", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const q = req.query || {};
+    console.log("[scan] payload:", { body, q });
+
+    const symbol = String(body.symbol || q.symbol || "BTCUSDT").toUpperCase();
+    const timeframe = String(body.timeframe || q.timeframe || "4h");
+
+    // minimal, UI-safe payload (strings only, arrays where mapped)
+    const result = {
+      symbol,
+      timeframe,
+      overallLabel: "neutral",
+      overallScore: "0",
+      checks: [
+        { key: "RSI", value: "55.0", signal: "bullish", reason: "RSI > 50" },
+        { key: "MACD", value: "0.00", signal: "neutral", reason: "Flat MACD" },
+        { key: "Trend", value: "Mixed", signal: "neutral", reason: "MA cross pending" },
+      ],
+    };
+
+    res.json({ data: [result] });
+  } catch (e) {
+    console.error("[scan] error:", e);
+    res.json({ data: [] });
+  }
 });
 
 app.get("/api/scanner/history", (_req, res) => {
