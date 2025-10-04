@@ -16,12 +16,15 @@ import {
 } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { asArray, asString } from "@/lib/utils";
+import {
+  BreakdownSection,
+  type BreakdownRow,
+} from "@/features/analyse/Breakdown";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { toBinance } from "@/lib/symbols";
@@ -31,8 +34,6 @@ import {
   BarChart3,
   Clock3,
   DollarSign,
-  History,
-  ListChecks,
   RefreshCw,
   Search,
   Sparkles,
@@ -818,7 +819,7 @@ export default function Analyse() {
       {priceSummaryCards}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col">
           <Card className="border-border/70 bg-card/70">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
@@ -906,87 +907,66 @@ export default function Analyse() {
         </div>
 
         <div className="flex flex-col gap-6">
-          <Card className="h-[560px] border-border/70 bg-card/70">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                <ListChecks className="h-5 w-5 text-primary" />
-                Breakdown Technicals
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="h-full overflow-hidden p-0">
-              <ScrollArea className="h-full px-4 pb-4">
-                {scanResult ? (
-                  (() => {
-                    const item = scanResult;
-                    const breakdown = asArray((item as { breakdown?: unknown }).breakdown);
-                    const technicals = asArray((item as { technicals?: unknown }).technicals);
-                    const checks = asArray((item as { checks?: unknown }).checks);
-                    const rows =
-                      breakdown.length > 0
-                        ? breakdown
-                        : technicals.length > 0
-                          ? technicals
-                          : checks;
+          {scanResult ? (
+            (() => {
+              const item = scanResult;
+              const breakdown = asArray((item as { breakdown?: unknown }).breakdown);
+              const technicals = asArray((item as { technicals?: unknown }).technicals);
+              const checks = asArray((item as { checks?: unknown }).checks);
+              const rows =
+                breakdown.length > 0
+                  ? breakdown
+                  : technicals.length > 0
+                    ? technicals
+                    : checks;
 
-                    if (!rows || rows.length === 0) {
-                      return (
-                        <div className="py-12 text-center text-muted-foreground">
-                          <div className="muted">No technical checks yet.</div>
-                        </div>
-                      );
-                    }
+              const breakdownRows: BreakdownRow[] = rows
+                .map((row: any) => {
+                  const rawSignal = asString(row?.signal).toLowerCase();
+                  const normalizedSignal: BreakdownRow["signal"] =
+                    rawSignal === "bullish" || rawSignal === "bearish"
+                      ? (rawSignal as BreakdownRow["signal"])
+                      : "neutral";
 
-                    return (
-                      <div className="space-y-4 py-4">
-                        {rows.map((row: any, index: number) => (
-                          <div
-                            key={index}
-                            className="row space-y-2 rounded-lg border border-border/60 bg-card/60 p-4"
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="font-medium text-foreground">
-                                {asString(row?.title || row?.key)}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                {asString(row?.value)}
-                              </span>
-                              <span
-                                className={`tag ${asString(row?.signal).toLowerCase()} text-xs uppercase`}
-                              >
-                                {asString(row?.signal)}
-                              </span>
-                            </div>
-                            {row?.reason ? (
-                              <small className="muted block text-xs text-muted-foreground">
-                                {asString(row?.reason)}
-                              </small>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()
-                ) : (
-                  <div className="py-12 text-center text-muted-foreground">
-                    <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
-                    <h3 className="text-lg font-medium">No analysis yet</h3>
-                    <p className="mx-auto mt-1 max-w-xs text-sm">
-                      Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
-                    </p>
-                  </div>
-                )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
+                  const rawValue = row?.value;
+                  const value =
+                    typeof rawValue === "number"
+                      ? rawValue
+                      : asString(rawValue);
 
-          <Card className="border-border/70 bg-card/70">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                <History className="h-5 w-5 text-primary" />
-                Recent Scans
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+                  return {
+                    title: asString(row?.title || row?.key),
+                    value,
+                    signal: normalizedSignal,
+                    reason: row?.reason ? asString(row?.reason) : undefined,
+                  } satisfies BreakdownRow;
+                })
+                .filter((row: BreakdownRow) => row.title);
+
+              if (breakdownRows.length === 0) {
+                return <BreakdownSection rows={[]} />;
+              }
+
+              return <BreakdownSection rows={breakdownRows} />;
+            })()
+          ) : (
+            <BreakdownSection
+              rows={[]}
+              emptyState={
+                <div className="py-12 text-center text-white/70">
+                  <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
+                  <h4 className="text-lg font-medium text-white">No analysis yet</h4>
+                  <p className="mx-auto mt-1 max-w-xs text-sm">
+                    Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
+                  </p>
+                </div>
+              }
+            />
+          )}
+
+          <section className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-4 md:p-6">
+            <h3 className="text-lg font-semibold mb-4">Recent Scans</h3>
+            <div className="space-y-3">
               {!isAuthenticated ? (
                 <p className="text-sm text-muted-foreground">
                   Sign in to keep a searchable log of every analysis you run.
@@ -1046,13 +1026,13 @@ export default function Analyse() {
                         </Button>
                       </div>
                     );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  })}
+                </div>
+              )}
+            </div>
+          </section>
 
-            <Card className="border-border/70 bg-card/70">
+          <Card className="mt-6 border-border/70 bg-card/70">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-lg font-semibold">
                   <Star className="h-5 w-5 text-primary" />
