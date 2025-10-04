@@ -71,12 +71,23 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout)
 }
 
+const clearFromRemoveQueue = (toastId: string) => {
+  const timeout = toastTimeouts.get(toastId)
+  if (timeout) {
+    clearTimeout(timeout)
+    toastTimeouts.delete(toastId)
+  }
+}
+
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
       return {
         ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+        toasts: [
+          action.toast,
+          ...state.toasts.filter((toast) => toast.id !== action.toast.id),
+        ].slice(0, TOAST_LIMIT),
       }
 
     case "UPDATE_TOAST":
@@ -137,7 +148,7 @@ function dispatch(action: Action) {
   })
 }
 
-type Toast = Omit<ToasterToast, "id">
+type Toast = Partial<Omit<ToasterToast, "id">> & { id?: string }
 
 type ToastReturn = {
   id: string
@@ -145,12 +156,18 @@ type ToastReturn = {
   update: (props: ToasterToast) => void
 }
 
-type ToastFunction = ((props: Toast) => ToastReturn) & {
-  success: (title: React.ReactNode, description?: React.ReactNode) => ToastReturn
+type ToastFunction = ((props?: Toast) => ToastReturn) & {
+  dismiss: (toastId?: string) => void
+  success: (title: React.ReactNode, options?: Toast) => ToastReturn
+  error: (title: React.ReactNode, options?: Toast) => ToastReturn
+  loading: (title: React.ReactNode, options?: Toast) => ToastReturn
 }
 
-const createToast: (props: Toast) => ToastReturn = ({ ...props }) => {
-  const id = genId()
+const createToast: (props?: Toast) => ToastReturn = (props = {}) => {
+  const { id: providedId, onOpenChange, ...rest } = props
+  const id = providedId ?? genId()
+
+  clearFromRemoveQueue(id)
 
   const update = (toastProps: ToasterToast) =>
     dispatch({
@@ -162,11 +179,12 @@ const createToast: (props: Toast) => ToastReturn = ({ ...props }) => {
   dispatch({
     type: "ADD_TOAST",
     toast: {
-      ...props,
+      ...rest,
       id,
       open: true,
       onOpenChange: (open) => {
         if (!open) dismiss()
+        onOpenChange?.(open)
       },
     },
   })
@@ -179,8 +197,22 @@ const createToast: (props: Toast) => ToastReturn = ({ ...props }) => {
 }
 
 const toast = Object.assign(createToast, {
-  success: (title: React.ReactNode, description?: React.ReactNode) =>
-    createToast({ title, description }),
+  dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  success: (title: React.ReactNode, options?: Toast) =>
+    createToast({ ...options, title, variant: options?.variant ?? "default" }),
+  error: (title: React.ReactNode, options?: Toast) =>
+    createToast({
+      ...options,
+      title,
+      variant: options?.variant ?? "destructive",
+    }),
+  loading: (title: React.ReactNode, options?: Toast) =>
+    createToast({
+      ...options,
+      title,
+      duration: options?.duration ?? 15000,
+      variant: options?.variant ?? "default",
+    }),
 }) as ToastFunction
 
 function useToast(): State & {
@@ -202,7 +234,7 @@ function useToast(): State & {
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: (toastId?: string) => toast.dismiss(toastId),
   }
 }
 

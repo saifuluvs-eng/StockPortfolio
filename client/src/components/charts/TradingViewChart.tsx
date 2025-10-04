@@ -19,6 +19,21 @@ declare global {
 }
 
 const TV_SCRIPT_ID = "tradingview-widget-script";
+const LAYOUT_KEY = "tv_layout_v1";
+
+function safeGetLayout() {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LAYOUT_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== "object") return null;
+    if (obj.charts && !Array.isArray(obj.charts)) return null;
+    return obj;
+  } catch {
+    return null;
+  }
+}
 
 function loadTradingViewScriptOnce(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -76,6 +91,7 @@ export default function TradingViewChart({
         containerRef.current.innerHTML = "";
         containerRef.current.id = containerIdRef.current;
 
+        const layout = safeGetLayout();
         const cfg = buildTvConfig({
           symbol: tvSymbol,
           timeframe: tvInterval,
@@ -99,6 +115,27 @@ export default function TradingViewChart({
         });
 
         widgetRef.current = new (window as any).TradingView.widget(cfg);
+
+        widgetRef.current?.onChartReady?.(() => {
+          try {
+            if (layout) widgetRef.current?.load?.(layout);
+          } catch (e) {
+            console.warn("Ignoring invalid TradingView layout, clearing key", e);
+            try {
+              window.localStorage.removeItem(LAYOUT_KEY);
+            } catch {
+              /* ignore */
+            }
+          }
+
+          widgetRef.current?.save?.((state: any) => {
+            try {
+              window.localStorage.setItem(LAYOUT_KEY, JSON.stringify(state));
+            } catch {
+              /* ignore */
+            }
+          });
+        });
       } catch (e) {
         // Soft fail so the page doesn’t crash
         // eslint-disable-next-line no-console
