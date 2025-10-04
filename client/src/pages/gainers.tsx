@@ -45,7 +45,8 @@ async function fetchFromBinance(): Promise<SpotGainerRow[]> {
         high: Number(t.highPrice ?? 0),
         low: Number(t.lowPrice ?? 0),
       }))
-      .sort((a, b) => b.changePct - a.changePct);
+      .sort((a, b) => b.changePct - a.changePct)
+      .slice(0, 120);
   } catch {
     return [];
   }
@@ -68,7 +69,10 @@ export default function Gainers() {
     staleTime: 30_000,
   });
 
-  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const rows = useMemo(
+    () => (data?.rows ?? []).filter((r) => typeof r.symbol === "string" && r.symbol.endsWith("USDT")),
+    [data],
+  );
 
   if (isLoading) {
     return (
@@ -96,10 +100,10 @@ export default function Gainers() {
     <main className="p-4 text-zinc-200">
       <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
 
-      <div className="rounded-xl border border-zinc-800">
-        <div className="max-h-[70vh] overflow-auto">
+      <div className="rounded-xl border border-zinc-800 overflow-hidden">
+        <div className="h-[78vh] overflow-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-black/80 backdrop-blur z-10">
+            <thead className="sticky top-0 bg-black/85 backdrop-blur z-10">
               <tr className="text-zinc-300">
                 <th className="py-3 px-4 text-left whitespace-nowrap">Rank</th>
                 <th className="py-3 px-4 text-left whitespace-nowrap">Symbol</th>
@@ -116,7 +120,7 @@ export default function Gainers() {
                   <td className="py-3 px-4 whitespace-nowrap">{i + 1}</td>
                   <td className="py-3 px-4 whitespace-nowrap">{r.symbol}</td>
                   <td className="py-3 px-4 text-right whitespace-nowrap">
-                    ${r.price.toFixed(6).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "")}
+                    ${r.price.toFixed(6).replace(/\.?0+$/, "")}
                   </td>
                   <td
                     className={`py-3 px-4 text-right whitespace-nowrap ${
@@ -135,7 +139,7 @@ export default function Gainers() {
                   </td>
                   <td className="py-3 px-4 text-right whitespace-nowrap">
                     <a
-                      href={`/analyse?symbol=${encodeURIComponent(r.symbol)}`}
+                      href={`/#/analyse/${r.symbol}`}
                       className="inline-block rounded-lg px-3 py-1 border border-zinc-700 hover:bg-zinc-900"
                     >
                       Analyse
