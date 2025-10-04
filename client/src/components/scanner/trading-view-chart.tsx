@@ -1,5 +1,8 @@
 // client/src/components/scanner/trading-view-chart.tsx
 import { useEffect, useRef, useState } from "react";
+
+import { buildTvConfig } from "@/lib/tradingview";
+
 import { FallbackChart } from "./fallback-chart";
 
 interface TradingViewChartProps {
@@ -19,7 +22,7 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
   const idRef = useRef<string>(`tradingview-${Math.random().toString(36).slice(2)}`);
   const [useFallback, setUseFallback] = useState(false);
   const normalizedSymbol = (symbol || "").toString().trim().toUpperCase() || "BTCUSDT";
-  const normalizedInterval = (interval || "240").toString();
+  const normalizedInterval = (interval || "4h").toString();
 
   useEffect(() => {
     setUseFallback(false);
@@ -32,16 +35,18 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
       containerRef.current.innerHTML = "";
 
       try {
-        new window.TradingView.widget({
-          autosize: true,
+        const cfg = buildTvConfig({
           symbol: `BINANCE:${normalizedSymbol}`,
-          interval: normalizedInterval,
-          timezone: "Etc/UTC",
+          timeframe: normalizedInterval,
+          containerId: idRef.current,
           theme: "dark",
-          style: "1",
           locale: "en",
+        });
+
+        Object.assign(cfg, {
+          timezone: "Etc/UTC",
+          style: "1",
           allow_symbol_change: true,
-          container_id: idRef.current,
           hide_top_toolbar: false,
           hide_legend: false,
           save_image: false,
@@ -53,6 +58,8 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
             "MACD@tv-basicstudies",
           ],
         });
+
+        new (window as any).TradingView.widget(cfg);
       } catch (e) {
         console.warn("TradingView widget init failed, using fallback chart", e);
         setUseFallback(true);
