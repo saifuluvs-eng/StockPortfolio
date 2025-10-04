@@ -139,13 +139,23 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
-function toast({ ...props }: Toast) {
+type ToastReturn = {
+  id: string
+  dismiss: () => void
+  update: (props: ToasterToast) => void
+}
+
+type ToastFunction = ((props: Toast) => ToastReturn) & {
+  success: (title: React.ReactNode, description?: React.ReactNode) => ToastReturn
+}
+
+const createToast: (props: Toast) => ToastReturn = ({ ...props }) => {
   const id = genId()
 
-  const update = (props: ToasterToast) =>
+  const update = (toastProps: ToasterToast) =>
     dispatch({
       type: "UPDATE_TOAST",
-      toast: { ...props, id },
+      toast: { ...toastProps, id },
     })
   const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
 
@@ -162,13 +172,21 @@ function toast({ ...props }: Toast) {
   })
 
   return {
-    id: id,
+    id,
     dismiss,
     update,
   }
 }
 
-function useToast() {
+const toast = Object.assign(createToast, {
+  success: (title: React.ReactNode, description?: React.ReactNode) =>
+    createToast({ title, description }),
+}) as ToastFunction
+
+function useToast(): State & {
+  toast: ToastFunction
+  dismiss: (toastId?: string) => void
+} {
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
