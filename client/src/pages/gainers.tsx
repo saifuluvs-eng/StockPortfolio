@@ -44,23 +44,23 @@ export default function Gainers() {
     staleTime: 30_000,
   });
 
+  const safeRows = useMemo<SpotGainerRow[]>(() => {
+    return Array.isArray(data?.rows) ? data.rows : [];
+  }, [data]);
+
   const cleaned = useMemo(() => {
-    return (data?.rows ?? []).filter((r: any): r is SpotGainerRow => {
+    return safeRows.filter((r: any): r is SpotGainerRow => {
       return (
         r &&
         typeof r.symbol === "string" &&
-        /USDT$/.test(r.symbol) &&
+        r.symbol.endsWith("USDT") &&
         Number.isFinite(r.price) &&
         r.price > 0 &&
         Number.isFinite(r.volume) &&
-        r.volume > 0 &&
-        Number.isFinite(r.high) &&
-        r.high > 0 &&
-        Number.isFinite(r.low) &&
-        r.low > 0
+        r.volume > 0
       );
     });
-  }, [data]);
+  }, [safeRows]);
 
   if (isLoading) {
     return (

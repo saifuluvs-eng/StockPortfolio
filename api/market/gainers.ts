@@ -1,64 +1,88 @@
 import type { VercelRequest, VercelResponse } from "vercel";
 
 const BINANCE = "https://api.binance.com";
-
-// Exclude leveraged/ETF/fan tokens by symbol pattern
+// Exclude leveraged tokens / ETFs
 const EXCLUDE_REGEX = /(UP|DOWN|BULL|BEAR|\d+L|\d+S)USDT$/;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    // 1) Build an allowlist of SPOT USDT symbols that are actively TRADING
-    const exInfo = await fetch(`${BINANCE}/api/v3/exchangeInfo`).then((r) => r.json());
+    // --- A) SPOT allowlist (authoritative) ---
+    // Use permissions=SPOT to avoid symbols with no spot trading.
+    const exInfoRes = await fetch(`${BINANCE}/api/v3/exchangeInfo?permissions=SPOT`);
+    if (!exInfoRes.ok) {
+      throw new Error(`exchangeInfo failed: ${exInfoRes.status}`);
+    }
 
-    const spotUSDT = new Set<string>();
-    for (const s of exInfo?.symbols ?? []) {
-      const isSpot = s.permissions?.includes?.("SPOT") || s.isSpotTradingAllowed === true;
-      if (
-        isSpot &&
-        s.status === "TRADING" &&
-        s.quoteAsset === "USDT" &&
-        !EXCLUDE_REGEX.test(s.symbol)
-      ) {
-        spotUSDT.add(s.symbol);
+    const exInfo = await exInfoRes.json();
+
+    if (!exInfo || !Array.isArray(exInfo.symbols)) {
+      throw new Error("exchangeInfo malformed");
+    }
+
+    const allowUSDT = new Set<string>();
+    for (const s of exInfo.symbols) {
+      const isTrading = s.status === "TRADING";
+      const isUSDT = s.quoteAsset === "USDT";
+      if (isTrading && isUSDT && !EXCLUDE_REGEX.test(s.symbol)) {
+        allowUSDT.add(s.symbol);
       }
     }
 
-    // 2) Pull 24h stats (spot endpoint)
-    const stats: any[] = await fetch(`${BINANCE}/api/v3/ticker/24hr`).then((r) => r.json());
+    // --- B) 24h stats (must be array) ---
+    const statsRes = await fetch(`${BINANCE}/api/v3/ticker/24hr`);
+    if (!statsRes.ok) {
+      throw new Error(`ticker/24hr failed: ${statsRes.status}`);
+    }
 
-    // 3) Join using the allowlist AND drop dead/zero rows
-    const rows = stats
-      .filter((t) => {
-        const price = Number(t.lastPrice);
-        const vol = Number(t.quoteVolume);
-        const high = Number(t.highPrice);
-        const low = Number(t.lowPrice);
-        return (
-          spotUSDT.has(t.symbol) &&
-          Number.isFinite(price) &&
-          price > 0 &&
-          Number.isFinite(vol) &&
-          vol > 0 &&
-          Number.isFinite(high) &&
-          high > 0 &&
-          Number.isFinite(low) &&
-          low > 0
-        );
-      })
-      .map((t) => ({
-        symbol: t.symbol,
-        price: Number(t.lastPrice),
-        changePct: Number(t.priceChangePercent),
-        volume: Number(t.quoteVolume),
-        high: Number(t.highPrice),
-        low: Number(t.lowPrice),
-      }))
+    const stats = await statsRes.json();
+    if (!Array.isArray(stats)) {
+      // Rate limit or error object – surface a controlled error
+      throw new Error(`ticker/24hr not array: ${JSON.stringify(stats).slice(0, 120)}`);
+    }
+
+    // --- C) Join, parse safely, drop dead rows ---
+    const rowsRaw = stats
+      .filter((t: any) => allowUSDT.has(t.symbol))
+      .map((t: any) => {
+        const num = (v: any) => {
+          const n = Number(v);
+          return Number.isFinite(n) ? n : 0;
+        };
+        return {
+          symbol: t.symbol,
+          price: num(t.lastPrice),
+          changePct: num(t.priceChangePercent),
+          volume: num(t.quoteVolume), // USDT volume
+          high: num(t.highPrice),
+          low: num(t.lowPrice),
+        };
+      });
+
+    // Primary filter: real trading activity
+    let rows = rowsRaw.filter((r) => r.price > 0 && r.volume > 0);
+
+    // Fallback (in case of partial Binance hiccups): keep price>0 only
+    if (rows.length === 0 && rowsRaw.length > 0) {
+      rows = rowsRaw.filter((r) => r.price > 0);
+    }
+
+    rows = rows
       .sort((a, b) => b.changePct - a.changePct)
-      .slice(0, 120);
+      .slice(0, 120); // cap to 100–150; using 120
 
+    // Short CDN cache so we don’t hammer Binance
+    res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=60");
     res.status(200).json({ rows });
-  } catch (err) {
-    console.error("gainers spot error:", err);
-    res.status(500).json({ error: "Failed to load gainers" });
+
+    // Debug counters (visible in logs)
+    console.log("gainers counts:", {
+      allowUSDT: allowUSDT.size,
+      stats: stats.length,
+      rowsRaw: rowsRaw.length,
+      rows: rows.length,
+    });
+  } catch (err: any) {
+    console.error("gainers spot error:", err?.message || err);
+    res.status(200).json({ rows: [] }); // return empty payload (client handles “No data”)
   }
 }
