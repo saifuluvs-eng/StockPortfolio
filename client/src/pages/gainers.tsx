@@ -1,320 +1,152 @@
-// client/src/pages/gainers.tsx
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import { RefreshCw, TrendingUp, Trophy, Medal, BarChart3 } from "lucide-react";
+
 import { api } from "@/lib/api";
 
-type GainerData = {
+interface SpotGainerRow {
   symbol: string;
-  price: string;
-  priceChange: string;
-  priceChangePercent: string;
-  highPrice: string;
-  lowPrice: string;
-  volume: string;
-  quoteVolume: string;
-};
-
-function safeNum(n: unknown, fallback = 0): number {
-  const v = typeof n === "number" ? n : Number(n);
-  return Number.isFinite(v) ? v : fallback;
+  price: number;
+  changePct: number;
+  volume: number;
+  high: number;
+  low: number;
 }
 
-async function fetchFromAppAPI(limit: number, isAuthenticated: boolean): Promise<GainerData[] | null> {
-  const url = isAuthenticated ? "/api/market/gainers" : `/api/market/gainers?limit=${limit}`;
+type SpotGainerResponse = {
+  rows: SpotGainerRow[];
+};
+
+async function fetchFromAppAPI(): Promise<SpotGainerRow[] | null> {
   try {
-    const res = await api(url);
-    if (!res.ok) return null; // trigger fallback
-    const data = await res.json();
-    return Array.isArray(data) ? (data as GainerData[]) : null;
+    const res = await api("/api/market/gainers");
+    if (!res.ok) return null;
+    const data: unknown = await res.json();
+    if (typeof data === "object" && data !== null && Array.isArray((data as SpotGainerResponse).rows)) {
+      return (data as SpotGainerResponse).rows;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-async function fetchFromBinance(limit: number): Promise<GainerData[]> {
-  // Binance 24hr tickers for all symbols
-  const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
-  if (!res.ok) return [];
-  const raw = (await res.json()) as any[];
-
-  const usdt = raw.filter((r) => typeof r?.symbol === "string" && r.symbol.endsWith("USDT"));
-  usdt.sort((a, b) => safeNum(b.priceChangePercent) - safeNum(a.priceChangePercent));
-
-  const top = usdt.slice(0, limit).map((r) => ({
-    symbol: String(r.symbol),
-    price: String(r.lastPrice ?? r.weightedAvgPrice ?? "0"),
-    priceChange: String(r.priceChange ?? "0"),
-    priceChangePercent: String(r.priceChangePercent ?? "0"),
-    highPrice: String(r.highPrice ?? "0"),
-    lowPrice: String(r.lowPrice ?? "0"),
-    volume: String(r.volume ?? "0"),
-    quoteVolume: String(r.quoteVolume ?? "0"),
-  })) as GainerData[];
-
-  return top;
+async function fetchFromBinance(): Promise<SpotGainerRow[]> {
+  try {
+    const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+    if (!res.ok) return [];
+    const stats = (await res.json()) as any[];
+    return stats
+      .filter((t) => typeof t?.symbol === "string" && t.symbol.endsWith("USDT"))
+      .map((t) => ({
+        symbol: String(t.symbol),
+        price: Number(t.lastPrice ?? 0),
+        changePct: Number(t.priceChangePercent ?? 0),
+        volume: Number(t.quoteVolume ?? 0),
+        high: Number(t.highPrice ?? 0),
+        low: Number(t.lowPrice ?? 0),
+      }))
+      .sort((a, b) => b.changePct - a.changePct);
+  } catch {
+    return [];
+  }
 }
 
+const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
+
 export default function Gainers() {
-  const { toast } = useToast();
-  const { isAuthenticated, isLoading, signInWithGoogle } = useAuth();
-
-  const limit = isAuthenticated ? 50 : 5;
-
-  const {
-    data: gainers = [],
-    isLoading: gainersLoading,
-    refetch,
-  } = useQuery<GainerData[]>({
-    queryKey: ["gainers", { limit, authed: isAuthenticated }],
-    enabled: !isLoading,
-    refetchInterval: isAuthenticated ? 30_000 : false,
-    retry: false,
+  const { data, isLoading } = useQuery<SpotGainerResponse>({
+    queryKey: ["gainers", "spot-usdt"],
     queryFn: async () => {
-      // 1) Try your API
-      const appData = await fetchFromAppAPI(limit, isAuthenticated);
-      if (appData && appData.length) return appData;
+      const appRows = await fetchFromAppAPI();
+      if (appRows && appRows.length) {
+        return { rows: appRows };
+      }
 
-      // 2) Fallback to Binance (prevents UI 404s)
-      const binanceData = await fetchFromBinance(limit);
-      return binanceData;
+      const fallback = await fetchFromBinance();
+      return { rows: fallback };
     },
+    staleTime: 30_000,
   });
 
-  const handleRefresh = () => {
-    refetch();
-    toast({ title: "Refreshed", description: "Market data updated successfully" });
-  };
+  const rows = useMemo(() => data?.rows ?? [], [data]);
 
-  const formatMarketCap = (volume: string) => {
-    const vol = safeNum(volume);
-    if (vol >= 1e9) return `$${(vol / 1e9).toFixed(1)}B`;
-    if (vol >= 1e6) return `$${(vol / 1e6).toFixed(1)}M`;
-    if (vol >= 1e3) return `$${(vol / 1e3).toFixed(1)}K`;
-    return `$${vol.toFixed(0)}`;
-  };
+  if (isLoading) {
+    return (
+      <main className="p-4 text-zinc-200">
+        <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
+        <div className="rounded-xl border border-zinc-800">
+          <div className="py-10 text-center text-zinc-400">Loading gainers...</div>
+        </div>
+      </main>
+    );
+  }
 
-  const getAnalysisLevel = (changePercent: number) => {
-    if (changePercent >= 20) return { label: "Strong", class: "bg-accent/20 text-accent" };
-    if (changePercent >= 10) return { label: "Good", class: "bg-primary/20 text-primary" };
-    if (changePercent >= 5) return { label: "Fair", class: "bg-secondary/20 text-secondary" };
-    return { label: "Weak", class: "bg-muted/20 text-muted-foreground" };
-  };
-
-  const topThree = useMemo(() => gainers.slice(0, 3), [gainers]);
+  if (!rows.length) {
+    return (
+      <main className="p-4 text-zinc-200">
+        <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
+        <div className="rounded-xl border border-zinc-800">
+          <div className="py-10 text-center text-zinc-400">No gainers data available.</div>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <div className="flex-1 overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Top Gainers</h1>
-            <p className="text-muted-foreground">Top performing USDT pairs in the last 24 hours</p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-sm text-muted-foreground">
-              Last updated:{" "}
-              <span className="text-foreground font-medium" data-testid="text-last-updated">
-                {new Date().toLocaleTimeString()}
-              </span>
-            </div>
-            <Button
-              onClick={handleRefresh}
-              disabled={gainersLoading}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              data-testid="button-refresh-gainers"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${gainersLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </div>
-        </div>
+    <main className="p-4 text-zinc-200">
+      <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
 
-        {/* Top Gainers Grid */}
-        {topThree.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {topThree.map((gainer, index) => {
-              const baseAsset = gainer.symbol.replace("USDT", "");
-              const changePercent = safeNum(gainer.priceChangePercent);
-              const gradientClass =
-                index === 0
-                  ? "from-accent/20 to-accent/5 border-accent/30"
-                  : index === 1
-                  ? "from-primary/20 to-primary/5 border-primary/30"
-                  : "from-secondary/20 to-secondary/5 border-secondary/30";
-
-              return (
-                <Card key={gainer.symbol} className={`bg-gradient-to-br ${gradientClass}`} data-testid={`card-top-gainer-${index}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            index === 0 ? "bg-accent" : index === 1 ? "bg-primary" : "bg-secondary"
-                          }`}
-                        >
-                          <span className="text-sm font-bold text-background">{baseAsset.slice(0, 4)}</span>
-                        </div>
-                        <div>
-                          <p className="font-bold text-foreground">{gainer.symbol}</p>
-                          <p className="text-sm text-muted-foreground">{baseAsset}</p>
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">#{index + 1}</p>
-                        <div className="w-6 h-6 bg-accent rounded-full flex items-center justify-center">
-                          {index === 0 ? (
-                            <Trophy className="w-3 h-3 text-accent-foreground" />
-                          ) : (
-                            <Medal className="w-3 h-3 text-muted-foreground" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Price:</span>
-                        <span className="font-bold text-foreground" data-testid={`text-featured-price-${index}`}>
-                          ${safeNum(gainer.price).toFixed(4)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">24h Change:</span>
-                        <span className="font-bold text-accent" data-testid={`text-featured-change-${index}`}>
-                          {changePercent >= 0 ? "+" : ""}
-                          {changePercent.toFixed(2)}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Volume:</span>
-                        <span className="font-medium text-foreground">{formatMarketCap(gainer.quoteVolume)}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Full Gainers Table */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle>All Top Gainers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {gainersLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-muted-foreground">Loading market data...</div>
-              </div>
-            ) : gainers.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">No market data available</p>
-                <Button onClick={handleRefresh} data-testid="button-reload-data">
-                  Reload Data
-                </Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-4 text-muted-foreground font-medium">Rank</th>
-                      <th className="text-left p-4 text-muted-foreground font-medium">Symbol</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">Price</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">24h Change</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">Volume</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">High/Low</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">Quick Analysis</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {gainers.map((gainer, index) => {
-                      const baseAsset = gainer.symbol.replace("USDT", "");
-                      const changePercent = safeNum(gainer.priceChangePercent);
-                      const analysis = getAnalysisLevel(changePercent);
-                      const rankColor =
-                        index < 3 ? "bg-accent/20 text-accent" : index < 10 ? "bg-primary/20 text-primary" : "bg-muted/20 text-muted-foreground";
-
-                      return (
-                        <tr
-                          key={gainer.symbol}
-                          className="border-b border-border hover:bg-muted/20 transition-colors"
-                          data-testid={`row-gainer-${index}`}
-                        >
-                          <td className="p-4">
-                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${rankColor}`}>
-                              {index + 1}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
-                                <span className="text-xs font-bold text-accent-foreground">{baseAsset.slice(0, 3)}</span>
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">{gainer.symbol}</p>
-                                <p className="text-sm text-muted-foreground">{baseAsset}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4 text-right text-foreground font-medium" data-testid={`text-price-${index}`}>
-                            ${safeNum(gainer.price).toFixed(4)}
-                          </td>
-                          <td className="p-4 text-right">
-                            <div className="flex items-center justify-end space-x-2">
-                              <TrendingUp className="w-3 h-3 text-accent" />
-                              <span className="text-accent font-bold" data-testid={`text-change-${index}`}>
-                                {changePercent >= 0 ? "+" : ""}
-                                {changePercent.toFixed(2)}%
-                              </span>
-                            </div>
-                          </td>
-                          <td className="p-4 text-right text-foreground">{formatMarketCap(gainer.quoteVolume)}</td>
-                          <td className="p-4 text-right text-foreground text-sm">
-                            <div>
-                              <div>H: ${safeNum(gainer.highPrice).toFixed(4)}</div>
-                              <div>L: ${safeNum(gainer.lowPrice).toFixed(4)}</div>
-                            </div>
-                          </td>
-                          <td className="p-4 text-right">
-                            <div className="flex items-center justify-end space-x-2">
-                              <Badge className={analysis.class} data-testid={`badge-analysis-${index}`}>
-                                {analysis.label}
-                              </Badge>
-                              <Button size="sm" variant="ghost" className="text-primary hover:text-primary/80" data-testid={`button-view-analysis-${index}`}>
-                                <BarChart3 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {!isAuthenticated && (
-                  <div className="text-center py-4">
-                    <Button
-                      onClick={() => {
-                        signInWithGoogle().catch((error) => {
-                          console.error("Failed to sign in", error);
-                        });
-                      }}
+      <div className="rounded-xl border border-zinc-800">
+        <div className="max-h-[70vh] overflow-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-black/80 backdrop-blur z-10">
+              <tr className="text-zinc-300">
+                <th className="py-3 px-4 text-left whitespace-nowrap">Rank</th>
+                <th className="py-3 px-4 text-left whitespace-nowrap">Symbol</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">Price</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">24h Change</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">Volume</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">High/Low</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">Quick Analysis</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={r.symbol} className="border-t border-zinc-900">
+                  <td className="py-3 px-4 whitespace-nowrap">{i + 1}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">{r.symbol}</td>
+                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                    ${r.price.toFixed(6).replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "")}
+                  </td>
+                  <td
+                    className={`py-3 px-4 text-right whitespace-nowrap ${
+                      r.changePct >= 0 ? "text-green-500" : "text-red-500"
+                    }`}
+                  >
+                    {r.changePct >= 0 ? "+" : ""}
+                    {r.changePct.toFixed(2)}%
+                  </td>
+                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                    ${numberFormatter.format(r.volume)}
+                  </td>
+                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                    H: ${r.high.toFixed(4)}
+                    <br />L: ${r.low.toFixed(4)}
+                  </td>
+                  <td className="py-3 px-4 text-right whitespace-nowrap">
+                    <a
+                      href={`/analyse?symbol=${encodeURIComponent(r.symbol)}`}
+                      className="inline-block rounded-lg px-3 py-1 border border-zinc-700 hover:bg-zinc-900"
                     >
-                      Login to see full list
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      Analyse
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
