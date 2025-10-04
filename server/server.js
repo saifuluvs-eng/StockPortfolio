@@ -23,7 +23,8 @@ app.use(
 app.use(express.json());
 
 // Simple in-memory store for demo purposes; persists only for the process lifetime
-const memory = { portfolio: [] };
+const memory = globalThis.__MEM__ ?? { portfolio: [], scans: [] };
+globalThis.__MEM__ = memory;
 
 app.get("/", (_req, res) => {
   res.json({ message: "Stock Portfolio backend is running" });
@@ -136,27 +137,15 @@ app.get("/api/watchlist", (_req, res) => {
 
 app.post("/api/watchlist", (req, res) => res.json({ data: [] }));
 
-app.get("/api/scanner/high-potential", (_req, res) => {
-  // Expected shape: { data: [{ symbol: string; score: number; reason: string }] }
-  res.json({ data: [] });
-});
-
-app.post("/api/scanner/high-potential", (_req, res) => {
-  // Expected shape: { data: [{ symbol: string; score: number; reason: string }] }
-  res.json({ data: [] });
-});
-
 app.post("/api/scanner/scan", async (req, res) => {
   try {
     const body = req.body || {};
-    const q = req.query || {};
-    console.log("[scan] payload:", { body, q });
+    const symbol = String(body.symbol || "BTCUSDT").toUpperCase();
+    const timeframe = String(body.timeframe || "4h");
 
-    const symbol = String(body.symbol || q.symbol || "BTCUSDT").toUpperCase();
-    const timeframe = String(body.timeframe || q.timeframe || "4h");
-
-    // minimal, UI-safe payload (strings only, arrays where mapped)
     const result = {
+      id: randomUUID(),
+      ts: Date.now(),
       symbol,
       timeframe,
       overallLabel: "neutral",
@@ -168,6 +157,8 @@ app.post("/api/scanner/scan", async (req, res) => {
       ],
     };
 
+    memory.scans.push(result);
+    res.set("cache-control", "no-store");
     res.json({ data: [result] });
   } catch (e) {
     console.error("[scan] error:", e);
@@ -175,14 +166,24 @@ app.post("/api/scanner/scan", async (req, res) => {
   }
 });
 
+// history should return the latest scans (newest first)
 app.get("/api/scanner/history", (_req, res) => {
-  // Expected shape: { data: [{ date: string; symbol: string; score: number }] }
-  res.json({ data: [] });
+  res.set("cache-control", "no-store");
+  res.json({ data: [...memory.scans].reverse() });
+});
+app.post("/api/scanner/history", (_req, res) => {
+  res.set("cache-control", "no-store");
+  res.json({ data: [...memory.scans].reverse() });
 });
 
-app.post("/api/scanner/history", (_req, res) => {
-  // Expected shape: { data: [{ date: string; symbol: string; score: number }] }
-  res.json({ data: [] });
+// high-potential can surface the last few scans for now
+app.get("/api/scanner/high-potential", (_req, res) => {
+  res.set("cache-control", "no-store");
+  res.json({ data: memory.scans.slice(-5).reverse() });
+});
+app.post("/api/scanner/high-potential", (_req, res) => {
+  res.set("cache-control", "no-store");
+  res.json({ data: memory.scans.slice(-5).reverse() });
 });
 
 app.get("/api/ai/market-overview", (_req, res) => {
