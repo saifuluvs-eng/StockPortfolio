@@ -186,6 +186,8 @@ export default function Analyse() {
     return base || "BTC";
   });
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
+  const lastRequestIdRef = useRef<string | null>(null);
+  const previousSymbolRef = useRef<string>(initialSymbol);
 
   useEffect(() => {
     const nextSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
@@ -258,7 +260,11 @@ export default function Analyse() {
   const isPositive = priceChange > 0;
   const loadingMessage = showLoadingState ? "Loading..." : "...";
 
-  const scanMutation = useMutation({
+  const scanMutation = useMutation<
+    ScanResult,
+    unknown,
+    { requestId: string }
+  >({
     mutationFn: async () => {
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
       const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
@@ -272,12 +278,20 @@ export default function Analyse() {
       );
       return (await res.json()) as ScanResult;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      if (!variables || lastRequestIdRef.current !== variables.requestId) {
+        return;
+      }
       setScanResult(data);
-      toast({
-        title: "Analysis complete",
-        description: `Technical breakdown ready for ${displayPair(data.symbol)}`,
-      });
+      const symbolFromResponse = (() => {
+        const maybeArray = (data as unknown as { data?: Array<{ symbol?: string }> })?.data;
+        if (Array.isArray(maybeArray) && maybeArray[0]?.symbol) {
+          return maybeArray[0].symbol;
+        }
+        return data?.symbol;
+      })();
+      const resolvedSymbol = symbolFromResponse ?? selectedSymbol ?? "—";
+      toast.success(`${resolvedSymbol} analysed`);
       queryClient.invalidateQueries({ queryKey: ["scan-history"] });
       queryClient.invalidateQueries({ queryKey: ["high-potential"] });
     },
@@ -307,27 +321,37 @@ export default function Analyse() {
   }, [scanResult]);
 
   useEffect(() => {
-    if (!networkEnabled) return undefined;
+    if (previousSymbolRef.current !== selectedSymbol) {
+      if (!scanMutation.isPending) {
+        hasScannedRef.current = false;
+      }
+      previousSymbolRef.current = selectedSymbol;
+    }
+  }, [selectedSymbol, scanMutation.isPending]);
+
+  useEffect(() => {
+    if (!networkEnabled) return;
     if (
       isAuthenticated &&
+      shouldAutoScan &&
       !scanMutation.isPending &&
       !hasScannedRef.current &&
-      ((selectedSymbol === DEFAULT_SYMBOL && !scanResult) || shouldAutoScan)
+      selectedSymbol
     ) {
-      const timer = setTimeout(() => {
-        scanMutation.mutate();
-        hasScannedRef.current = true;
-      }, 250);
-      return () => clearTimeout(timer);
+      const requestId = crypto.randomUUID();
+      lastRequestIdRef.current = requestId;
+      scanMutation.mutate({ requestId });
+      hasScannedRef.current = true;
     }
-    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, selectedSymbol, networkEnabled]);
+  }, [isAuthenticated, networkEnabled, shouldAutoScan, selectedSymbol, scanMutation.isPending]);
 
   useEffect(() => {
     if (!networkEnabled) return;
     if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
-      scanMutation.mutate();
+      const requestId = crypto.randomUUID();
+      lastRequestIdRef.current = requestId;
+      scanMutation.mutate({ requestId });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTimeframe, isAuthenticated, networkEnabled]);
@@ -519,6 +543,8 @@ export default function Analyse() {
     }
     const fullSymbol = toUsdtSymbol(raw);
     setSelectedSymbol(fullSymbol);
+    setScanResult(null);
+    hasScannedRef.current = false;
     setSearchInput("");
     toast({
       title: "Symbol updated",
@@ -558,7 +584,11 @@ export default function Analyse() {
         title: "Symbol updated",
         description: `Analyzing ${displayPair(fullSymbol)}`,
       });
-      setTimeout(() => scanMutation.mutate(), 100);
+      setTimeout(() => {
+        const requestId = crypto.randomUUID();
+        lastRequestIdRef.current = requestId;
+        scanMutation.mutate({ requestId });
+      }, 100);
       return;
     }
     if (!selectedSymbol) {
@@ -569,7 +599,9 @@ export default function Analyse() {
       });
       return;
     }
-    scanMutation.mutate();
+    const requestId = crypto.randomUUID();
+    lastRequestIdRef.current = requestId;
+    scanMutation.mutate({ requestId });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -835,6 +867,7 @@ export default function Analyse() {
                         setSelectedSymbol(item.symbol);
                         setSelectedTimeframe(timeframeConfig?.value ?? DEFAULT_TIMEFRAME);
                         setScanResult(null);
+                        hasScannedRef.current = false;
                         setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
                         toast({
                           title: "Symbol loaded",
@@ -998,6 +1031,7 @@ export default function Analyse() {
                         onClick={() => {
                           setSelectedSymbol(item.symbol);
                           setScanResult(null);
+                          hasScannedRef.current = false;
                           setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
                           toast({
                             title: "Symbol loaded",
