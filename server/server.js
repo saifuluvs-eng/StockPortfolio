@@ -37,36 +37,46 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-const marketTickerHandler = async (req, res) => {
-  const symbol = req.params.symbol?.toUpperCase();
+function safeTicker(symbol, lastPrice = "0") {
+  return {
+    symbol,
+    lastPrice,
+    priceChangePercent: "0",
+    highPrice: null,
+    lowPrice: null,
+    volume: null,
+  };
+}
 
-  if (!symbol) {
-    res.status(400).json({ error: "invalid_symbol" });
-    return;
-  }
-
-  const url = `https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;
-
+async function handleTicker(req, res) {
+  const symbol = String(req.params.symbol || "").toUpperCase();
   try {
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      res.status(502).json({ error: "upstream_error", status: response.status });
-      return;
+    // 1) main: 24hr
+    let r = await fetch(
+      `https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`,
+    );
+    if (r.ok) {
+      const d = await r.json();
+      res.set("cache-control", "no-store");
+      return res.json(d);
     }
+    // 2) fallback: price
+    r = await fetch(
+      `https://api.binance.com/api/v3/ticker/price?symbol=${encodeURIComponent(symbol)}`,
+    );
+    if (r.ok) {
+      const p = await r.json();
+      res.set("cache-control", "no-store");
+      return res.json(safeTicker(p.symbol, p.price));
+    }
+  } catch (_) {}
+  // 3) last resort: synthetic safe payload
+  res.set("cache-control", "no-store");
+  return res.json(safeTicker(symbol));
+}
 
-    const data = await response.json();
-    res.json(data);
-  } catch (error) {
-    res.status(500).json({
-      error: "ticker_error",
-      details: error instanceof Error ? error.message : String(error),
-    });
-  }
-};
-
-app.get("/market/ticker/:symbol", marketTickerHandler);
-app.get("/api/market/ticker/:symbol", marketTickerHandler);
+app.get("/api/market/ticker/:symbol", handleTicker);
+app.get("/market/ticker/:symbol", handleTicker);
 
 app.get("/api/time", (_req, res) => {
   res.json({ now: new Date().toISOString() });
