@@ -18,6 +18,8 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
   // Stable id for the widget’s container (prevents widget from “losing” its node between renders)
   const idRef = useRef<string>(`tradingview-${Math.random().toString(36).slice(2)}`);
   const [useFallback, setUseFallback] = useState(false);
+  const normalizedSymbol = (symbol || "").toString().trim().toUpperCase() || "BTCUSDT";
+  const normalizedInterval = (interval || "240").toString();
 
   useEffect(() => {
     setUseFallback(false);
@@ -32,8 +34,8 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
       try {
         new window.TradingView.widget({
           autosize: true,
-          symbol: `BINANCE:${symbol}`,
-          interval: interval || "240",
+          symbol: `BINANCE:${normalizedSymbol}`,
+          interval: normalizedInterval,
           timezone: "Etc/UTC",
           theme: "dark",
           style: "1",
@@ -79,10 +81,10 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
         containerRef.current.innerHTML = "";
       }
     };
-  }, [symbol, interval]);
+  }, [normalizedSymbol, normalizedInterval]);
 
   if (useFallback) {
-    return <FallbackChart symbol={symbol} interval={interval || "240"} />;
+    return <FallbackChart symbol={normalizedSymbol} interval={normalizedInterval} />;
   }
 
   return (

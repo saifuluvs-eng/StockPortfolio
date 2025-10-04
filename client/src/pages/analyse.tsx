@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import TradingViewChart from "@/components/scanner/trading-view-chart";
-import TechnicalIndicators from "@/components/scanner/technical-indicators";
 import {
   Card,
   CardContent,
@@ -73,6 +72,16 @@ interface ScanResult {
   totalScore: number;
   recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
   meta?: Record<string, unknown> | null;
+}
+
+interface ScannerAnalysis {
+  symbol?: string;
+  totalScore?: number;
+  recommendation?: string;
+  breakdown?: unknown;
+  technicals?: unknown;
+  checks?: unknown;
+  [key: string]: unknown;
 }
 
 interface WatchlistItem {
@@ -172,7 +181,6 @@ export default function Analyse() {
   );
 
   const querySymbol = urlParams.get("symbol");
-  const shouldAutoScan = urlParams.get("scan") === "true";
   const queryTimeframe = urlParams.get("tf");
 
   const initialSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
@@ -185,9 +193,12 @@ export default function Analyse() {
     const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
     return base || "BTC";
   });
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const lastRequestIdRef = useRef<string | null>(null);
+  const [scanResult, setScanResult] = useState<ScannerAnalysis | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const lastRequestIdRef = useRef<string>("");
   const previousSymbolRef = useRef<string>(initialSymbol);
+  const isFirstRenderRef = useRef(true);
+  const initialExplicitSymbolRef = useRef(Boolean(params?.symbol || querySymbol));
 
   useEffect(() => {
     const nextSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
@@ -259,102 +270,101 @@ export default function Analyse() {
   const priceChange = showLoadingState ? 0 : parseFloat(latestPrice?.priceChangePercent || "0");
   const isPositive = priceChange > 0;
   const loadingMessage = showLoadingState ? "Loading..." : "...";
+  const computedTotalScore = Number(scanResult?.totalScore ?? 0);
+  const safeTotalScore = Number.isFinite(computedTotalScore) ? computedTotalScore : 0;
+  const rawRecommendation = asString(scanResult?.recommendation || "hold");
+  const safeRecommendation = rawRecommendation.toLowerCase();
+  const recommendationLabel = rawRecommendation.replace(/_/g, " ").toUpperCase();
 
-  const scanMutation = useMutation<
-    ScanResult,
-    unknown,
-    { requestId: string }
-  >({
-    mutationFn: async () => {
-      const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
-      const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
-      const res = await apiRequest(
-        "POST",
-        `${API_BASE || ""}/api/scanner/scan`,
-        {
-          symbol: selectedSymbol,
-          timeframe: backendTimeframe,
-        },
-      );
-      return (await res.json()) as ScanResult;
-    },
-    onSuccess: (data, variables) => {
-      if (!variables || lastRequestIdRef.current !== variables.requestId) {
-        return;
-      }
-      setScanResult(data);
-      const symbolFromResponse = (() => {
-        const maybeArray = (data as unknown as { data?: Array<{ symbol?: string }> })?.data;
-        if (Array.isArray(maybeArray) && maybeArray[0]?.symbol) {
-          return maybeArray[0].symbol;
+  const runScan = useCallback(
+    async (symbol: string, timeframe: string) => {
+      const rid = crypto.randomUUID();
+      lastRequestIdRef.current = rid;
+      setIsScanning(true);
+      setScanResult(null);
+
+      const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === timeframe);
+      const backendTimeframe = timeframeConfig?.backend || timeframe;
+
+      try {
+        const res = await apiRequest(
+          "POST",
+          `${API_BASE || ""}/api/scanner/scan`,
+          {
+            symbol,
+            timeframe: backendTimeframe,
+          },
+        );
+        const payload = await res
+          .json()
+          .catch(() => ({ data: [] as unknown[] }));
+
+        if (lastRequestIdRef.current !== rid) return;
+
+        const item = (payload as { data?: unknown[] })?.data?.[0] as
+          | ScannerAnalysis
+          | undefined;
+        const resolvedSymbol = asString(item?.symbol || symbol).toUpperCase();
+        toast.success(`${resolvedSymbol} analysed`);
+        setScanResult(item ?? null);
+        queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+        queryClient.invalidateQueries({ queryKey: ["high-potential"] });
+      } catch (error) {
+        if (lastRequestIdRef.current !== rid) return;
+
+        if (error instanceof Error && isUnauthorizedError(error)) {
+          toast({
+            title: "Sign in required",
+            description: "Please sign back in to analyze symbols.",
+            variant: "destructive",
+          });
+          signInWithGoogle().catch((authError) => {
+            console.error("Failed to sign in after unauthorized error", authError);
+          });
+          return;
         }
-        return data?.symbol;
-      })();
-      const resolvedSymbol = symbolFromResponse ?? selectedSymbol ?? "—";
-      toast.success(`${resolvedSymbol} analysed`);
-      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
-      queryClient.invalidateQueries({ queryKey: ["high-potential"] });
-    },
-    onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
+
         toast({
-          title: "Sign in required",
-          description: "Please sign back in to analyze symbols.",
+          title: "Analysis failed",
+          description: "Could not analyze the symbol. Please try again.",
           variant: "destructive",
         });
-        signInWithGoogle().catch((authError) => {
-          console.error("Failed to sign in after unauthorized error", authError);
-        });
-        return;
+      } finally {
+        if (lastRequestIdRef.current === rid) {
+          setIsScanning(false);
+        }
       }
-      toast({
-        title: "Analysis failed",
-        description: "Could not analyze the symbol. Please try again.",
-        variant: "destructive",
-      });
     },
-  });
-
-  const hasScannedRef = useRef(false);
-  useEffect(() => {
-    if (scanResult) hasScannedRef.current = true;
-  }, [scanResult]);
+    [queryClient, signInWithGoogle, toast],
+  );
 
   useEffect(() => {
-    if (previousSymbolRef.current !== selectedSymbol) {
-      if (!scanMutation.isPending) {
-        hasScannedRef.current = false;
-      }
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
       previousSymbolRef.current = selectedSymbol;
+      if (
+        initialExplicitSymbolRef.current &&
+        selectedSymbol &&
+        isAuthenticated &&
+        networkEnabled
+      ) {
+        runScan(selectedSymbol, selectedTimeframe);
+      }
+      return;
     }
-  }, [selectedSymbol, scanMutation.isPending]);
 
-  useEffect(() => {
-    if (!networkEnabled) return;
-    if (
-      isAuthenticated &&
-      shouldAutoScan &&
-      !scanMutation.isPending &&
-      !hasScannedRef.current &&
-      selectedSymbol
-    ) {
-      const requestId = crypto.randomUUID();
-      lastRequestIdRef.current = requestId;
-      scanMutation.mutate({ requestId });
-      hasScannedRef.current = true;
+    if (!selectedSymbol || selectedSymbol === previousSymbolRef.current) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, networkEnabled, shouldAutoScan, selectedSymbol, scanMutation.isPending]);
 
-  useEffect(() => {
-    if (!networkEnabled) return;
-    if (isAuthenticated && hasScannedRef.current && !scanMutation.isPending) {
-      const requestId = crypto.randomUUID();
-      lastRequestIdRef.current = requestId;
-      scanMutation.mutate({ requestId });
+    previousSymbolRef.current = selectedSymbol;
+
+    if (!isAuthenticated || !networkEnabled) {
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTimeframe, isAuthenticated, networkEnabled]);
+
+    runScan(selectedSymbol, selectedTimeframe);
+  }, [selectedSymbol, selectedTimeframe, isAuthenticated, networkEnabled, runScan]);
 
   const watchlistQuery = useQuery<WatchlistItem[]>({
     queryKey: ["watchlist"],
@@ -544,7 +554,6 @@ export default function Analyse() {
     const fullSymbol = toUsdtSymbol(raw);
     setSelectedSymbol(fullSymbol);
     setScanResult(null);
-    hasScannedRef.current = false;
     setSearchInput("");
     toast({
       title: "Symbol updated",
@@ -584,11 +593,6 @@ export default function Analyse() {
         title: "Symbol updated",
         description: `Analyzing ${displayPair(fullSymbol)}`,
       });
-      setTimeout(() => {
-        const requestId = crypto.randomUUID();
-        lastRequestIdRef.current = requestId;
-        scanMutation.mutate({ requestId });
-      }, 100);
       return;
     }
     if (!selectedSymbol) {
@@ -599,9 +603,7 @@ export default function Analyse() {
       });
       return;
     }
-    const requestId = crypto.randomUUID();
-    lastRequestIdRef.current = requestId;
-    scanMutation.mutate({ requestId });
+    runScan(selectedSymbol, selectedTimeframe);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -686,23 +688,23 @@ export default function Analyse() {
                 <p className="text-sm text-muted-foreground">Overall Analysis</p>
                 <div className="mt-1 flex items-center space-x-2">
                   <span
-                    className={`text-lg font-bold ${getScoreColor(scanResult.totalScore)}`}
+                    className={`text-lg font-bold ${getScoreColor(safeTotalScore)}`}
                     data-testid="text-total-score"
                   >
-                    {scanResult.totalScore > 0 ? "+" : ""}
-                    {scanResult.totalScore}
+                    {safeTotalScore > 0 ? "+" : ""}
+                    {safeTotalScore}
                   </span>
                   <Badge
-                    className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`}
+                    className={`${getRecommendationColor(safeRecommendation)} px-2 py-1 text-xs`}
                     data-testid="badge-recommendation"
                   >
-                    {asString(scanResult.recommendation).replace(/_/g, " ").toUpperCase()}
+                    {recommendationLabel}
                   </Badge>
                 </div>
               </div>
               <div>
                 <Progress
-                  value={Math.max(0, Math.min(100, ((scanResult.totalScore + 30) / 60) * 100))}
+                  value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
                   className="h-2"
                 />
                 <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
@@ -790,12 +792,12 @@ export default function Analyse() {
 
             <Button
               onClick={handleScan}
-              disabled={scanMutation.isPending || !isAuthenticated || !networkEnabled}
+              disabled={isScanning || !isAuthenticated || !networkEnabled}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
               data-testid="button-scan"
             >
-              <RefreshCw className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`} />
-              {scanMutation.isPending ? "Scanning..." : "Run Analysis"}
+              <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
+              {isScanning ? "Scanning..." : "Run Analysis"}
             </Button>
           </div>
 
@@ -867,7 +869,6 @@ export default function Analyse() {
                         setSelectedSymbol(item.symbol);
                         setSelectedTimeframe(timeframeConfig?.value ?? DEFAULT_TIMEFRAME);
                         setScanResult(null);
-                        hasScannedRef.current = false;
                         setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
                         toast({
                           title: "Symbol loaded",
@@ -911,7 +912,56 @@ export default function Analyse() {
             <CardContent className="h-full overflow-hidden p-0">
               <ScrollArea className="h-full px-4 pb-4">
                 {scanResult ? (
-                  <TechnicalIndicators analysis={scanResult} />
+                  (() => {
+                    const item = scanResult;
+                    const breakdown = asArray((item as { breakdown?: unknown }).breakdown);
+                    const technicals = asArray((item as { technicals?: unknown }).technicals);
+                    const checks = asArray((item as { checks?: unknown }).checks);
+                    const rows =
+                      breakdown.length > 0
+                        ? breakdown
+                        : technicals.length > 0
+                          ? technicals
+                          : checks;
+
+                    if (!rows || rows.length === 0) {
+                      return (
+                        <div className="py-12 text-center text-muted-foreground">
+                          <div className="muted">No technical checks yet.</div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-4 py-4">
+                        {rows.map((row: any, index: number) => (
+                          <div
+                            key={index}
+                            className="row space-y-2 rounded-lg border border-border/60 bg-card/60 p-4"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-medium text-foreground">
+                                {asString(row?.title || row?.key)}
+                              </span>
+                              <span className="text-sm text-muted-foreground">
+                                {asString(row?.value)}
+                              </span>
+                              <span
+                                className={`tag ${asString(row?.signal).toLowerCase()} text-xs uppercase`}
+                              >
+                                {asString(row?.signal)}
+                              </span>
+                            </div>
+                            {row?.reason ? (
+                              <small className="muted block text-xs text-muted-foreground">
+                                {asString(row?.reason)}
+                              </small>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()
                 ) : (
                   <div className="py-12 text-center text-muted-foreground">
                     <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
@@ -1031,7 +1081,6 @@ export default function Analyse() {
                         onClick={() => {
                           setSelectedSymbol(item.symbol);
                           setScanResult(null);
-                          hasScannedRef.current = false;
                           setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
                           toast({
                             title: "Symbol loaded",
