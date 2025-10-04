@@ -22,9 +22,39 @@ app.use(
 );
 app.use(express.json());
 
-// Simple in-memory store for demo purposes; persists only for the process lifetime
-const memory = globalThis.__MEM__ ?? { portfolio: [], scans: [] };
-globalThis.__MEM__ = memory;
+// helper to produce a UI-friendly scan object
+function makeScanResult(symbol = "BTCUSDT", timeframe = "4h") {
+  symbol = String(symbol).toUpperCase();
+  timeframe = String(timeframe);
+  const checks = [
+    { key: "RSI", title: "RSI", value: "55.0", signal: "bullish", reason: "RSI > 50" },
+    { key: "MACD", title: "MACD", value: "0.00", signal: "neutral", reason: "Flat MACD" },
+    {
+      key: "Trend",
+      title: "Trend",
+      value: "Mixed",
+      signal: "neutral",
+      reason: "MA cross pending",
+    },
+  ];
+  return {
+    id: randomUUID(),
+    ts: Date.now(),
+    // top-level fields commonly read by the UI / toast:
+    symbol, // toast should use this
+    timeframe,
+    overallLabel: "neutral",
+    overallScore: "0",
+    // duplicates in shapes some UIs expect:
+    summary: { label: "neutral", score: "0" },
+    checks, // original name
+    breakdown: checks, // alias for “Breakdown Technicals”
+    technicals: checks, // extra alias (harmless if unused)
+  };
+}
+
+// ensure memory store exists once
+const memory = globalThis.__MEM__ ?? (globalThis.__MEM__ = { portfolio: [], scans: [] });
 
 app.get("/", (_req, res) => {
   res.json({ message: "Stock Portfolio backend is running" });
@@ -140,23 +170,9 @@ app.post("/api/watchlist", (req, res) => res.json({ data: [] }));
 app.post("/api/scanner/scan", async (req, res) => {
   try {
     const body = req.body || {};
-    const symbol = String(body.symbol || "BTCUSDT").toUpperCase();
-    const timeframe = String(body.timeframe || "4h");
-
-    const result = {
-      id: randomUUID(),
-      ts: Date.now(),
-      symbol,
-      timeframe,
-      overallLabel: "neutral",
-      overallScore: "0",
-      checks: [
-        { key: "RSI", value: "55.0", signal: "bullish", reason: "RSI > 50" },
-        { key: "MACD", value: "0.00", signal: "neutral", reason: "Flat MACD" },
-        { key: "Trend", value: "Mixed", signal: "neutral", reason: "MA cross pending" },
-      ],
-    };
-
+    const symbol = body.symbol || "BTCUSDT";
+    const timeframe = body.timeframe || "4h";
+    const result = makeScanResult(symbol, timeframe);
     memory.scans.push(result);
     res.set("cache-control", "no-store");
     res.json({ data: [result] });
@@ -166,24 +182,31 @@ app.post("/api/scanner/scan", async (req, res) => {
   }
 });
 
+const compat = (s) => ({
+  ...s,
+  summary: s.summary || { label: s.overallLabel || "neutral", score: s.overallScore ?? "0" },
+  breakdown: s.breakdown || s.checks || [],
+  technicals: s.technicals || s.checks || [],
+});
+
 // history should return the latest scans (newest first)
 app.get("/api/scanner/history", (_req, res) => {
   res.set("cache-control", "no-store");
-  res.json({ data: [...memory.scans].reverse() });
+  res.json({ data: [...memory.scans].reverse().map(compat) });
 });
 app.post("/api/scanner/history", (_req, res) => {
   res.set("cache-control", "no-store");
-  res.json({ data: [...memory.scans].reverse() });
+  res.json({ data: [...memory.scans].reverse().map(compat) });
 });
 
 // high-potential can surface the last few scans for now
 app.get("/api/scanner/high-potential", (_req, res) => {
   res.set("cache-control", "no-store");
-  res.json({ data: memory.scans.slice(-5).reverse() });
+  res.json({ data: memory.scans.slice(-5).reverse().map(compat) });
 });
 app.post("/api/scanner/high-potential", (_req, res) => {
   res.set("cache-control", "no-store");
-  res.json({ data: memory.scans.slice(-5).reverse() });
+  res.json({ data: memory.scans.slice(-5).reverse().map(compat) });
 });
 
 app.get("/api/ai/market-overview", (_req, res) => {
