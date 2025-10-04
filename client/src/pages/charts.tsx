@@ -24,6 +24,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { asArray, asString } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
 import {
   Activity,
@@ -249,7 +250,7 @@ export default function Charts() {
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
       const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
       const res = await apiRequest("POST", "/api/scanner/scan", {
-        symbol: selectedSymbol,
+        symbol: toBinance(selectedSymbol),
         timeframe: backendTimeframe,
       });
       return (await res.json()) as ScanResult;
@@ -361,7 +362,7 @@ export default function Charts() {
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
-      const res = await apiRequest("POST", "/api/watchlist", { symbol });
+      const res = await apiRequest("POST", "/api/watchlist", { symbol: toBinance(symbol) });
       return await res.json();
     },
     onSuccess: () => {
@@ -393,7 +394,7 @@ export default function Charts() {
 
   const removeFromWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
-      const res = await apiRequest("DELETE", `/api/watchlist/${symbol}`);
+      const res = await apiRequest("DELETE", `/api/watchlist/${toBinance(symbol)}`);
       return await res.json();
     },
     onSuccess: () => {

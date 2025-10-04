@@ -46,13 +46,21 @@ const fmt = (v) =>
     ? '—'
     : (+v).toFixed(2);
 
+function normalizeSymbol(s) {
+  if (!s) return "BTCUSDT";
+  let sym = String(s).toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (sym.endsWith("USD") && !sym.endsWith("USDT")) sym = sym.slice(0, -3) + "USDT";
+  if (!/(USDT|BTC|BUSD|FDUSD|TUSD|USDC)$/.test(sym)) sym = sym + "USDT";
+  return sym;
+}
+
 async function getKlines(symbol, timeframe, limit = 500) {
   const interval = intervalMap(timeframe);
   const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(
     symbol,
   )}&interval=${interval}&limit=${limit}`;
   const r = await fetch(url);
-  if (!r.ok) throw new Error('klines_failed');
+  if (!r.ok) return { error: "binance_request_failed", status: r.status };
   const rows = await r.json();
   const opens = [];
   const highs = [];
@@ -130,7 +138,8 @@ function safeTicker(symbol, lastPrice = "0") {
 }
 
 async function handleTicker(req, res) {
-  const symbol = String(req.params.symbol || "").toUpperCase();
+  const raw = req.params.symbol || req.body?.symbol;
+  const symbol = normalizeSymbol(raw);
   try {
     // 1) main: 24hr
     let r = await fetch(
@@ -141,6 +150,7 @@ async function handleTicker(req, res) {
       res.set("cache-control", "no-store");
       return res.json(d);
     }
+    const primaryStatus = r.status;
     // 2) fallback: price
     r = await fetch(
       `https://api.binance.com/api/v3/ticker/price?symbol=${encodeURIComponent(symbol)}`,
@@ -150,6 +160,8 @@ async function handleTicker(req, res) {
       res.set("cache-control", "no-store");
       return res.json(safeTicker(p.symbol, p.price));
     }
+    res.set("cache-control", "no-store");
+    return res.json({ error: "binance_request_failed", status: r.status ?? primaryStatus });
   } catch (_) {}
   // 3) last resort: synthetic safe payload
   res.set("cache-control", "no-store");
@@ -174,16 +186,17 @@ app.get("/api/portfolio", (_req, res) => {
 app.post("/api/portfolio", (req, res) => {
   const { symbol, qty = null, entry = null, createdAt = new Date().toISOString() } = req.body ?? {};
 
-  const trimmedSymbol = typeof symbol === "string" ? symbol.trim().toUpperCase() : "";
+  const trimmed = typeof symbol === "string" ? symbol.trim() : "";
+  const normalizedSymbol = trimmed ? normalizeSymbol(trimmed) : "";
 
-  if (!trimmedSymbol) {
+  if (!normalizedSymbol) {
     res.status(400).json({ error: "invalid_symbol" });
     return;
   }
 
   const row = {
     id: randomUUID(),
-    symbol: trimmedSymbol,
+    symbol: normalizedSymbol,
     qty,
     entry,
     createdAt,
@@ -219,10 +232,13 @@ app.post("/api/watchlist", (req, res) => res.json({ data: [] }));
 
 app.post('/api/scanner/scan', async (req, res) => {
   try {
-    const { symbol = 'BTCUSDT', timeframe = '4h' } = req.body || {};
-    const sym = String(symbol).toUpperCase();
+    const { timeframe = '4h' } = req.body || {};
+    const raw = req.body?.symbol;
+    const sym = normalizeSymbol(raw);
     const tf = String(timeframe);
-    const { opens, highs, lows, closes, volumes, lastClose } = await getKlines(sym, tf, 500);
+    const kl = await getKlines(sym, tf, 500);
+    if (kl.error) return res.json({ data: [], error: kl.error, status: kl.status });
+    const { opens, highs, lows, closes, volumes, lastClose } = kl;
 
     const out = [];
     const rsi = RSI.calculate({ values: closes, period: 14 }).at(-1);
