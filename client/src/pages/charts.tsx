@@ -215,11 +215,13 @@ export default function Charts() {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   useEffect(() => {
     setPriceData(null);
+    if (!selectedSymbol) return;
+    const targetSymbol = selectedSymbol.toUpperCase();
     let active = true;
     const unsubscribe = openSpotTickerStream(selectedSymbol, {
       onMessage: (ticker) => {
         if (!active) return;
-        if ((ticker.symbol || "").toUpperCase() !== selectedSymbol.toUpperCase()) return;
+        if ((ticker.symbol || "").toUpperCase() !== targetSymbol) return;
         setPriceData({
           symbol: ticker.symbol,
           lastPrice: ticker.lastPrice,
@@ -236,7 +238,7 @@ export default function Charts() {
       active = false;
       unsubscribe?.();
     };
-  }, [selectedSymbol]);
+  }, [selectedSymbol, selectedTimeframe]);
 
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;

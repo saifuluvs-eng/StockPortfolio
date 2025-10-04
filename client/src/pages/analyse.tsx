@@ -109,6 +109,7 @@ interface HighPotentialFilters {
 
 const DEFAULT_TIMEFRAME = "240"; // 4h
 const DEFAULT_SYMBOL = "BTCUSDT";
+const ANALYSE_TOAST_ID = "analyse-status";
 
 const TIMEFRAMES = [
   { value: "15", label: "15min", display: "15m", backend: "15m" },
@@ -242,11 +243,13 @@ export default function Analyse() {
   useEffect(() => {
     setPriceData(null);
     if (!networkEnabled) return;
+    if (!selectedSymbol) return;
+    const targetSymbol = selectedSymbol.toUpperCase();
     let active = true;
     const unsubscribe = openSpotTickerStream(selectedSymbol, {
       onMessage: (ticker) => {
         if (!active) return;
-        if ((ticker.symbol || "").toUpperCase() !== selectedSymbol.toUpperCase()) return;
+        if ((ticker.symbol || "").toUpperCase() !== targetSymbol) return;
         setPriceData({
           symbol: ticker.symbol,
           lastPrice: ticker.lastPrice,
@@ -263,7 +266,7 @@ export default function Analyse() {
       active = false;
       unsubscribe?.();
     };
-  }, [selectedSymbol, networkEnabled]);
+  }, [selectedSymbol, selectedTimeframe, networkEnabled]);
 
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
@@ -289,6 +292,8 @@ export default function Analyse() {
 
       try {
         const normalized = toBinance(symbol);
+        toast.dismiss(ANALYSE_TOAST_ID);
+        toast.loading("Analysing…", { id: ANALYSE_TOAST_ID });
         const res = await apiRequest(
           "POST",
           "/api/scanner/scan",
@@ -307,7 +312,7 @@ export default function Analyse() {
           | ScannerAnalysis
           | undefined;
         const resolvedSymbol = asString(item?.symbol || normalized).toUpperCase();
-        toast.success(`${resolvedSymbol} analysed`);
+        toast.success(`${resolvedSymbol} analysed`, { id: ANALYSE_TOAST_ID });
         setScanResult(item ?? null);
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
         queryClient.invalidateQueries({ queryKey: ["high-potential"] });
@@ -315,6 +320,7 @@ export default function Analyse() {
         if (lastRequestIdRef.current !== rid) return;
 
         if (error instanceof Error && isUnauthorizedError(error)) {
+          toast.dismiss(ANALYSE_TOAST_ID);
           toast({
             title: "Sign in required",
             description: "Please sign back in to analyze symbols.",
@@ -326,11 +332,7 @@ export default function Analyse() {
           return;
         }
 
-        toast({
-          title: "Analysis failed",
-          description: "Could not analyze the symbol. Please try again.",
-          variant: "destructive",
-        });
+        toast.error("Analysis failed", { id: ANALYSE_TOAST_ID });
       } finally {
         if (lastRequestIdRef.current === rid) {
           setIsScanning(false);
