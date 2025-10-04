@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { ListChecks } from "lucide-react";
+import React, { type ReactNode } from "react";
 
 export type BreakdownRow = {
   title: string;
@@ -39,48 +38,62 @@ export function BreakdownSection({
 
   return (
     <section
-      className="rounded-2xl border border-white/10 bg-black/30 backdrop-blur p-4 md:p-6 mb-8 overflow-hidden"
+      className="
+        rounded-2xl border border-white/10 bg-black/30 backdrop-blur
+        overflow-hidden flex flex-col mb-8
+      "
       aria-label="Breakdown Technicals"
     >
-      <h3 className="flex items-center gap-2 text-lg font-semibold mb-4">
-        <ListChecks className="h-5 w-5 opacity-80" />
-        Breakdown Technicals
-      </h3>
+      {/* sticky header stays visible while list scrolls */}
+      <header className="sticky top-0 z-10 bg-black/50 backdrop-blur px-4 md:px-5 py-3 border-b border-white/10">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
+          <span className="i-lucide-list-checks h-5 w-5 opacity-80" />
+          Breakdown Technicals
+        </h3>
+      </header>
 
-      {hasRows ? (
-        <ul className="grid gap-3">
-          {rows.map((r, i) => {
-            const c = COLORS[r.signal] ?? COLORS.neutral;
-            return (
-              <li
-                key={`${r.title}-${i}`}
-                className={`rounded-xl ring-1 ${c.ring} ${c.bg} p-4 md:p-5`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="text-base font-medium">{r.title}</div>
-                  <div className={`text-sm font-semibold tabular-nums ${c.text}`}>
-                    {r.value}
-                  </div>
-                </div>
-                {r.reason && (
-                  <div className="mt-1 text-sm text-white/70">{r.reason}</div>
-                )}
-                <div
-                  className={`mt-2 text-xs uppercase tracking-wide ${c.text}`}
+      {/* scrollable list area */}
+      <div
+        className="
+          flex-1 overflow-y-auto overscroll-contain px-4 md:px-5 py-4
+          space-y-3
+        "
+        // desktop: tall card; mobile: slightly shorter
+        style={{ maxHeight: "70vh" }}
+      >
+        {hasRows ? (
+          <ul className="grid gap-3">
+            {rows.map((r, i) => {
+              const c = COLORS[r.signal] ?? COLORS.neutral;
+              return (
+                <li
+                  key={`${r.title}-${i}`}
+                  className={`rounded-xl ring-1 ${c.ring} ${c.bg} p-4 md:p-5`}
                 >
-                  {r.signal}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        emptyState ?? (
-          <div className="py-12 text-center text-white/70">
-            <div>No technical checks yet.</div>
-          </div>
-        )
-      )}
+                  <div className="flex items-start justify-between">
+                    <div className="text-base font-medium">{r.title}</div>
+                    <div className={`text-sm font-semibold tabular-nums ${c.text}`}>
+                      {r.value}
+                    </div>
+                  </div>
+                  {r.reason && (
+                    <div className="mt-1 text-sm text-white/70">{r.reason}</div>
+                  )}
+                  <div className={`mt-2 text-xs uppercase tracking-wide ${c.text}`}>
+                    {r.signal}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          emptyState ?? (
+            <div className="py-12 text-center text-white/70">
+              <div>No technical checks yet.</div>
+            </div>
+          )
+        )}
+      </div>
     </section>
   );
 }
