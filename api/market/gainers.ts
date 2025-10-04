@@ -25,7 +25,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         high: Number(t.highPrice),
         low: Number(t.lowPrice),
       }))
-      .sort((a, b) => b.changePct - a.changePct);
+      .sort((a, b) => b.changePct - a.changePct)
+      .slice(0, 120);
 
     res.status(200).json({ rows });
   } catch (err: any) {
