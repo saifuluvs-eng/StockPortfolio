@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { api } from "@/lib/api";
 import {
   TrendingUp,
   BarChart3,
@@ -27,10 +28,6 @@ import {
  *   (tiles show "—/0" placeholders instead of error spam).
  * - WebSocket /ws is blocked on Vercel in your setup; we fall back to REST polling.
  */
-
-// ---------- Config ----------
-const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
-const apiUrl = (path: string) => `${API_BASE}${path.startsWith("/") ? path : `/${path}`}`;
 
 // ---------- Types (defensive) ----------
 type PortfolioSummary = {
@@ -65,11 +62,11 @@ function toNum(v: unknown): number | null {
   return null;
 }
 
-async function safeJson<T>(url: string, init?: RequestInit): Promise<T | null> {
+async function safeJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   try {
     const ctrl = new AbortController();
     const id = setTimeout(() => ctrl.abort(), 15000);
-    const res = await fetch(url, { ...init, signal: ctrl.signal });
+    const res = await api(path, { ...init, signal: ctrl.signal });
     clearTimeout(id);
     if (!res.ok) return null;
     return (await res.json()) as T;
@@ -80,14 +77,14 @@ async function safeJson<T>(url: string, init?: RequestInit): Promise<T | null> {
 
 // ---------- Query Functions (respect API_BASE / networkEnabled) ----------
 async function qPortfolioSummary(): Promise<{ totalValue: number | null; totalPnlPercent: number | null }> {
-  const summary = await safeJson<PortfolioSummary>(apiUrl("/api/portfolio"));
+  const summary = await safeJson<PortfolioSummary>("/api/portfolio");
   const totalValue = toNum(summary?.totalValue ?? null);
   const totalPnlPercent = toNum(summary?.totalPnLPercent ?? summary?.totalPnlPercent ?? null);
   return { totalValue: totalValue ?? null, totalPnlPercent: totalPnlPercent ?? null };
 }
 
 async function qHighPotentialCount(): Promise<{ count: number | null; ts: number }> {
-  const post = await safeJson<any>(apiUrl("/api/scanner/high-potential"), {
+  const post = await safeJson<any>("/api/scanner/high-potential", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({}),
@@ -98,7 +95,7 @@ async function qHighPotentialCount(): Promise<{ count: number | null; ts: number
 }
 
 async function qGainersTop3(): Promise<{ top: { symbol: string; pct: number }[] | null; ts: number }> {
-  const arr = await safeJson<GainerItem[]>(apiUrl("/api/market/gainers"));
+  const arr = await safeJson<GainerItem[]>("/api/market/gainers");
   if (!Array.isArray(arr)) return { top: null, ts: Date.now() };
 
   const mapped = arr
@@ -115,13 +112,13 @@ async function qGainersTop3(): Promise<{ top: { symbol: string; pct: number }[] 
 }
 
 async function qWatchlistCount(): Promise<number | null> {
-  const wl = await safeJson<any[]>(apiUrl("/api/watchlist"));
+  const wl = await safeJson<any[]>("/api/watchlist");
   if (Array.isArray(wl)) return wl.length;
   return null;
 }
 
 async function qAiSignals(): Promise<number | null> {
-  const ai = await safeJson<AiOverviewData>(apiUrl("/api/ai/market-overview"));
+  const ai = await safeJson<AiOverviewData>("/api/ai/market-overview");
   if (!ai) return null;
 
   const keyInsights = Array.isArray(ai.keyInsights)
@@ -151,15 +148,15 @@ export default function Home() {
   const [ethChange, setEthChange] = useState<{ priceChangePercent?: string }>({});
 
   const { data: btcTicker } = useQuery({
-    queryKey: [apiUrl("/api/market/ticker/BTCUSDT")],
-    queryFn: async () => safeJson<any>(apiUrl("/api/market/ticker/BTCUSDT")),
+    queryKey: ["/api/market/ticker/BTCUSDT"],
+    queryFn: async () => safeJson<any>("/api/market/ticker/BTCUSDT"),
     refetchInterval: 10_000,
     enabled: networkEnabled,
   });
 
   const { data: ethTicker } = useQuery({
-    queryKey: [apiUrl("/api/market/ticker/ETHUSDT")],
-    queryFn: async () => safeJson<any>(apiUrl("/api/market/ticker/ETHUSDT")),
+    queryKey: ["/api/market/ticker/ETHUSDT"],
+    queryFn: async () => safeJson<any>("/api/market/ticker/ETHUSDT"),
     refetchInterval: 10_000,
     enabled: networkEnabled,
   });
@@ -195,35 +192,35 @@ export default function Home() {
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
   const { data: port } = useQuery({
-    queryKey: ["portfolio-summary", API_BASE, !!user],
+    queryKey: ["portfolio-summary", user?.uid],
     queryFn: qPortfolioSummary,
     refetchInterval: 120_000,
     enabled: networkEnabled && !!user, // compute only when network is allowed and user is signed in
   });
 
   const { data: hp } = useQuery({
-    queryKey: ["high-potential-count", API_BASE],
+    queryKey: ["high-potential-count"],
     queryFn: qHighPotentialCount,
     refetchInterval: 30 * 60 * 1000,
     enabled: networkEnabled && !!user,
   });
 
   const { data: gain } = useQuery({
-    queryKey: ["gainers-top3", API_BASE],
+    queryKey: ["gainers-top3"],
     queryFn: qGainersTop3,
     refetchInterval: 300_000,
     enabled: networkEnabled,
   });
 
   const { data: watchCount } = useQuery({
-    queryKey: ["watchlist-count", API_BASE, !!user],
+    queryKey: ["watchlist-count", !!user],
     queryFn: qWatchlistCount,
     refetchInterval: 300_000,
     enabled: networkEnabled && !!user,
   });
 
   const { data: aiCount } = useQuery({
-    queryKey: ["ai-signals-count", API_BASE],
+    queryKey: ["ai-signals-count"],
     queryFn: qAiSignals,
     refetchInterval: 120_000,
     enabled: networkEnabled,

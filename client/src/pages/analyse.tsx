@@ -289,7 +289,7 @@ export default function Analyse() {
       try {
         const res = await apiRequest(
           "POST",
-          `${API_BASE || ""}/api/scanner/scan`,
+          "/api/scanner/scan",
           {
             symbol,
             timeframe: backendTimeframe,
