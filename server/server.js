@@ -121,8 +121,10 @@ app.get("/api/market/gainers", (_req, res) => {
 });
 
 app.get("/api/watchlist", (_req, res) => {
-  res.json({ items: [] });
+  res.json({ data: [] });
 });
+
+app.post("/api/watchlist", (req, res) => res.json({ data: [] }));
 
 app.get("/api/scanner/high-potential", (_req, res) => {
   // Expected shape: { data: [{ symbol: string; score: number; reason: string }] }
