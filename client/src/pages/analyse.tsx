@@ -24,6 +24,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { asArray, asString } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
+import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
 import {
   Activity,
@@ -287,11 +288,12 @@ export default function Analyse() {
       const backendTimeframe = timeframeConfig?.backend || timeframe;
 
       try {
+        const normalized = toBinance(symbol);
         const res = await apiRequest(
           "POST",
           "/api/scanner/scan",
           {
-            symbol,
+            symbol: normalized,
             timeframe: backendTimeframe,
           },
         );
@@ -304,7 +306,7 @@ export default function Analyse() {
         const item = (payload as { data?: unknown[] })?.data?.[0] as
           | ScannerAnalysis
           | undefined;
-        const resolvedSymbol = asString(item?.symbol || symbol).toUpperCase();
+        const resolvedSymbol = asString(item?.symbol || normalized).toUpperCase();
         toast.success(`${resolvedSymbol} analysed`);
         setScanResult(item ?? null);
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
@@ -430,7 +432,7 @@ export default function Analyse() {
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
-      const res = await apiRequest("POST", "/api/watchlist", { symbol });
+      const res = await apiRequest("POST", "/api/watchlist", { symbol: toBinance(symbol) });
       return await res.json();
     },
     onSuccess: () => {
@@ -462,7 +464,7 @@ export default function Analyse() {
 
   const removeFromWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
-      const res = await apiRequest("DELETE", `/api/watchlist/${symbol}`);
+      const res = await apiRequest("DELETE", `/api/watchlist/${toBinance(symbol)}`);
       return await res.json();
     },
     onSuccess: () => {
