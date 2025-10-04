@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { asArray, asString } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { useRoute, useLocation } from "wouter";
@@ -43,7 +44,8 @@ import {
 import { formatDistanceToNowStrict } from "date-fns";
 import { openSpotTickerStream } from "@/lib/binanceWs";
 
-const API_BASE = (import.meta as any)?.env?.VITE_API_BASE?.replace(/\/$/, "") || "";
+const API_BASE =
+  asString((import.meta as any)?.env?.VITE_API_BASE).replace(/\/$/, "") || "";
 
 interface PriceData {
   symbol: string;
@@ -355,7 +357,7 @@ export default function Analyse() {
     },
   });
 
-  const watchlistItems = watchlistQuery.data ?? [];
+  const watchlistItems = asArray(watchlistQuery);
   const historyQuery = useQuery({
     queryKey: ["scan-history"],
     enabled: isAuthenticated && networkEnabled,
@@ -364,6 +366,8 @@ export default function Analyse() {
       return (await res.json()) as ScanHistoryItem[];
     },
   });
+
+  const historyItems = asArray(historyQuery);
 
   const timeframeConfig = useMemo(
     () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
@@ -387,6 +391,8 @@ export default function Analyse() {
       return Array.isArray(data) ? data.slice(0, 6) : [];
     },
   });
+
+  const highPotentialItems = asArray(highPotentialQuery);
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
@@ -540,7 +546,11 @@ export default function Analyse() {
       return;
     }
     const raw = (searchInput || "").trim().toUpperCase();
-    if (raw && raw !== selectedSymbol && raw !== displayPair(selectedSymbol).replace("/USDT", "")) {
+    if (
+      raw &&
+      raw !== selectedSymbol &&
+      raw !== asString(displayPair(selectedSymbol)).replace("/USDT", "")
+    ) {
       const fullSymbol = toUsdtSymbol(raw);
       setSelectedSymbol(fullSymbol);
       setSearchInput("");
@@ -654,7 +664,7 @@ export default function Analyse() {
                     className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`}
                     data-testid="badge-recommendation"
                   >
-                    {scanResult.recommendation.replace(/_/g, " ").toUpperCase()}
+                    {asString(scanResult.recommendation).replace(/_/g, " ").toUpperCase()}
                   </Badge>
                 </div>
               </div>
@@ -811,13 +821,13 @@ export default function Analyse() {
                 <p className="text-sm text-red-400">
                   Could not fetch high potential ideas right now.
                 </p>
-              ) : (highPotentialQuery.data?.length ?? 0) === 0 ? (
+              ) : highPotentialItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No standout opportunities detected. Try rescanning with different filters.
                 </p>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {highPotentialQuery.data!.map((item) => (
+                  {highPotentialItems.map((item) => (
                     <button
                       key={item.symbol}
                       type="button"
@@ -825,7 +835,7 @@ export default function Analyse() {
                         setSelectedSymbol(item.symbol);
                         setSelectedTimeframe(timeframeConfig?.value ?? DEFAULT_TIMEFRAME);
                         setScanResult(null);
-                        setSearchInput(item.symbol.replace(/USDT$/i, ""));
+                        setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
                         toast({
                           title: "Symbol loaded",
                           description: `Loaded ${displayPair(item.symbol)} from high potential list`,
@@ -843,7 +853,7 @@ export default function Analyse() {
                           </p>
                         </div>
                         <Badge className={getRecommendationColor(item.recommendation)}>
-                          {item.recommendation.replace(/_/g, " ").toUpperCase()}
+                          {asString(item.recommendation).replace(/_/g, " ").toUpperCase()}
                         </Badge>
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
@@ -904,51 +914,51 @@ export default function Analyse() {
                 <p className="text-sm text-red-400">
                   Could not load scan history right now.
                 </p>
-              ) : (historyQuery.data?.length ?? 0) === 0 ? (
+              ) : historyItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Run your first scan to start building your decision history.
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {historyQuery.data!.slice(0, 6).map((item) => {
+                  {historyItems.slice(0, 6).map((item) => {
                     const filters = item.filters || {};
                     const result = item.results;
                     const symbol = toUsdtSymbol(
-                        result?.symbol || filters.symbol || selectedSymbol,
-                      );
-                      const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">
-                              {displayPair(symbol)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedSymbol(symbol);
-                              setSelectedTimeframe(frontendTimeframe);
-                              if (result) {
-                                setScanResult(result);
-                              }
-                              toast({
-                                title: "Scan loaded",
-                                description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
-                              });
-                            }}
-                          >
-                            Load
-                          </Button>
+                      result?.symbol || filters.symbol || selectedSymbol,
+                    );
+                    const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {displayPair(symbol)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
+                          </p>
                         </div>
-                      );
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedSymbol(symbol);
+                            setSelectedTimeframe(frontendTimeframe);
+                            if (result) {
+                              setScanResult(result);
+                            }
+                            toast({
+                              title: "Scan loaded",
+                              description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
+                            });
+                          }}
+                        >
+                          Load
+                        </Button>
+                      </div>
+                    );
                     })}
                   </div>
                 )}
@@ -988,7 +998,7 @@ export default function Analyse() {
                         onClick={() => {
                           setSelectedSymbol(item.symbol);
                           setScanResult(null);
-                          setSearchInput(item.symbol.replace(/USDT$/i, ""));
+                          setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
                           toast({
                             title: "Symbol loaded",
                             description: `Loaded ${displayPair(item.symbol)} from watchlist`,

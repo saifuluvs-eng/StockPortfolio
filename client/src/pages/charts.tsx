@@ -22,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { asArray, asString } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useRoute, useLocation } from "wouter";
 import {
@@ -320,6 +321,8 @@ export default function Charts() {
     },
   });
 
+  const watchlistItems = asArray(watchlistQuery);
+
   const historyQuery = useQuery({
     queryKey: ["scan-history"],
     enabled: isAuthenticated,
@@ -328,6 +331,8 @@ export default function Charts() {
       return (await res.json()) as ScanHistoryItem[];
     },
   });
+
+  const historyItems = asArray(historyQuery);
 
   const timeframeConfig = useMemo(
     () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
@@ -351,6 +356,8 @@ export default function Charts() {
       return Array.isArray(data) ? data.slice(0, 6) : [];
     },
   });
+
+  const highPotentialItems = asArray(highPotentialQuery);
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
@@ -416,8 +423,8 @@ export default function Charts() {
     },
   });
 
-  const watchlistSymbols = (watchlistQuery.data || []).map((item) =>
-    (item.symbol || "").toUpperCase(),
+  const watchlistSymbols = watchlistItems.map((item) =>
+    asString(item.symbol).toUpperCase(),
   );
   const symbolInWatchlist = watchlistSymbols.includes(selectedSymbol.toUpperCase());
 
@@ -474,7 +481,11 @@ export default function Charts() {
       return;
     }
     const raw = (searchInput || "").trim().toUpperCase();
-    if (raw && raw !== selectedSymbol && raw !== displayPair(selectedSymbol).replace("/USDT", "")) {
+    if (
+      raw &&
+      raw !== selectedSymbol &&
+      raw !== asString(displayPair(selectedSymbol)).replace("/USDT", "")
+    ) {
       const fullSymbol = toUsdtSymbol(raw);
       setSelectedSymbol(fullSymbol);
       setSearchInput("");
@@ -588,7 +599,7 @@ export default function Charts() {
                     className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`}
                     data-testid="badge-recommendation"
                   >
-                    {scanResult.recommendation.replace(/_/g, " ").toUpperCase()}
+                    {asString(scanResult.recommendation).replace(/_/g, " ").toUpperCase()}
                   </Badge>
                 </div>
               </div>
@@ -735,19 +746,19 @@ export default function Charts() {
                 <p className="text-sm text-red-400">
                   Could not fetch high potential ideas right now.
                 </p>
-              ) : (highPotentialQuery.data?.length ?? 0) === 0 ? (
+              ) : highPotentialItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No standout opportunities detected. Try rescanning with different filters.
                 </p>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
-                  {highPotentialQuery.data!.map((item) => (
+                  {highPotentialItems.map((item) => (
                     <button
                       key={item.symbol}
                       type="button"
                       onClick={() => {
                         setSelectedSymbol(item.symbol);
-                        setSearchInput(item.symbol.replace(/USDT$/i, ""));
+                        setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
                         toast({
                           title: "Symbol loaded",
                           description: `Loaded ${displayPair(item.symbol)} from high potential list`,
@@ -765,7 +776,7 @@ export default function Charts() {
                           </p>
                         </div>
                         <Badge className={getRecommendationColor(item.recommendation)}>
-                          {item.recommendation.replace(/_/g, " ").toUpperCase()}
+                          {asString(item.recommendation).replace(/_/g, " ").toUpperCase()}
                         </Badge>
                       </div>
                       <p className="mt-2 text-xs text-muted-foreground">
@@ -826,56 +837,56 @@ export default function Charts() {
                 <p className="text-sm text-red-400">
                   Could not load scan history right now.
                 </p>
-              ) : (historyQuery.data?.length ?? 0) === 0 ? (
+              ) : historyItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Run your first scan to start building your decision history.
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {historyQuery.data!.slice(0, 6).map((item) => {
+                  {historyItems.slice(0, 6).map((item) => {
                     const filters = item.filters || {};
                     const result = item.results;
                     const symbol = toUsdtSymbol(
-                        result?.symbol || filters.symbol || selectedSymbol,
-                      );
-                      const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
-                      return (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
-                        >
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">
-                              {displayPair(symbol)}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedSymbol(symbol);
-                              setSelectedTimeframe(frontendTimeframe);
-                              if (result) {
-                                setScanResult(result);
-                              }
-                              toast({
-                                title: "Scan loaded",
-                                description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
-                              });
-                            }}
-                          >
-                            Load
-                          </Button>
+                      result?.symbol || filters.symbol || selectedSymbol,
+                    );
+                    const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
+                      >
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {displayPair(symbol)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
+                          </p>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedSymbol(symbol);
+                            setSelectedTimeframe(frontendTimeframe);
+                            if (result) {
+                              setScanResult(result);
+                            }
+                            toast({
+                              title: "Scan loaded",
+                              description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
+                            });
+                          }}
+                        >
+                          Load
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
             <Card className="border-border/70 bg-card/70">
               <CardHeader className="pb-3">
@@ -897,19 +908,19 @@ export default function Charts() {
                   </div>
                 ) : watchlistQuery.error ? (
                   <p className="text-sm text-red-400">Unable to load watchlist right now.</p>
-                ) : (watchlistQuery.data?.length ?? 0) === 0 ? (
+                ) : watchlistItems.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No symbols yet. Tap "Add to Watchlist" on any chart to build your list.
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {watchlistQuery.data!.map((item) => (
+                    {watchlistItems.map((item) => (
                       <button
                         key={item.id}
                         type="button"
                         onClick={() => {
                           setSelectedSymbol(item.symbol);
-                          setSearchInput(item.symbol.replace(/USDT$/i, ""));
+                          setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
                           toast({
                             title: "Symbol loaded",
                             description: `Loaded ${displayPair(item.symbol)} from watchlist`,
