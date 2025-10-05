@@ -341,7 +341,7 @@ export default function Charts() {
     staleTime: 10 * 60_000,
     queryFn: async () => {
       const params = new URLSearchParams({
-        timeframe: timeframeConfig?.backend || "4h",
+        tf: timeframeConfig?.backend || "4h",
         minVolUSD: "2000000",
         capMin: "0",
         capMax: "2000000000",

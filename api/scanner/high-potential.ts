@@ -1,5 +1,9 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { highPotentialScanner, normalizeHighPotentialFilters } from "../../server/highPotential/scanner";
+import {
+  highPotentialScanner,
+  normalizeHighPotentialFilters,
+  InvalidHighPotentialFiltersError,
+} from "../../server/highPotential/scanner";
 import type { HighPotentialFilters } from "@shared/high-potential/types";
 
 function toNumber(value: unknown): number | undefined {
@@ -18,6 +22,11 @@ function toBoolean(value: unknown): boolean | undefined {
   return undefined;
 }
 
+function normalizeParam<T>(value: T | T[] | undefined): T | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
 function extractFilters(req: VercelRequest): HighPotentialFilters {
   const partial: Partial<HighPotentialFilters> = {};
 
@@ -27,7 +36,14 @@ function extractFilters(req: VercelRequest): HighPotentialFilters {
     : (bodySource as Record<string, unknown> | undefined);
 
   if (body && typeof body === "object") {
-    if (typeof body.timeframe === "string") partial.timeframe = body.timeframe as HighPotentialFilters["timeframe"];
+    if (Object.prototype.hasOwnProperty.call(body, "timeframe")) {
+      throw new InvalidHighPotentialFiltersError(
+        "The `timeframe` parameter is no longer supported. Use `tf` instead.",
+      );
+    }
+    if (typeof body.tf === "string") {
+      partial.timeframe = body.tf as HighPotentialFilters["timeframe"];
+    }
     const bodyMinVol = toNumber(body.minVolUSD);
     if (bodyMinVol !== undefined) partial.minVolUSD = bodyMinVol;
     const bodyExclude = toBoolean(body.excludeLeveraged);
@@ -42,16 +58,23 @@ function extractFilters(req: VercelRequest): HighPotentialFilters {
     }
   }
 
-  const query = req.query ?? {};
-  if (typeof query.timeframe === "string") {
-    partial.timeframe = query.timeframe as HighPotentialFilters["timeframe"];
+  const rawQuery = req.query ?? {};
+  const query = rawQuery as Record<string, unknown>;
+  if (Object.prototype.hasOwnProperty.call(query, "timeframe")) {
+    throw new InvalidHighPotentialFiltersError(
+      "The `timeframe` query parameter is no longer supported. Use `tf` instead.",
+    );
   }
-  const queryMinVol = toNumber(query.minVolUSD);
+  if (Object.prototype.hasOwnProperty.call(query, "tf")) {
+    const tfValue = normalizeParam(query.tf as string | string[] | undefined);
+    partial.timeframe = String(tfValue ?? "") as HighPotentialFilters["timeframe"];
+  }
+  const queryMinVol = toNumber(normalizeParam(query.minVolUSD as string | string[] | undefined));
   if (queryMinVol !== undefined) partial.minVolUSD = queryMinVol;
-  const queryExclude = toBoolean(query.excludeLeveraged);
+  const queryExclude = toBoolean(normalizeParam(query.excludeLeveraged as string | string[] | undefined));
   if (queryExclude !== undefined) partial.excludeLeveraged = queryExclude;
-  const capMin = toNumber(query.capMin);
-  const capMax = toNumber(query.capMax);
+  const capMin = toNumber(normalizeParam(query.capMin as string | string[] | undefined));
+  const capMax = toNumber(normalizeParam(query.capMax as string | string[] | undefined));
   if (capMin !== undefined || capMax !== undefined) {
     const existing = partial.capRange ?? [capMin ?? 0, capMax ?? 0];
     partial.capRange = [capMin ?? existing[0], capMax ?? existing[1]];
@@ -71,6 +94,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const data = await highPotentialScanner.getScan(filters);
     return res.status(200).json(data);
   } catch (error) {
+    if (error instanceof InvalidHighPotentialFiltersError) {
+      console.warn("Rejected Vercel high potential request", error);
+      return res.status(400).json({ message: error.message });
+    }
     console.error("/api/scanner/high-potential error", error);
     return res.status(500).json({ message: "Failed to load high potential data" });
   }

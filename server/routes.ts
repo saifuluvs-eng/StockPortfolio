@@ -5,7 +5,7 @@ import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
 import { portfolioService } from "./services/portfolioService";
-import { highPotentialScanner } from "./highPotential/scanner";
+import { highPotentialScanner, InvalidHighPotentialFiltersError } from "./highPotential/scanner";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -347,6 +347,11 @@ export function registerRoutes(app: Express): void {
       const data = await highPotentialScanner.getScan(filters);
       res.json(data);
     } catch (error) {
+      if (error instanceof InvalidHighPotentialFiltersError) {
+        console.warn("Rejected high potential scan request", error);
+        res.status(400).json({ message: error.message });
+        return;
+      }
       console.error("Error generating high potential scan:", error);
       res.status(500).json({ message: "Failed to load high potential data" });
     }
