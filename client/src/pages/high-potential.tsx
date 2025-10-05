@@ -207,18 +207,21 @@ export default function HighPotentialPage() {
     [filters.timeframe, filters.minVolUSD, filters.capRange, filters.excludeLeveraged],
   );
 
-  const query = useQuery({
+  const query = useQuery<HighPotentialResponse>({
     queryKey,
     queryFn: () => fetchHighPotential(filters),
     refetchInterval: filters.autoRefresh ? AUTO_REFRESH_INTERVAL : false,
-    keepPreviousData: true,
-    onSuccess: (response: HighPotentialResponse) => {
-      if (typeof window === "undefined") return;
-      setCachedEntry(storeCachedResponse(window.localStorage, filtersSnapshot, response));
-    },
+    placeholderData: (previousData) => previousData,
+    staleTime: 0,
   });
 
   const { data: queryData, isLoading, isFetching, refetch, error } = query;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!query.data || query.dataUpdatedAt === 0) return;
+    setCachedEntry(storeCachedResponse(window.localStorage, filtersSnapshot, query.data));
+  }, [filtersSnapshot, query.data, query.dataUpdatedAt]);
 
   const { resolvedData, errorBannerMessage, showUnavailableState } = deriveScannerState({
     queryData,
