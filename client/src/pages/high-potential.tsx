@@ -295,14 +295,14 @@ export default function HighPotentialPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Scanner Controls</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 lg:grid-cols-2 min-w-0">
-            <div className="space-y-2">
+          <CardContent className="grid min-w-0 gap-4 lg:grid-cols-2">
+            <div className="min-w-0 space-y-2">
               <Label className="text-xs uppercase text-muted-foreground">Timeframe</Label>
               <ToggleGroup
                 type="single"
                 value={filters.timeframe}
                 onValueChange={handleTimeframeChange}
-                className="flex w-full flex-wrap gap-2"
+                className="flex w-full min-w-0 flex-wrap gap-2"
               >
                 {TIMEFRAME_OPTIONS.map((option) => (
                   <ToggleGroupItem key={option} value={option} className="flex-1" aria-label={`Timeframe ${option}`}>
@@ -312,7 +312,7 @@ export default function HighPotentialPage() {
               </ToggleGroup>
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label htmlFor="min-vol" className="text-xs uppercase text-muted-foreground">
                 Min 24h Volume (USD)
               </Label>
@@ -326,9 +326,9 @@ export default function HighPotentialPage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label className="text-xs uppercase text-muted-foreground">Market Cap Range (USD)</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2 lg:grid-cols-2">
                 <Input
                   type="number"
                   min={0}
@@ -348,23 +348,23 @@ export default function HighPotentialPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label className="text-xs uppercase text-muted-foreground">Exclude Leveraged Tokens</Label>
-              <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/20 px-3 py-2">
-                <span className="text-sm">Exclude leveraged products</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 sm:justify-between">
+                <span className="flex-1 min-w-0 overflow-hidden text-ellipsis text-sm">Exclude leveraged products</span>
                 <Switch checked={filters.excludeLeveraged} onCheckedChange={handleExcludeLeveragedChange} />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <Label className="text-xs uppercase text-muted-foreground">Auto Refresh (10 min)</Label>
-              <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/20 px-3 py-2">
-                <span className="text-sm">Auto refresh results</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 sm:justify-between">
+                <span className="flex-1 min-w-0 overflow-hidden text-ellipsis text-sm">Auto refresh results</span>
                 <Switch checked={filters.autoRefresh} onCheckedChange={handleAutoRefreshChange} />
               </div>
             </div>
 
-            <div className="flex flex-col justify-end gap-2">
+            <div className="flex min-w-0 flex-col justify-end gap-2">
               <Button onClick={() => refetch()} disabled={isFetching} className="w-full">
                 Refresh Now
               </Button>
@@ -375,9 +375,9 @@ export default function HighPotentialPage() {
       </div>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-4 min-w-0">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-4">
           <h2 className="text-lg font-semibold whitespace-normal break-keep">Top 10 High Potentials</h2>
-          <span className="text-xs text-muted-foreground truncate">
+          <span className="min-w-0 truncate text-xs text-muted-foreground">
             Updated {isFetching
               ? "just now"
               : resolvedData
@@ -489,22 +489,22 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
 
   return (
     <Card className={cn("border-border/60", compact && "bg-muted/30")}>
-      <CardHeader className="flex flex-col gap-4 pb-4 min-w-0">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
-          <div className="flex items-start gap-3 min-w-0">
+      <CardHeader className="flex min-w-0 flex-col gap-4 pb-4">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
             <Avatar className="h-10 w-10 flex-shrink-0">
               <AvatarFallback>{coin.baseAsset.slice(0, 3)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 space-y-1">
-              <div className="flex flex-wrap items-center gap-2 min-w-0">
-                <CardTitle className="text-base font-semibold leading-tight min-w-0 truncate">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <CardTitle className="min-w-0 truncate text-base font-semibold leading-tight">
                   {coin.name}
                 </CardTitle>
-                <Badge variant="secondary" className="text-xs flex-shrink-0">
+                <Badge variant="secondary" className="text-xs">
                   Score {coin.score}
                 </Badge>
                 {coin.bucket && (
-                  <Badge className="text-xs flex-shrink-0" variant="outline">
+                  <Badge className="text-xs" variant="outline">
                     {coin.bucket}
                   </Badge>
                 )}
@@ -512,7 +512,7 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
               <div className="text-xs text-muted-foreground truncate">{coin.symbol}</div>
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
             <Badge className={cn("text-xs", confidenceVariant(coin.confidence))}>
               {coin.confidence} confidence
             </Badge>
@@ -521,7 +521,7 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
             </Button>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6 min-w-0">
+        <div className="grid min-w-0 gap-4 md:grid-cols-3 lg:grid-cols-6">
           <Metric label="Price" value={price} />
           <Metric
             label="24h Change"
@@ -534,14 +534,14 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
           <Metric label="Dist. to Resistance" value={distancePct} />
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between min-w-0">
-        <div className="flex flex-1 flex-col gap-3 min-w-0">
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground min-w-0">
+      <CardContent className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex min-w-0 flex-wrap gap-4 text-sm text-muted-foreground">
             <span>RSI {formatNumber(coin.rsi)}</span>
             <span>MACD Hist {formatNumber(coin.macd.histogram)}</span>
             <span>ADX {formatNumber(coin.adx.adx)}</span>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs min-w-0">
+          <div className="flex min-w-0 flex-wrap gap-2 text-xs">
             <Badge variant="secondary">24h vs 7d {formatRatio(dayVolumeRatio)}</Badge>
             <Badge variant="outline">Intra-TF {formatRatio(coin.intraTFVolRatio)}</Badge>
           </div>
@@ -581,9 +581,9 @@ type MetricProps = {
 
 function Metric({ label, value, valueClassName }: MetricProps) {
   return (
-    <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-      <div className="text-xs uppercase text-muted-foreground">{label}</div>
-      <div className={cn("text-sm font-medium", valueClassName)}>{value}</div>
+    <div className="min-w-0 overflow-hidden rounded-lg border border-border/50 bg-background/40 p-3">
+      <div className="truncate text-xs uppercase text-muted-foreground">{label}</div>
+      <div className={cn("truncate text-sm font-medium", valueClassName)}>{value}</div>
     </div>
   );
 }

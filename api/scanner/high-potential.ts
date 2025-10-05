@@ -92,7 +92,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log("[HP]", req.method, req.url ?? req.originalUrl ?? "/api/scanner/high-potential");
     const filters = extractFilters(req);
-    const data = await highPotentialScanner.getScan(filters);
+    const rawDebug = normalizeParam((req.query as Record<string, unknown> | undefined)?.debug);
+    const debugMode = toBoolean(rawDebug) ?? false;
+    const data = await highPotentialScanner.getScan(filters, { debug: debugMode });
     return res.status(200).json(data);
   } catch (error) {
     if (error instanceof InvalidHighPotentialFiltersError) {

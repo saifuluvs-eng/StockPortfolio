@@ -72,18 +72,13 @@ const STABLE_BASE_ASSETS = new Set([
   "GBP",
 ]);
 
-const LEVERAGED_KEYWORDS = [
-  "UP",
-  "DOWN",
-  "3L",
-  "3S",
-  "4L",
-  "4S",
-  "5L",
-  "5S",
-  "BULL",
-  "BEAR",
-  "PERP",
+const LEVERAGED_SUFFIX_PATTERNS = [
+  /UP$/,
+  /DOWN$/,
+  /[1-5]L$/,
+  /[1-5]S$/,
+  /BULL$/,
+  /BEAR$/,
 ];
 
 const DEFAULT_FILTERS: HighPotentialFilters = {
@@ -119,6 +114,7 @@ const EMA_MED = 50;
 const EMA_SLOW = 200;
 
 const COINGECKO_PAGES = 2; // fetch top 500 markets
+const DEBUG_EXAMPLE_LIMIT = 20;
 
 const STATIC_ALIAS_SEEDS: Record<string, string[]> = {
   BTC: ["Bitcoin"],
@@ -526,17 +522,30 @@ export class HighPotentialScanner {
     });
   }
 
-  async getScan(filters: HighPotentialFilters): Promise<HighPotentialResponse> {
+  async getScan(
+    filters: HighPotentialFilters,
+    options: { debug?: boolean } = {},
+  ): Promise<HighPotentialResponse> {
     const key = coinKey(filters);
     const now = Date.now();
     const cached = this.scanCache.get(key);
-    if (cached && cached.expiresAt > now) {
+    const debugRequested = Boolean(options.debug);
+    if (!debugRequested && cached && cached.expiresAt > now) {
       return cached.data;
     }
 
     try {
-      const data = await this.performScan(filters);
-      this.scanCache.set(key, { filtersKey: key, data, expiresAt: now + TEN_MINUTES });
+      const data = await this.performScan(filters, debugRequested);
+      if (debugRequested) {
+        const { debug, ...rest } = data;
+        this.scanCache.set(key, {
+          filtersKey: key,
+          data: rest,
+          expiresAt: now + TEN_MINUTES,
+        });
+      } else {
+        this.scanCache.set(key, { filtersKey: key, data, expiresAt: now + TEN_MINUTES });
+      }
       return data;
     } catch (error) {
       if (cached) {
@@ -547,52 +556,86 @@ export class HighPotentialScanner {
     }
   }
 
-  private async performScan(filters: HighPotentialFilters): Promise<HighPotentialResponse> {
+  private async performScan(
+    filters: HighPotentialFilters,
+    includeDebug: boolean,
+  ): Promise<HighPotentialResponse> {
     const exchangeSymbols = await this.getExchangeSymbols();
     const tickers = await this.getTicker24h();
+    const tickerMap = new Map(tickers.map((t) => [t.symbol, t] as const));
 
-    const eligible = exchangeSymbols.filter((symbol) => {
+    const universe = exchangeSymbols.filter((symbol) => {
       if (symbol.quoteAsset !== "USDT") return false;
       if (symbol.status !== "TRADING") return false;
       const base = symbol.baseAsset.toUpperCase();
       if (STABLE_BASE_ASSETS.has(base)) return false;
-      if (filters.excludeLeveraged) {
-        for (const keyword of LEVERAGED_KEYWORDS) {
-          if (base.endsWith(keyword) || base.includes(keyword)) return false;
-        }
+      return true;
+    });
+
+    const excludedExamples: Array<{ symbol: string; reason: string }> = [];
+    const collectExample = (symbol: string, reason: string) => {
+      if (!includeDebug) return;
+      if (excludedExamples.length >= DEBUG_EXAMPLE_LIMIT) return;
+      excludedExamples.push({ symbol, reason });
+    };
+
+    const leveragedFiltered = universe.filter((symbol) => {
+      if (!filters.excludeLeveraged) return true;
+      const baseFromSymbol = symbol.symbol.toUpperCase().replace(/USDT$/, "");
+      const baseAsset = (symbol.baseAsset || baseFromSymbol).toUpperCase();
+      const baseToCheck = baseFromSymbol.length > 0 ? baseFromSymbol : baseAsset;
+      const isLeveraged = LEVERAGED_SUFFIX_PATTERNS.some((pattern) => pattern.test(baseToCheck));
+      if (isLeveraged) {
+        collectExample(symbol.symbol, "leveraged-suffix");
+        return false;
       }
       return true;
     });
 
-    const tickerMap = new Map(tickers.map((t) => [t.symbol, t] as const));
+    const volumeCandidates: Array<{
+      symbol: BinanceExchangeSymbol;
+      ticker: BinanceTicker24h;
+      volume: number;
+    }> = [];
 
-    const filtered = eligible
-      .map((symbol) => {
-        const ticker = tickerMap.get(symbol.symbol);
-        if (!ticker) return null;
-        const vol = toNumber(ticker.quoteVolume);
-        if (vol < filters.minVolUSD) return null;
-        return { symbol, ticker, volume: vol };
-      })
-      .filter((entry): entry is { symbol: BinanceExchangeSymbol; ticker: BinanceTicker24h; volume: number } =>
-        Boolean(entry),
-      )
-      .sort((a, b) => b.volume - a.volume)
-      .slice(0, 60);
+    for (const symbol of leveragedFiltered) {
+      const ticker = tickerMap.get(symbol.symbol);
+      if (!ticker) continue;
+      const vol = toNumber(ticker.quoteVolume);
+      if (!Number.isFinite(vol)) continue;
+      if (vol < filters.minVolUSD) {
+        collectExample(symbol.symbol, "below-min-volume");
+        continue;
+      }
+      volumeCandidates.push({ symbol, ticker, volume: vol });
+    }
+
+    volumeCandidates.sort((a, b) => b.volume - a.volume);
+    const filtered = volumeCandidates.slice(0, 60);
 
     const marketMap = await this.getMarketMap();
-
     const timeframe = filters.timeframe;
     const binanceInterval = TIMEFRAME_TO_BINANCE[timeframe];
 
     const coins: HighPotentialCoin[] = [];
     let dataStale = false;
+    let analysedCount = 0;
+    let knownMarketCaps = 0;
+    let missingMarketCaps = 0;
 
     for (const entry of filtered) {
       try {
         const analysed = await this.analyseCoin(entry.symbol, entry.ticker, marketMap, binanceInterval, timeframe);
         if (!analysed) continue;
-        if (analysed.marketCap < filters.capRange[0] || analysed.marketCap > filters.capRange[1]) continue;
+        analysedCount++;
+        if (analysed.marketCapKnown) knownMarketCaps++;
+        else missingMarketCaps++;
+        const withinCapRange = !analysed.marketCapKnown
+          || (analysed.marketCap >= filters.capRange[0] && analysed.marketCap <= filters.capRange[1]);
+        if (!withinCapRange) {
+          collectExample(entry.symbol.symbol, "cap-out-of-range");
+          continue;
+        }
         coins.push(analysed.coin);
         if (analysed.socialStale) {
           dataStale = true;
@@ -613,13 +656,35 @@ export class HighPotentialScanner {
       strongMomentum: coins.filter((coin) => coin.bucket === "Strong Momentum"),
     };
 
-    return {
+    const response: HighPotentialResponse = {
       dataStale,
       timeframe,
       filters,
       top,
       buckets,
     };
+
+    if (includeDebug) {
+      response.debug = {
+        universe: universe.length,
+        afterLeveraged: leveragedFiltered.length,
+        afterMinVolume: volumeCandidates.length,
+        withMarketCap: { known: knownMarketCaps, missing: missingMarketCaps },
+        afterCapRange: coins.length,
+        afterIndicators: analysedCount,
+        topCount: top.length,
+        bucketCounts: {
+          breakout: buckets.breakoutZone.length,
+          recovery: buckets.oversoldRecovery.length,
+          momentum: buckets.strongMomentum.length,
+        },
+        examples: {
+          excluded: excludedExamples,
+        },
+      };
+    }
+
+    return response;
   }
   private async analyseCoin(
     symbol: BinanceExchangeSymbol,
@@ -627,31 +692,39 @@ export class HighPotentialScanner {
     marketMap: Map<string, CoinGeckoMarketItem>,
     interval: string,
     timeframe: HighPotentialTimeframe,
-  ): Promise<{ coin: HighPotentialCoin; context: CoinComputationContext; marketCap: number; socialStale: boolean } | null> {
+  ): Promise<
+    { coin: HighPotentialCoin; marketCap: number; marketCapKnown: boolean; socialStale: boolean } | null
+  > {
     const base = symbol.baseAsset.toUpperCase();
-    const market = marketMap.get(base.toLowerCase()) ?? marketMap.get(base.toUpperCase());
-    if (!market) return null;
+    const market = marketMap.get(base.toLowerCase()) ?? marketMap.get(base.toUpperCase()) ?? null;
 
     const price = toNumber(ticker.lastPrice);
     const change24hPct = toNumber(ticker.priceChangePercent);
     const vol24h = toNumber(ticker.quoteVolume);
+    if (!Number.isFinite(price) || price <= 0) return null;
+    if (!Number.isFinite(vol24h) || vol24h <= 0) return null;
+
+    const marketCapRaw = market?.market_cap;
+    const marketCapKnown = Number.isFinite(marketCapRaw) && (marketCapRaw ?? 0) > 0;
+    const marketCap = marketCapKnown ? Number(marketCapRaw) : 0;
 
     const klines = await binanceService.getKlineData(symbol.symbol, interval, TIMEFRAME_KLINE_LIMIT);
-    if (klines.length < RESISTANCE_LOOKBACK + 5) return null;
-
     const closes = klines.map((k) => toNumber(k.close));
     const highs = klines.map((k) => toNumber(k.high));
     const lows = klines.map((k) => toNumber(k.low));
-    const volumes = klines.map((k) => toNumber(k.volume));
+    const volumes = klines.map((k) => toNumber(k.quoteVolume ?? k.volume));
 
     const rsiSeries = rsi(closes);
-    const rsiValue = rsiSeries.at(-1);
-    if (rsiValue === undefined || Number.isNaN(rsiValue)) return null;
-    const rsiRising =
-      rsiSeries.length >= 4 ? rsiSeries[rsiSeries.length - 1] > rsiSeries[rsiSeries.length - 4] : false;
+    const latestRsi = rsiSeries.at(-1);
+    const prevRsi = rsiSeries.at(-4);
+    const rsiValue = Number.isFinite(latestRsi) ? Number(latestRsi) : 0;
+    const rsiRising = Number.isFinite(latestRsi) && Number.isFinite(prevRsi)
+      ? Number(latestRsi) > Number(prevRsi)
+      : false;
 
     const macdData = macd(closes);
-    const macdHistogram = macdData.histogram.at(-1) ?? 0;
+    const macdHistogramRaw = macdData.histogram.at(-1);
+    const macdHistogram = Number.isFinite(macdHistogramRaw) ? Number(macdHistogramRaw) : 0;
     let macdCrossBullishRecent = false;
     const macdLen = Math.min(macdData.macd.length, macdData.signal.length);
     for (let i = Math.max(1, macdLen - 5); i < macdLen; i++) {
@@ -676,8 +749,8 @@ export class HighPotentialScanner {
     const ema200 = ema200Series.at(-1) ?? 0;
     let emaCrossRecent = false;
     for (let i = Math.max(1, closes.length - 10); i < closes.length; i++) {
-      const prevDiff = ema20Series[i - 1] - ema50Series[i - 1];
-      const currDiff = ema20Series[i] - ema50Series[i];
+      const prevDiff = (ema20Series[i - 1] ?? 0) - (ema50Series[i - 1] ?? 0);
+      const currDiff = (ema20Series[i] ?? 0) - (ema50Series[i] ?? 0);
       if (prevDiff <= 0 && currDiff > 0) {
         emaCrossRecent = true;
         break;
@@ -693,15 +766,26 @@ export class HighPotentialScanner {
 
     const daily = await binanceService.getKlineData(symbol.symbol, "1d", 30);
     const last7 = daily.slice(-7);
-    const vol7dArr = last7.map((k) => toNumber(k.volume) * toNumber(k.close));
-    const vol7dAvg = average(vol7dArr);
+    const last7QuoteVolumes = last7.map((k) => toNumber(k.quoteVolume ?? k.volume));
     const sparkline = last7.map((k) => toNumber(k.close));
+    let vol7dAvg = 0;
+    if (last7QuoteVolumes.length >= 7) {
+      vol7dAvg = average(last7QuoteVolumes);
+    } else {
+      const total = last7QuoteVolumes.reduce((sum, value) => sum + value, 0);
+      const missingDays = Math.max(0, 7 - last7QuoteVolumes.length);
+      const adjustedTotal = total + missingDays * vol24h;
+      vol7dAvg = adjustedTotal / (missingDays > 0 ? 7 : Math.max(1, last7QuoteVolumes.length));
+    }
+    if (!Number.isFinite(vol7dAvg) || vol7dAvg <= 0) {
+      vol7dAvg = vol24h;
+    }
     const volumeRatio = vol7dAvg > 0 ? vol24h / vol7dAvg : 0;
 
     const bookTicker = await this.getBookTicker(symbol.symbol);
     const spreadPct = calcSpreadPct(bookTicker);
 
-    const socialResult = await this.getSocialData(symbol.baseAsset, market.name, timeframe);
+    const socialResult = await this.getSocialData(symbol.baseAsset, market?.name ?? symbol.baseAsset, timeframe);
 
     const context: CoinComputationContext = {
       rsiValue,
@@ -721,7 +805,7 @@ export class HighPotentialScanner {
       distancePct: breakoutDistancePct,
       vol24h,
       spreadPct,
-      marketCap: market.market_cap ?? 0,
+      marketCap,
       social: socialResult.data,
       headlineDelta: socialResult.data.pos - socialResult.data.neg,
     };
@@ -729,7 +813,7 @@ export class HighPotentialScanner {
     const momentum = scoreMomentum(context);
     const volume = scoreVolume(context);
     const breakout = scoreBreakout(context);
-    const marketCapScore = scoreMarketCap(context.marketCap);
+    const marketCapScore = marketCapKnown ? scoreMarketCap(marketCap) : 0;
     const socialScore = scoreSocial(context);
     const quality = scoreQuality(context);
 
@@ -740,7 +824,7 @@ export class HighPotentialScanner {
     const coin: HighPotentialCoin = {
       symbol: symbol.symbol,
       baseAsset: symbol.baseAsset,
-      name: market.name || symbol.baseAsset,
+      name: market?.name || symbol.baseAsset,
       price,
       change24hPct,
       vol24h,
@@ -752,8 +836,8 @@ export class HighPotentialScanner {
       ema: { ema20, ema50, ema200 },
       resistance20,
       breakoutDistancePct,
-      marketCap: context.marketCap,
-      marketCapRank: market.market_cap_rank ?? null,
+      marketCap,
+      marketCapRank: market?.market_cap_rank ?? null,
       social: socialResult.data,
       score: Math.round(totalScore),
       confidence: computeConfidence(totalScore),
@@ -764,7 +848,7 @@ export class HighPotentialScanner {
 
     coin.bucket = assignBucket(context);
 
-    return { coin, context, marketCap: context.marketCap, socialStale: socialResult.stale };
+    return { coin, marketCap, marketCapKnown, socialStale: socialResult.stale };
   }
 
   private async getExchangeSymbols(): Promise<BinanceExchangeSymbol[]> {
