@@ -99,7 +99,17 @@ const ALLOW_ORIGINS = [
 ].filter((value) => value);
 
 const allowedOriginSet = new Set(ALLOW_ORIGINS);
-const vercelPreviewOrigin = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+const vercelPreviewOrigin = (origin) =>
+  typeof origin === "string" && origin.toLowerCase().endsWith(".vercel.app");
+
+const ALLOWED_METHODS = ["GET", "POST", "OPTIONS"];
+const ALLOWED_HEADERS = [
+  "Authorization",
+  "Content-Type",
+  "X-Requested-With",
+  "Accept",
+  "Origin",
+];
 
 const appendVaryHeader = (res, value) => {
   const current = res.get('Vary');
@@ -119,7 +129,7 @@ const resolveAllowedOrigin = (originHeader) => {
   if (normalizedOrigin && allowedOriginSet.has(normalizedOrigin)) {
     return originHeader;
   }
-  if (vercelPreviewOrigin.test(originHeader)) {
+  if (vercelPreviewOrigin(originHeader)) {
     return originHeader;
   }
   return null;
@@ -131,8 +141,8 @@ const applyCorsHeaders = (req, res) => {
     res.header('Access-Control-Allow-Origin', allowedOrigin);
   }
   appendVaryHeader(res, 'Origin');
-  res.header('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
+  res.header('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
 };
 
 const app = express();
@@ -148,8 +158,8 @@ const corsOptions = {
     }
     return cb(null, false);
   },
-  methods: ['GET', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
+  methods: ALLOWED_METHODS,
+  allowedHeaders: ALLOWED_HEADERS,
   credentials: false,
 };
 
