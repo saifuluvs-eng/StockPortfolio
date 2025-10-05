@@ -153,7 +153,16 @@ async function fetchHighPotential(filters: FilterState): Promise<HighPotentialRe
 
   const res = await fetch(`/api/high-potential?${params.toString()}`);
   if (!res.ok) {
-    throw new Error("Failed to fetch high potential data");
+    let message = "Failed to fetch high potential data";
+    try {
+      const errorPayload = (await res.json()) as { error?: string };
+      if (errorPayload && typeof errorPayload.error === "string" && errorPayload.error.trim().length > 0) {
+        message = errorPayload.error;
+      }
+    } catch {
+      // ignore JSON parse errors
+    }
+    throw new Error(message);
   }
   return (await res.json()) as HighPotentialResponse;
 }
@@ -164,17 +173,16 @@ export default function HighPotentialPage() {
   const [capMin, capMax] = capRange;
   const filtersSnapshot = useMemo<HighPotentialFiltersSnapshot>(
     () => ({
-      timeframe,
+      tf: timeframe,
       minVolUSD,
-      capMin,
-      capMax,
+      capRange: [capMin, capMax],
       excludeLeveraged,
     }),
     [timeframe, minVolUSD, capMin, capMax, excludeLeveraged],
   );
   const [cachedEntry, setCachedEntry] = useState<CachedHighPotentialEntry | null>(() => {
     if (typeof window === "undefined") return null;
-    return loadCachedResponse(window.sessionStorage, filtersSnapshot);
+    return loadCachedResponse(window.localStorage, filtersSnapshot);
   });
 
   useEffect(() => {
@@ -184,7 +192,7 @@ export default function HighPotentialPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setCachedEntry(loadCachedResponse(window.sessionStorage, filtersSnapshot));
+    setCachedEntry(loadCachedResponse(window.localStorage, filtersSnapshot));
   }, [filtersSnapshot]);
 
   const queryKey = useMemo(
@@ -206,13 +214,13 @@ export default function HighPotentialPage() {
     keepPreviousData: true,
     onSuccess: (response: HighPotentialResponse) => {
       if (typeof window === "undefined") return;
-      setCachedEntry(storeCachedResponse(window.sessionStorage, filtersSnapshot, response));
+      setCachedEntry(storeCachedResponse(window.localStorage, filtersSnapshot, response));
     },
   });
 
   const { data: queryData, isLoading, isFetching, refetch, error } = query;
 
-  const { resolvedData, showOfflineBanner, showUnavailableState } = deriveScannerState({
+  const { resolvedData, errorBannerMessage, showUnavailableState } = deriveScannerState({
     queryData,
     queryError: error,
     cachedEntry,
@@ -258,32 +266,21 @@ export default function HighPotentialPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">High Potential Scanner</h1>
+          <h1 className="text-2xl font-bold text-foreground whitespace-normal break-keep">High Potential Scanner</h1>
           <p className="text-sm text-muted-foreground">
             Ranked crypto setups combining momentum, volume, breakout proximity, market cap and social sentiment on Binance
             USDT pairs.
           </p>
         </div>
 
-        {showOfflineBanner && (
-          <div
-            className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
-            data-testid="scanner-offline-banner"
-          >
-            Couldn’t reach scanner. Showing last good results.
-          </div>
-        )}
-
-        {showUnavailableState && (
+        {errorBannerMessage && (
           <Alert
             variant="destructive"
             className="border-red-500/60 bg-red-500/10 text-red-200"
-            data-testid="scanner-error-alert"
+            data-testid="scanner-error-banner"
           >
-            <AlertTitle>Scanner unavailable</AlertTitle>
-            <AlertDescription>
-              We couldn’t reach the scanner and no cached results are available. Please try again shortly.
-            </AlertDescription>
+            <AlertTitle>Scanner issue</AlertTitle>
+            <AlertDescription>{errorBannerMessage}</AlertDescription>
           </Alert>
         )}
 
@@ -298,7 +295,7 @@ export default function HighPotentialPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold">Scanner Controls</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <CardContent className="grid gap-4 lg:grid-cols-2 min-w-0">
             <div className="space-y-2">
               <Label className="text-xs uppercase text-muted-foreground">Timeframe</Label>
               <ToggleGroup
@@ -378,9 +375,9 @@ export default function HighPotentialPage() {
       </div>
 
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Top 10 High Potentials</h2>
-          <span className="text-xs text-muted-foreground">
+        <div className="flex items-center justify-between gap-4 min-w-0">
+          <h2 className="text-lg font-semibold whitespace-normal break-keep">Top 10 High Potentials</h2>
+          <span className="text-xs text-muted-foreground truncate">
             Updated {isFetching
               ? "just now"
               : resolvedData
@@ -396,7 +393,7 @@ export default function HighPotentialPage() {
             ))}
           </div>
         ) : showUnavailableState ? (
-          <ErrorState message={scannerUnavailableMessage} />
+          <EmptyState message={scannerUnavailableMessage} />
         ) : topCoins.length > 0 ? (
           <div className="grid gap-4">
             {topCoins.map((coin) => (
@@ -409,7 +406,7 @@ export default function HighPotentialPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold">Opportunity Buckets</h2>
+        <h2 className="text-lg font-semibold whitespace-normal break-keep">Opportunity Buckets</h2>
         <Tabs defaultValue="breakout" className="w-full">
           <TabsList className="mb-3 w-full justify-start overflow-x-auto">
             <TabsTrigger value="breakout">Breakout Zone ({buckets.breakoutZone.length})</TabsTrigger>
@@ -460,7 +457,7 @@ type BucketListProps = {
 
 function BucketList({ coins, timeframe, emptyMessage, isUnavailable, unavailableMessage }: BucketListProps) {
   if (isUnavailable) {
-    return <ErrorState message={unavailableMessage} />;
+    return <EmptyState message={unavailableMessage} />;
   }
   if (!coins.length) {
     return <EmptyState message={emptyMessage} />;
@@ -491,38 +488,40 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
   const sparkId = compact ? `spark-${coin.symbol}-compact` : `spark-${coin.symbol}`;
 
   return (
-    <Card className={cn("border-border/60", compact && "bg-muted/30")}> 
-      <CardHeader className="flex flex-col gap-4 pb-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex items-start gap-3">
-            <Avatar className="h-10 w-10">
+    <Card className={cn("border-border/60", compact && "bg-muted/30")}>
+      <CardHeader className="flex flex-col gap-4 pb-4 min-w-0">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between min-w-0">
+          <div className="flex items-start gap-3 min-w-0">
+            <Avatar className="h-10 w-10 flex-shrink-0">
               <AvatarFallback>{coin.baseAsset.slice(0, 3)}</AvatarFallback>
             </Avatar>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-base font-semibold leading-tight">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <CardTitle className="text-base font-semibold leading-tight min-w-0 truncate">
                   {coin.name}
                 </CardTitle>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs flex-shrink-0">
                   Score {coin.score}
                 </Badge>
                 {coin.bucket && (
-                  <Badge className="text-xs" variant="outline">
+                  <Badge className="text-xs flex-shrink-0" variant="outline">
                     {coin.bucket}
                   </Badge>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground">{coin.symbol}</div>
+              <div className="text-xs text-muted-foreground truncate">{coin.symbol}</div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Badge className={cn("text-xs", confidenceVariant(coin.confidence))}>{coin.confidence} confidence</Badge>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Badge className={cn("text-xs", confidenceVariant(coin.confidence))}>
+              {coin.confidence} confidence
+            </Badge>
             <Button asChild size="sm" variant="outline">
               <Link to={chartPath}>View Chart</Link>
             </Button>
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6 min-w-0">
           <Metric label="Price" value={price} />
           <Metric
             label="24h Change"
@@ -535,14 +534,14 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
           <Metric label="Dist. to Resistance" value={distancePct} />
         </div>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 flex-col gap-3">
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+      <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between min-w-0">
+        <div className="flex flex-1 flex-col gap-3 min-w-0">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground min-w-0">
             <span>RSI {formatNumber(coin.rsi)}</span>
             <span>MACD Hist {formatNumber(coin.macd.histogram)}</span>
             <span>ADX {formatNumber(coin.adx.adx)}</span>
           </div>
-          <div className="flex flex-wrap gap-2 text-xs">
+          <div className="flex flex-wrap gap-2 text-xs min-w-0">
             <Badge variant="secondary">24h vs 7d {formatRatio(dayVolumeRatio)}</Badge>
             <Badge variant="outline">Intra-TF {formatRatio(coin.intraTFVolRatio)}</Badge>
           </div>
@@ -561,7 +560,6 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
     </Card>
   );
 }
-
 function confidenceVariant(confidence: HighPotentialCoin["confidence"]): string {
   switch (confidence) {
     case "High":
@@ -623,14 +621,6 @@ function Sparkline({ data, id }: SparklineProps) {
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-6 text-sm text-muted-foreground">
-      {message}
-    </div>
-  );
-}
-
-function ErrorState({ message }: { message: string }) {
-  return (
-    <div className="rounded-lg border border-red-500/60 bg-red-500/10 p-6 text-sm text-red-200">
       {message}
     </div>
   );

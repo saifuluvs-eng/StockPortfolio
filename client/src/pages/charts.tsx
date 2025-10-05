@@ -243,7 +243,7 @@ export default function Charts() {
   const scanMutation = useMutation({
     mutationFn: async () => {
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
-      const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
+      const backendTimeframe = timeframeConfig?.backend ?? selectedTimeframe ?? "1d";
       const res = await apiRequest("POST", "/api/scanner/scan", {
         symbol: toBinance(selectedSymbol),
         timeframe: backendTimeframe,
@@ -340,8 +340,9 @@ export default function Charts() {
     enabled: isAuthenticated,
     staleTime: 10 * 60_000,
     queryFn: async () => {
+      const tfParam = timeframeConfig?.backend ?? selectedTimeframe ?? "1d";
       const params = new URLSearchParams({
-        tf: timeframeConfig?.backend || "4h",
+        tf: String(tfParam),
         minVolUSD: "2000000",
         capMin: "0",
         capMax: "2000000000",

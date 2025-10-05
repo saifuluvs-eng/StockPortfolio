@@ -27,10 +27,9 @@ class MemoryStorage implements StorageLike {
 }
 
 const filters: HighPotentialFiltersSnapshot = {
-  timeframe: "1h",
+  tf: "1h",
   minVolUSD: 1_000_000,
-  capMin: 0,
-  capMax: 5_000_000_000,
+  capRange: [0, 5_000_000_000],
   excludeLeveraged: true,
 };
 
@@ -60,8 +59,13 @@ test("storeCachedResponse persists payload metadata", () => {
   const timestamp = 1_700_000_000_000;
 
   const entry = storeCachedResponse(storage, filters, payload, timestamp);
-  assert.equal(entry.timestamp, timestamp);
-  assert.equal(entry.dataStale, true);
+  assert.equal(entry.savedAt, timestamp);
+  assert.deepEqual(entry.params, {
+    tf: "1h",
+    minVolUSD: 1_000_000,
+    capRange: [0, 5_000_000_000],
+    excludeLeveraged: true,
+  });
   assert.deepEqual(entry.payload, payload);
 
   const loaded = loadCachedResponse(storage, filters);
@@ -102,15 +106,15 @@ test("deriveScannerState uses cached payload when query errors", () => {
     },
   });
   const cachedEntry: CachedHighPotentialEntry = {
-    timestamp: Date.now(),
-    dataStale: false,
+    savedAt: Date.now(),
+    params: filters,
     payload: cachedPayload,
   };
 
   const state = deriveScannerState({ queryData: null, queryError: new Error("boom"), cachedEntry });
   assert.equal(state.resolvedData, cachedPayload);
   assert.equal(state.usingCache, true);
-  assert.equal(state.showOfflineBanner, true);
+  assert.equal(state.errorBannerMessage, "Showing last scan (data may be stale).");
   assert.equal(state.showUnavailableState, false);
 });
 
@@ -118,6 +122,6 @@ test("deriveScannerState surfaces unavailable state when cache is empty", () => 
   const state = deriveScannerState({ queryData: null, queryError: new Error("network"), cachedEntry: null });
   assert.equal(state.resolvedData, null);
   assert.equal(state.usingCache, false);
-  assert.equal(state.showOfflineBanner, false);
+  assert.equal(state.errorBannerMessage, "Scanner unavailable. Please try again later.");
   assert.equal(state.showUnavailableState, true);
 });
