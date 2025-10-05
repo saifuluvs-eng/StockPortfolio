@@ -38,11 +38,10 @@
       /* fall through to real WS */
     }
     // Everything else (like Binance) goes through as normal
-    return new NativeWS(url, protocols);
+    return new NativeWS(url as any, protocols);
   }
 
   // Keep prototype so instanceof checks and event APIs keep working
-  (PatchedWS as any).prototype = NativeWS.prototype;
-  // @ts-expect-error: override global
-  window.WebSocket = PatchedWS;
+  (PatchedWS as unknown as { prototype: WebSocket }).prototype = NativeWS.prototype;
+  window.WebSocket = PatchedWS as unknown as typeof window.WebSocket;
 })();
