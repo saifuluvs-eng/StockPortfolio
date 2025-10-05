@@ -220,43 +220,90 @@ app.delete("/api/portfolio/:id", (req, res) => {
   res.json(removed);
 });
 
-const LOCAL_GAINERS = [
-  {
-    symbol: "BTCUSDT",
-    price: 65234.12,
-    changePct: 3.45,
-    volume: 158_345_672,
-    high: 65640.21,
-    low: 63890.14,
-  },
-  {
-    symbol: "ETHUSDT",
-    price: 3120.56,
-    changePct: 5.12,
-    volume: 98_234_110,
-    high: 3155.78,
-    low: 3012.34,
-  },
-  {
-    symbol: "SOLUSDT",
-    price: 148.32,
-    changePct: 4.87,
-    volume: 45_678_901,
-    high: 152.45,
-    low: 139.67,
-  },
-  {
-    symbol: "XRPUSDT",
-    price: 0.64,
-    changePct: 2.18,
-    volume: 35_678_234,
-    high: 0.66,
-    low: 0.61,
-  },
-];
+const BINANCE = "https://api.binance.com";
+const EXCLUDE_REGEX = /(UP|DOWN|BULL|BEAR|\d+L|\d+S)USDT$/;
+const FLOORS = [1_000_000, 300_000, 50_000, 1];
 
-app.get("/api/market/gainers", (_req, res) => {
-  res.json({ rows: LOCAL_GAINERS });
+app.get("/api/market/gainers", async (_req, res) => {
+  const headers = { "User-Agent": "stock-portfolio/1.0" };
+  const toNum = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const getJson = async (url) => {
+    const r = await fetch(url, { headers });
+    if (!r.ok) throw new Error(`${url} -> ${r.status}`);
+    return r.json();
+  };
+
+  try {
+    let exInfo;
+    try {
+      exInfo = await getJson(`${BINANCE}/api/v3/exchangeInfo?permissions=SPOT`);
+    } catch (_) {
+      exInfo = await getJson(`${BINANCE}/api/v3/exchangeInfo`);
+    }
+
+    const allowUSDT = new Set();
+    for (const symbolInfo of exInfo?.symbols ?? []) {
+      const hasSpot =
+        symbolInfo?.permissions?.includes?.("SPOT") || symbolInfo?.isSpotTradingAllowed === true;
+      if (
+        hasSpot &&
+        symbolInfo?.status === "TRADING" &&
+        symbolInfo?.quoteAsset === "USDT" &&
+        typeof symbolInfo?.symbol === "string" &&
+        !EXCLUDE_REGEX.test(symbolInfo.symbol)
+      ) {
+        allowUSDT.add(symbolInfo.symbol);
+      }
+    }
+
+    const tickers = await getJson(`${BINANCE}/api/v3/ticker/24hr`);
+    if (!Array.isArray(tickers)) throw new Error("ticker/24hr not array");
+
+    let rows = tickers
+      .filter((ticker) => allowUSDT.has(ticker.symbol))
+      .map((ticker) => ({
+        symbol: ticker.symbol,
+        price: toNum(ticker.lastPrice),
+        changePct: toNum(ticker.priceChangePercent),
+        volume: toNum(ticker.quoteVolume),
+        high: toNum(ticker.highPrice),
+        low: toNum(ticker.lowPrice),
+      }));
+
+    if (rows.length === 0 && allowUSDT.size < 50) {
+      rows = tickers
+        .filter((ticker) => /USDT$/.test(ticker.symbol) && !EXCLUDE_REGEX.test(ticker.symbol))
+        .map((ticker) => ({
+          symbol: ticker.symbol,
+          price: toNum(ticker.lastPrice),
+          changePct: toNum(ticker.priceChangePercent),
+          volume: toNum(ticker.quoteVolume),
+          high: toNum(ticker.highPrice),
+          low: toNum(ticker.lowPrice),
+        }));
+    }
+
+    rows = rows.filter((row) => row.price > 0 && row.volume > 0 && row.high > 0 && row.low > 0);
+
+    let filtered = [];
+    for (const floor of FLOORS) {
+      filtered = rows.filter((row) => row.volume >= floor);
+      if (filtered.length >= 20) break;
+    }
+    if (filtered.length === 0) filtered = rows;
+
+    const top = filtered.sort((a, b) => b.changePct - a.changePct).slice(0, 120);
+
+    res.set("cache-control", "no-store");
+    res.json({ rows: top });
+  } catch (_) {
+    res.set("cache-control", "no-store");
+    res.json({ rows: [] });
+  }
 });
 
 app.get("/api/watchlist", (_req, res) => {
