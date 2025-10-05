@@ -625,9 +625,9 @@ export default function Charts() {
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
+            <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-3xl font-bold text-foreground">
               <BarChart3 className="h-7 w-7 text-primary" />
-              Decision Hub
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Decision Hub</span>
             </h1>
             <p className="text-sm text-muted-foreground">
               Real-time charts, quantitative scans, and idea discovery in one cockpit.
@@ -648,8 +648,8 @@ export default function Charts() {
 
       <Card>
         <CardContent className="space-y-4 pt-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex min-w-64 flex-1 gap-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="flex min-w-64 flex-1 gap-2 lg:col-span-2">
               <div className="relative flex-1">
                 <Input
                   placeholder="Enter coin (BTC, ETH, SOL...)"
@@ -692,7 +692,7 @@ export default function Charts() {
             <Button
               onClick={handleScan}
               disabled={scanMutation.isPending || !isAuthenticated}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 lg:justify-self-start"
               data-testid="button-scan"
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${scanMutation.isPending ? "animate-spin" : ""}`} />
@@ -729,9 +729,11 @@ export default function Charts() {
 
           <Card className="border-border/70 bg-card/70">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold">
                 <Sparkles className="h-5 w-5 text-primary" />
-                High Potential Ideas
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                  High Potential Ideas
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -770,8 +772,8 @@ export default function Charts() {
                       className="group flex w-full flex-col rounded-xl border border-border/60 bg-card/60 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
+                        <div className="min-w-0">
+                          <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-foreground">
                             {displayPair(item.symbol)}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -796,9 +798,11 @@ export default function Charts() {
         <div className="flex flex-col gap-6">
           <Card className="h-[560px] border-border/70 bg-card/70">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold">
                 <ListChecks className="h-5 w-5 text-primary" />
-                Breakdown Technicals
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                  Breakdown Technicals
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="h-full overflow-hidden p-0">
@@ -820,9 +824,11 @@ export default function Charts() {
 
           <Card className="border-border/70 bg-card/70">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold">
                 <History className="h-5 w-5 text-primary" />
-                Recent Scans
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                  Recent Scans
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -858,8 +864,8 @@ export default function Charts() {
                         key={item.id}
                         className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
                       >
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
+                        <div className="min-w-0">
+                          <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-foreground">
                             {displayPair(symbol)}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -893,9 +899,9 @@ export default function Charts() {
 
             <Card className="border-border/70 bg-card/70">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold">
                   <Star className="h-5 w-5 text-primary" />
-                  Watchlist
+                  <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Watchlist</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -935,7 +941,7 @@ export default function Charts() {
                             : ""
                         }`}
                       >
-                        <span className="text-sm font-medium text-foreground">
+                        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-foreground">
                           {displayPair(item.symbol)}
                         </span>
                         <span className="text-xs text-muted-foreground">

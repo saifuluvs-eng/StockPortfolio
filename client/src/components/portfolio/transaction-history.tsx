@@ -69,9 +69,9 @@ export function TransactionHistory({ transactions, isLoading, onAddTransaction }
     return (
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <History className="w-5 h-5" />
-            Transaction History
+            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Transaction History</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -154,9 +154,9 @@ export function TransactionHistory({ transactions, isLoading, onAddTransaction }
       <Card className="border-border">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2">
               <History className="w-5 h-5" />
-              Transaction History
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Transaction History</span>
             </CardTitle>
             {onAddTransaction && (
               <Button onClick={onAddTransaction} data-testid="button-add-transaction">

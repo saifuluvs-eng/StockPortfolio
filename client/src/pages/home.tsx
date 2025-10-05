@@ -260,7 +260,9 @@ export default function Home() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Welcome back, {firstName}!</h1>
+            <h1 className="break-keep whitespace-normal text-3xl font-bold text-foreground">
+              Welcome back, {firstName}!
+            </h1>
             <p className="text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
           </div>
           {user ? (
@@ -420,9 +422,9 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="border-border">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex min-w-0 items-center space-x-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
-                <span>Market Overview</span>
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Market Overview</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -466,9 +468,9 @@ export default function Home() {
 
           <Card className="border-border">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
+              <CardTitle className="flex min-w-0 items-center space-x-2">
                 <Brain className="w-5 h-5 text-purple-500" />
-                <span>AI Trading Assistant</span>
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">AI Trading Assistant</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

@@ -727,9 +727,9 @@ export default function Analyse() {
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="flex items-center gap-2 text-3xl font-bold text-foreground">
+            <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-3xl font-bold text-foreground">
               <BarChart3 className="h-7 w-7 text-primary" />
-              Decision Hub
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Decision Hub</span>
             </h1>
             <p className="text-sm text-muted-foreground">
               Real-time charts, quantitative scans, and idea discovery in one cockpit.
@@ -754,8 +754,8 @@ export default function Analyse() {
 
       <Card>
         <CardContent className="space-y-4 pt-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex min-w-64 flex-1 gap-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="flex min-w-64 flex-1 gap-2 lg:col-span-2">
               <div className="relative flex-1">
                 <Input
                   placeholder="Enter coin (BTC, ETH, SOL...)"
@@ -798,7 +798,7 @@ export default function Analyse() {
             <Button
               onClick={handleScan}
               disabled={isScanning || !isAuthenticated || !networkEnabled}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 lg:justify-self-start"
               data-testid="button-scan"
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
@@ -835,9 +835,11 @@ export default function Analyse() {
 
           <Card className="border-border/70 bg-card/70">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+              <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold">
                 <Sparkles className="h-5 w-5 text-primary" />
-                High Potential Ideas
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                  High Potential Ideas
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -883,8 +885,8 @@ export default function Analyse() {
                       className="group flex w-full flex-col rounded-xl border border-border/60 bg-card/60 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
                     >
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
+                        <div className="min-w-0">
+                          <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-foreground">
                             {displayPair(item.symbol)}
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -965,7 +967,7 @@ export default function Analyse() {
           )}
 
           <section className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-4 md:p-6">
-            <h3 className="text-lg font-semibold mb-4">Recent Scans</h3>
+            <h3 className="mb-4 break-keep whitespace-normal text-lg font-semibold">Recent Scans</h3>
             <div className="space-y-3">
               {!isAuthenticated ? (
                 <p className="text-sm text-muted-foreground">
@@ -1034,9 +1036,9 @@ export default function Analyse() {
 
           <Card className="mt-6 border-border/70 bg-card/70">
               <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold">
                   <Star className="h-5 w-5 text-primary" />
-                  Watchlist
+                  <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Watchlist</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -1077,7 +1079,7 @@ export default function Analyse() {
                             : ""
                         }`}
                       >
-                        <span className="text-sm font-medium text-foreground">
+                        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-foreground">
                           {displayPair(item.symbol)}
                         </span>
                         <span className="text-xs text-muted-foreground">
