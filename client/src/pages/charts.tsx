@@ -243,7 +243,7 @@ export default function Charts() {
       queryClient.invalidateQueries({ queryKey: ["scan-history"] });
     },
     onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
+      if (isUnauthorizedError(error)) {
         toast({
           title: "Sign in required",
           description: "Please sign back in to analyze symbols.",
@@ -360,7 +360,7 @@ export default function Charts() {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
     onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
+      if (isUnauthorizedError(error)) {
         toast({
           title: "Sign in required",
           description: "Please sign in to manage your watchlist.",
@@ -392,7 +392,7 @@ export default function Charts() {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
     onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
+      if (isUnauthorizedError(error)) {
         toast({
           title: "Sign in required",
           description: "Please sign in to manage your watchlist.",
