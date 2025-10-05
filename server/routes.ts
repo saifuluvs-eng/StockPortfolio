@@ -191,10 +191,43 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.get('/api/market/gainers', async (req: Request, res: Response) => {
+  app.get('/api/market/gainers', async (_req: Request, res: Response) => {
     try {
+      type RawGainer = {
+        symbol: string;
+        lastPrice?: string;
+        price?: string;
+        priceChangePercent?: string;
+        changePct?: string;
+        quoteVolume?: string;
+        volume?: string;
+        highPrice?: string;
+        high?: string;
+        lowPrice?: string;
+        low?: string;
+      };
+
       const gainers = await binanceService.getTopGainers();
-      res.json(gainers);
+      const toNumber = (value: unknown) => {
+        if (typeof value === "number") return value;
+        if (typeof value === "string" && value.trim().length) {
+          const parsed = Number.parseFloat(value);
+          return Number.isFinite(parsed) ? parsed : 0;
+        }
+        return 0;
+      };
+      const rows = gainers
+        .filter((item: Partial<RawGainer>): item is RawGainer => typeof item?.symbol === "string")
+        .map((item) => ({
+          symbol: item.symbol,
+          price: toNumber(item.lastPrice ?? item.price),
+          changePct: toNumber(item.priceChangePercent ?? item.changePct),
+          volume: toNumber(item.quoteVolume ?? item.volume),
+          high: toNumber(item.highPrice ?? item.high),
+          low: toNumber(item.lowPrice ?? item.low),
+        }));
+
+      res.json({ rows });
     } catch (error) {
       console.error("Error fetching gainers:", error);
       res.status(500).json({ message: "Failed to fetch gainers" });

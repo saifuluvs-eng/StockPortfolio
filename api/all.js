@@ -103,17 +103,23 @@ async function gainers(_req, res) {
   const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`, { cache: "no-store" });
   if (!r.ok) return bad(res, r.status, "binance error", { detail: await r.text() });
   const list = await r.json();
-  const items = list
+  const toNumber = value => {
+    const parsed = typeof value === "number" ? value : parseFloat(String(value));
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const rows = list
     .filter(t => t?.symbol?.endsWith?.("USDT"))
     .map(t => ({
       symbol: t.symbol,
-      last: parseFloat(t.lastPrice),
-      changePct: parseFloat(t.priceChangePercent),
-      quoteVolume: parseFloat(t.quoteVolume),
+      price: toNumber(t.lastPrice),
+      changePct: toNumber(t.priceChangePercent),
+      volume: toNumber(t.quoteVolume ?? t.volume),
+      high: toNumber(t.highPrice),
+      low: toNumber(t.lowPrice),
     }))
     .sort((a, b) => b.changePct - a.changePct)
     .slice(0, 20);
-  return ok(res, { ok: true, items, time: new Date().toISOString() });
+  return ok(res, { rows });
 }
 
 async function highPotential(_req, res) {
