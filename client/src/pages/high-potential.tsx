@@ -288,7 +288,7 @@ export default function HighPotentialPage() {
         )}
 
         {resolvedData?.dataStale && (
-          <Alert variant="warning" className="border-amber-500/60 bg-amber-500/10 text-amber-100">
+          <Alert variant="warning">
             <AlertTitle>Showing cached results</AlertTitle>
             <AlertDescription>Scanner limits hit. Displaying the last successful scan while we retry.</AlertDescription>
           </Alert>
