@@ -57,10 +57,25 @@ export interface HighPotentialBuckets {
   strongMomentum: HighPotentialCoin[];
 }
 
+export interface HighPotentialDebugInfo {
+  universe: number;
+  afterLeveraged: number;
+  afterMinVolume: number;
+  withMarketCap: { known: number; missing: number };
+  afterCapRange: number;
+  afterIndicators: number;
+  topCount: number;
+  bucketCounts: { breakout: number; recovery: number; momentum: number };
+  examples: {
+    excluded: Array<{ symbol: string; reason: string }>;
+  };
+}
+
 export interface HighPotentialResponse {
   dataStale: boolean;
   timeframe: HighPotentialTimeframe;
   filters: HighPotentialFilters;
   top: HighPotentialCoin[];
   buckets: HighPotentialBuckets;
+  debug?: HighPotentialDebugInfo;
 }

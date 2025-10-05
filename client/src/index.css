@@ -3,6 +3,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  label {
+    @apply whitespace-normal break-keep;
+  }
+}
+
 @layer components {
   .dashboard-card {
     @apply relative h-full min-h-44 md:min-h-48 rounded-xl border bg-card;

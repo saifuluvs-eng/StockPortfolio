@@ -17,6 +17,7 @@ interface CandlestickData {
   close: string;
   volume: string;
   closeTime: number;
+  quoteVolume: string;
 }
 
 class BinanceService {
@@ -133,6 +134,7 @@ class BinanceService {
         close: kline[4],
         volume: kline[5],
         closeTime: kline[6],
+        quoteVolume: kline[7],
       }));
     } catch (error) {
       console.error(`Error fetching kline data for ${symbol}:`, error);

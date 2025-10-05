@@ -9,6 +9,18 @@ import { highPotentialScanner, InvalidHighPotentialFiltersError } from "./highPo
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
+function parseBooleanQuery(value: unknown): boolean {
+  if (Array.isArray(value)) return parseBooleanQuery(value[0]);
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return false;
+    return !["0", "false", "no"].includes(normalized);
+  }
+  return false;
+}
+
 // A robust authentication middleware placeholder.
 // When authentication is enabled, this will protect routes.
 const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
@@ -358,7 +370,8 @@ export function registerRoutes(app: Express): void {
 
     try {
       const filters = highPotentialScanner.formatFiltersFromRequest(req);
-      const data = await highPotentialScanner.getScan(filters);
+      const debugMode = parseBooleanQuery(req.query.debug);
+      const data = await highPotentialScanner.getScan(filters, { debug: debugMode });
       res.json(data);
     } catch (error) {
       if (error instanceof InvalidHighPotentialFiltersError) {
