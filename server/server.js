@@ -90,25 +90,76 @@ function push(arr, title, value, signal = 'neutral', reason = '') {
 }
 
 const PORT = Number.parseInt(process.env.PORT ?? "4000", 10);
+const normalizeOrigin = (origin) => origin?.replace(/\/+$/, '') ?? null;
+
 const ALLOW_ORIGINS = [
-  "https://stock-portfolio-khaki-nine.vercel.app",
-  "http://localhost:5173",
-];
+  normalizeOrigin(process.env.DASH_ORIGIN),
+  normalizeOrigin("http://localhost:3000"),
+  normalizeOrigin("http://localhost:5173"),
+].filter((value) => value);
+
+const allowedOriginSet = new Set(ALLOW_ORIGINS);
+const vercelPreviewOrigin = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+
+const appendVaryHeader = (res, value) => {
+  const current = res.get('Vary');
+  if (!current) {
+    res.header('Vary', value);
+    return;
+  }
+  const values = current.split(/,\s*/);
+  if (!values.includes(value)) {
+    res.header('Vary', `${current}, ${value}`);
+  }
+};
+
+const resolveAllowedOrigin = (originHeader) => {
+  if (!originHeader) return null;
+  const normalizedOrigin = normalizeOrigin(originHeader);
+  if (normalizedOrigin && allowedOriginSet.has(normalizedOrigin)) {
+    return originHeader;
+  }
+  if (vercelPreviewOrigin.test(originHeader)) {
+    return originHeader;
+  }
+  return null;
+};
+
+const applyCorsHeaders = (req, res) => {
+  const allowedOrigin = resolveAllowedOrigin(req.get('Origin'));
+  if (allowedOrigin) {
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
+  }
+  appendVaryHeader(res, 'Origin');
+  res.header('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+};
 
 const app = express();
 
-app.use(
-  cors({
-    origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
-      return cb(null, ALLOW_ORIGINS.includes(origin));
-    },
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: false,
-  }),
-);
-app.options("*", cors());
+const corsOptions = {
+  origin(origin, cb) {
+    if (!origin) {
+      return cb(null, false);
+    }
+    const allowedOrigin = resolveAllowedOrigin(origin);
+    if (allowedOrigin) {
+      return cb(null, allowedOrigin);
+    }
+    return cb(null, false);
+  },
+  methods: ['GET', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'],
+  credentials: false,
+};
+
+app.use((req, res, next) => {
+  applyCorsHeaders(req, res);
+  next();
+});
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // ensure memory store exists once
@@ -455,7 +506,7 @@ const parseQueryBoolean = (value, fallback) => {
 };
 
 app.get("/api/high-potential", (req, res) => {
-  console.log("[HP]", req.method, req.originalUrl);
+  console.log(`[HP] GET ${req.originalUrl}`);
 
   const rawTf = req.query?.tf;
   const tfValue = Array.isArray(rawTf) ? rawTf[0] : rawTf;
@@ -517,7 +568,16 @@ app.get("/api/ai/market-overview", (_req, res) => {
 });
 
 app.use((req, res) => {
+  applyCorsHeaders(req, res);
   res.status(404).json({ message: "Not Found" });
+});
+
+app.use((err, req, res, _next) => {
+  console.error('Unhandled error', err);
+  applyCorsHeaders(req, res);
+  const status = err?.status || err?.statusCode || 500;
+  const message = err?.message || 'Internal Server Error';
+  res.status(status).json({ error: message });
 });
 
 const server = http.createServer(app);
