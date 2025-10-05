@@ -646,12 +646,13 @@ export class HighPotentialScanner {
       marketMap = new Map();
     }
     volumeCandidates.sort((a, b) => b.volume - a.volume);
-    const { limited: filtered, eligibleCount: capEligibleCount } = this.filterByMarketCap(
+    const { eligible: capEligible, eligibleCount: capEligibleCount } = this.filterByMarketCap(
       volumeCandidates,
       marketMap,
       filters,
       collectExample,
     );
+    const filtered = capEligible.slice(0, ANALYSIS_CANDIDATE_LIMIT);
     const timeframe = filters.timeframe;
     const binanceInterval = TIMEFRAME_TO_BINANCE[timeframe];
 
@@ -730,9 +731,8 @@ export class HighPotentialScanner {
     marketMap: Map<string, CoinGeckoMarketItem>,
     filters: HighPotentialFilters,
     collectExample: (symbol: string, reason: string) => void,
-  ): { limited: VolumeCandidate[]; eligibleCount: number } {
-    const limited: VolumeCandidate[] = [];
-    let eligibleCount = 0;
+  ): { eligible: VolumeCandidate[]; eligibleCount: number } {
+    const eligible: VolumeCandidate[] = [];
 
     for (const entry of candidates) {
       const baseFromSymbol = entry.symbol.symbol.replace(/USDT$/i, "").toUpperCase();
@@ -754,13 +754,10 @@ export class HighPotentialScanner {
         continue;
       }
 
-      eligibleCount++;
-      if (limited.length < ANALYSIS_CANDIDATE_LIMIT) {
-        limited.push(entry);
-      }
+      eligible.push(entry);
     }
 
-    return { limited, eligibleCount };
+    return { eligible, eligibleCount: eligible.length };
   }
 
   private async sleep(ms: number): Promise<void> {
