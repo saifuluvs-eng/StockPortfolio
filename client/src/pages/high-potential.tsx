@@ -24,6 +24,13 @@ import type {
   HighPotentialTimeframe,
 } from "@shared/high-potential/types";
 import { Area, AreaChart, ResponsiveContainer } from "recharts";
+import {
+  deriveScannerState,
+  loadCachedResponse,
+  storeCachedResponse,
+  type CachedHighPotentialEntry,
+  type HighPotentialFiltersSnapshot,
+} from "./high-potential-cache";
 
 const STORAGE_KEY = "high-potential:filters";
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
@@ -153,11 +160,32 @@ async function fetchHighPotential(filters: FilterState): Promise<HighPotentialRe
 
 export default function HighPotentialPage() {
   const [filters, setFilters] = useState<FilterState>(() => loadInitialFilters());
+  const { timeframe, minVolUSD, capRange, excludeLeveraged } = filters;
+  const [capMin, capMax] = capRange;
+  const filtersSnapshot = useMemo<HighPotentialFiltersSnapshot>(
+    () => ({
+      timeframe,
+      minVolUSD,
+      capMin,
+      capMax,
+      excludeLeveraged,
+    }),
+    [timeframe, minVolUSD, capMin, capMax, excludeLeveraged],
+  );
+  const [cachedEntry, setCachedEntry] = useState<CachedHighPotentialEntry | null>(() => {
+    if (typeof window === "undefined") return null;
+    return loadCachedResponse(window.sessionStorage, filtersSnapshot);
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
   }, [filters]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setCachedEntry(loadCachedResponse(window.sessionStorage, filtersSnapshot));
+  }, [filtersSnapshot]);
 
   const queryKey = useMemo(
     () => [
@@ -176,9 +204,19 @@ export default function HighPotentialPage() {
     queryFn: () => fetchHighPotential(filters),
     refetchInterval: filters.autoRefresh ? AUTO_REFRESH_INTERVAL : false,
     keepPreviousData: true,
+    onSuccess: (response: HighPotentialResponse) => {
+      if (typeof window === "undefined") return;
+      setCachedEntry(storeCachedResponse(window.sessionStorage, filtersSnapshot, response));
+    },
   });
 
-  const { data, isLoading, isFetching, refetch } = query;
+  const { data: queryData, isLoading, isFetching, refetch, error } = query;
+
+  const { resolvedData, showOfflineBanner, showUnavailableState } = deriveScannerState({
+    queryData,
+    queryError: error,
+    cachedEntry,
+  });
 
   const handleTimeframeChange = (value: string) => {
     if (TIMEFRAME_OPTIONS.includes(value as HighPotentialTimeframe)) {
@@ -212,8 +250,9 @@ export default function HighPotentialPage() {
     setFilters((prev) => ({ ...prev, autoRefresh: checked }));
   };
 
-  const topCoins = data?.top ?? [];
-  const buckets = data?.buckets ?? { breakoutZone: [], oversoldRecovery: [], strongMomentum: [] };
+  const topCoins = resolvedData?.top ?? [];
+  const buckets = resolvedData?.buckets ?? { breakoutZone: [], oversoldRecovery: [], strongMomentum: [] };
+  const scannerUnavailableMessage = "Scanner data is unavailable right now. Please try again later.";
 
   return (
     <div className="space-y-6">
@@ -226,7 +265,29 @@ export default function HighPotentialPage() {
           </p>
         </div>
 
-        {data?.dataStale && (
+        {showOfflineBanner && (
+          <div
+            className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
+            data-testid="scanner-offline-banner"
+          >
+            Couldn’t reach scanner. Showing last good results.
+          </div>
+        )}
+
+        {showUnavailableState && (
+          <Alert
+            variant="destructive"
+            className="border-red-500/60 bg-red-500/10 text-red-200"
+            data-testid="scanner-error-alert"
+          >
+            <AlertTitle>Scanner unavailable</AlertTitle>
+            <AlertDescription>
+              We couldn’t reach the scanner and no cached results are available. Please try again shortly.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {resolvedData?.dataStale && (
           <Alert variant="warning" className="border-amber-500/60 bg-amber-500/10 text-amber-100">
             <AlertTitle>Showing cached results</AlertTitle>
             <AlertDescription>Scanner limits hit. Displaying the last successful scan while we retry.</AlertDescription>
@@ -320,7 +381,11 @@ export default function HighPotentialPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Top 10 High Potentials</h2>
           <span className="text-xs text-muted-foreground">
-            Updated {isFetching ? "just now" : data ? new Date(data.top[0]?.updatedAt * 1000 || Date.now()).toLocaleTimeString() : "—"}
+            Updated {isFetching
+              ? "just now"
+              : resolvedData
+                ? new Date(resolvedData.top[0]?.updatedAt * 1000 || Date.now()).toLocaleTimeString()
+                : "—"}
           </span>
         </div>
 
@@ -330,6 +395,8 @@ export default function HighPotentialPage() {
               <LoadingCard key={`loading-${index}`} />
             ))}
           </div>
+        ) : showUnavailableState ? (
+          <ErrorState message={scannerUnavailableMessage} />
         ) : topCoins.length > 0 ? (
           <div className="grid gap-4">
             {topCoins.map((coin) => (
@@ -351,13 +418,31 @@ export default function HighPotentialPage() {
           </TabsList>
 
           <TabsContent value="breakout">
-            <BucketList coins={buckets.breakoutZone} timeframe={filters.timeframe} emptyMessage="No coins are currently within 2.5% of resistance with elevated volume." />
+            <BucketList
+              coins={buckets.breakoutZone}
+              timeframe={filters.timeframe}
+              emptyMessage="No coins are currently within 2.5% of resistance with elevated volume."
+              isUnavailable={showUnavailableState}
+              unavailableMessage={scannerUnavailableMessage}
+            />
           </TabsContent>
           <TabsContent value="recovery">
-            <BucketList coins={buckets.oversoldRecovery} timeframe={filters.timeframe} emptyMessage="No oversold recoveries detected under the current filters." />
+            <BucketList
+              coins={buckets.oversoldRecovery}
+              timeframe={filters.timeframe}
+              emptyMessage="No oversold recoveries detected under the current filters."
+              isUnavailable={showUnavailableState}
+              unavailableMessage={scannerUnavailableMessage}
+            />
           </TabsContent>
           <TabsContent value="momentum">
-            <BucketList coins={buckets.strongMomentum} timeframe={filters.timeframe} emptyMessage="No strong momentum plays matched this scan." />
+            <BucketList
+              coins={buckets.strongMomentum}
+              timeframe={filters.timeframe}
+              emptyMessage="No strong momentum plays matched this scan."
+              isUnavailable={showUnavailableState}
+              unavailableMessage={scannerUnavailableMessage}
+            />
           </TabsContent>
         </Tabs>
       </section>
@@ -369,9 +454,14 @@ type BucketListProps = {
   coins: HighPotentialCoin[];
   timeframe: HighPotentialTimeframe;
   emptyMessage: string;
+  isUnavailable: boolean;
+  unavailableMessage: string;
 };
 
-function BucketList({ coins, timeframe, emptyMessage }: BucketListProps) {
+function BucketList({ coins, timeframe, emptyMessage, isUnavailable, unavailableMessage }: BucketListProps) {
+  if (isUnavailable) {
+    return <ErrorState message={unavailableMessage} />;
+  }
   if (!coins.length) {
     return <EmptyState message={emptyMessage} />;
   }
@@ -533,6 +623,14 @@ function Sparkline({ data, id }: SparklineProps) {
 function EmptyState({ message }: { message: string }) {
   return (
     <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-6 text-sm text-muted-foreground">
+      {message}
+    </div>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-red-500/60 bg-red-500/10 p-6 text-sm text-red-200">
       {message}
     </div>
   );
