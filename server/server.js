@@ -220,8 +220,43 @@ app.delete("/api/portfolio/:id", (req, res) => {
   res.json(removed);
 });
 
+const LOCAL_GAINERS = [
+  {
+    symbol: "BTCUSDT",
+    price: 65234.12,
+    changePct: 3.45,
+    volume: 158_345_672,
+    high: 65640.21,
+    low: 63890.14,
+  },
+  {
+    symbol: "ETHUSDT",
+    price: 3120.56,
+    changePct: 5.12,
+    volume: 98_234_110,
+    high: 3155.78,
+    low: 3012.34,
+  },
+  {
+    symbol: "SOLUSDT",
+    price: 148.32,
+    changePct: 4.87,
+    volume: 45_678_901,
+    high: 152.45,
+    low: 139.67,
+  },
+  {
+    symbol: "XRPUSDT",
+    price: 0.64,
+    changePct: 2.18,
+    volume: 35_678_234,
+    high: 0.66,
+    low: 0.61,
+  },
+];
+
 app.get("/api/market/gainers", (_req, res) => {
-  res.json({ rows: [] });
+  res.json({ rows: LOCAL_GAINERS });
 });
 
 app.get("/api/watchlist", (_req, res) => {
