@@ -7,6 +7,7 @@ import { useBackendHealth } from "@/hooks/use-backend-health";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import type { HighPotentialResponse } from "@shared/high-potential/types";
 import {
   TrendingUp,
   BarChart3,
@@ -84,13 +85,17 @@ async function qPortfolioSummary(): Promise<{ totalValue: number | null; totalPn
 }
 
 async function qHighPotentialCount(): Promise<{ count: number | null; ts: number }> {
-  const post = await safeJson<any>("/api/scanner/high-potential", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+  const params = new URLSearchParams({
+    timeframe: "4h",
+    minVolUSD: "2000000",
+    capMin: "0",
+    capMax: "2000000000",
+    excludeLeveraged: "true",
   });
-  if (Array.isArray(post)) return { count: post.length, ts: Date.now() };
-  if (post && Array.isArray(post.results)) return { count: post.results.length, ts: Date.now() };
+  const response = await safeJson<HighPotentialResponse>(`/api/high-potential?${params.toString()}`);
+  if (response && Array.isArray(response.top)) {
+    return { count: response.top.length, ts: Date.now() };
+  }
   return { count: null, ts: Date.now() };
 }
 
