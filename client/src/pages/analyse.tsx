@@ -315,7 +315,7 @@ export default function Analyse() {
       } catch (error) {
         if (lastRequestIdRef.current !== rid) return;
 
-        if (error instanceof Error && isUnauthorizedError(error)) {
+        if (isUnauthorizedError(error)) {
           toast.dismiss(ANALYSE_TOAST_ID);
           toast({
             title: "Sign in required",
@@ -449,7 +449,7 @@ export default function Analyse() {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
     onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
+      if (isUnauthorizedError(error)) {
         toast({
           title: "Sign in required",
           description: "Please sign in to manage your watchlist.",
@@ -481,7 +481,7 @@ export default function Analyse() {
       queryClient.invalidateQueries({ queryKey: ["watchlist"] });
     },
     onError: (error: unknown) => {
-      if (error instanceof Error && isUnauthorizedError(error)) {
+      if (isUnauthorizedError(error)) {
         toast({
           title: "Sign in required",
           description: "Please sign in to manage your watchlist.",
