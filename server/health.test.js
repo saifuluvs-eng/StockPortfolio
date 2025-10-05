@@ -15,16 +15,8 @@ test("GET /api/health returns ok and timestamp", async () => {
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.ok, true);
-    assert.ok(
-      typeof payload.ts === "number" || typeof payload.ts === "string",
-      "timestamp should be a number or string",
-    );
-    if (typeof payload.ts === "number") {
-      assert.ok(Number.isFinite(payload.ts), "numeric timestamp should be finite");
-    } else {
-      assert.ok(payload.ts.trim().length > 0, "timestamp string should not be empty");
-      assert.ok(!Number.isNaN(Date.parse(payload.ts)), "timestamp string should be parseable");
-    }
+    assert.equal(typeof payload.ts, "number");
+    assert.ok(Number.isFinite(payload.ts), "timestamp should be a finite number");
   } finally {
     await new Promise((resolve, reject) => {
       server.close((error) => (error ? reject(error) : resolve()));

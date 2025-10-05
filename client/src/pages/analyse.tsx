@@ -282,7 +282,7 @@ export default function Analyse() {
       setScanResult(null);
 
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === timeframe);
-      const backendTimeframe = timeframeConfig?.backend || timeframe;
+      const backendTimeframe = timeframeConfig?.backend ?? timeframe ?? "1d";
 
       try {
         const normalized = toBinance(symbol);
@@ -411,8 +411,9 @@ export default function Analyse() {
     enabled: isAuthenticated && networkEnabled,
     staleTime: 10 * 60_000,
     queryFn: async () => {
+      const tfParam = timeframeConfig?.backend ?? selectedTimeframe ?? "1d";
       const params = new URLSearchParams({
-        tf: timeframeConfig?.backend || "4h",
+        tf: String(tfParam),
         minVolUSD: "2000000",
         capMin: "0",
         capMax: "2000000000",

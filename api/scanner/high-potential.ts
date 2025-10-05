@@ -90,15 +90,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    console.log("[HP]", req.method, req.url ?? req.originalUrl ?? "/api/scanner/high-potential");
     const filters = extractFilters(req);
     const data = await highPotentialScanner.getScan(filters);
     return res.status(200).json(data);
   } catch (error) {
     if (error instanceof InvalidHighPotentialFiltersError) {
       console.warn("Rejected Vercel high potential request", error);
-      return res.status(400).json({ message: error.message });
+      const message = error.message.includes("timeframe") ? "Invalid tf" : error.message;
+      return res.status(400).json({ error: message });
     }
     console.error("/api/scanner/high-potential error", error);
-    return res.status(500).json({ message: "Failed to load high potential data" });
+    return res.status(500).json({ error: "Failed to load high potential data" });
   }
 }

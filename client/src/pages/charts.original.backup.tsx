@@ -160,7 +160,7 @@ export default function Charts() {
   const scanMutation = useMutation({
     mutationFn: async () => {
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === selectedTimeframe);
-      const backendTimeframe = timeframeConfig?.backend || selectedTimeframe;
+      const backendTimeframe = timeframeConfig?.backend ?? selectedTimeframe ?? "1d";
 
       const res = await apiRequest("POST", "/api/scanner/scan", {
         symbol: selectedSymbol,

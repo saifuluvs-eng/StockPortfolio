@@ -118,7 +118,7 @@ app.get("/", (_req, res) => {
   res.json({ message: "Stock Portfolio backend is running" });
 });
 
-const healthPayload = () => ({ ok: true, ts: new Date().toISOString() });
+const healthPayload = () => ({ ok: true, ts: Date.now() });
 
 app.get("/health", (_req, res) => {
   res.json(healthPayload());
@@ -435,6 +435,61 @@ const compat = (s) => ({
   summary: s.summary || { label: s.overallLabel || "neutral", score: s.overallScore ?? "0" },
   breakdown: s.breakdown || s.checks || [],
   technicals: s.technicals || s.checks || [],
+});
+
+const parseQueryNumber = (value, fallback) => {
+  if (Array.isArray(value)) return parseQueryNumber(value[0], fallback);
+  if (value == null) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const parseQueryBoolean = (value, fallback) => {
+  if (Array.isArray(value)) return parseQueryBoolean(value[0], fallback);
+  if (value == null) return fallback;
+  if (typeof value === "boolean") return value;
+  const str = String(value).toLowerCase();
+  if (["false", "0", "no"].includes(str)) return false;
+  if (["true", "1", "yes"].includes(str)) return true;
+  return fallback;
+};
+
+app.get("/api/high-potential", (req, res) => {
+  console.log("[HP]", req.method, req.originalUrl);
+
+  const rawTf = req.query?.tf;
+  const tfValue = Array.isArray(rawTf) ? rawTf[0] : rawTf;
+  const timeframe = (tfValue ?? "1d").toString();
+  const allowedTfs = new Set(["1h", "4h", "1d"]);
+  if (!allowedTfs.has(timeframe)) {
+    res.status(400).json({ error: "Invalid tf" });
+    return;
+  }
+
+  const minVolUSD = parseQueryNumber(req.query?.minVolUSD, 2_000_000);
+  const capMin = parseQueryNumber(req.query?.capMin, 0);
+  const capMax = Math.max(capMin, parseQueryNumber(req.query?.capMax, 2_000_000_000));
+  const excludeLeveraged = parseQueryBoolean(req.query?.excludeLeveraged, true);
+
+  const payload = {
+    dataStale: false,
+    timeframe,
+    filters: {
+      timeframe,
+      minVolUSD,
+      excludeLeveraged,
+      capRange: [capMin, capMax],
+    },
+    top: [],
+    buckets: {
+      breakoutZone: [],
+      oversoldRecovery: [],
+      strongMomentum: [],
+    },
+  };
+
+  res.set("cache-control", "no-store");
+  res.json(payload);
 });
 
 // history should return the latest scans (newest first)

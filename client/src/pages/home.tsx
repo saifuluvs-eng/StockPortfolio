@@ -86,7 +86,7 @@ async function qPortfolioSummary(): Promise<{ totalValue: number | null; totalPn
 
 async function qHighPotentialCount(): Promise<{ count: number | null; ts: number }> {
   const params = new URLSearchParams({
-    tf: "4h",
+    tf: "1d",
     minVolUSD: "2000000",
     capMin: "0",
     capMax: "2000000000",
