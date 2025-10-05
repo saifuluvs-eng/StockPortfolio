@@ -1,5 +1,6 @@
 // client/src/App.tsx
 import React from "react";
+import type { RouteComponentProps } from "wouter";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -31,14 +32,29 @@ function Protected<T extends React.ComponentType<any>>(Component: T) {
 }
 
 // Wrap pages with Sidebar/Layout
-const withLayout =
-  <P,>(Comp: React.ComponentType<P>) =>
-  (props: P) =>
-    (
-      <AppLayout>
-        <Comp {...props} />
-      </AppLayout>
-    );
+type DefaultRouteParams = Record<string, string | undefined>;
+
+type ExtractRouteParams<P> = P extends RouteComponentProps<infer Params>
+  ? Params
+  : DefaultRouteParams;
+
+const withLayout = <C extends React.ComponentType<any>>(Component: C) => {
+  type Props = React.ComponentProps<C>;
+  type Params = ExtractRouteParams<Props>;
+  type RouteProps = RouteComponentProps<Params>;
+  type CombinedProps = RouteProps & Omit<Props, keyof RouteProps>;
+
+  const WithLayoutComponent: React.FC<CombinedProps> = (props) => (
+    <AppLayout>
+      <Component {...(props as Props)} />
+    </AppLayout>
+  );
+
+  const displayName = Component.displayName || Component.name || "Component";
+  WithLayoutComponent.displayName = `WithLayout(${displayName})`;
+
+  return WithLayoutComponent;
+};
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
