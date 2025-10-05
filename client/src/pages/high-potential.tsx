@@ -263,9 +263,9 @@ export default function HighPotentialPage() {
   const scannerUnavailableMessage = "Scanner data is unavailable right now. Please try again later.";
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4">
-        <div>
+    <div className="mx-auto max-w-[1200px] space-y-6 overflow-x-hidden">
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="min-w-0 space-y-1">
           <h1 className="text-2xl font-bold text-foreground whitespace-normal break-keep">High Potential Scanner</h1>
           <p className="text-sm text-muted-foreground">
             Ranked crypto setups combining momentum, volume, breakout proximity, market cap and social sentiment on Binance
@@ -302,10 +302,15 @@ export default function HighPotentialPage() {
                 type="single"
                 value={filters.timeframe}
                 onValueChange={handleTimeframeChange}
-                className="flex w-full min-w-0 flex-wrap gap-2"
+                className="flex w-full min-w-0 flex-wrap gap-2 overflow-hidden"
               >
                 {TIMEFRAME_OPTIONS.map((option) => (
-                  <ToggleGroupItem key={option} value={option} className="flex-1" aria-label={`Timeframe ${option}`}>
+                  <ToggleGroupItem
+                    key={option}
+                    value={option}
+                    className="flex-1 min-w-0 truncate"
+                    aria-label={`Timeframe ${option}`}
+                  >
                     {option.toUpperCase()}
                   </ToggleGroupItem>
                 ))}
@@ -350,16 +355,16 @@ export default function HighPotentialPage() {
 
             <div className="min-w-0 space-y-2">
               <Label className="text-xs uppercase text-muted-foreground">Exclude Leveraged Tokens</Label>
-              <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 sm:justify-between">
-                <span className="flex-1 min-w-0 overflow-hidden text-ellipsis text-sm">Exclude leveraged products</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-3 overflow-hidden rounded-md border border-border/60 bg-muted/20 px-3 py-2 sm:justify-between">
+                <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm">Exclude leveraged products</span>
                 <Switch checked={filters.excludeLeveraged} onCheckedChange={handleExcludeLeveragedChange} />
               </div>
             </div>
 
             <div className="min-w-0 space-y-2">
               <Label className="text-xs uppercase text-muted-foreground">Auto Refresh (10 min)</Label>
-              <div className="flex min-w-0 flex-wrap items-center gap-3 rounded-md border border-border/60 bg-muted/20 px-3 py-2 sm:justify-between">
-                <span className="flex-1 min-w-0 overflow-hidden text-ellipsis text-sm">Auto refresh results</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-3 overflow-hidden rounded-md border border-border/60 bg-muted/20 px-3 py-2 sm:justify-between">
+                <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm">Auto refresh results</span>
                 <Switch checked={filters.autoRefresh} onCheckedChange={handleAutoRefreshChange} />
               </div>
             </div>
@@ -375,9 +380,9 @@ export default function HighPotentialPage() {
       </div>
 
       <section className="space-y-3">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-4 overflow-hidden">
           <h2 className="text-lg font-semibold whitespace-normal break-keep">Top 10 High Potentials</h2>
-          <span className="min-w-0 truncate text-xs text-muted-foreground">
+          <span className="min-w-0 truncate whitespace-nowrap text-xs text-muted-foreground">
             Updated {isFetching
               ? "just now"
               : resolvedData
@@ -408,10 +413,16 @@ export default function HighPotentialPage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold whitespace-normal break-keep">Opportunity Buckets</h2>
         <Tabs defaultValue="breakout" className="w-full">
-          <TabsList className="mb-3 w-full justify-start overflow-x-auto">
-            <TabsTrigger value="breakout">Breakout Zone ({buckets.breakoutZone.length})</TabsTrigger>
-            <TabsTrigger value="recovery">Oversold Recovery ({buckets.oversoldRecovery.length})</TabsTrigger>
-            <TabsTrigger value="momentum">Strong Momentum ({buckets.strongMomentum.length})</TabsTrigger>
+          <TabsList className="mb-3 w-full justify-start gap-2 overflow-x-auto">
+            <TabsTrigger value="breakout" className="min-w-0 overflow-hidden text-ellipsis">
+              Breakout Zone ({buckets.breakoutZone.length})
+            </TabsTrigger>
+            <TabsTrigger value="recovery" className="min-w-0 overflow-hidden text-ellipsis">
+              Oversold Recovery ({buckets.oversoldRecovery.length})
+            </TabsTrigger>
+            <TabsTrigger value="momentum" className="min-w-0 overflow-hidden text-ellipsis">
+              Strong Momentum ({buckets.strongMomentum.length})
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="breakout">
@@ -496,15 +507,15 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
               <AvatarFallback>{coin.baseAsset.slice(0, 3)}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 space-y-1">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-hidden">
                 <CardTitle className="min-w-0 truncate text-base font-semibold leading-tight">
                   {coin.name}
                 </CardTitle>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="truncate whitespace-nowrap text-xs">
                   Score {coin.score}
                 </Badge>
                 {coin.bucket && (
-                  <Badge className="text-xs" variant="outline">
+                  <Badge className="truncate whitespace-nowrap text-xs" variant="outline">
                     {coin.bucket}
                   </Badge>
                 )}
@@ -512,8 +523,8 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
               <div className="text-xs text-muted-foreground truncate">{coin.symbol}</div>
             </div>
           </div>
-          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
-            <Badge className={cn("text-xs", confidenceVariant(coin.confidence))}>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-hidden sm:justify-end">
+            <Badge className={cn("min-w-0 truncate whitespace-nowrap text-xs", confidenceVariant(coin.confidence))}>
               {coin.confidence} confidence
             </Badge>
             <Button asChild size="sm" variant="outline">
@@ -536,17 +547,21 @@ function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
       </CardHeader>
       <CardContent className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div className="flex min-w-0 flex-wrap gap-4 text-sm text-muted-foreground">
-            <span>RSI {formatNumber(coin.rsi)}</span>
-            <span>MACD Hist {formatNumber(coin.macd.histogram)}</span>
-            <span>ADX {formatNumber(coin.adx.adx)}</span>
+          <div className="flex min-w-0 flex-wrap gap-4 overflow-hidden text-sm text-muted-foreground">
+            <span className="whitespace-nowrap">RSI {formatNumber(coin.rsi)}</span>
+            <span className="whitespace-nowrap">MACD Hist {formatNumber(coin.macd.histogram)}</span>
+            <span className="whitespace-nowrap">ADX {formatNumber(coin.adx.adx)}</span>
           </div>
-          <div className="flex min-w-0 flex-wrap gap-2 text-xs">
-            <Badge variant="secondary">24h vs 7d {formatRatio(dayVolumeRatio)}</Badge>
-            <Badge variant="outline">Intra-TF {formatRatio(coin.intraTFVolRatio)}</Badge>
+          <div className="flex min-w-0 flex-wrap gap-2 overflow-hidden text-xs">
+            <Badge variant="secondary" className="truncate whitespace-nowrap">
+              24h vs 7d {formatRatio(dayVolumeRatio)}
+            </Badge>
+            <Badge variant="outline" className="truncate whitespace-nowrap">
+              Intra-TF {formatRatio(coin.intraTFVolRatio)}
+            </Badge>
           </div>
         </div>
-        <div className="flex w-full max-w-[180px] flex-col gap-1">
+        <div className="flex w-full max-w-[180px] min-w-0 flex-col gap-1">
           <span className="text-xs text-muted-foreground">7D Sparkline</span>
           {sparklineData.length > 1 ? (
             <div className="h-12 text-primary">
