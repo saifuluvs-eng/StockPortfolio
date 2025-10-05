@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/lib/api";
+import { apiRequest } from "@/lib/queryClient";
 import type { HighPotentialResponse } from "@shared/high-potential/types";
 import {
   TrendingUp,
@@ -63,22 +63,21 @@ function toNum(v: unknown): number | null {
   return null;
 }
 
-async function safeJson<T>(path: string, init?: RequestInit): Promise<T | null> {
+async function fetchJson<T>(path: string): Promise<T | null> {
   try {
-    const ctrl = new AbortController();
-    const id = setTimeout(() => ctrl.abort(), 15000);
-    const res = await api(path, { ...init, signal: ctrl.signal });
-    clearTimeout(id);
-    if (!res.ok) return null;
+    const res = await apiRequest("GET", path);
     return (await res.json()) as T;
-  } catch {
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.warn(`Failed to load ${path}:`, error);
+    }
     return null;
   }
 }
 
 // ---------- Query Functions (respect API_BASE / networkEnabled) ----------
 async function qPortfolioSummary(): Promise<{ totalValue: number | null; totalPnlPercent: number | null }> {
-  const summary = await safeJson<PortfolioSummary>("/api/portfolio");
+  const summary = await fetchJson<PortfolioSummary>("/api/portfolio");
   const totalValue = toNum(summary?.totalValue ?? null);
   const totalPnlPercent = toNum(summary?.totalPnLPercent ?? null);
   return { totalValue: totalValue ?? null, totalPnlPercent: totalPnlPercent ?? null };
@@ -92,7 +91,7 @@ async function qHighPotentialCount(): Promise<{ count: number | null; ts: number
     capMax: "2000000000",
     excludeLeveraged: "true",
   });
-  const response = await safeJson<HighPotentialResponse>(`/api/high-potential?${params.toString()}`);
+  const response = await fetchJson<HighPotentialResponse>(`/api/high-potential?${params.toString()}`);
   if (response && Array.isArray(response.top)) {
     return { count: response.top.length, ts: Date.now() };
   }
@@ -100,7 +99,7 @@ async function qHighPotentialCount(): Promise<{ count: number | null; ts: number
 }
 
 async function qGainersTop3(): Promise<{ top: { symbol: string; pct: number }[] | null; ts: number }> {
-  const arr = await safeJson<GainerItem[]>("/api/market/gainers");
+  const arr = await fetchJson<GainerItem[]>("/api/market/gainers");
   if (!Array.isArray(arr)) return { top: null, ts: Date.now() };
 
   const mapped = arr
@@ -117,13 +116,13 @@ async function qGainersTop3(): Promise<{ top: { symbol: string; pct: number }[] 
 }
 
 async function qWatchlistCount(): Promise<number | null> {
-  const wl = await safeJson<any[]>("/api/watchlist");
+  const wl = await fetchJson<any[]>("/api/watchlist");
   if (Array.isArray(wl)) return wl.length;
   return null;
 }
 
 async function qAiSignals(): Promise<number | null> {
-  const ai = await safeJson<AiOverviewData>("/api/ai/market-overview");
+  const ai = await fetchJson<AiOverviewData>("/api/ai/market-overview");
   if (!ai) return null;
 
   const keyInsights = Array.isArray(ai.keyInsights)
@@ -154,14 +153,14 @@ export default function Home() {
 
   const { data: btcTicker } = useQuery({
     queryKey: ["/api/market/ticker/BTCUSDT"],
-    queryFn: async () => safeJson<any>("/api/market/ticker/BTCUSDT"),
+    queryFn: async () => fetchJson<any>("/api/market/ticker/BTCUSDT"),
     refetchInterval: 10_000,
     enabled: networkEnabled,
   });
 
   const { data: ethTicker } = useQuery({
     queryKey: ["/api/market/ticker/ETHUSDT"],
-    queryFn: async () => safeJson<any>("/api/market/ticker/ETHUSDT"),
+    queryFn: async () => fetchJson<any>("/api/market/ticker/ETHUSDT"),
     refetchInterval: 10_000,
     enabled: networkEnabled,
   });
