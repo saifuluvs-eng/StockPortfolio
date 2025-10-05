@@ -27,6 +27,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
 import type { HighPotentialResponse } from "@shared/high-potential/types";
+import type { ScanResult } from "@shared/types/scanner";
 import {
   Activity,
   BarChart3,
@@ -54,23 +55,6 @@ interface PriceData {
   quoteVolume: string;
   highPrice: string;
   lowPrice: string;
-}
-
-interface ScanIndicator {
-  value?: number;
-  signal?: "bullish" | "bearish" | "neutral";
-  score?: number;
-  tier?: number;
-  description?: string;
-}
-
-interface ScanResult {
-  symbol: string;
-  price: number;
-  indicators: Record<string, ScanIndicator>;
-  totalScore: number;
-  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
-  meta?: Record<string, unknown> | null;
 }
 
 interface WatchlistItem {

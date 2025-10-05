@@ -1,5 +1,10 @@
 // client/src/components/scanner/technical-indicators.tsx
 import * as React from "react";
+import type {
+  ScanIndicator,
+  ScanResult,
+  ScanSignal,
+} from "@shared/types/scanner";
 
 /**
  * Renders ALL indicators returned by the scan API instead of relying on a hardcoded list.
@@ -8,24 +13,13 @@ import * as React from "react";
  * - Robust to null/undefined fields so it never crashes the page.
  */
 
-type Signal = "bullish" | "bearish" | "neutral";
-
-type Indicator = {
-  value: number | null | undefined;
-  signal?: Signal | string | null;
-  score?: number | null;
-  tier?: number | null;
-  description?: string | null;
-  // Future-friendly: API can add fields; we ignore them safely.
-};
-
-type ScanResult = {
-  symbol: string;
-  price: number;
-  indicators: Record<string, Indicator> | null | undefined;
-  totalScore: number;
-  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
-  meta?: Record<string, any>;
+type NormalizedIndicator = {
+  value: number | null;
+  signal: ScanSignal;
+  score: number;
+  tier: number;
+  description: string;
+  key?: string;
 };
 
 export default function TechnicalIndicators({
@@ -81,14 +75,7 @@ function IndicatorCard({
   indicator,
 }: {
   id: string;
-  indicator: {
-    value: number | null;
-    signal: Signal;
-    score: number;
-    tier: number;
-    description: string;
-    key?: string;
-  };
+  indicator: NormalizedIndicator;
 }) {
   const { value, signal, score, tier, description } = indicator;
 
@@ -158,7 +145,7 @@ function isFiniteNumber(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n);
 }
 
-function normalizeSignal(sig: unknown): Signal {
+function normalizeSignal(sig: ScanIndicator["signal"]): ScanSignal {
   const s = String(sig ?? "").toLowerCase();
   if (s === "bullish" || s === "bearish" || s === "neutral") return s;
   return "neutral";
