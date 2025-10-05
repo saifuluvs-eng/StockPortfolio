@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
+import type { HighPotentialResponse } from "@shared/high-potential/types";
 import {
   Activity,
   BarChart3,
@@ -98,14 +99,6 @@ interface ScanHistoryItem {
   filters?: { symbol?: string; timeframe?: string } | null;
   results?: ScanResult | null;
   createdAt?: number | string | null;
-}
-
-interface HighPotentialFilters {
-  timeframe?: string;
-  minScore?: number;
-  minVolume?: string;
-  excludeStablecoins?: boolean;
-  limit?: number;
 }
 
 const DEFAULT_TIMEFRAME = "240"; // 4h
@@ -418,16 +411,23 @@ export default function Analyse() {
     enabled: isAuthenticated && networkEnabled,
     staleTime: 10 * 60_000,
     queryFn: async () => {
-      const payload: HighPotentialFilters = {
+      const params = new URLSearchParams({
         timeframe: timeframeConfig?.backend || "4h",
-        minScore: 18,
-        minVolume: "1M",
-        excludeStablecoins: true,
-        limit: 8,
-      };
-      const res = await apiRequest("POST", "/api/scanner/high-potential", payload);
-      const data = (await res.json()) as ScanResult[];
-      return Array.isArray(data) ? data.slice(0, 6) : [];
+        minVolUSD: "2000000",
+        capMin: "0",
+        capMax: "2000000000",
+        excludeLeveraged: "true",
+      });
+      const res = await apiRequest("GET", `/api/high-potential?${params.toString()}`);
+      const payload = (await res.json()) as HighPotentialResponse;
+      if (!payload || !Array.isArray(payload.top)) return [];
+      return payload.top.slice(0, 6).map((coin) => ({
+        symbol: coin.symbol,
+        price: coin.price,
+        indicators: {},
+        totalScore: coin.score,
+        recommendation: confidenceToRecommendation(coin.confidence),
+      } satisfies ScanResult));
     },
   });
 
@@ -1119,6 +1119,19 @@ function getScoreColor(score: number) {
   if (score <= -10) return "text-red-600";
   if (score <= -5) return "text-red-500";
   return "text-yellow-500";
+}
+
+function confidenceToRecommendation(confidence: string): ScanResult["recommendation"] {
+  switch (confidence) {
+    case "High":
+      return "strong_buy";
+    case "Medium":
+      return "buy";
+    case "Watch":
+      return "hold";
+    default:
+      return "hold";
+  }
 }
 
 function getRecommendationColor(recommendation: string) {

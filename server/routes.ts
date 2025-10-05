@@ -5,6 +5,7 @@ import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
 import { portfolioService } from "./services/portfolioService";
+import { highPotentialScanner } from "./highPotential/scanner";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -340,25 +341,14 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.post('/api/scanner/high-potential', isAuthenticated, async (req: Request, res: Response) => {
+  app.get('/api/high-potential', async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).user.id;
-      const filters = req.body;
-
-      const results = await technicalIndicators.scanHighPotential(filters);
-      
-      // Save scan history
-      await storage.createScanHistory({
-        userId,
-        scanType: 'high_potential',
-        filters,
-        results,
-      });
-      
-      res.json(results);
+      const filters = highPotentialScanner.formatFiltersFromRequest(req);
+      const data = await highPotentialScanner.getScan(filters);
+      res.json(data);
     } catch (error) {
-      console.error("Error scanning high potential:", error);
-      res.status(500).json({ message: "Failed to scan high potential coins" });
+      console.error("Error generating high potential scan:", error);
+      res.status(500).json({ message: "Failed to load high potential data" });
     }
   });
 

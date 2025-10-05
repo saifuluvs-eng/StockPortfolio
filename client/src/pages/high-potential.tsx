@@ -1,424 +1,562 @@
-// client/src/pages/high-potential.tsx
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "wouter";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { isUnauthorizedError } from "@/lib/authUtils";
-import { useAuth } from "@/hooks/useAuth";
-import { RefreshCw, SlidersHorizontal, Check, Eye } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import type {
+  HighPotentialCoin,
+  HighPotentialResponse,
+  HighPotentialTimeframe,
+} from "@shared/high-potential/types";
+import { Area, AreaChart, ResponsiveContainer } from "recharts";
 
-type IndicatorSignal = "bullish" | "bearish" | "neutral";
+const STORAGE_KEY = "high-potential:filters";
+const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
 
-type ScanIndicator = {
-  value: number;
-  signal: IndicatorSignal;
-  score: number;
-  tier: number;
-  description: string;
+const DEFAULT_FILTERS: FilterState = {
+  timeframe: "4h",
+  minVolUSD: 2_000_000,
+  capRange: [0, 2_000_000_000],
+  excludeLeveraged: true,
+  autoRefresh: true,
 };
 
-type ScanResult = {
-  symbol: string;
-  price: number;
-  indicators: Record<string, ScanIndicator>;
-  totalScore: number;
-  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
+const TIMEFRAME_OPTIONS: HighPotentialTimeframe[] = ["1h", "4h", "1d"];
+
+const ANALYSE_TIMEFRAME_PARAM: Record<HighPotentialTimeframe, string> = {
+  "1h": "60",
+  "4h": "240",
+  "1d": "D",
 };
 
-/* ----------------------------- helpers ----------------------------- */
+const currencyCompact = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  notation: "compact",
+  maximumFractionDigits: 2,
+});
 
-function parseMinVolume(v: string): number {
-  const s = (v || "").trim().toUpperCase();
-  if (s.endsWith("B")) return Number(s.replace("B", "")) * 1e9;
-  if (s.endsWith("M")) return Number(s.replace("M", "")) * 1e6;
-  if (s.endsWith("K")) return Number(s.replace("K", "")) * 1e3;
-  const n = Number(s.replace(/[^\d.]/g, ""));
-  return Number.isFinite(n) ? n : 0;
-}
+const currencyStandard = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
-function isStableBase(symbol: string): boolean {
-  const base = symbol.replace(/USDT$/i, "")
-    .replace(/USDC$/i, "")
-    .replace(/FDUSD$/i, "")
-    .replace(/TUSD$/i, "")
-    .replace(/DAI$/i, "");
-  // If removing stable suffixes empties the base, it was a stablecoin
-  return base.length === 0;
-}
+const decimalFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+});
 
-function safeNum(n: unknown, d = 0): number {
-  const v = typeof n === "number" ? n : Number(n);
-  return Number.isFinite(v) ? v : d;
-}
-
-type Binance24hr = {
-  symbol: string;
-  lastPrice: string;
-  priceChange: string;
-  priceChangePercent: string;
-  highPrice: string;
-  lowPrice: string;
-  quoteVolume: string;
+type FilterState = {
+  timeframe: HighPotentialTimeframe;
+  minVolUSD: number;
+  capRange: [number, number];
+  excludeLeveraged: boolean;
+  autoRefresh: boolean;
 };
 
-async function fetchHighPotentialFallback(
-  timeframe: string,
-  minScoreNum: number,
-  minVolumeText: string,
-  excludeStablecoins: boolean
-): Promise<ScanResult[]> {
-  // Use Binance 24hr stats as a lightweight fallback signal
-  const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
-  if (!res.ok) return [];
-
-  const all = (await res.json()) as Binance24hr[];
-
-  const minQuoteVol = parseMinVolume(minVolumeText || "0");
-
-  const usdtPairs = all.filter((r) => r.symbol.endsWith("USDT"));
-
-  const scored = usdtPairs
-    .filter((r) => {
-      if (excludeStablecoins && isStableBase(r.symbol)) return false;
-      return safeNum(r.quoteVolume) >= minQuoteVol;
-    })
-    .map((r) => {
-      const last = safeNum(r.lastPrice);
-      const high = safeNum(r.highPrice);
-      const low = safeNum(r.lowPrice);
-      const changePct = safeNum(r.priceChangePercent);
-
-      // Position in 24h range (0..1)
-      const range = Math.max(1e-8, high - low);
-      const pos = Math.max(0, Math.min(1, (last - low) / range));
-
-      // Very simple heuristic scoring (0..30)
-      const scoreFromChange = Math.max(0, Math.min(12, 0.3 * changePct)); // up to ~12
-      const scoreFromRange = Math.max(0, Math.min(12, pos * 12));         // up to 12 near high
-      const scoreFromVolume = Math.max(0, Math.min(6, Math.log10(safeNum(r.quoteVolume) + 1) - 3)); // ~0..6
-      const totalScore = Math.round(scoreFromChange + scoreFromRange + scoreFromVolume);
-
-      const rec: ScanResult["recommendation"] =
-        totalScore >= 26 ? "strong_buy"
-        : totalScore >= 20 ? "buy"
-        : totalScore >= 14 ? "hold"
-        : totalScore >= 8  ? "sell"
-        : "strong_sell";
-
-      const indicators: Record<string, ScanIndicator> = {
-        change24: {
-          value: changePct,
-          signal: changePct >= 0 ? "bullish" : "bearish",
-          score: Math.round(scoreFromChange),
-          tier: 3,
-          description: "24h price change (%)",
-        },
-        rangePos: {
-          value: Number((pos * 100).toFixed(2)),
-          signal: pos > 0.6 ? "bullish" : pos < 0.4 ? "bearish" : "neutral",
-          score: Math.round(scoreFromRange),
-          tier: 2,
-          description: "Position within 24h range (higher is stronger)",
-        },
-        volumeScore: {
-          value: safeNum(r.quoteVolume),
-          signal: scoreFromVolume >= 3 ? "bullish" : scoreFromVolume <= 1 ? "bearish" : "neutral",
-          score: Math.round(scoreFromVolume),
-          tier: 1,
-          description: "Relative quote volume weighting",
-        },
-      };
-
-      const result: ScanResult = {
-        symbol: r.symbol,
-        price: last,
-        indicators,
-        totalScore,
-        recommendation: rec,
-      };
-      return result;
-    })
-    .filter((x) => x.totalScore >= minScoreNum) // respect minScore filter
-    .sort((a, b) => b.totalScore - a.totalScore)
-    .slice(0, 100); // keep it light
-
-  return scored;
+function loadInitialFilters(): FilterState {
+  if (typeof window === "undefined") {
+    return DEFAULT_FILTERS;
+  }
+  try {
+    const stored = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!stored) return DEFAULT_FILTERS;
+    const parsed = JSON.parse(stored) as Partial<FilterState>;
+    const timeframe = TIMEFRAME_OPTIONS.includes(parsed.timeframe as HighPotentialTimeframe)
+      ? (parsed.timeframe as HighPotentialTimeframe)
+      : DEFAULT_FILTERS.timeframe;
+    const minVol = Number.isFinite(parsed.minVolUSD) ? Math.max(0, Number(parsed.minVolUSD)) : DEFAULT_FILTERS.minVolUSD;
+    const excludeLeveraged = typeof parsed.excludeLeveraged === "boolean"
+      ? parsed.excludeLeveraged
+      : DEFAULT_FILTERS.excludeLeveraged;
+    const autoRefresh = typeof parsed.autoRefresh === "boolean" ? parsed.autoRefresh : DEFAULT_FILTERS.autoRefresh;
+    const capRangeArray = Array.isArray(parsed.capRange) ? parsed.capRange : DEFAULT_FILTERS.capRange;
+    const capMin = Math.max(0, Number(capRangeArray?.[0] ?? DEFAULT_FILTERS.capRange[0]));
+    const capMaxRaw = Number(capRangeArray?.[1] ?? DEFAULT_FILTERS.capRange[1]);
+    const capMax = Number.isFinite(capMaxRaw) ? Math.max(capMin, capMaxRaw) : DEFAULT_FILTERS.capRange[1];
+    return {
+      timeframe,
+      minVolUSD: minVol,
+      capRange: [capMin, capMax],
+      excludeLeveraged,
+      autoRefresh,
+    };
+  } catch (error) {
+    console.warn("Failed to load stored high potential filters", error);
+    return DEFAULT_FILTERS;
+  }
 }
 
-/* ------------------------------ component ------------------------------ */
+function formatPrice(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  if (value >= 1000) return currencyCompact.format(value);
+  if (value >= 1) return currencyStandard.format(value);
+  if (value >= 0.1) return `$${value.toFixed(3)}`;
+  if (value >= 0.01) return `$${value.toFixed(4)}`;
+  return `$${value.toFixed(6)}`;
+}
 
-export default function HighPotential() {
-  const [timeframe, setTimeframe] = useState("1h");
-  const [minScore, setMinScore] = useState("20");
-  const [minVolume, setMinVolume] = useState("1M");
-  const [excludeStablecoins, setExcludeStablecoins] = useState(true);
-  const [results, setResults] = useState<ScanResult[]>([]);
-  const { toast } = useToast();
-  const { isAuthenticated, signInWithGoogle } = useAuth();
-  const queryClient = useQueryClient();
+function formatCompactCurrency(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  return currencyCompact.format(value);
+}
 
-  const scanMutation = useMutation({
-    mutationFn: async (): Promise<ScanResult[]> => {
-      // 1) Try your app API
-      try {
-        const res = await apiRequest("POST", "/api/scanner/high-potential", {
-          timeframe,
-          minScore: parseInt(minScore) || 0,
-          minVolume,
-          excludeStablecoins,
-        });
-        if (res.ok) {
-          const data = (await res.json()) as ScanResult[];
-          return Array.isArray(data) ? data : [];
-        }
-      } catch {
-        // ignore and fallback
-      }
+function formatPercent(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const abs = Math.abs(value);
+  const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+  const formatted = abs >= 100 ? abs.toFixed(0) : abs >= 10 ? abs.toFixed(1) : abs.toFixed(2);
+  return `${sign}${formatted}%`;
+}
 
-      // 2) Fallback: compute using Binance 24hr stats
-      const data = await fetchHighPotentialFallback(
-        timeframe,
-        parseInt(minScore) || 0,
-        minVolume,
-        excludeStablecoins
-      );
-      return data;
-    },
-    onSuccess: (data) => {
-      setResults(data);
-      queryClient.invalidateQueries({ queryKey: ["high-potential-count"], exact: false });
-      toast({
-        title: "Scan Complete",
-        description: `Found ${data.length} high potential coins`,
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        signInWithGoogle().catch((authError) => {
-          console.error("Failed to sign in after unauthorized error", authError);
-        });
-        return;
-      }
-      toast({
-        title: "Scan Failed",
-        description: "Failed to scan for high potential coins",
-        variant: "destructive",
-      });
-    },
+function formatRatio(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return "—";
+  return `${value.toFixed(2)}×`;
+}
+
+function formatNumber(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  return decimalFormatter.format(value);
+}
+
+async function fetchHighPotential(filters: FilterState): Promise<HighPotentialResponse> {
+  const params = new URLSearchParams();
+  params.set("timeframe", filters.timeframe);
+  params.set("minVolUSD", Math.round(filters.minVolUSD).toString());
+  params.set("excludeLeveraged", String(filters.excludeLeveraged));
+  params.set("capMin", Math.round(filters.capRange[0]).toString());
+  params.set("capMax", Math.round(filters.capRange[1]).toString());
+
+  const res = await fetch(`/api/high-potential?${params.toString()}`);
+  if (!res.ok) {
+    throw new Error("Failed to fetch high potential data");
+  }
+  return (await res.json()) as HighPotentialResponse;
+}
+
+export default function HighPotentialPage() {
+  const [filters, setFilters] = useState<FilterState>(() => loadInitialFilters());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+  }, [filters]);
+
+  const queryKey = useMemo(
+    () => [
+      "high-potential",
+      filters.timeframe,
+      filters.minVolUSD,
+      filters.capRange[0],
+      filters.capRange[1],
+      filters.excludeLeveraged,
+    ],
+    [filters.timeframe, filters.minVolUSD, filters.capRange, filters.excludeLeveraged],
+  );
+
+  const query = useQuery({
+    queryKey,
+    queryFn: () => fetchHighPotential(filters),
+    refetchInterval: filters.autoRefresh ? AUTO_REFRESH_INTERVAL : false,
+    keepPreviousData: true,
   });
 
-  const handleScan = () => scanMutation.mutate();
+  const { data, isLoading, isFetching, refetch } = query;
 
-  const bullishCriteria = [
-    "Price near 24h high",
-    "24h change positive",
-    "Strong quote volume",
-    "Healthy momentum signals",
-    "Avoids stablecoins (optional)",
-  ];
+  const handleTimeframeChange = (value: string) => {
+    if (TIMEFRAME_OPTIONS.includes(value as HighPotentialTimeframe)) {
+      setFilters((prev) => ({ ...prev, timeframe: value as HighPotentialTimeframe }));
+    }
+  };
+
+  const handleMinVolumeChange = (value: string) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return;
+    setFilters((prev) => ({ ...prev, minVolUSD: Math.max(0, parsed) }));
+  };
+
+  const handleCapChange = (index: 0 | 1, value: string) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return;
+    setFilters((prev) => {
+      const next: [number, number] = [...prev.capRange];
+      next[index] = Math.max(0, parsed);
+      if (index === 0 && next[1] < next[0]) next[1] = next[0];
+      if (index === 1 && next[1] < next[0]) next[0] = next[1];
+      return { ...prev, capRange: next };
+    });
+  };
+
+  const handleExcludeLeveragedChange = (checked: boolean) => {
+    setFilters((prev) => ({ ...prev, excludeLeveraged: checked }));
+  };
+
+  const handleAutoRefreshChange = (checked: boolean) => {
+    setFilters((prev) => ({ ...prev, autoRefresh: checked }));
+  };
+
+  const topCoins = data?.top ?? [];
+  const buckets = data?.buckets ?? { breakoutZone: [], oversoldRecovery: [], strongMomentum: [] };
 
   return (
-    <div className="flex-1 overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">High Potential Coins</h1>
-            <p className="text-muted-foreground">Coins with strong bullish momentum and confirmed uptrends</p>
-          </div>
-          <Button
-            onClick={handleScan}
-            disabled={scanMutation.isPending || !isAuthenticated}
-            className="bg-primary text-primary-foreground hover:bg-primary/90"
-            data-testid="button-refresh"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${scanMutation.isPending ? "animate-spin" : ""}`} />
-            {scanMutation.isPending ? "Scanning..." : "Refresh"}
-          </Button>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">High Potential Scanner</h1>
+          <p className="text-sm text-muted-foreground">
+            Ranked crypto setups combining momentum, volume, breakout proximity, market cap and social sentiment on Binance
+            USDT pairs.
+          </p>
         </div>
 
-        {/* Scan Filters */}
-        <Card className="border-border mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <SlidersHorizontal className="w-5 h-5" />
-              <span>Scan Filters</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Timeframe</label>
-                <Select value={timeframe} onValueChange={setTimeframe} disabled={!isAuthenticated}>
-                  <SelectTrigger data-testid="select-timeframe">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15m">15 minutes</SelectItem>
-                    <SelectItem value="1h">1 hour</SelectItem>
-                    <SelectItem value="4h">4 hours</SelectItem>
-                    <SelectItem value="1d">1 day</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        {data?.dataStale && (
+          <Alert variant="warning" className="border-amber-500/60 bg-amber-500/10 text-amber-100">
+            <AlertTitle>Showing cached results</AlertTitle>
+            <AlertDescription>Scanner limits hit. Displaying the last successful scan while we retry.</AlertDescription>
+          </Alert>
+        )}
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Min Score</label>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Scanner Controls</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground">Timeframe</Label>
+              <ToggleGroup
+                type="single"
+                value={filters.timeframe}
+                onValueChange={handleTimeframeChange}
+                className="flex w-full flex-wrap gap-2"
+              >
+                {TIMEFRAME_OPTIONS.map((option) => (
+                  <ToggleGroupItem key={option} value={option} className="flex-1" aria-label={`Timeframe ${option}`}>
+                    {option.toUpperCase()}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="min-vol" className="text-xs uppercase text-muted-foreground">
+                Min 24h Volume (USD)
+              </Label>
+              <Input
+                id="min-vol"
+                type="number"
+                min={0}
+                step={100000}
+                value={filters.minVolUSD}
+                onChange={(event) => handleMinVolumeChange(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground">Market Cap Range (USD)</Label>
+              <div className="grid grid-cols-2 gap-2">
                 <Input
                   type="number"
-                  placeholder="20"
-                  min="0"
-                  max="100"
-                  value={minScore}
-                  onChange={(e) => setMinScore(e.target.value)}
-                  data-testid="input-min-score"
-                  disabled={!isAuthenticated}
+                  min={0}
+                  step={1000000}
+                  value={filters.capRange[0]}
+                  onChange={(event) => handleCapChange(0, event.target.value)}
+                  aria-label="Minimum market cap"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Min Volume</label>
                 <Input
-                  placeholder="1M USDT"
-                  value={minVolume}
-                  onChange={(e) => setMinVolume(e.target.value)}
-                  data-testid="input-min-volume"
-                  disabled={!isAuthenticated}
+                  type="number"
+                  min={filters.capRange[0]}
+                  step={1000000}
+                  value={filters.capRange[1]}
+                  onChange={(event) => handleCapChange(1, event.target.value)}
+                  aria-label="Maximum market cap"
                 />
               </div>
+            </div>
 
-              <div className="flex items-end">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="exclude-stablecoins"
-                    checked={excludeStablecoins}
-                    onCheckedChange={(checked) => setExcludeStablecoins(checked === true)}
-                    data-testid="checkbox-exclude-stablecoins"
-                    disabled={!isAuthenticated}
-                  />
-                  <label htmlFor="exclude-stablecoins" className="text-sm text-foreground">
-                    Exclude stablecoins
-                  </label>
-                </div>
+            <div className="space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground">Exclude Leveraged Tokens</Label>
+              <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                <span className="text-sm">Exclude leveraged products</span>
+                <Switch checked={filters.excludeLeveraged} onCheckedChange={handleExcludeLeveragedChange} />
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Bullish Criteria */}
-        <Card className="border-border mb-6">
-          <CardHeader>
-            <CardTitle>Bullish Criteria</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {bullishCriteria.map((criteria, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-muted/30 rounded-lg">
-                  <Check className="w-4 h-4 text-accent flex-shrink-0" />
-                  <span className="text-foreground text-sm">{criteria}</span>
-                </div>
-              ))}
+            <div className="space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground">Auto Refresh (10 min)</Label>
+              <div className="flex items-center justify-between rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                <span className="text-sm">Auto refresh results</span>
+                <Switch checked={filters.autoRefresh} onCheckedChange={handleAutoRefreshChange} />
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Results Table */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle>Scan Results</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              {results.length > 0 ? `Found ${results.length} coins matching criteria` : "Click Refresh to start scanning"}
-            </p>
-          </CardHeader>
-          <CardContent>
-            {scanMutation.isPending ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-muted-foreground">Scanning high potential coins...</div>
-              </div>
-            ) : results.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">
-                  {isAuthenticated ? "No results yet" : "Please log in to use the scanner"}
-                </p>
-                {isAuthenticated && (
-                  <Button onClick={handleScan} data-testid="button-start-scan">
-                    Start Scanning
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-left p-4 text-muted-foreground font-medium">Symbol</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">Price</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">Score</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">Recommendation</th>
-                      <th className="text-right p-4 text-muted-foreground font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((result, index) => {
-                      const baseAsset = result.symbol.replace("USDT", "");
-                      return (
-                        <tr
-                          key={result.symbol}
-                          className="border-b border-border hover:bg-muted/20 transition-colors"
-                          data-testid={`row-result-${index}`}
-                        >
-                          <td className="p-4">
-                            <div className="flex items-center space-x-3">
-                              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                                <span className="text-xs font-bold text-primary-foreground">{baseAsset.slice(0, 3)}</span>
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">{result.symbol}</p>
-                                <p className="text-sm text-muted-foreground">{baseAsset}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="p-4 text-right text-foreground" data-testid={`text-price-${index}`}>
-                            ${result.price.toFixed(4)}
-                          </td>
-                          <td className="p-4 text-right">
-                            <Badge className="bg-accent/20 text-accent font-bold" data-testid={`badge-score-${index}`}>
-                              {result.totalScore}
-                            </Badge>
-                          </td>
-                          <td className="p-4 text-right">
-                            <Badge
-                              variant={result.recommendation === "strong_buy" ? "default" : "secondary"}
-                              data-testid={`badge-recommendation-${index}`}
-                            >
-                              {result.recommendation.replace("_", " ").toUpperCase()}
-                            </Badge>
-                          </td>
-                          <td className="p-4 text-right">
-                            <Button size="sm" variant="ghost" className="text-primary hover:text-primary/80" data-testid={`button-view-details-${index}`}>
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="flex flex-col justify-end gap-2">
+              <Button onClick={() => refetch()} disabled={isFetching} className="w-full">
+                Refresh Now
+              </Button>
+              {isFetching && <p className="text-xs text-muted-foreground">Updating…</p>}
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Top 10 High Potentials</h2>
+          <span className="text-xs text-muted-foreground">
+            Updated {isFetching ? "just now" : data ? new Date(data.top[0]?.updatedAt * 1000 || Date.now()).toLocaleTimeString() : "—"}
+          </span>
+        </div>
+
+        {isLoading ? (
+          <div className="grid gap-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <LoadingCard key={`loading-${index}`} />
+            ))}
+          </div>
+        ) : topCoins.length > 0 ? (
+          <div className="grid gap-4">
+            {topCoins.map((coin) => (
+              <HighPotentialCard key={coin.symbol} coin={coin} timeframe={filters.timeframe} />
+            ))}
+          </div>
+        ) : (
+          <EmptyState message="No symbols match your filters. Try reducing the minimum volume or widening the market cap range." />
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-semibold">Opportunity Buckets</h2>
+        <Tabs defaultValue="breakout" className="w-full">
+          <TabsList className="mb-3 w-full justify-start overflow-x-auto">
+            <TabsTrigger value="breakout">Breakout Zone ({buckets.breakoutZone.length})</TabsTrigger>
+            <TabsTrigger value="recovery">Oversold Recovery ({buckets.oversoldRecovery.length})</TabsTrigger>
+            <TabsTrigger value="momentum">Strong Momentum ({buckets.strongMomentum.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="breakout">
+            <BucketList coins={buckets.breakoutZone} timeframe={filters.timeframe} emptyMessage="No coins are currently within 2.5% of resistance with elevated volume." />
+          </TabsContent>
+          <TabsContent value="recovery">
+            <BucketList coins={buckets.oversoldRecovery} timeframe={filters.timeframe} emptyMessage="No oversold recoveries detected under the current filters." />
+          </TabsContent>
+          <TabsContent value="momentum">
+            <BucketList coins={buckets.strongMomentum} timeframe={filters.timeframe} emptyMessage="No strong momentum plays matched this scan." />
+          </TabsContent>
+        </Tabs>
+      </section>
     </div>
+  );
+}
+
+type BucketListProps = {
+  coins: HighPotentialCoin[];
+  timeframe: HighPotentialTimeframe;
+  emptyMessage: string;
+};
+
+function BucketList({ coins, timeframe, emptyMessage }: BucketListProps) {
+  if (!coins.length) {
+    return <EmptyState message={emptyMessage} />;
+  }
+  return (
+    <div className="grid gap-4">
+      {coins.map((coin) => (
+        <HighPotentialCard key={`${coin.symbol}-${coin.bucket}`} coin={coin} timeframe={timeframe} compact />
+      ))}
+    </div>
+  );
+}
+
+type CardProps = {
+  coin: HighPotentialCoin;
+  timeframe: HighPotentialTimeframe;
+  compact?: boolean;
+};
+
+function HighPotentialCard({ coin, timeframe, compact = false }: CardProps) {
+  const price = formatPrice(coin.price);
+  const changePct = formatPercent(coin.change24hPct);
+  const changePositive = Number.isFinite(coin.change24hPct) && coin.change24hPct >= 0;
+  const distancePct = formatPercent(coin.breakoutDistancePct);
+  const dayVolumeRatio = coin.vol7dAvg > 0 ? coin.vol24h / coin.vol7dAvg : 0;
+  const chartPath = `/analyse/${coin.baseAsset}?tf=${ANALYSE_TIMEFRAME_PARAM[timeframe] ?? "240"}`;
+  const sparklineData = coin.sparkline ?? [];
+  const sparkId = compact ? `spark-${coin.symbol}-compact` : `spark-${coin.symbol}`;
+
+  return (
+    <Card className={cn("border-border/60", compact && "bg-muted/30")}> 
+      <CardHeader className="flex flex-col gap-4 pb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Avatar className="h-10 w-10">
+              <AvatarFallback>{coin.baseAsset.slice(0, 3)}</AvatarFallback>
+            </Avatar>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="text-base font-semibold leading-tight">
+                  {coin.name}
+                </CardTitle>
+                <Badge variant="secondary" className="text-xs">
+                  Score {coin.score}
+                </Badge>
+                {coin.bucket && (
+                  <Badge className="text-xs" variant="outline">
+                    {coin.bucket}
+                  </Badge>
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">{coin.symbol}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge className={cn("text-xs", confidenceVariant(coin.confidence))}>{coin.confidence} confidence</Badge>
+            <Button asChild size="sm" variant="outline">
+              <Link to={chartPath}>View Chart</Link>
+            </Button>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+          <Metric label="Price" value={price} />
+          <Metric
+            label="24h Change"
+            value={changePct}
+            valueClassName={changePositive ? "text-emerald-500" : "text-red-500"}
+          />
+          <Metric label="Market Cap" value={formatCompactCurrency(coin.marketCap)} />
+          <Metric label="24h Volume" value={formatCompactCurrency(coin.vol24h)} />
+          <Metric label="Vol 7d Avg" value={formatCompactCurrency(coin.vol7dAvg)} />
+          <Metric label="Dist. to Resistance" value={distancePct} />
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-1 flex-col gap-3">
+          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+            <span>RSI {formatNumber(coin.rsi)}</span>
+            <span>MACD Hist {formatNumber(coin.macd.histogram)}</span>
+            <span>ADX {formatNumber(coin.adx.adx)}</span>
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <Badge variant="secondary">24h vs 7d {formatRatio(dayVolumeRatio)}</Badge>
+            <Badge variant="outline">Intra-TF {formatRatio(coin.intraTFVolRatio)}</Badge>
+          </div>
+        </div>
+        <div className="flex w-full max-w-[180px] flex-col gap-1">
+          <span className="text-xs text-muted-foreground">7D Sparkline</span>
+          {sparklineData.length > 1 ? (
+            <div className="h-12 text-primary">
+              <Sparkline data={sparklineData} id={sparkId} />
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">Not enough data</span>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function confidenceVariant(confidence: HighPotentialCoin["confidence"]): string {
+  switch (confidence) {
+    case "High":
+      return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+    case "Medium":
+      return "bg-sky-500/10 text-sky-300 border border-sky-500/20";
+    case "Watch":
+      return "bg-amber-500/10 text-amber-300 border border-amber-500/20";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
+
+type MetricProps = {
+  label: string;
+  value: string;
+  valueClassName?: string;
+};
+
+function Metric({ label, value, valueClassName }: MetricProps) {
+  return (
+    <div className="rounded-lg border border-border/50 bg-background/40 p-3">
+      <div className="text-xs uppercase text-muted-foreground">{label}</div>
+      <div className={cn("text-sm font-medium", valueClassName)}>{value}</div>
+    </div>
+  );
+}
+
+type SparklineProps = {
+  data: number[];
+  id: string;
+};
+
+function Sparkline({ data, id }: SparklineProps) {
+  const chartData = data.map((value, index) => ({ value, index }));
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={chartData} margin={{ top: 6, bottom: 0, left: 0, right: 0 }}>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="currentColor" stopOpacity={0.6} />
+            <stop offset="95%" stopColor="currentColor" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area
+          type="monotone"
+          dataKey="value"
+          stroke="currentColor"
+          strokeWidth={2}
+          fill={`url(#${id})`}
+          fillOpacity={0.4}
+          isAnimationActive={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  return (
+    <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-6 text-sm text-muted-foreground">
+      {message}
+    </div>
+  );
+}
+
+function LoadingCard() {
+  return (
+    <Card className="border-border/60">
+      <CardContent className="space-y-4 p-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-3 w-1/4" />
+          </div>
+          <Skeleton className="h-6 w-24" />
+        </div>
+        <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-12 w-full rounded-md" />
+          ))}
+        </div>
+        <Skeleton className="h-12 w-full" />
+      </CardContent>
+    </Card>
   );
 }
