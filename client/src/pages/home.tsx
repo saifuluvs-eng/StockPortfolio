@@ -459,8 +459,12 @@ export default function Home() {
                 </div>
               </div>
               <div className="mt-4 flex space-x-2">
-                <Link href="/portfolio"><Button size="sm" data-testid="button-view-portfolio">View Portfolio</Button></Link>
-                <Link href="/charts"><Button size="sm" variant="outline" data-testid="button-start-scanning">Start Scanning</Button></Link>
+                <Button asChild size="sm" data-testid="button-view-portfolio">
+                  <Link href="/portfolio">View Portfolio</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline" data-testid="button-start-scanning">
+                  <Link href="/charts">Start Scanning</Link>
+                </Button>
               </div>
             </CardContent>
           </Card>
