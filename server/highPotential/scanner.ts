@@ -473,6 +473,13 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+export class InvalidHighPotentialFiltersError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidHighPotentialFiltersError";
+  }
+}
+
 export class HighPotentialScanner {
   private exchangeCache: { data: BinanceExchangeSymbol[]; expiresAt: number } | null = null;
   private tickerCache: { data: BinanceTicker24h[]; fetchedAt: number } | null = null;
@@ -483,13 +490,36 @@ export class HighPotentialScanner {
   private throttling = Promise.resolve();
 
   formatFiltersFromRequest(req: Request): HighPotentialFilters {
-    const { timeframe, minVolUSD, capMin, capMax, excludeLeveraged } = req.query;
+    const query = (req.query ?? {}) as Record<string, unknown>;
+
+    if (Object.prototype.hasOwnProperty.call(query, "timeframe")) {
+      throw new InvalidHighPotentialFiltersError(
+        "The `timeframe` query parameter is no longer supported. Use `tf` instead.",
+      );
+    }
+
+    const normalizeParam = (value: unknown): unknown => {
+      if (Array.isArray(value)) return value[0];
+      return value;
+    };
+
+    const timeframeRaw = Object.prototype.hasOwnProperty.call(query, "tf")
+      ? normalizeParam(query.tf)
+      : undefined;
+    const minVolUSD = normalizeParam(query.minVolUSD);
+    const capMin = normalizeParam(query.capMin);
+    const capMax = normalizeParam(query.capMax);
+    const excludeLeveraged = normalizeParam(query.excludeLeveraged);
+
     const capRange: [number, number] | undefined =
       capMin !== undefined || capMax !== undefined
         ? [toNumber(capMin, DEFAULT_FILTERS.capRange[0]), toNumber(capMax, DEFAULT_FILTERS.capRange[1])]
         : undefined;
     return normalizeHighPotentialFilters({
-      timeframe: (timeframe as HighPotentialTimeframe | undefined) ?? undefined,
+      timeframe:
+        timeframeRaw !== undefined
+          ? (String(timeframeRaw) as HighPotentialTimeframe | undefined)
+          : undefined,
       minVolUSD: minVolUSD !== undefined ? toNumber(minVolUSD, DEFAULT_FILTERS.minVolUSD) : undefined,
       excludeLeveraged: excludeLeveraged !== undefined ? excludeLeveraged !== "false" : undefined,
       capRange,

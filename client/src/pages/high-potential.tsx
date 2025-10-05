@@ -138,7 +138,7 @@ function formatNumber(value: number): string {
 
 async function fetchHighPotential(filters: FilterState): Promise<HighPotentialResponse> {
   const params = new URLSearchParams();
-  params.set("timeframe", filters.timeframe);
+  params.set("tf", filters.timeframe);
   params.set("minVolUSD", Math.round(filters.minVolUSD).toString());
   params.set("excludeLeveraged", String(filters.excludeLeveraged));
   params.set("capMin", Math.round(filters.capRange[0]).toString());
