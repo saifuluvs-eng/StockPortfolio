@@ -20,6 +20,8 @@ import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
 import Charts from "@/pages/charts";
 import Analyse from "@/pages/analyse";
+import Watchlist from "@/pages/watchlist";
+import Alerts from "@/pages/alerts";
 
 // (keep for later) Protected HOC
 function Protected<T extends React.ComponentType<any>>(Component: T) {
@@ -74,6 +76,8 @@ function Router() {
       <Route path="/high-potential" component={withLayout(HighPotential)} />
       <Route path="/gainers" component={withLayout(Gainers)} />
       <Route path="/ai-insights" component={withLayout(AIInsights)} />
+      <Route path="/watchlist" component={withLayout(Watchlist)} />
+      <Route path="/alerts" component={withLayout(Alerts)} />
 
       {/* ANALYSE */}
       <Route path="/analyse/:symbol?" component={withLayout(Analyse)} />
