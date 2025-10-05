@@ -104,6 +104,7 @@ const TIMEFRAME_TO_BINANCE: Record<HighPotentialTimeframe, string> = {
 const TIMEFRAME_KLINE_LIMIT = 240;
 const INTRA_VOLUME_LOOKBACK = 30;
 const RESISTANCE_LOOKBACK = 20;
+const ANALYSIS_CANDIDATE_LIMIT = 200;
 const RSI_PERIOD = 14;
 const MACD_FAST = 12;
 const MACD_SLOW = 26;
@@ -560,17 +561,29 @@ export class HighPotentialScanner {
     filters: HighPotentialFilters,
     includeDebug: boolean,
   ): Promise<HighPotentialResponse> {
-    const exchangeSymbols = await this.getExchangeSymbols();
     const tickers = await this.getTicker24h();
     const tickerMap = new Map(tickers.map((t) => [t.symbol, t] as const));
 
-    const universe = exchangeSymbols.filter((symbol) => {
-      if (symbol.quoteAsset !== "USDT") return false;
-      if (symbol.status !== "TRADING") return false;
-      const base = symbol.baseAsset.toUpperCase();
-      if (STABLE_BASE_ASSETS.has(base)) return false;
-      return true;
-    });
+    let exchangeSymbols: BinanceExchangeSymbol[] = [];
+    try {
+      exchangeSymbols = await this.getExchangeSymbols();
+    } catch (error) {
+      console.warn("Failed to load exchange info, falling back to ticker list", error);
+    }
+
+    if (!exchangeSymbols.length) {
+      exchangeSymbols = tickers
+        .filter((ticker) => ticker.symbol.toUpperCase().endsWith("USDT"))
+        .map((ticker) => {
+          const baseAsset = ticker.symbol.replace(/USDT$/i, "");
+          return {
+            symbol: ticker.symbol,
+            baseAsset: baseAsset || ticker.symbol,
+            quoteAsset: "USDT",
+            status: "TRADING",
+          } satisfies BinanceExchangeSymbol;
+        });
+    }
 
     const excludedExamples: Array<{ symbol: string; reason: string }> = [];
     const collectExample = (symbol: string, reason: string) => {
@@ -579,9 +592,22 @@ export class HighPotentialScanner {
       excludedExamples.push({ symbol, reason });
     };
 
+    const universe = exchangeSymbols.filter((symbol) => {
+      if (symbol.quoteAsset !== "USDT") return false;
+      if (symbol.status !== "TRADING") return false;
+      const ticker = tickerMap.get(symbol.symbol);
+      if (!ticker) {
+        collectExample(symbol.symbol, "missing-ticker");
+        return false;
+      }
+      const base = symbol.baseAsset.toUpperCase();
+      if (STABLE_BASE_ASSETS.has(base)) return false;
+      return true;
+    });
+
     const leveragedFiltered = universe.filter((symbol) => {
       if (!filters.excludeLeveraged) return true;
-      const baseFromSymbol = symbol.symbol.toUpperCase().replace(/USDT$/, "");
+      const baseFromSymbol = symbol.symbol.replace(/USDT$/i, "").toUpperCase();
       const baseAsset = (symbol.baseAsset || baseFromSymbol).toUpperCase();
       const baseToCheck = baseFromSymbol.length > 0 ? baseFromSymbol : baseAsset;
       const isLeveraged = LEVERAGED_SUFFIX_PATTERNS.some((pattern) => pattern.test(baseToCheck));
@@ -611,9 +637,15 @@ export class HighPotentialScanner {
     }
 
     volumeCandidates.sort((a, b) => b.volume - a.volume);
-    const filtered = volumeCandidates.slice(0, 60);
+    const filtered = volumeCandidates.slice(0, ANALYSIS_CANDIDATE_LIMIT);
 
-    const marketMap = await this.getMarketMap();
+    let marketMap: Map<string, CoinGeckoMarketItem>;
+    try {
+      marketMap = await this.getMarketMap();
+    } catch (error) {
+      console.warn("Failed to load market data", error);
+      marketMap = new Map();
+    }
     const timeframe = filters.timeframe;
     const binanceInterval = TIMEFRAME_TO_BINANCE[timeframe];
 
