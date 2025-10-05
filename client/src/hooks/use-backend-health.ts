@@ -1,5 +1,26 @@
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { apiJSON } from "@/lib/api";
+
+type HealthResponse = {
+  ok: boolean;
+  ts: number | string;
+};
+
+function isValidHealthResponse(data: unknown): data is HealthResponse {
+  if (!data || typeof data !== "object") return false;
+  const record = data as Record<string, unknown>;
+  if (record.ok !== true) return false;
+  const { ts } = record;
+  if (typeof ts === "number") {
+    return Number.isFinite(ts);
+  }
+  if (typeof ts === "string") {
+    if (!ts.trim()) return false;
+    const parsed = Date.parse(ts);
+    return Number.isFinite(parsed);
+  }
+  return false;
+}
 
 let cachedStatus: boolean | undefined;
 let pendingProbe: Promise<boolean> | null = null;
@@ -9,8 +30,8 @@ async function probeBackend(): Promise<boolean> {
   const timeoutId = setTimeout(() => controller.abort(), 4000);
 
   try {
-    const response = await api("/api/health", { signal: controller.signal });
-    return response.ok;
+    const response = await apiJSON<unknown>("/api/health", { signal: controller.signal });
+    return isValidHealthResponse(response);
   } catch {
     return false;
   } finally {

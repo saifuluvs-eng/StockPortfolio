@@ -118,12 +118,14 @@ app.get("/", (_req, res) => {
   res.json({ message: "Stock Portfolio backend is running" });
 });
 
+const healthPayload = () => ({ ok: true, ts: new Date().toISOString() });
+
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json(healthPayload());
 });
 
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json(healthPayload());
 });
 
 function safeTicker(symbol, lastPrice = "0") {
@@ -484,6 +486,10 @@ server.on("upgrade", (request, socket, head) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  server.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+export { app, server, wss };
