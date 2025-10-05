@@ -109,6 +109,11 @@ const ALLOWED_HEADERS = [
   "X-Requested-With",
   "Accept",
   "Origin",
+  "authorization",
+  "content-type",
+  "x-requested-with",
+  "accept",
+  "origin",
 ];
 
 const appendVaryHeader = (res, value) => {
@@ -141,8 +146,15 @@ const applyCorsHeaders = (req, res) => {
     res.header('Access-Control-Allow-Origin', allowedOrigin);
   }
   appendVaryHeader(res, 'Origin');
+  appendVaryHeader(res, 'Access-Control-Request-Method');
+  appendVaryHeader(res, 'Access-Control-Request-Headers');
   res.header('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
-  res.header('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
+  const requestedHeaders = req.get('Access-Control-Request-Headers');
+  if (requestedHeaders) {
+    res.header('Access-Control-Allow-Headers', requestedHeaders);
+  } else if (!res.get('Access-Control-Allow-Headers')) {
+    res.header('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
+  }
 };
 
 const app = express();
@@ -161,15 +173,25 @@ const corsOptions = {
   methods: ALLOWED_METHODS,
   allowedHeaders: ALLOWED_HEADERS,
   credentials: false,
+  optionsSuccessStatus: 204,
 };
 
-app.use((req, res, next) => {
-  applyCorsHeaders(req, res);
-  next();
-});
+const corsMiddleware = cors(corsOptions);
 
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.use((req, res, next) => {
+  corsMiddleware(req, res, (err) => {
+    if (err) {
+      next(err);
+      return;
+    }
+    applyCorsHeaders(req, res);
+    next();
+  });
+});
+app.options('*', cors(corsOptions), (req, res) => {
+  applyCorsHeaders(req, res);
+  res.sendStatus(204);
+});
 app.use(express.json());
 
 // ensure memory store exists once

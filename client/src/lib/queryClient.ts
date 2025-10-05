@@ -9,16 +9,43 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-async function buildHeaders(data?: unknown): Promise<HeadersInit> {
+const PUBLIC_ENDPOINT_PATHS = new Set([
+  "/api/health",
+  "/api/high-potential",
+  "/api/scanner/history",
+]);
+
+function normalizePath(input: string): string {
+  if (!input) return input;
+  try {
+    const url = new URL(input);
+    return url.pathname;
+  } catch {
+    const [pathPart] = input.split("?");
+    if (!pathPart) return pathPart;
+    return pathPart.startsWith("/") ? pathPart : `/${pathPart}`;
+  }
+  return input;
+}
+
+function shouldSkipAuthHeader(url: string): boolean {
+  const normalized = normalizePath(url);
+  if (!normalized) return false;
+  return PUBLIC_ENDPOINT_PATHS.has(normalized);
+}
+
+async function buildHeaders(url: string, data?: unknown): Promise<HeadersInit> {
   const headers: Record<string, string> = {};
 
   if (data !== undefined) {
     headers["Content-Type"] = "application/json";
   }
 
-  const token = await getFirebaseIdToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (!shouldSkipAuthHeader(url)) {
+    const token = await getFirebaseIdToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
 
   return headers;
@@ -31,7 +58,7 @@ export async function apiRequest(
 ): Promise<Response> {
   const res = await api(url, {
     method,
-    headers: await buildHeaders(data),
+    headers: await buildHeaders(url, data),
     body: data ? JSON.stringify(data) : undefined,
   });
 
@@ -45,9 +72,13 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const token = await getFirebaseIdToken();
-    const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
     const [path] = queryKey as [string, ...unknown[]];
+    let headers: HeadersInit | undefined;
+    if (!shouldSkipAuthHeader(path)) {
+      const token = await getFirebaseIdToken();
+      headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+    }
+
     const res = await api(path, { headers });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
