@@ -4,6 +4,10 @@ const BINANCE = "https://api.binance.com";
 // Exclude leveraged tokens / ETFs
 const EXCLUDE_REGEX = /(UP|DOWN|BULL|BEAR|\d+L|\d+S)USDT$/;
 
+const MIN_QUOTE_VOL_USDT = 1_000_000; // $1M in quote volume (USDT for *USDT pairs)
+const FALLBACK_MIN_VOL = 300_000; // fallback if list ends up too small
+const MIN_ROWS_TARGET = 60; // ensure we still render a useful list
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // --- A) SPOT allowlist (authoritative) ---
@@ -58,28 +62,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
       });
 
-    // Primary filter: real trading activity
-    let rows = rowsRaw.filter((r) => r.price > 0 && r.volume > 0);
+    const nonZero = rowsRaw.filter((r) => r.price > 0 && r.volume > 0);
 
-    // Fallback (in case of partial Binance hiccups): keep price>0 only
-    if (rows.length === 0 && rowsRaw.length > 0) {
-      rows = rowsRaw.filter((r) => r.price > 0);
+    // primary: $1M+ volume
+    let filtered = nonZero.filter((r) => r.volume >= MIN_QUOTE_VOL_USDT);
+
+    // fallback: if too few, relax to $300k to avoid empty UI during quiet hours
+    let volumeThresholdUsed = MIN_QUOTE_VOL_USDT;
+    if (filtered.length < MIN_ROWS_TARGET) {
+      filtered = nonZero.filter((r) => r.volume >= FALLBACK_MIN_VOL);
+      volumeThresholdUsed = FALLBACK_MIN_VOL;
     }
 
-    rows = rows
+    const top = filtered
       .sort((a, b) => b.changePct - a.changePct)
-      .slice(0, 120); // cap to 100–150; using 120
+      .slice(0, 120); // still capped to top ~100–150
+
+    const meta = undefined;
 
     // Short CDN cache so we don’t hammer Binance
     res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=60");
-    res.status(200).json({ rows });
+    res.status(200).json({
+      rows: top,
+      meta: {
+        ...(meta || {}),
+        volumeThresholdUsed,
+        counts: {
+          nonZero: nonZero.length,
+          filtered: filtered.length,
+          top: top.length,
+        },
+      },
+    });
 
     // Debug counters (visible in logs)
     console.log("gainers counts:", {
       allowUSDT: allowUSDT.size,
       stats: stats.length,
       rowsRaw: rowsRaw.length,
-      rows: rows.length,
+      nonZero: nonZero.length,
+      filtered: filtered.length,
+      top: top.length,
+      volumeThresholdUsed,
     });
   } catch (err: any) {
     console.error("gainers spot error:", err?.message || err);
