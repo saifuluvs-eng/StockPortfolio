@@ -36,9 +36,11 @@ export function PerformanceChart({ metrics, summary, isLoading }: PerformanceCha
     return (
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <BarChart3 className="w-5 h-5" />
-            Performance Analytics
+            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+              Performance Analytics
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -176,9 +178,11 @@ export function PerformanceChart({ metrics, summary, isLoading }: PerformanceCha
         <TabsContent value="portfolio" className="space-y-4">
           <Card className="border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex min-w-0 items-center gap-2">
                 <Activity className="w-5 h-5" />
-                Portfolio Value Over Time
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                  Portfolio Value Over Time
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -217,9 +221,9 @@ export function PerformanceChart({ metrics, summary, isLoading }: PerformanceCha
         <TabsContent value="trades" className="space-y-4">
           <Card className="border-border">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex min-w-0 items-center gap-2">
                 <BarChart3 className="w-5 h-5" />
-                Win/Loss Analysis
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Win/Loss Analysis</span>
               </CardTitle>
             </CardHeader>
             <CardContent>

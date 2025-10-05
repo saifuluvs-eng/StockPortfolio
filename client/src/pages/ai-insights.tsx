@@ -110,8 +110,9 @@ export default function AIInsights() {
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Brain className="w-6 h-6" /> AI Insights
+            <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-2xl font-bold text-foreground">
+              <Brain className="w-6 h-6" />
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">AI Insights</span>
             </h1>
             <p className="text-muted-foreground">Market themes & signals, refreshed on demand.</p>
           </div>
@@ -136,12 +137,12 @@ export default function AIInsights() {
             data.insights.map((ins, i) => (
               <Card key={i} className="border-border">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex min-w-0 items-center gap-2">
                     {ins.tags.includes("breakout") ? <Zap className="w-5 h-5 text-accent" /> :
                      ins.tags.includes("momentum") ? <TrendingUp className="w-5 h-5 text-accent" /> :
                      ins.tags.includes("risk") ? <Flame className="w-5 h-5 text-destructive" /> :
                      <Brain className="w-5 h-5" />}
-                    {ins.title}
+                    <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{ins.title}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">

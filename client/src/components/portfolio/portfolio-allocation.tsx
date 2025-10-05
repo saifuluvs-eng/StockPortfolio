@@ -21,9 +21,9 @@ export function PortfolioAllocation({ positions }: PortfolioAllocationProps) {
     return (
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
+          <CardTitle className="flex min-w-0 items-center space-x-2">
             <PieChart className="w-5 h-5 text-primary" />
-            <span>Portfolio Allocation</span>
+            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Portfolio Allocation</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -57,9 +57,9 @@ export function PortfolioAllocation({ positions }: PortfolioAllocationProps) {
   return (
     <Card className="border-border">
       <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
+        <CardTitle className="flex min-w-0 items-center space-x-2">
           <PieChart className="w-5 h-5 text-primary" />
-          <span>Portfolio Allocation</span>
+          <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Portfolio Allocation</span>
         </CardTitle>
       </CardHeader>
       <CardContent>

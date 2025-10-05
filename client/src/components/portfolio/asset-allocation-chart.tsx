@@ -23,9 +23,9 @@ export function AssetAllocationChart({ data, isLoading, showTable }: AssetAlloca
     return (
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <PieChartIcon className="w-5 h-5" />
-            Asset Allocation
+            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Asset Allocation</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -41,9 +41,9 @@ export function AssetAllocationChart({ data, isLoading, showTable }: AssetAlloca
     return (
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <PieChartIcon className="w-5 h-5" />
-            Asset Allocation
+            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Asset Allocation</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -108,9 +108,9 @@ export function AssetAllocationChart({ data, isLoading, showTable }: AssetAlloca
     <div className="space-y-6">
       <Card className="border-border">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex min-w-0 items-center gap-2">
             <PieChartIcon className="w-5 h-5" />
-            Asset Allocation
+            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Asset Allocation</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -170,9 +170,9 @@ export function AssetAllocationChart({ data, isLoading, showTable }: AssetAlloca
       {showTable && (
         <Card className="border-border">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex min-w-0 items-center gap-2">
               <TrendingUp className="w-5 h-5" />
-              Allocation Breakdown
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Allocation Breakdown</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
