@@ -87,11 +87,18 @@ const LEVERAGED_KEYWORDS = [
 ];
 
 const DEFAULT_FILTERS: HighPotentialFilters = {
-  timeframe: "4h",
+  timeframe: "1d",
   minVolUSD: 2_000_000,
   excludeLeveraged: true,
   capRange: [0, 2_000_000_000],
 };
+
+export class InvalidHighPotentialFiltersError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "InvalidHighPotentialFiltersError";
+  }
+}
 
 const TIMEFRAME_TO_BINANCE: Record<HighPotentialTimeframe, string> = {
   "1h": "1h",
@@ -151,10 +158,10 @@ export function normalizeHighPotentialFilters(
   input: Partial<HighPotentialFilters> | undefined,
 ): HighPotentialFilters {
   const timeframeRaw = input?.timeframe ?? DEFAULT_FILTERS.timeframe;
-  const timeframe: HighPotentialTimeframe =
-    timeframeRaw === "1h" || timeframeRaw === "4h" || timeframeRaw === "1d"
-      ? timeframeRaw
-      : DEFAULT_FILTERS.timeframe;
+  if (timeframeRaw !== "1h" && timeframeRaw !== "4h" && timeframeRaw !== "1d") {
+    throw new InvalidHighPotentialFiltersError("Invalid timeframe");
+  }
+  const timeframe: HighPotentialTimeframe = timeframeRaw;
   const minVolUSD = Math.max(0, toNumber(input?.minVolUSD, DEFAULT_FILTERS.minVolUSD));
   const excludeLeveraged = Boolean(input?.excludeLeveraged ?? DEFAULT_FILTERS.excludeLeveraged);
   const capRangeInput = Array.isArray(input?.capRange)
@@ -471,13 +478,6 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(`Request failed (${res.status}) for ${url}`);
   }
   return (await res.json()) as T;
-}
-
-export class InvalidHighPotentialFiltersError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "InvalidHighPotentialFiltersError";
-  }
 }
 
 export class HighPotentialScanner {
