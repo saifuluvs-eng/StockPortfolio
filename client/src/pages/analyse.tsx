@@ -97,7 +97,7 @@ interface ScanHistoryItem {
   id: string;
   scanType: string;
   filters?: { symbol?: string; timeframe?: string } | null;
-  results?: ScanResult | null;
+  results?: ScanResult | ScannerAnalysis | null;
   createdAt?: number | string | null;
 }
 
@@ -189,7 +189,9 @@ export default function Analyse() {
     const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
     return base || "BTC";
   });
-  const [scanResult, setScanResult] = useState<ScannerAnalysis | null>(null);
+  const [scanResult, setScanResult] = useState<ScannerAnalysis | ScanResult | null>(
+    null,
+  );
   const [isScanning, setIsScanning] = useState(false);
   const lastRequestIdRef = useRef<string>("");
   const previousSymbolRef = useRef<string>(initialSymbol);
@@ -389,7 +391,7 @@ export default function Analyse() {
     },
   });
 
-  const watchlistItems = asArray(watchlistQuery);
+  const watchlistItems = asArray<WatchlistItem>(watchlistQuery.data);
   const historyQuery = useQuery({
     queryKey: ["scan-history"],
     enabled: isAuthenticated && networkEnabled,
@@ -399,7 +401,7 @@ export default function Analyse() {
     },
   });
 
-  const historyItems = asArray(historyQuery);
+  const historyItems = asArray<ScanHistoryItem>(historyQuery.data);
 
   const timeframeConfig = useMemo(
     () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
@@ -432,7 +434,7 @@ export default function Analyse() {
     },
   });
 
-  const highPotentialItems = asArray(highPotentialQuery);
+  const highPotentialItems = asArray<ScanResult>(highPotentialQuery.data);
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {

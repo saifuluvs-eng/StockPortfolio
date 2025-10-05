@@ -80,7 +80,7 @@ async function safeJson<T>(path: string, init?: RequestInit): Promise<T | null> 
 async function qPortfolioSummary(): Promise<{ totalValue: number | null; totalPnlPercent: number | null }> {
   const summary = await safeJson<PortfolioSummary>("/api/portfolio");
   const totalValue = toNum(summary?.totalValue ?? null);
-  const totalPnlPercent = toNum(summary?.totalPnLPercent ?? summary?.totalPnlPercent ?? null);
+  const totalPnlPercent = toNum(summary?.totalPnLPercent ?? null);
   return { totalValue: totalValue ?? null, totalPnlPercent: totalPnlPercent ?? null };
 }
 

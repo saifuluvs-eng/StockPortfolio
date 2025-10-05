@@ -301,7 +301,7 @@ export default function Charts() {
     },
   });
 
-  const watchlistItems = asArray(watchlistQuery);
+  const watchlistItems = asArray<WatchlistItem>(watchlistQuery.data);
 
   const historyQuery = useQuery({
     queryKey: ["scan-history"],
@@ -312,7 +312,7 @@ export default function Charts() {
     },
   });
 
-  const historyItems = asArray(historyQuery);
+  const historyItems = asArray<ScanHistoryItem>(historyQuery.data);
 
   const timeframeConfig = useMemo(
     () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
@@ -345,7 +345,7 @@ export default function Charts() {
     },
   });
 
-  const highPotentialItems = asArray(highPotentialQuery);
+  const highPotentialItems = asArray<ScanResult>(highPotentialQuery.data);
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
