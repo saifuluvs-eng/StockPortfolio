@@ -37,6 +37,12 @@ interface CoinGeckoMarketItem {
   market_cap_rank: number | null;
 }
 
+type VolumeCandidate = {
+  symbol: BinanceExchangeSymbol;
+  ticker: BinanceTicker24h;
+  volume: number;
+};
+
 interface SocialCacheEntry {
   data: HighPotentialSocial;
   expiresAt: number;
@@ -618,11 +624,7 @@ export class HighPotentialScanner {
       return true;
     });
 
-    const volumeCandidates: Array<{
-      symbol: BinanceExchangeSymbol;
-      ticker: BinanceTicker24h;
-      volume: number;
-    }> = [];
+    const volumeCandidates: VolumeCandidate[] = [];
 
     for (const symbol of leveragedFiltered) {
       const ticker = tickerMap.get(symbol.symbol);
@@ -636,9 +638,6 @@ export class HighPotentialScanner {
       volumeCandidates.push({ symbol, ticker, volume: vol });
     }
 
-    volumeCandidates.sort((a, b) => b.volume - a.volume);
-    const filtered = volumeCandidates.slice(0, ANALYSIS_CANDIDATE_LIMIT);
-
     let marketMap: Map<string, CoinGeckoMarketItem>;
     try {
       marketMap = await this.getMarketMap();
@@ -646,6 +645,13 @@ export class HighPotentialScanner {
       console.warn("Failed to load market data", error);
       marketMap = new Map();
     }
+    volumeCandidates.sort((a, b) => b.volume - a.volume);
+    const { limited: filtered, eligibleCount: capEligibleCount } = this.filterByMarketCap(
+      volumeCandidates,
+      marketMap,
+      filters,
+      collectExample,
+    );
     const timeframe = filters.timeframe;
     const binanceInterval = TIMEFRAME_TO_BINANCE[timeframe];
 
@@ -676,7 +682,7 @@ export class HighPotentialScanner {
         console.error("Failed to analyse", entry.symbol.symbol, error);
         dataStale = true;
       }
-      await delay(120);
+      await this.sleep(120);
     }
 
     coins.sort((a, b) => b.score - a.score);
@@ -702,7 +708,7 @@ export class HighPotentialScanner {
         afterLeveraged: leveragedFiltered.length,
         afterMinVolume: volumeCandidates.length,
         withMarketCap: { known: knownMarketCaps, missing: missingMarketCaps },
-        afterCapRange: coins.length,
+        afterCapRange: capEligibleCount,
         afterIndicators: analysedCount,
         topCount: top.length,
         bucketCounts: {
@@ -718,6 +724,49 @@ export class HighPotentialScanner {
 
     return response;
   }
+
+  private filterByMarketCap(
+    candidates: VolumeCandidate[],
+    marketMap: Map<string, CoinGeckoMarketItem>,
+    filters: HighPotentialFilters,
+    collectExample: (symbol: string, reason: string) => void,
+  ): { limited: VolumeCandidate[]; eligibleCount: number } {
+    const limited: VolumeCandidate[] = [];
+    let eligibleCount = 0;
+
+    for (const entry of candidates) {
+      const baseFromSymbol = entry.symbol.symbol.replace(/USDT$/i, "").toUpperCase();
+      const baseAsset = (entry.symbol.baseAsset || baseFromSymbol).toUpperCase();
+      const market =
+        marketMap.get(baseAsset.toLowerCase()) ??
+        marketMap.get(baseAsset) ??
+        marketMap.get(baseFromSymbol.toLowerCase()) ??
+        marketMap.get(baseFromSymbol) ??
+        null;
+      const marketCapRaw = market?.market_cap;
+      const marketCapKnown = Number.isFinite(marketCapRaw) && Number(marketCapRaw ?? 0) > 0;
+      const marketCap = marketCapKnown ? Number(marketCapRaw) : 0;
+      const withinCapRange =
+        !marketCapKnown ||
+        (marketCap >= filters.capRange[0] && marketCap <= filters.capRange[1]);
+      if (!withinCapRange) {
+        collectExample(entry.symbol.symbol, "cap-out-of-range");
+        continue;
+      }
+
+      eligibleCount++;
+      if (limited.length < ANALYSIS_CANDIDATE_LIMIT) {
+        limited.push(entry);
+      }
+    }
+
+    return { limited, eligibleCount };
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    await delay(ms);
+  }
+
   private async analyseCoin(
     symbol: BinanceExchangeSymbol,
     ticker: BinanceTicker24h,
