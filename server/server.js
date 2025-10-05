@@ -221,7 +221,7 @@ app.delete("/api/portfolio/:id", (req, res) => {
 });
 
 app.get("/api/market/gainers", (_req, res) => {
-  res.json({ gainers: [] });
+  res.json({ rows: [] });
 });
 
 app.get("/api/watchlist", (_req, res) => {
