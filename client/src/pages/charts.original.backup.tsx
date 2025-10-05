@@ -176,7 +176,7 @@ export default function Charts() {
       setScanResult(data);
     },
     onError: (error: unknown) => {
-      if (isUnauthorizedError(error)) {
+      if (error instanceof Error && isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
           description: "You are logged out. Logging in again...",

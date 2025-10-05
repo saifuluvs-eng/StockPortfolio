@@ -38,7 +38,6 @@
       /* fall through to real WS */
     }
     // Everything else (like Binance) goes through as normal
-    // @ts-expect-error: delegating to native constructor
     return new NativeWS(url, protocols);
   }
 
