@@ -349,7 +349,8 @@ export function registerRoutes(app: Express): void {
     } catch (error) {
       if (error instanceof InvalidHighPotentialFiltersError) {
         console.warn("Rejected high potential scan request", error);
-        res.status(400).json({ message: error.message });
+        const message = error.message === "Invalid timeframe" ? "Invalid timeframe" : error.message;
+        res.status(400).json({ message });
         return;
       }
       console.error("Error generating high potential scan:", error);

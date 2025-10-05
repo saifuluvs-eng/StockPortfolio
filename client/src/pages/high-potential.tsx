@@ -29,7 +29,7 @@ const STORAGE_KEY = "high-potential:filters";
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
 
 const DEFAULT_FILTERS: FilterState = {
-  timeframe: "4h",
+  timeframe: "1d",
   minVolUSD: 2_000_000,
   capRange: [0, 2_000_000_000],
   excludeLeveraged: true,
