@@ -56,7 +56,7 @@ export function BreakdownSection({
       <div
         className="
           flex-1 overflow-y-auto overscroll-contain px-4 md:px-5 py-4
-          space-y-3
+          space-y-3 min-h-[24rem]
         "
         // desktop: tall card; mobile: slightly shorter
         style={{ maxHeight: "70vh" }}
