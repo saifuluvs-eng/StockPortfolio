@@ -721,14 +721,16 @@ export default function Analyse() {
       </Card>
 
       {scanResult && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3">
+        <Card
+          className={`md:col-span-2 border-2 ${getScoreBorderTone(safeTotalScore)} bg-card/70`}
+        >
+          <CardContent className="flex h-full min-h-[220px] flex-col justify-between gap-4 p-6">
+            <div className="space-y-4">
               <div>
                 <p className="text-sm text-muted-foreground">Overall Analysis</p>
-                <div className="mt-1 flex items-center space-x-2">
+                <div className="mt-2 flex items-center space-x-2">
                   <span
-                    className={`text-lg font-bold ${getScoreColor(safeTotalScore)}`}
+                    className={`text-2xl font-bold leading-none ${getScoreColor(safeTotalScore)}`}
                     data-testid="text-total-score"
                   >
                     {safeTotalScore > 0 ? "+" : ""}
@@ -740,15 +742,20 @@ export default function Analyse() {
                   >
                     {recommendationLabel}
                   </Badge>
-        </div>
-      </div>
-              <div>
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Progress
                   value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
                   className="h-2"
                 />
                 <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
               </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Confidence</span>
+              <span className="text-foreground">{recommendationLabel}</span>
             </div>
           </CardContent>
         </Card>
@@ -789,24 +796,24 @@ export default function Analyse() {
 
       <Card>
         <CardContent className="space-y-4 pt-6">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="flex min-w-64 flex-1 gap-2 lg:col-span-2">
-              <div className="relative flex-1">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,0.55fr)_auto] lg:items-center">
+            <div className="flex w-full items-center gap-2">
+              <div className="relative flex-1 min-w-[280px]">
                 <Input
                   placeholder="Enter coin (BTC, ETH, SOL...)"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="pl-10"
+                  className="h-11 pl-10"
                   data-testid="input-search-symbol"
                   disabled={!isAuthenticated || !networkEnabled}
                 />
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               </div>
               <Button
                 onClick={handleSearch}
                 variant="outline"
-                className="px-4"
+                className="h-11 w-11 min-w-11 p-0"
                 data-testid="button-search-coin"
                 disabled={!isAuthenticated || !networkEnabled}
               >
@@ -814,10 +821,10 @@ export default function Analyse() {
               </Button>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex w-full items-center gap-2 lg:justify-end">
               <label className="text-sm font-medium text-foreground">Timeframe</label>
               <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                <SelectTrigger className="w-32" data-testid="select-timeframe">
+                <SelectTrigger className="h-11 w-full min-w-[160px] lg:w-48" data-testid="select-timeframe">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -833,7 +840,7 @@ export default function Analyse() {
             <Button
               onClick={handleScan}
               disabled={isScanning || !isAuthenticated || !networkEnabled}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 lg:justify-self-start"
+              className="h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90 lg:w-auto"
               data-testid="button-scan"
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
@@ -952,6 +959,12 @@ function getScoreColor(score: number) {
   if (score <= -10) return "text-red-600";
   if (score <= -5) return "text-red-500";
   return "text-yellow-500";
+}
+
+function getScoreBorderTone(score: number) {
+  if (score >= 5) return "border-green-500/80";
+  if (score <= -5) return "border-red-500/80";
+  return "border-yellow-500/80";
 }
 
 function confidenceToRecommendation(confidence: string): ScanResult["recommendation"] {
