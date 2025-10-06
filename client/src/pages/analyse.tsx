@@ -652,8 +652,65 @@ export default function Analyse() {
 
   const hasScanResult = Boolean(scanResult);
 
+  const overallAnalysisCard = (
+    <Card
+      className={`h-full border-2 ${
+        hasScanResult ? getScoreBorderTone(safeTotalScore) : "border-border/60"
+      } bg-card/70`}
+    >
+      <CardContent className="h-full p-6">
+        {hasScanResult ? (
+          <div className="flex h-full min-h-[220px] flex-col justify-between gap-4">
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Overall Analysis</p>
+                <div className="mt-2 flex items-center space-x-2">
+                  <span
+                    className={`text-2xl font-bold leading-none ${getScoreColor(safeTotalScore)}`}
+                    data-testid="text-total-score"
+                  >
+                    {safeTotalScore > 0 ? "+" : ""}
+                    {safeTotalScore}
+                  </span>
+                  <Badge
+                    className={`${getRecommendationColor(safeRecommendation)} px-2 py-1 text-xs`}
+                    data-testid="badge-recommendation"
+                  >
+                    {recommendationLabel}
+                  </Badge>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Progress
+                  value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Confidence</span>
+              <span className="text-foreground">{recommendationLabel}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+            <Search className="h-10 w-10 text-muted-foreground/60" />
+            <div>
+              <p className="text-lg font-semibold text-foreground">No analysis yet</p>
+              <p className="text-sm text-muted-foreground">
+                Run a scan to unlock overall recommendations.
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+
   const priceSummaryCards = (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
@@ -722,60 +779,6 @@ export default function Analyse() {
         </CardContent>
       </Card>
 
-      <Card
-        className={`md:col-span-2 border-2 ${
-          hasScanResult ? getScoreBorderTone(safeTotalScore) : "border-border/60"
-        } bg-card/70`}
-      >
-        <CardContent className="h-full p-6">
-          {hasScanResult ? (
-            <div className="flex h-full min-h-[220px] flex-col justify-between gap-4">
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Overall Analysis</p>
-                  <div className="mt-2 flex items-center space-x-2">
-                    <span
-                      className={`text-2xl font-bold leading-none ${getScoreColor(safeTotalScore)}`}
-                      data-testid="text-total-score"
-                    >
-                      {safeTotalScore > 0 ? "+" : ""}
-                      {safeTotalScore}
-                    </span>
-                    <Badge
-                      className={`${getRecommendationColor(safeRecommendation)} px-2 py-1 text-xs`}
-                      data-testid="badge-recommendation"
-                    >
-                      {recommendationLabel}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Progress
-                    value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
-                    className="h-2"
-                  />
-                  <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Confidence</span>
-                <span className="text-foreground">{recommendationLabel}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-              <Search className="h-10 w-10 text-muted-foreground/60" />
-              <div>
-                <p className="text-lg font-semibold text-foreground">No analysis yet</p>
-                <p className="text-sm text-muted-foreground">
-                  Run a scan to unlock overall recommendations.
-                </p>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 
@@ -810,71 +813,75 @@ export default function Analyse() {
         </div>
       </header>
 
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] lg:items-center lg:gap-4">
-            <div className="flex w-full items-center gap-2">
-              <div className="relative flex-1 min-w-[280px]">
-                <Input
-                  placeholder="Enter coin (BTC, ETH, SOL...)"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="h-11 pl-10"
-                  data-testid="input-search-symbol"
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <Card className="h-full">
+          <CardContent className="space-y-4 pt-6">
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] lg:items-center lg:gap-4">
+              <div className="flex w-full items-center gap-2">
+                <div className="relative flex-1 min-w-[280px]">
+                  <Input
+                    placeholder="Enter coin (BTC, ETH, SOL...)"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="h-11 pl-10"
+                    data-testid="input-search-symbol"
+                    disabled={!isAuthenticated || !networkEnabled}
+                  />
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
+                <Button
+                  onClick={handleSearch}
+                  variant="outline"
+                  className="h-11 w-11 min-w-11 p-0"
+                  data-testid="button-search-coin"
                   disabled={!isAuthenticated || !networkEnabled}
-                />
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              </div>
-              <Button
-                onClick={handleSearch}
-                variant="outline"
-                className="h-11 w-11 min-w-11 p-0"
-                data-testid="button-search-coin"
-                disabled={!isAuthenticated || !networkEnabled}
-              >
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
-
-            <div className="flex w-full flex-col items-stretch gap-2 lg:col-start-2 lg:flex-row lg:items-center lg:justify-end lg:gap-3">
-              <div className="flex w-full items-center gap-2 lg:w-auto lg:justify-end">
-                <label className="text-sm font-medium text-foreground">Timeframe</label>
-                <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                  <SelectTrigger className="h-11 w-full min-w-[160px] lg:w-48" data-testid="select-timeframe">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIMEFRAMES.map((tf) => (
-                      <SelectItem key={tf.value} value={tf.value}>
-                        {tf.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
               </div>
 
-              <Button
-                onClick={handleScan}
-                disabled={isScanning || !isAuthenticated || !networkEnabled}
-                className="h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90 lg:w-auto"
-                data-testid="button-scan"
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
-                {isScanning ? "Scanning..." : "Run Analysis"}
-              </Button>
-            </div>
-          </div>
+              <div className="flex w-full flex-col items-stretch gap-2 lg:col-start-2 lg:flex-row lg:items-center lg:justify-end lg:gap-3">
+                <div className="flex w-full items-center gap-2 lg:w-auto lg:justify-end">
+                  <label className="text-sm font-medium text-foreground">Timeframe</label>
+                  <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                    <SelectTrigger className="h-11 w-full min-w-[160px] lg:w-48" data-testid="select-timeframe">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIMEFRAMES.map((tf) => (
+                        <SelectItem key={tf.value} value={tf.value}>
+                          {tf.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Activity className="h-3 w-3" />
-            Currently viewing <span className="font-medium text-foreground">{displayPair(selectedSymbol)}</span>
-            <span className="text-muted-foreground">
-              ({timeframeConfig?.display ?? selectedTimeframe})
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+                <Button
+                  onClick={handleScan}
+                  disabled={isScanning || !isAuthenticated || !networkEnabled}
+                  className="h-11 w-full bg-primary text-primary-foreground hover:bg-primary/90 lg:w-auto"
+                  data-testid="button-scan"
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
+                  {isScanning ? "Scanning..." : "Run Analysis"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Activity className="h-3 w-3" />
+              Currently viewing <span className="font-medium text-foreground">{displayPair(selectedSymbol)}</span>
+              <span className="text-muted-foreground">
+                ({timeframeConfig?.display ?? selectedTimeframe})
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {overallAnalysisCard}
+      </div>
 
       {priceSummaryCards}
 
