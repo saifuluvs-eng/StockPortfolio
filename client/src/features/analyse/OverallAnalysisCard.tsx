@@ -43,7 +43,7 @@ export function OverallAnalysisCard({
     >
       <CardContent className="h-full p-6">
         {hasResult ? (
-          <div className="flex h-full min-h-[220px] flex-col justify-between gap-4">
+          <div className="flex h-full min-h-[154px] flex-col justify-between gap-4">
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-muted-foreground">Overall Analysis</p>
@@ -75,7 +75,7 @@ export function OverallAnalysisCard({
             </div>
           </div>
         ) : (
-          <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+          <div className="flex h-full min-h-[154px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
             <Search className="h-10 w-10 text-muted-foreground/60" />
             <div>
               <p className="text-lg font-semibold text-foreground">No analysis yet</p>
