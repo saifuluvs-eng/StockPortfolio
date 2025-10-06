@@ -142,6 +142,87 @@ function formatRelativeTime(input?: number | string | null) {
   return formatDistanceToNowStrict(date, { addSuffix: true });
 }
 
+function extractScanResult(payload: unknown): ScannerAnalysis | ScanResult | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const withData = payload as { data?: unknown };
+  if (withData.data && Array.isArray(withData.data)) {
+    const [first] = withData.data as unknown[];
+    return (first && typeof first === "object")
+      ? (first as ScannerAnalysis | ScanResult)
+      : null;
+  }
+
+  if (withData.data && typeof withData.data === "object") {
+    return extractScanResult(withData.data);
+  }
+
+  if ((payload as ScannerAnalysis | ScanResult)?.symbol) {
+    return payload as ScannerAnalysis | ScanResult;
+  }
+
+  return null;
+}
+
+function formatIndicatorLabel(key: string) {
+  const normalized = key.replace(/[_-]+/g, " ").trim();
+  if (!normalized) return key;
+  return normalized
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getRawBreakdownRows(item: ScannerAnalysis | ScanResult | null | undefined) {
+  if (!item) return [] as any[];
+
+  const breakdown = asArray<any>((item as { breakdown?: unknown }).breakdown);
+  if (breakdown.length > 0) return breakdown;
+
+  const technicals = asArray<any>((item as { technicals?: unknown }).technicals);
+  if (technicals.length > 0) return technicals;
+
+  const checks = asArray<any>((item as { checks?: unknown }).checks);
+  if (checks.length > 0) return checks;
+
+  const indicators = (item as { indicators?: unknown }).indicators;
+  if (indicators && typeof indicators === "object" && !Array.isArray(indicators)) {
+    return Object.entries(indicators as Record<string, any>)
+      .map(([key, value]) => {
+        if (!value || typeof value !== "object") {
+          return {
+            title: formatIndicatorLabel(key),
+            value,
+            signal: undefined,
+            reason: undefined,
+          };
+        }
+
+        const candidateValue =
+          typeof value.value === "number"
+            ? value.value
+            : typeof value.value === "string"
+              ? value.value
+              : typeof value.score === "number"
+                ? value.score
+                : value.score;
+
+        return {
+          title: formatIndicatorLabel(key),
+          value: candidateValue,
+          signal: value.signal,
+          reason: value.reason ?? value.description,
+        };
+      })
+      .filter((entry) => entry?.title);
+  }
+
+  return [] as any[];
+}
+
 export default function Analyse() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -298,18 +379,20 @@ export default function Analyse() {
             timeframe: backendTimeframe,
           },
         );
-        const payload = await res
-          .json()
-          .catch(() => ({ data: [] as unknown[] }));
+        const payload = await res.json().catch(() => null);
 
         if (lastRequestIdRef.current !== rid) return;
 
-        const item = (payload as { data?: unknown[] })?.data?.[0] as
-          | ScannerAnalysis
-          | undefined;
-        const resolvedSymbol = asString(item?.symbol || normalized).toUpperCase();
+        const item = extractScanResult(payload);
+        if (!item) {
+          toast.error("Analysis unavailable", { id: ANALYSE_TOAST_ID });
+          setScanResult(null);
+          return;
+        }
+
+        const resolvedSymbol = asString(item.symbol || normalized).toUpperCase();
         toast.success(`${resolvedSymbol} analysed`, { id: ANALYSE_TOAST_ID });
-        setScanResult(item ?? null);
+        setScanResult(item);
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
         queryClient.invalidateQueries({ queryKey: ["high-potential"] });
       } catch (error) {
@@ -915,17 +998,9 @@ export default function Analyse() {
           {scanResult ? (
             (() => {
               const item = scanResult;
-              const breakdown = asArray((item as { breakdown?: unknown }).breakdown);
-              const technicals = asArray((item as { technicals?: unknown }).technicals);
-              const checks = asArray((item as { checks?: unknown }).checks);
-              const rows =
-                breakdown.length > 0
-                  ? breakdown
-                  : technicals.length > 0
-                    ? technicals
-                    : checks;
+              const rawRows = getRawBreakdownRows(item);
 
-              const breakdownRows: BreakdownRow[] = rows
+              const breakdownRows: BreakdownRow[] = rawRows
                 .map((row: any) => {
                   const rawSignal = asString(row?.signal).toLowerCase();
                   const normalizedSignal: BreakdownRow["signal"] =
@@ -940,10 +1015,14 @@ export default function Analyse() {
                       : asString(rawValue);
 
                   return {
-                    title: asString(row?.title || row?.key),
+                    title: asString(row?.title || row?.key || row?.name),
                     value,
                     signal: normalizedSignal,
-                    reason: row?.reason ? asString(row?.reason) : undefined,
+                    reason: row?.reason
+                      ? asString(row.reason)
+                      : row?.description
+                        ? asString(row.description)
+                        : undefined,
                   } satisfies BreakdownRow;
                 })
                 .filter((row: BreakdownRow) => row.title);
