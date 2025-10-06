@@ -537,44 +537,6 @@ const parseQueryBoolean = (value, fallback) => {
   return fallback;
 };
 
-app.get("/api/high-potential", (req, res) => {
-  console.log(`[HP] GET ${req.originalUrl}`);
-
-  const rawTf = req.query?.tf;
-  const tfValue = Array.isArray(rawTf) ? rawTf[0] : rawTf;
-  const timeframe = (tfValue ?? "1d").toString();
-  const allowedTfs = new Set(["1h", "4h", "1d"]);
-  if (!allowedTfs.has(timeframe)) {
-    res.status(400).json({ error: "Invalid tf" });
-    return;
-  }
-
-  const minVolUSD = parseQueryNumber(req.query?.minVolUSD, 2_000_000);
-  const capMin = parseQueryNumber(req.query?.capMin, 0);
-  const capMax = Math.max(capMin, parseQueryNumber(req.query?.capMax, 2_000_000_000));
-  const excludeLeveraged = parseQueryBoolean(req.query?.excludeLeveraged, true);
-
-  const payload = {
-    dataStale: false,
-    timeframe,
-    filters: {
-      timeframe,
-      minVolUSD,
-      excludeLeveraged,
-      capRange: [capMin, capMax],
-    },
-    top: [],
-    buckets: {
-      breakoutZone: [],
-      oversoldRecovery: [],
-      strongMomentum: [],
-    },
-  };
-
-  res.set("cache-control", "no-store");
-  res.json(payload);
-});
-
 // history should return the latest scans (newest first)
 app.get("/api/scanner/history", (_req, res) => {
   res.set("cache-control", "no-store");
@@ -583,16 +545,6 @@ app.get("/api/scanner/history", (_req, res) => {
 app.post("/api/scanner/history", (_req, res) => {
   res.set("cache-control", "no-store");
   res.json({ data: [...memory.scans].reverse().map(compat) });
-});
-
-// high-potential can surface the last few scans for now
-app.get("/api/scanner/high-potential", (_req, res) => {
-  res.set("cache-control", "no-store");
-  res.json({ data: memory.scans.slice(-5).reverse().map(compat) });
-});
-app.post("/api/scanner/high-potential", (_req, res) => {
-  res.set("cache-control", "no-store");
-  res.json({ data: memory.scans.slice(-5).reverse().map(compat) });
 });
 
 app.get("/api/ai/market-overview", (_req, res) => {

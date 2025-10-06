@@ -528,7 +528,7 @@ class TechnicalIndicators {
       return results.sort((a, b) => b.totalScore - a.totalScore);
 
     } catch (error) {
-      console.error('Error scanning high potential coins:', error);
+      console.error('Error scanning coins:', error);
       throw error;
     }
   }

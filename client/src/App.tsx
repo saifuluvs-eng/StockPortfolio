@@ -15,7 +15,6 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Portfolio from "@/pages/portfolio";
-import HighPotential from "@/pages/high-potential";
 import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
 import Charts from "@/pages/charts";
@@ -73,7 +72,6 @@ function Router() {
       {/* PUBLIC routes */}
       <Route path="/dashboard" component={withLayout(Home)} />
       <Route path="/portfolio" component={withLayout(Portfolio)} />
-      <Route path="/high-potential" component={withLayout(HighPotential)} />
       <Route path="/gainers" component={withLayout(Gainers)} />
       <Route path="/ai-insights" component={withLayout(AIInsights)} />
       <Route path="/watchlist" component={withLayout(Watchlist)} />

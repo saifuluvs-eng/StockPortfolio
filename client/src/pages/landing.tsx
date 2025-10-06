@@ -37,9 +37,6 @@ export default function Landing() {
             <Link href="/portfolio" className="text-muted-foreground hover:text-foreground transition-colors">
               Portfolio
             </Link>
-            <Link href="/high-potential" className="text-muted-foreground hover:text-foreground transition-colors">
-              High Potential
-            </Link>
             <Link href="/gainers" className="text-muted-foreground hover:text-foreground transition-colors">
               Gainers
             </Link>
@@ -130,7 +127,7 @@ export default function Landing() {
               </div>
               <h3 className="font-semibold text-foreground mb-2">Market Scanner</h3>
               <p className="text-muted-foreground text-sm">
-                Scan thousands of coins for high-potential opportunities and market trends.
+                Scan thousands of coins for emerging opportunities and market trends.
               </p>
             </CardContent>
           </Card>

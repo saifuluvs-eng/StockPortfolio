@@ -5,7 +5,6 @@ import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
 import { portfolioService } from "./services/portfolioService";
-import { highPotentialScanner, InvalidHighPotentialFiltersError } from "./highPotential/scanner";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -350,38 +349,6 @@ export function registerRoutes(app: Express): void {
     } catch (error) {
       console.error("Error fetching scan history:", error);
       res.status(500).json({ message: "Failed to fetch scan history" });
-    }
-  });
-
-  app.get('/api/high-potential', async (req: Request, res: Response) => {
-    console.log('[HP]', req.method, req.originalUrl);
-
-    const rawTf = req.query.tf;
-    const tfValue = Array.isArray(rawTf) ? rawTf[0] : rawTf;
-    const normalizedTf = (tfValue ?? '1d') as string;
-    const allowedTfs = new Set(['1h', '4h', '1d']);
-
-    if (!allowedTfs.has(normalizedTf)) {
-      res.status(400).json({ error: 'Invalid tf' });
-      return;
-    }
-
-    (req.query as Record<string, unknown>).tf = normalizedTf;
-
-    try {
-      const filters = highPotentialScanner.formatFiltersFromRequest(req);
-      const debugMode = parseBooleanQuery(req.query.debug);
-      const data = await highPotentialScanner.getScan(filters, { debug: debugMode });
-      res.json(data);
-    } catch (error) {
-      if (error instanceof InvalidHighPotentialFiltersError) {
-        console.warn('Rejected high potential scan request', error);
-        const message = error.message.includes('timeframe') ? 'Invalid tf' : error.message;
-        res.status(400).json({ error: message });
-        return;
-      }
-      console.error('Error generating high potential scan:', error);
-      res.status(500).json({ error: 'Failed to load high potential data' });
     }
   });
 
