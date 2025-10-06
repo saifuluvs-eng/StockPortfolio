@@ -16,6 +16,35 @@ type SpotGainerResponse = {
   rows: SpotGainerRow[];
 };
 
+function resolveRows(data: unknown): SpotGainerRow[] | null {
+  if (!data) return null;
+
+  if (Array.isArray(data)) {
+    return data as SpotGainerRow[];
+  }
+
+  if (typeof data === "object") {
+    const record = data as Record<string, unknown>;
+    if (Array.isArray(record.rows)) {
+      return record.rows as SpotGainerRow[];
+    }
+
+    const nested = record.data;
+    if (Array.isArray(nested)) {
+      return nested as SpotGainerRow[];
+    }
+
+    if (nested && typeof nested === "object") {
+      const nestedRows = resolveRows(nested);
+      if (nestedRows) {
+        return nestedRows;
+      }
+    }
+  }
+
+  return null;
+}
+
 async function fetchGainers(): Promise<SpotGainerResponse> {
   try {
     const res = await api("/api/market/gainers");
@@ -24,8 +53,9 @@ async function fetchGainers(): Promise<SpotGainerResponse> {
     }
 
     const data: unknown = await res.json();
-    if (typeof data === "object" && data !== null && Array.isArray((data as SpotGainerResponse).rows)) {
-      return data as SpotGainerResponse;
+    const rows = resolveRows(data);
+    if (rows) {
+      return { rows };
     }
 
     throw new Error("Invalid gainers response");
