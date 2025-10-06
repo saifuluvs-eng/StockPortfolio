@@ -138,7 +138,7 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
     <div
       ref={containerRef}
       id={idRef.current}
-      className="h-[400px] w-full rounded-b-xl"
+      className="h-[400px] w-full rounded-b-xl md:h-[520px] lg:h-[620px]"
       data-testid="tradingview-chart"
     />
   );

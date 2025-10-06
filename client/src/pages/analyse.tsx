@@ -16,7 +16,6 @@ import {
 } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -88,14 +87,6 @@ interface ScannerAnalysis {
 interface WatchlistItem {
   id: string;
   symbol: string;
-  createdAt?: number | string | null;
-}
-
-interface ScanHistoryItem {
-  id: string;
-  scanType: string;
-  filters?: { symbol?: string; timeframe?: string } | null;
-  results?: ScanResult | ScannerAnalysis | null;
   createdAt?: number | string | null;
 }
 
@@ -472,17 +463,6 @@ export default function Analyse() {
   });
 
   const watchlistItems = asArray<WatchlistItem>(watchlistQuery.data);
-  const historyQuery = useQuery({
-    queryKey: ["scan-history"],
-    enabled: isAuthenticated && networkEnabled,
-    queryFn: async () => {
-      const res = await apiRequest("GET", "/api/scanner/history");
-      return (await res.json()) as ScanHistoryItem[];
-    },
-  });
-
-  const historyItems = asArray<ScanHistoryItem>(historyQuery.data);
-
   const timeframeConfig = useMemo(
     () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
     [selectedTimeframe],
@@ -760,8 +740,8 @@ export default function Analyse() {
                   >
                     {recommendationLabel}
                   </Badge>
-                </div>
-              </div>
+        </div>
+      </div>
               <div>
                 <Progress
                   value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
@@ -874,22 +854,22 @@ export default function Analyse() {
       {priceSummaryCards}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="flex flex-col">
-            <Card className="border-border/70 bg-card/70">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <TradingViewChart
-                  key={`${selectedSymbol}-${selectedTimeframe}`}
-                  symbol={selectedSymbol}
-                  interval={selectedTimeframe}
-                />
-              </CardContent>
-            </Card>
-          </div>
+        <div className="flex flex-col">
+          <Card className="border-border/70 bg-card/70">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <TradingViewChart
+                key={`${selectedSymbol}-${selectedTimeframe}`}
+                symbol={selectedSymbol}
+                interval={selectedTimeframe}
+              />
+            </CardContent>
+          </Card>
+        </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col">
           {scanResult ? (
             (() => {
               const item = scanResult;
@@ -942,134 +922,8 @@ export default function Analyse() {
               }
             />
           )}
-
-          <section className="mt-8 rounded-2xl border border-white/10 bg-black/20 p-4 md:p-6">
-            <h3 className="mb-4 break-keep whitespace-normal text-lg font-semibold">Recent Scans</h3>
-            <div className="space-y-3">
-              {!isAuthenticated ? (
-                <p className="text-sm text-muted-foreground">
-                  Sign in to keep a searchable log of every analysis you run.
-                </p>
-              ) : historyQuery.isLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 4 }).map((_, idx) => (
-                    <Skeleton key={idx} className="h-16 rounded-xl" />
-                  ))}
-                </div>
-              ) : historyQuery.error ? (
-                <p className="text-sm text-red-400">
-                  Could not load scan history right now.
-                </p>
-              ) : historyItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Run your first scan to start building your decision history.
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {historyItems.slice(0, 6).map((item) => {
-                    const filters = item.filters || {};
-                    const result = item.results;
-                    const symbol = toUsdtSymbol(
-                      result?.symbol || filters.symbol || selectedSymbol,
-                    );
-                    const frontendTimeframe = toFrontendTimeframe(filters.timeframe);
-                    return (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between rounded-xl border border-border/60 bg-card/60 p-3"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            {displayPair(symbol)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {frontendTimeframe} • {formatRelativeTime(item.createdAt)}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedSymbol(symbol);
-                            setSelectedTimeframe(frontendTimeframe);
-                            if (result) {
-                              setScanResult(result);
-                            }
-                            toast({
-                              title: "Scan loaded",
-                              description: `Restored ${displayPair(symbol)} (${frontendTimeframe})`,
-                            });
-                          }}
-                        >
-                          Load
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <Card className="mt-6 border-border/70 bg-card/70">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold">
-                  <Star className="h-5 w-5 text-primary" />
-                  <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Watchlist</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {!isAuthenticated ? (
-                  <p className="text-sm text-muted-foreground">
-                    Sign in to curate a personalized watchlist and jump back into symbols instantly.
-                  </p>
-                ) : watchlistQuery.isLoading ? (
-                  <div className="space-y-2">
-                    {Array.from({ length: 5 }).map((_, idx) => (
-                      <Skeleton key={idx} className="h-10 rounded-xl" />
-                    ))}
-                  </div>
-                ) : watchlistQuery.error ? (
-                  <p className="text-sm text-red-400">Unable to load watchlist right now.</p>
-                ) : watchlistItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No symbols yet. Tap "Add to Watchlist" on any chart to build your list.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {watchlistItems.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedSymbol(item.symbol);
-                          setScanResult(null);
-                          setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
-                          toast({
-                            title: "Symbol loaded",
-                            description: `Loaded ${displayPair(item.symbol)} from watchlist`,
-                          });
-                        }}
-                        className={`flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/60 px-4 py-2 text-left transition hover:border-primary/60 hover:bg-primary/5 ${
-                          item.symbol.toUpperCase() === selectedSymbol.toUpperCase()
-                            ? "border-primary/60"
-                            : ""
-                        }`}
-                      >
-                        <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-foreground">
-                          {displayPair(item.symbol)}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatRelativeTime(item.createdAt)}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
         </div>
+      </div>
     </div>
   );
 }
