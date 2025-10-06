@@ -104,6 +104,32 @@ function formatRelativeTime(input?: number | string | null) {
   return formatDistanceToNowStrict(date, { addSuffix: true });
 }
 
+function mergeSearchParams(hashSearch: string) {
+  const merged = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search.replace(/^\?/, "") : "",
+  );
+
+  if (hashSearch) {
+    const hashParams = new URLSearchParams(hashSearch);
+    hashParams.forEach((value, key) => {
+      merged.set(key, value);
+    });
+  }
+
+  return merged.toString();
+}
+
+function clearWindowSearch() {
+  if (typeof window === "undefined") return;
+  if (!window.location.search) return;
+
+  const url = new URL(window.location.href);
+  if (!url.search) return;
+
+  url.search = "";
+  window.history.replaceState(null, "", url.toString());
+}
+
 export default function Charts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -117,7 +143,7 @@ export default function Charts() {
     const withoutHash = rawLocation.startsWith("#")
       ? rawLocation.slice(1)
       : rawLocation;
-    const [pathPart = "", searchPart = ""] = withoutHash.split("?");
+    const [pathPart = "", hashSearch = ""] = withoutHash.split("?");
     const normalizedPath = pathPart
       ? pathPart.startsWith("/")
         ? pathPart
@@ -125,7 +151,8 @@ export default function Charts() {
       : "/";
     return {
       path: normalizedPath,
-      search: searchPart,
+      hashSearch,
+      search: mergeSearchParams(hashSearch),
     };
   }, [location]);
 
@@ -178,14 +205,22 @@ export default function Charts() {
     const targetPath = `/charts/${selectedSymbol}`;
     const target = queryString ? `${targetPath}?${queryString}` : targetPath;
     const current = `${locationInfo.path}${
-      locationInfo.search ? `?${locationInfo.search}` : ""
+      locationInfo.hashSearch ? `?${locationInfo.hashSearch}` : ""
     }`;
 
     if (current !== target) {
       setLocation(target);
+      clearWindowSearch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSymbol, selectedTimeframe, locationInfo.path, locationInfo.search, matchWithParam]);
+  }, [
+    selectedSymbol,
+    selectedTimeframe,
+    locationInfo.path,
+    locationInfo.search,
+    locationInfo.hashSearch,
+    matchWithParam,
+  ]);
 
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   useEffect(() => {
