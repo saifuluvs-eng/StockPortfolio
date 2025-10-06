@@ -15,8 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
 import type { ScanResult } from "@shared/types/scanner";
+import { OverallAnalysisCard } from "@/features/analyse/OverallAnalysisCard";
 import {
   Activity,
   BarChart3,
@@ -540,37 +539,10 @@ export default function Charts() {
       </Card>
 
       {scanResult && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-muted-foreground">Overall Analysis</p>
-                <div className="mt-1 flex items-center space-x-2">
-                  <span
-                    className={`text-lg font-bold ${getScoreColor(scanResult.totalScore)}`}
-                    data-testid="text-total-score"
-                  >
-                    {scanResult.totalScore > 0 ? "+" : ""}
-                    {scanResult.totalScore}
-                  </span>
-                  <Badge
-                    className={`${getRecommendationColor(scanResult.recommendation)} px-2 py-1 text-xs`}
-                    data-testid="badge-recommendation"
-                  >
-                    {asString(scanResult.recommendation).replace(/_/g, " ").toUpperCase()}
-                  </Badge>
-                </div>
-              </div>
-              <div>
-                <Progress
-                  value={Math.max(0, Math.min(100, ((scanResult.totalScore + 30) / 60) * 100))}
-                  className="h-2"
-                />
-                <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <OverallAnalysisCard
+          score={scanResult.totalScore}
+          recommendation={scanResult.recommendation}
+        />
       )}
     </div>
   );
@@ -865,14 +837,6 @@ function formatVolume(volume?: string) {
   return `$${num.toFixed(2)}`;
 }
 
-function getScoreColor(score: number) {
-  if (score >= 10) return "text-green-600";
-  if (score >= 5) return "text-green-500";
-  if (score <= -10) return "text-red-600";
-  if (score <= -5) return "text-red-500";
-  return "text-yellow-500";
-}
-
 function confidenceToRecommendation(confidence: string): ScanResult["recommendation"] {
   switch (confidence) {
     case "High":
@@ -883,20 +847,5 @@ function confidenceToRecommendation(confidence: string): ScanResult["recommendat
       return "hold";
     default:
       return "hold";
-  }
-}
-
-function getRecommendationColor(recommendation: string) {
-  switch (recommendation) {
-    case "strong_buy":
-      return "bg-green-600 text-white";
-    case "buy":
-      return "bg-green-500 text-white";
-    case "strong_sell":
-      return "bg-red-600 text-white";
-    case "sell":
-      return "bg-red-500 text-white";
-    default:
-      return "bg-yellow-500 text-black";
   }
 }

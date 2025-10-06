@@ -14,8 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -42,6 +40,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { openSpotTickerStream } from "@/lib/binanceWs";
+import { OverallAnalysisCard } from "@/features/analyse/OverallAnalysisCard";
 
 const API_BASE =
   asString((import.meta as any)?.env?.VITE_API_BASE).replace(/\/$/, "") || "";
@@ -650,65 +649,6 @@ export default function Analyse() {
     if (e.key === "Enter") handleSearch();
   };
 
-  const hasScanResult = Boolean(scanResult);
-
-  const overallAnalysisCard = (
-    <Card
-      className={`h-full border-2 ${
-        hasScanResult ? getScoreBorderTone(safeTotalScore) : "border-border/60"
-      } bg-card/70`}
-    >
-      <CardContent className="h-full p-6">
-        {hasScanResult ? (
-          <div className="flex h-full min-h-[220px] flex-col justify-between gap-4">
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Overall Analysis</p>
-                <div className="mt-2 flex items-center space-x-2">
-                  <span
-                    className={`text-2xl font-bold leading-none ${getScoreColor(safeTotalScore)}`}
-                    data-testid="text-total-score"
-                  >
-                    {safeTotalScore > 0 ? "+" : ""}
-                    {safeTotalScore}
-                  </span>
-                  <Badge
-                    className={`${getRecommendationColor(safeRecommendation)} px-2 py-1 text-xs`}
-                    data-testid="badge-recommendation"
-                  >
-                    {recommendationLabel}
-                  </Badge>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Progress
-                  value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
-                  className="h-2"
-                />
-                <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Confidence</span>
-              <span className="text-foreground">{recommendationLabel}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-            <Search className="h-10 w-10 text-muted-foreground/60" />
-            <div>
-              <p className="text-lg font-semibold text-foreground">No analysis yet</p>
-              <p className="text-sm text-muted-foreground">
-                Run a scan to unlock overall recommendations.
-              </p>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   const priceSummaryCards = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       <Card>
@@ -880,7 +820,13 @@ export default function Analyse() {
           </CardContent>
         </Card>
 
-        {overallAnalysisCard}
+        <OverallAnalysisCard
+          score={scanResult?.totalScore ?? null}
+          recommendation={safeRecommendation}
+          recommendationLabel={recommendationLabel}
+          isLoading={isScanning}
+          compact
+        />
       </div>
 
       {priceSummaryCards}
@@ -978,20 +924,6 @@ function formatVolume(volume?: string) {
   return `$${num.toFixed(2)}`;
 }
 
-function getScoreColor(score: number) {
-  if (score >= 10) return "text-green-600";
-  if (score >= 5) return "text-green-500";
-  if (score <= -10) return "text-red-600";
-  if (score <= -5) return "text-red-500";
-  return "text-yellow-500";
-}
-
-function getScoreBorderTone(score: number) {
-  if (score >= 5) return "border-green-500/80";
-  if (score <= -5) return "border-red-500/80";
-  return "border-yellow-500/80";
-}
-
 function confidenceToRecommendation(confidence: string): ScanResult["recommendation"] {
   switch (confidence) {
     case "High":
@@ -1002,20 +934,5 @@ function confidenceToRecommendation(confidence: string): ScanResult["recommendat
       return "hold";
     default:
       return "hold";
-  }
-}
-
-function getRecommendationColor(recommendation: string) {
-  switch (recommendation) {
-    case "strong_buy":
-      return "bg-green-600 text-white";
-    case "buy":
-      return "bg-green-500 text-white";
-    case "strong_sell":
-      return "bg-red-600 text-white";
-    case "sell":
-      return "bg-red-500 text-white";
-    default:
-      return "bg-yellow-500 text-black";
   }
 }
