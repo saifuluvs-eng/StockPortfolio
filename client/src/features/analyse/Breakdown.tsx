@@ -56,7 +56,7 @@ export function BreakdownSection({
       <div
         className="
           flex-1 overflow-y-auto overscroll-contain px-4 md:px-5 py-4
-          space-y-3 min-h-[24rem]
+          space-y-3 min-h-[400px] md:min-h-[520px] lg:min-h-[620px]
         "
         // desktop: tall card; mobile: slightly shorter
         style={{ maxHeight: "70vh" }}
@@ -88,7 +88,7 @@ export function BreakdownSection({
           </ul>
         ) : (
           emptyState ?? (
-            <div className="py-12 text-center text-white/70">
+            <div className="flex h-full w-full items-center justify-center py-12 text-center text-white/70">
               <div>No technical checks yet.</div>
             </div>
           )
