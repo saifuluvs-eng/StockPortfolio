@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { apiRequest } from "@/lib/queryClient";
+import { getQueryFn } from "@/lib/queryClient";
 import type { HighPotentialResponse } from "@shared/high-potential/types";
 import {
   TrendingUp,
@@ -49,6 +49,10 @@ type AiOverviewData = {
   tradingRecommendations?: unknown;
   riskAssessment?: string;
 };
+type TickerResponse = {
+  price?: string | number;
+  priceChangePercent?: string | number;
+} & Record<string, unknown>;
 
 // ---------- Utils ----------
 const nf2 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -63,81 +67,6 @@ function toNum(v: unknown): number | null {
   return null;
 }
 
-async function fetchJson<T>(path: string): Promise<T | null> {
-  try {
-    const res = await apiRequest("GET", path);
-    return (await res.json()) as T;
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.warn(`Failed to load ${path}:`, error);
-    }
-    return null;
-  }
-}
-
-// ---------- Query Functions (respect API_BASE / networkEnabled) ----------
-async function qPortfolioSummary(): Promise<{ totalValue: number | null; totalPnlPercent: number | null }> {
-  const summary = await fetchJson<PortfolioSummary>("/api/portfolio");
-  const totalValue = toNum(summary?.totalValue ?? null);
-  const totalPnlPercent = toNum(summary?.totalPnLPercent ?? null);
-  return { totalValue: totalValue ?? null, totalPnlPercent: totalPnlPercent ?? null };
-}
-
-async function qHighPotentialCount(): Promise<{ count: number | null; ts: number }> {
-  const params = new URLSearchParams({
-    tf: "1d",
-    minVolUSD: "2000000",
-    capMin: "0",
-    capMax: "2000000000",
-    excludeLeveraged: "true",
-  });
-  const response = await fetchJson<HighPotentialResponse>(`/api/high-potential?${params.toString()}`);
-  if (response && Array.isArray(response.top)) {
-    return { count: response.top.length, ts: Date.now() };
-  }
-  return { count: null, ts: Date.now() };
-}
-
-async function qGainersTop3(): Promise<{ top: { symbol: string; pct: number }[] | null; ts: number }> {
-  const arr = await fetchJson<GainerItem[]>("/api/market/gainers");
-  if (!Array.isArray(arr)) return { top: null, ts: Date.now() };
-
-  const mapped = arr
-    .map((g) => {
-      const sym = (g.symbol || g.pair || g.ticker || "").toString().toUpperCase();
-      const pct = toNum(g.change24h) ?? toNum(g.priceChangePercent);
-      if (!sym || pct === null) return null;
-      return { symbol: sym, pct };
-    })
-    .filter(Boolean) as { symbol: string; pct: number }[];
-
-  mapped.sort((a, b) => b.pct - a.pct);
-  return { top: mapped.slice(0, 3), ts: Date.now() };
-}
-
-async function qWatchlistCount(): Promise<number | null> {
-  const wl = await fetchJson<any[]>("/api/watchlist");
-  if (Array.isArray(wl)) return wl.length;
-  return null;
-}
-
-async function qAiSignals(): Promise<number | null> {
-  const ai = await fetchJson<AiOverviewData>("/api/ai/market-overview");
-  if (!ai) return null;
-
-  const keyInsights = Array.isArray(ai.keyInsights)
-    ? ai.keyInsights.filter((insight) => typeof insight === "string" && insight.trim() !== "")
-    : null;
-  if (keyInsights && keyInsights.length > 0) return keyInsights.length;
-
-  const recs = Array.isArray(ai.tradingRecommendations)
-    ? ai.tradingRecommendations.filter((rec) => typeof rec === "string" && rec.trim() !== "")
-    : null;
-  if (recs && recs.length > 0) return recs.length;
-
-  return null;
-}
-
 export default function Home() {
   // SINGLE useAuth() — no duplicate signOut
   const { user, signInWithGoogle, signOut } = useAuth();
@@ -148,30 +77,34 @@ export default function Home() {
 
   // ---------- Lower “Market Overview” (REST polling; WS disabled on Vercel) ----------
   const [prices, setPrices] = useState<{ BTCUSDT?: number; ETHUSDT?: number }>({});
-  const [btcChange, setBtcChange] = useState<{ priceChangePercent?: string }>({});
-  const [ethChange, setEthChange] = useState<{ priceChangePercent?: string }>({});
+  const [btcChange, setBtcChange] = useState<{ priceChangePercent?: string | number }>({});
+  const [ethChange, setEthChange] = useState<{ priceChangePercent?: string | number }>({});
 
   const { data: btcTicker } = useQuery({
     queryKey: ["/api/market/ticker/BTCUSDT"],
-    queryFn: async () => fetchJson<any>("/api/market/ticker/BTCUSDT"),
+    queryFn: getQueryFn<TickerResponse>({ on401: "throw" }),
     refetchInterval: 10_000,
     enabled: networkEnabled,
   });
 
   const { data: ethTicker } = useQuery({
     queryKey: ["/api/market/ticker/ETHUSDT"],
-    queryFn: async () => fetchJson<any>("/api/market/ticker/ETHUSDT"),
+    queryFn: getQueryFn<TickerResponse>({ on401: "throw" }),
     refetchInterval: 10_000,
     enabled: networkEnabled,
   });
 
   useEffect(() => {
-    if (btcTicker?.priceChangePercent != null) setBtcChange(btcTicker);
+    if (btcTicker?.priceChangePercent != null) {
+      setBtcChange({ priceChangePercent: btcTicker.priceChangePercent });
+    }
     if (btcTicker?.price != null) setPrices((p) => ({ ...p, BTCUSDT: Number(btcTicker.price) || p.BTCUSDT }));
   }, [btcTicker]);
 
   useEffect(() => {
-    if (ethTicker?.priceChangePercent != null) setEthChange(ethTicker);
+    if (ethTicker?.priceChangePercent != null) {
+      setEthChange({ priceChangePercent: ethTicker.priceChangePercent });
+    }
     if (ethTicker?.price != null) setPrices((p) => ({ ...p, ETHUSDT: Number(ethTicker.price) || p.ETHUSDT }));
   }, [ethTicker]);
 
@@ -196,36 +129,93 @@ export default function Home() {
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
   const { data: port } = useQuery({
-    queryKey: ["portfolio-summary", user?.uid],
-    queryFn: qPortfolioSummary,
+    queryKey: ["/api/portfolio", user?.uid],
+    queryFn: getQueryFn<PortfolioSummary | null>({ on401: "returnNull" }),
+    select: (summary) => {
+      const totalValue = toNum(summary?.totalValue ?? null);
+      const totalPnlPercent = toNum(summary?.totalPnLPercent ?? null);
+      return { totalValue: totalValue ?? null, totalPnlPercent: totalPnlPercent ?? null };
+    },
     refetchInterval: 120_000,
     enabled: networkEnabled && !!user, // compute only when network is allowed and user is signed in
   });
 
+  const hpParams = useMemo(
+    () =>
+      new URLSearchParams({
+        tf: "1d",
+        minVolUSD: "2000000",
+        capMin: "0",
+        capMax: "2000000000",
+        excludeLeveraged: "true",
+      }).toString(),
+    [],
+  );
+
   const { data: hp } = useQuery({
-    queryKey: ["high-potential-count"],
-    queryFn: qHighPotentialCount,
+    queryKey: [`/api/high-potential?${hpParams}`],
+    queryFn: getQueryFn<HighPotentialResponse | null>({ on401: "returnNull" }),
+    select: (response) => {
+      if (response && Array.isArray(response.top)) {
+        return { count: response.top.length, ts: Date.now() };
+      }
+      return { count: null, ts: Date.now() };
+    },
     refetchInterval: 30 * 60 * 1000,
     enabled: networkEnabled && !!user,
   });
 
   const { data: gain } = useQuery({
-    queryKey: ["gainers-top3"],
-    queryFn: qGainersTop3,
+    queryKey: ["/api/market/gainers"],
+    queryFn: getQueryFn<GainerItem[] | null>({ on401: "returnNull" }),
+    select: (arr) => {
+      if (!Array.isArray(arr)) return { top: null, ts: Date.now() };
+
+      const mapped = arr
+        .map((g) => {
+          const sym = (g.symbol || g.pair || g.ticker || "").toString().toUpperCase();
+          const pct = toNum(g.change24h) ?? toNum(g.priceChangePercent);
+          if (!sym || pct === null) return null;
+          return { symbol: sym, pct };
+        })
+        .filter(Boolean) as { symbol: string; pct: number }[];
+
+      mapped.sort((a, b) => b.pct - a.pct);
+      return { top: mapped.slice(0, 3), ts: Date.now() };
+    },
     refetchInterval: 300_000,
     enabled: networkEnabled,
   });
 
   const { data: watchCount } = useQuery({
-    queryKey: ["watchlist-count", !!user],
-    queryFn: qWatchlistCount,
+    queryKey: ["/api/watchlist", !!user],
+    queryFn: getQueryFn<unknown>({ on401: "returnNull" }),
+    select: (wl) => {
+      if (Array.isArray(wl)) return wl.length;
+      return null;
+    },
     refetchInterval: 300_000,
     enabled: networkEnabled && !!user,
   });
 
   const { data: aiCount } = useQuery({
-    queryKey: ["ai-signals-count"],
-    queryFn: qAiSignals,
+    queryKey: ["/api/ai/market-overview"],
+    queryFn: getQueryFn<AiOverviewData | null>({ on401: "returnNull" }),
+    select: (ai) => {
+      if (!ai) return null;
+
+      const keyInsights = Array.isArray(ai.keyInsights)
+        ? ai.keyInsights.filter((insight) => typeof insight === "string" && insight.trim() !== "")
+        : null;
+      if (keyInsights && keyInsights.length > 0) return keyInsights.length;
+
+      const recs = Array.isArray(ai.tradingRecommendations)
+        ? ai.tradingRecommendations.filter((rec) => typeof rec === "string" && rec.trim() !== "")
+        : null;
+      if (recs && recs.length > 0) return recs.length;
+
+      return null;
+    },
     refetchInterval: 120_000,
     enabled: networkEnabled,
   });
