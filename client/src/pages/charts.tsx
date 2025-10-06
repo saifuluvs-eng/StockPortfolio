@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { asArray, asString } from "@/lib/utils";
+import { extractScanResult } from "@/lib/scanner-results";
 import { useAuth } from "@/hooks/useAuth";
 import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
@@ -265,15 +266,26 @@ export default function Charts() {
         symbol: toBinance(selectedSymbol),
         timeframe: backendTimeframe,
       });
-      return (await res.json()) as ScanResult;
+      return (await res.json()) as unknown;
     },
-    onSuccess: (data) => {
-      setScanResult(data);
+    onSuccess: (payload) => {
+      const result = extractScanResult<ScanResult>(payload);
+
+      if (result) {
+        setScanResult(result);
+        toast({
+          title: "Analysis complete",
+          description: `Technical breakdown ready for ${displayPair(result.symbol)}`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+        return;
+      }
+
       toast({
-        title: "Analysis complete",
-        description: `Technical breakdown ready for ${displayPair(data.symbol)}`,
+        title: "Analysis unavailable",
+        description: "Unexpected response from the scanner service.",
+        variant: "destructive",
       });
-      queryClient.invalidateQueries({ queryKey: ["scan-history"] });
     },
     onError: (error: unknown) => {
       if (isUnauthorizedError(error)) {

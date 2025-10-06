@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { asArray, asString } from "@/lib/utils";
+import { extractScanResult } from "@/lib/scanner-results";
 import {
   BreakdownSection,
   type BreakdownRow,
@@ -156,30 +157,6 @@ function clearWindowSearch() {
 
   url.search = "";
   window.history.replaceState(null, "", url.toString());
-}
-
-function extractScanResult(payload: unknown): ScannerAnalysis | ScanResult | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const withData = payload as { data?: unknown };
-  if (withData.data && Array.isArray(withData.data)) {
-    const [first] = withData.data as unknown[];
-    return (first && typeof first === "object")
-      ? (first as ScannerAnalysis | ScanResult)
-      : null;
-  }
-
-  if (withData.data && typeof withData.data === "object") {
-    return extractScanResult(withData.data);
-  }
-
-  if ((payload as ScannerAnalysis | ScanResult)?.symbol) {
-    return payload as ScannerAnalysis | ScanResult;
-  }
-
-  return null;
 }
 
 function formatIndicatorLabel(key: string) {
@@ -408,7 +385,7 @@ export default function Analyse() {
 
         if (lastRequestIdRef.current !== rid) return;
 
-        const item = extractScanResult(payload);
+        const item = extractScanResult<ScannerAnalysis | ScanResult>(payload);
         if (!item) {
           toast.error("Analysis unavailable", { id: ANALYSE_TOAST_ID });
           setScanResult(null);
