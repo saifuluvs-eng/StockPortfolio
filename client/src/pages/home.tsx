@@ -1,5 +1,5 @@
 // client/src/pages/Home.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,12 +7,10 @@ import { useBackendHealth } from "@/hooks/use-backend-health";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getQueryFn } from "@/lib/queryClient";
-import type { HighPotentialResponse } from "@shared/high-potential/types";
 import {
   TrendingUp,
   BarChart3,
   Search,
-  Star,
   Award,
   Eye,
   Bell,
@@ -141,31 +139,6 @@ export default function Home() {
     enabled: networkEnabled && !!user, // compute only when network is allowed and user is signed in
   });
 
-  const hpParams = useMemo(
-    () =>
-      new URLSearchParams({
-        tf: "1d",
-        minVolUSD: "2000000",
-        capMin: "0",
-        capMax: "2000000000",
-        excludeLeveraged: "true",
-      }).toString(),
-    [],
-  );
-
-  const { data: hp } = useQuery({
-    queryKey: [`/api/high-potential?${hpParams}`],
-    queryFn: getQueryFn<HighPotentialResponse | null>({ on401: "returnNull" }),
-    select: (response) => {
-      if (response && Array.isArray(response.top)) {
-        return { count: response.top.length, ts: Date.now() };
-      }
-      return { count: null, ts: Date.now() };
-    },
-    refetchInterval: 30 * 60 * 1000,
-    enabled: networkEnabled && !!user,
-  });
-
   const { data: gain } = useQuery({
     queryKey: ["/api/market/gainers"],
     queryFn: getQueryFn<GainerItem[] | null>({ on401: "returnNull" }),
@@ -227,9 +200,6 @@ export default function Home() {
     port?.totalPnlPercent == null
       ? "+0.00%"
       : `${port.totalPnlPercent >= 0 ? "+" : ""}${nf2.format(port.totalPnlPercent)}%`;
-
-  const hpDisplay = hp?.count == null ? "—" : nf0.format(hp.count);
-  const hpRefreshed = hp?.ts ? new Date(hp.ts).toLocaleTimeString() : "—";
 
   const top3 = gain?.top ?? null;
   const gainersDisplay =
@@ -302,25 +272,7 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* 3) High Potential */}
-          <Link href="/high-potential" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-red-500/5 to-red-500/10" style={{ "--neon-glow": "hsl(0, 80%, 60%)" } as React.CSSProperties}>
-              <CardContent className="p-6 h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">High Potential</h3>
-                    <p className="text-sm text-muted-foreground">Top opportunities</p>
-                    <p className="text-lg font-bold text-foreground mt-2">{hpDisplay}</p>
-                    <p className="text-xs text-muted-foreground">Active signals</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Last updated {hpRefreshed}</p>
-                  </div>
-                  <Star className="w-8 h-8 text-red-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* 4) Gainers */}
+          {/* 3) Gainers */}
           <Link href="/gainers" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-green-500/5 to-green-500/10" style={{ "--neon-glow": "hsl(142, 70%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
@@ -338,7 +290,7 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* 5) Total P&L */}
+          {/* 4) Total P&L */}
           <Link href="/portfolio" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
@@ -356,7 +308,7 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* 6) Watchlist */}
+          {/* 5) Watchlist */}
           <Link href="/watchlist" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
@@ -373,7 +325,7 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* 7) Smart Alerts */}
+          {/* 6) Smart Alerts */}
           <Link href="/alerts" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10" data-testid="card-alerts" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
@@ -390,7 +342,7 @@ export default function Home() {
             </Card>
           </Link>
 
-        {/* 8) AI Signals */}
+        {/* 7) AI Signals */}
         <Link href="/ai-insights" className="block h-full">
           <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
             <CardContent className="p-6 h-full flex flex-col justify-between">
@@ -407,7 +359,7 @@ export default function Home() {
           </Card>
         </Link>
 
-        {/* 9) News & Insights */}
+        {/* 8) News & Insights */}
         <Link href="/news" className="block h-full xl:col-span-2">
           <Card className="dashboard-card neon-hover" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
             <CardContent className="p-6 h-full flex flex-col justify-between space-y-4">

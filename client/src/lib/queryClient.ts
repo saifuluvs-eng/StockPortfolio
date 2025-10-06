@@ -11,7 +11,6 @@ async function throwIfResNotOk(res: Response) {
 
 const PUBLIC_ENDPOINT_PATHS = new Set([
   "/api/health",
-  "/api/high-potential",
   "/api/scanner/history",
 ]);
 

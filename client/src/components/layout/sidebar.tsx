@@ -68,9 +68,6 @@ export function Sidebar() {
         {/* Gainers */}
         <SidebarItem to="/gainers">Gainers</SidebarItem>
 
-        {/* High Potential */}
-        <SidebarItem to="/high-potential">High Potential</SidebarItem>
-
         {/* Portfolio (added) */}
         <SidebarItem to="/portfolio">Portfolio</SidebarItem>
 

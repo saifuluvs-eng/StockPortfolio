@@ -26,7 +26,6 @@ import { asArray, asString } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
-import type { HighPotentialResponse } from "@shared/high-potential/types";
 import type { ScanResult } from "@shared/types/scanner";
 import {
   Activity,
@@ -37,7 +36,6 @@ import {
   ListChecks,
   RefreshCw,
   Search,
-  Sparkles,
   Star,
   Target,
   TrendingDown,
@@ -318,34 +316,6 @@ export default function Charts() {
     () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
     [selectedTimeframe],
   );
-
-  const highPotentialQuery = useQuery({
-    queryKey: ["high-potential", timeframeConfig?.backend],
-    enabled: isAuthenticated,
-    staleTime: 10 * 60_000,
-    queryFn: async () => {
-      const tfParam = timeframeConfig?.backend ?? selectedTimeframe ?? "1d";
-      const params = new URLSearchParams({
-        tf: String(tfParam),
-        minVolUSD: "2000000",
-        capMin: "0",
-        capMax: "2000000000",
-        excludeLeveraged: "true",
-      });
-      const res = await apiRequest("GET", `/api/high-potential?${params.toString()}`);
-      const payload = (await res.json()) as HighPotentialResponse;
-      if (!payload || !Array.isArray(payload.top)) return [];
-      return payload.top.slice(0, 6).map((coin) => ({
-        symbol: coin.symbol,
-        price: coin.price,
-        indicators: {},
-        totalScore: coin.score,
-        recommendation: confidenceToRecommendation(coin.confidence),
-      } satisfies ScanResult));
-    },
-  });
-
-  const highPotentialItems = asArray<ScanResult>(highPotentialQuery.data);
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
@@ -709,73 +679,6 @@ export default function Charts() {
                 symbol={selectedSymbol}
                 interval={selectedTimeframe}
               />
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/70 bg-card/70">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex min-w-0 items-center gap-2 text-lg font-semibold">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
-                  High Potential Ideas
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {!isAuthenticated ? (
-                <p className="text-sm text-muted-foreground">
-                  Sign in to view AI-powered high potential setups tailored to your timeframe.
-                </p>
-              ) : highPotentialQuery.isLoading ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {Array.from({ length: 4 }).map((_, idx) => (
-                    <Skeleton key={idx} className="h-20 rounded-xl" />
-                  ))}
-                </div>
-              ) : highPotentialQuery.error ? (
-                <p className="text-sm text-red-400">
-                  Could not fetch high potential ideas right now.
-                </p>
-              ) : highPotentialItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No standout opportunities detected. Try rescanning with different filters.
-                </p>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {highPotentialItems.map((item) => (
-                    <button
-                      key={item.symbol}
-                      type="button"
-                      onClick={() => {
-                        setSelectedSymbol(item.symbol);
-                        setSearchInput(asString(item.symbol).replace(/USDT$/i, ""));
-                        toast({
-                          title: "Symbol loaded",
-                          description: `Loaded ${displayPair(item.symbol)} from high potential list`,
-                        });
-                      }}
-                      className="group flex w-full flex-col rounded-xl border border-border/60 bg-card/60 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="min-w-0">
-                          <p className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-sm font-semibold text-foreground">
-                            {displayPair(item.symbol)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Score {item.totalScore > 0 ? "+" : ""}{item.totalScore}
-                          </p>
-                        </div>
-                        <Badge className={getRecommendationColor(item.recommendation)}>
-                          {asString(item.recommendation).replace(/_/g, " ").toUpperCase()}
-                        </Badge>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Tap to load chart &amp; run full breakdown.
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>

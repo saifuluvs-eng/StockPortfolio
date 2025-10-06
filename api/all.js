@@ -122,23 +122,6 @@ async function gainers(_req, res) {
   return ok(res, { rows });
 }
 
-async function highPotential(_req, res) {
-  const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`, { cache: "no-store" });
-  if (!r.ok) return bad(res, r.status, "binance error", { detail: await r.text() });
-  const list = await r.json();
-  const items = list
-    .filter(t => t?.symbol?.endsWith?.("USDT"))
-    .map(t => ({
-      symbol: t.symbol,
-      changePct: parseFloat(t.priceChangePercent),
-      lastPrice: parseFloat(t.lastPrice),
-      quoteVolume: parseFloat(t.quoteVolume),
-    }))
-    .sort((a, b) => b.changePct - a.changePct)
-    .slice(0, 10);
-  return ok(res, { ok: true, items, time: new Date().toISOString() });
-}
-
 async function aiOverview(_req, res) {
   const [btc, eth] = await Promise.all([
     fetch(`${BINANCE}/api/v3/ticker/24hr?symbol=BTCUSDT`).then(r => r.json()),
@@ -233,7 +216,6 @@ export default async function handler(req, res) {
     }
 
     if (seg[0] === "scanner") {
-      if (seg[1] === "high-potential") return highPotential(req, res);
       if (seg[1] === "scan") return scan(req, res);
       return bad(res, 404, "Unknown scanner route", { path });
     }
