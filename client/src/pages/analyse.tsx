@@ -650,6 +650,8 @@ export default function Analyse() {
     if (e.key === "Enter") handleSearch();
   };
 
+  const hasScanResult = Boolean(scanResult);
+
   const priceSummaryCards = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
       <Card>
@@ -720,46 +722,60 @@ export default function Analyse() {
         </CardContent>
       </Card>
 
-      {scanResult && (
-        <Card
-          className={`md:col-span-2 border-2 ${getScoreBorderTone(safeTotalScore)} bg-card/70`}
-        >
-          <CardContent className="flex h-full min-h-[220px] flex-col justify-between gap-4 p-6">
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Overall Analysis</p>
-                <div className="mt-2 flex items-center space-x-2">
-                  <span
-                    className={`text-2xl font-bold leading-none ${getScoreColor(safeTotalScore)}`}
-                    data-testid="text-total-score"
-                  >
-                    {safeTotalScore > 0 ? "+" : ""}
-                    {safeTotalScore}
-                  </span>
-                  <Badge
-                    className={`${getRecommendationColor(safeRecommendation)} px-2 py-1 text-xs`}
-                    data-testid="badge-recommendation"
-                  >
-                    {recommendationLabel}
-                  </Badge>
+      <Card
+        className={`md:col-span-2 border-2 ${
+          hasScanResult ? getScoreBorderTone(safeTotalScore) : "border-border/60"
+        } bg-card/70`}
+      >
+        <CardContent className="h-full p-6">
+          {hasScanResult ? (
+            <div className="flex h-full min-h-[220px] flex-col justify-between gap-4">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Overall Analysis</p>
+                  <div className="mt-2 flex items-center space-x-2">
+                    <span
+                      className={`text-2xl font-bold leading-none ${getScoreColor(safeTotalScore)}`}
+                      data-testid="text-total-score"
+                    >
+                      {safeTotalScore > 0 ? "+" : ""}
+                      {safeTotalScore}
+                    </span>
+                    <Badge
+                      className={`${getRecommendationColor(safeRecommendation)} px-2 py-1 text-xs`}
+                      data-testid="badge-recommendation"
+                    >
+                      {recommendationLabel}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Progress
+                    value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
+                    className="h-2"
+                  />
+                  <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Progress
-                  value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
-                  className="h-2"
-                />
-                <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
+
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Confidence</span>
+                <span className="text-foreground">{recommendationLabel}</span>
               </div>
             </div>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Confidence</span>
-              <span className="text-foreground">{recommendationLabel}</span>
+          ) : (
+            <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+              <Search className="h-10 w-10 text-muted-foreground/60" />
+              <div>
+                <p className="text-lg font-semibold text-foreground">No analysis yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Run a scan to unlock overall recommendations.
+                </p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 
