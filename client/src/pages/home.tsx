@@ -18,6 +18,7 @@ import {
   Bell,
   Brain,
   Activity,
+  Newspaper,
 } from "lucide-react";
 
 /**
@@ -389,22 +390,49 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* 8) AI Signals */}
-          <Link href="/ai-insights" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
-              <CardContent className="p-6 h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
-                    <p className="text-sm text-muted-foreground">Market analysis</p>
-                    <p className="text-lg font-bold text-foreground mt-2" data-testid="text-ai-signals">{aiDisplay}</p>
-                    <p className="text-xs text-green-500">Active insights</p>
-                  </div>
-                  <Brain className="w-8 h-8 text-indigo-500" />
+        {/* 8) AI Signals */}
+        <Link href="/ai-insights" className="block h-full">
+          <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
+            <CardContent className="p-6 h-full flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
+                  <p className="text-sm text-muted-foreground">Market analysis</p>
+                  <p className="text-lg font-bold text-foreground mt-2" data-testid="text-ai-signals">{aiDisplay}</p>
+                  <p className="text-xs text-green-500">Active insights</p>
                 </div>
-              </CardContent>
-            </Card>
-          </Link>
+                <Brain className="w-8 h-8 text-indigo-500" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        {/* 9) News & Insights */}
+        <Link href="/news" className="block h-full xl:col-span-2">
+          <Card className="dashboard-card neon-hover" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
+            <CardContent className="p-6 h-full flex flex-col justify-between space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Curated market headlines and analyst takes to keep you ahead of the next move.
+                  </p>
+                </div>
+                <Newspaper className="w-8 h-8 text-primary" />
+              </div>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p className="flex items-center justify-between text-foreground">
+                  <span className="font-medium">Morning Brief</span>
+                  <span className="text-xs text-muted-foreground">Updated 10 min ago</span>
+                </p>
+                <p>US equities rally as inflation cools; crypto follows with strong altcoin bids.</p>
+                <Button asChild size="sm" variant="outline" className="mt-2 self-start">
+                  <Link href="/news">Read latest</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
         </div>
 
         {/* The 3 big boxes below */}
