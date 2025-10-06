@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -24,6 +23,8 @@ import {
   BreakdownSection,
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
+import { OverallAnalysisCard } from "@/features/analyse/OverallAnalysisCard";
+import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { toBinance } from "@/lib/symbols";
@@ -70,7 +71,7 @@ interface ScanResult {
   price: number;
   indicators: Record<string, ScanIndicator>;
   totalScore: number;
-  recommendation: "strong_buy" | "buy" | "hold" | "sell" | "strong_sell";
+  recommendation: Recommendation;
   meta?: Record<string, unknown> | null;
 }
 
@@ -652,63 +653,6 @@ export default function Analyse() {
 
   const hasScanResult = Boolean(scanResult);
 
-  const overallAnalysisCard = (
-    <Card
-      className={`h-full border-2 ${
-        hasScanResult ? getScoreBorderTone(safeTotalScore) : "border-border/60"
-      } bg-card/70`}
-    >
-      <CardContent className="h-full p-6">
-        {hasScanResult ? (
-          <div className="flex h-full min-h-[220px] flex-col justify-between gap-4">
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Overall Analysis</p>
-                <div className="mt-2 flex items-center space-x-2">
-                  <span
-                    className={`text-2xl font-bold leading-none ${getScoreColor(safeTotalScore)}`}
-                    data-testid="text-total-score"
-                  >
-                    {safeTotalScore > 0 ? "+" : ""}
-                    {safeTotalScore}
-                  </span>
-                  <Badge
-                    className={`${getRecommendationColor(safeRecommendation)} px-2 py-1 text-xs`}
-                    data-testid="badge-recommendation"
-                  >
-                    {recommendationLabel}
-                  </Badge>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Progress
-                  value={Math.max(0, Math.min(100, ((safeTotalScore + 30) / 60) * 100))}
-                  className="h-2"
-                />
-                <p className="text-xs text-muted-foreground">Range: -30 to +30</p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Confidence</span>
-              <span className="text-foreground">{recommendationLabel}</span>
-            </div>
-          </div>
-        ) : (
-          <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-            <Search className="h-10 w-10 text-muted-foreground/60" />
-            <div>
-              <p className="text-lg font-semibold text-foreground">No analysis yet</p>
-              <p className="text-sm text-muted-foreground">
-                Run a scan to unlock overall recommendations.
-              </p>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-
   const priceSummaryCards = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
       <Card>
@@ -813,11 +757,11 @@ export default function Analyse() {
         </div>
       </header>
 
-      <div className="grid grid-cols-12 gap-4">
-        <section className="col-span-9 bg-[#111214] rounded-2xl border border-zinc-800 p-4 h-[140px] flex flex-col justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="relative w-full">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+        <Card className="border border-border/60 bg-card/70">
+          <CardContent className="flex h-full flex-col gap-4 p-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
                 <Input
                   placeholder="Enter coin (BTC, ETH, SOL...)"
                   value={searchInput}
@@ -829,52 +773,55 @@ export default function Analyse() {
                 />
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               </div>
+              <Button
+                onClick={handleScan}
+                disabled={isScanning || !isAuthenticated || !networkEnabled}
+                className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 lg:w-auto"
+                data-testid="button-scan"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
+                {isScanning ? "Scanning..." : "Run Analysis"}
+              </Button>
             </div>
-            <Button
-              onClick={handleScan}
-              disabled={isScanning || !isAuthenticated || !networkEnabled}
-              className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90"
-              data-testid="button-scan"
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
-              {isScanning ? "Scanning..." : "Run Analysis"}
-            </Button>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Clock3 className="h-4 w-4" />
-              <span className="whitespace-nowrap">Timeframe</span>
-              <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
-                <SelectTrigger
-                  className="h-9 min-w-[140px] border-zinc-700 bg-[#15161a] text-left text-foreground"
-                  data-testid="select-timeframe"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEFRAMES.map((tf) => (
-                    <SelectItem key={tf.value} value={tf.value}>
-                      {tf.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Clock3 className="h-4 w-4" />
+                <span className="whitespace-nowrap">Timeframe</span>
+                <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                  <SelectTrigger
+                    className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
+                    data-testid="select-timeframe"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIMEFRAMES.map((tf) => (
+                      <SelectItem key={tf.value} value={tf.value}>
+                        {tf.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex min-w-0 items-center gap-2">
+                <Activity className="h-4 w-4" />
+                <Badge className="truncate bg-zinc-800/80 px-2 py-1 text-xs font-medium uppercase text-foreground">
+                  {displayPair(selectedSymbol)}
+                </Badge>
+                <span className="whitespace-nowrap text-xs">
+                  ({timeframeConfig?.display ?? selectedTimeframe})
+                </span>
+              </div>
             </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <Activity className="h-4 w-4" />
-              <Badge className="truncate bg-zinc-800/80 px-2 py-1 text-xs font-medium uppercase text-foreground">
-                {displayPair(selectedSymbol)}
-              </Badge>
-              <span className="whitespace-nowrap text-xs">
-                ({timeframeConfig?.display ?? selectedTimeframe})
-              </span>
-            </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        <aside className="col-span-12 lg:col-span-3">
-          {overallAnalysisCard}
-        </aside>
+        <OverallAnalysisCard
+          score={safeTotalScore}
+          recommendation={safeRecommendation}
+          recommendationLabel={recommendationLabel}
+          hasResult={hasScanResult}
+        />
       </div>
 
       {priceSummaryCards}
@@ -970,46 +917,4 @@ function formatVolume(volume?: string) {
   if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
   if (num >= 1e3) return `$${(num / 1e3).toFixed(2)}K`;
   return `$${num.toFixed(2)}`;
-}
-
-function getScoreColor(score: number) {
-  if (score >= 10) return "text-green-600";
-  if (score >= 5) return "text-green-500";
-  if (score <= -10) return "text-red-600";
-  if (score <= -5) return "text-red-500";
-  return "text-yellow-500";
-}
-
-function getScoreBorderTone(score: number) {
-  if (score >= 5) return "border-green-500/80";
-  if (score <= -5) return "border-red-500/80";
-  return "border-yellow-500/80";
-}
-
-function confidenceToRecommendation(confidence: string): ScanResult["recommendation"] {
-  switch (confidence) {
-    case "High":
-      return "strong_buy";
-    case "Medium":
-      return "buy";
-    case "Watch":
-      return "hold";
-    default:
-      return "hold";
-  }
-}
-
-function getRecommendationColor(recommendation: string) {
-  switch (recommendation) {
-    case "strong_buy":
-      return "bg-green-600 text-white";
-    case "buy":
-      return "bg-green-500 text-white";
-    case "strong_sell":
-      return "bg-red-600 text-white";
-    case "sell":
-      return "bg-red-500 text-white";
-    default:
-      return "bg-yellow-500 text-black";
-  }
 }
