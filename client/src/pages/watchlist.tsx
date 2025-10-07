@@ -56,16 +56,16 @@ export default function WatchlistPage() {
       <Bookmark className="mx-auto mb-3 h-10 w-10 text-primary" />
       <h3 className="text-lg font-semibold text-foreground">Build your first watchlist</h3>
       <p className="mt-2 text-sm text-muted-foreground">
-        Add any market from the Charts or Analyse workspaces to begin tracking live performance.
+        Add any market from the Analyse workspace to begin tracking live performance.
       </p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
-        <Link href="/charts">
+        <Link href="/analyse/BTCUSDT">
           <Button variant="secondary" className="w-full sm:w-auto">
             <LineChart className="mr-2 h-4 w-4" />
-            Browse charts
+            Browse analysis
           </Button>
         </Link>
-        <Link href="/analyse">
+        <Link href="/analyse/BTCUSDT">
           <Button className="w-full sm:w-auto">
             <ExternalLink className="mr-2 h-4 w-4" />
             Open scanner
@@ -100,7 +100,7 @@ export default function WatchlistPage() {
           <div>
             <CardTitle className="text-xl font-semibold text-foreground">Saved markets</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Markets you have marked from the Analyse and Charts experiences.
+              Markets you have marked from the Analyse workspace.
             </p>
           </div>
           {watchlistItems.length > 0 ? (

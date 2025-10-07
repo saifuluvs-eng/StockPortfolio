@@ -256,7 +256,7 @@ export default function Home() {
           </Link>
 
           {/* 2) Scanner */}
-          <Link href="/charts" className="block h-full">
+          <Link href="/analyse/BTCUSDT" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-accent/5 to-accent/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
@@ -433,7 +433,7 @@ export default function Home() {
                   <Link href="/portfolio">View Portfolio</Link>
                 </Button>
                 <Button asChild size="sm" variant="outline" data-testid="button-start-scanning">
-                  <Link href="/charts">Start Scanning</Link>
+                  <Link href="/analyse/BTCUSDT">Start Scanning</Link>
                 </Button>
               </div>
             </CardContent>

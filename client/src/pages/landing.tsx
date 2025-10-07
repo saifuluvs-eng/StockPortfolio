@@ -40,7 +40,7 @@ export default function Landing() {
             <Link href="/gainers" className="text-muted-foreground hover:text-foreground transition-colors">
               Gainers
             </Link>
-            <Link href="/charts" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/analyse/BTCUSDT" className="text-muted-foreground hover:text-foreground transition-colors">
               SCAN
             </Link>
           </nav>
@@ -79,7 +79,7 @@ export default function Landing() {
                 Sign In with Google
               </Button>
             )}
-            <Link href="/charts">
+            <Link href="/analyse/BTCUSDT">
               <Button size="lg" variant="outline" data-testid="button-learn-more">
                 Explore Charts
               </Button>
