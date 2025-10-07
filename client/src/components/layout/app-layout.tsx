@@ -1,6 +1,8 @@
 // client/src/components/layout/app-layout.tsx
 import React from "react";
-import { Sidebar } from "@/components/layout/sidebar";
+import Sidebar from "@/components/layout/Sidebar";
+import { useUI } from "@/stores/uiStore";
+import "./AppShell.css";
 
 /**
  * Inline theme tokens so we don't rely on an external tokens.css file.
@@ -37,30 +39,16 @@ html, body, #root {
 `;
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  const { sidebarCollapsed } = useUI();
+
   return (
     <>
       {/* Inline tokens once at the app shell */}
       <style>{TOKENS_CSS}</style>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "240px 1fr",
-          minHeight: "100vh",
-          background: "var(--bg)",
-          color: "var(--text)",
-          fontFamily: "var(--font)",
-        }}
-      >
+      <div className={`app-shell ${sidebarCollapsed ? "is-collapsed" : ""}`}>
         <Sidebar />
-        <div
-          style={{
-            padding: 16,
-            boxSizing: "border-box",
-          }}
-        >
-          {children}
-        </div>
+        <div className="app-content">{children}</div>
       </div>
     </>
   );
