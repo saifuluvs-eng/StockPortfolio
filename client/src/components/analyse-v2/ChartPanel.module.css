@@ -18,6 +18,11 @@
   cursor: pointer;
 }
 
+.tabMuted {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .tabActive {
   opacity: 1;
   position: relative;
@@ -73,12 +78,45 @@
 .canvas {
   flex: 1;
   margin: 12px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 14px;
+  flex-direction: column;
+  gap: 12px;
   min-height: 65vh;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.chartHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.chartTitle {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.chartHint {
+  font-size: 10px;
+  opacity: 0.6;
+  text-transform: none;
+}
+
+.chartBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.chartBody > * {
+  flex: 1;
 }

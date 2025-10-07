@@ -1,3 +1,5 @@
+import { api } from "@/lib/api";
+
 export type TechPayload = {
   summary?: string;
   indicators: {
@@ -24,17 +26,38 @@ export type AIPayload = {
   generatedAt: string;
 };
 
+type MetricsResponse = {
+  symbol: string;
+  tf: string;
+  generatedAt: string;
+  summary?: string;
+  indicators: TechPayload["indicators"];
+};
+
 // TODO: replace with real calls later
 export async function computeTechnicalAll(
   symbol: string,
   tf: string,
 ): Promise<TechPayload> {
-  const r = await fetch(
-    `/api/metrics?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`,
-  );
-  if (!r.ok) throw new Error("metrics_failed");
-  const data = await r.json();
-  return data as { indicators: TechPayload["indicators"]; generatedAt: string };
+  const url = `/api/metrics?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`;
+  const res = await api(url);
+
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `Failed to load metrics (${res.status})`);
+  }
+
+  const data = (await res.json()) as MetricsResponse;
+
+  if (!data?.indicators) {
+    throw new Error("Metrics response missing indicators");
+  }
+
+  return {
+    summary: data.summary,
+    indicators: data.indicators,
+    generatedAt: data.generatedAt ?? new Date().toISOString(),
+  };
 }
 
 export async function computeAI(

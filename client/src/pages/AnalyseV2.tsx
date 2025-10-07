@@ -14,6 +14,7 @@ import {
   type TechPayload,
 } from "@/lib/analyseClient";
 import { relativeTimeFrom } from "@/lib/time";
+import { useToast } from "@/hooks/use-toast";
 
 type Timeframe = "15m" | "1h" | "4h" | "1d";
 
@@ -26,6 +27,7 @@ export default function AnalyseV2() {
   const [loading, setLoading] = useState<"tech" | "ai" | null>(null);
 
   const { credits, canSpend, spend, refund, ready } = useCredits();
+  const { toast } = useToast();
 
   useEffect(() => {
     setTechState(null);
@@ -55,7 +57,7 @@ export default function AnalyseV2() {
     if (!ready || !canSpend(COST.TECH)) return;
     setLoading("tech");
     try {
-      await spendGuard(
+      const result = await spendGuard(
         canSpend,
         spend,
         refund,
@@ -69,6 +71,22 @@ export default function AnalyseV2() {
         },
         { symbol, tf: tfAnalysis },
       );
+      if (!result) {
+        toast({
+          title: "Not enough credits",
+          description: "You need more credits to run the technical scan.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("analyse-v2:tech", error);
+      const message =
+        error instanceof Error ? error.message : "Unable to run technical analysis.";
+      toast({
+        title: "Technical analysis failed",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(null);
     }
@@ -88,7 +106,7 @@ export default function AnalyseV2() {
     if (!ready || !canSpend(COST.AI)) return;
     setLoading("ai");
     try {
-      await spendGuard(
+      const result = await spendGuard(
         canSpend,
         spend,
         refund,
@@ -110,6 +128,22 @@ export default function AnalyseV2() {
         },
         { symbol, tf: tfAnalysis },
       );
+      if (!result) {
+        toast({
+          title: "Not enough credits",
+          description: "You need more credits to run the AI summary.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("analyse-v2:ai", error);
+      const message =
+        error instanceof Error ? error.message : "Unable to run the AI analysis.";
+      toast({
+        title: "AI analysis failed",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(null);
     }
