@@ -16,22 +16,6 @@ declare global {
   }
 }
 
-const LAYOUT_KEY = "tv_layout_v1";
-
-function safeGetLayout() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(LAYOUT_KEY);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    if (!obj || typeof obj !== "object") return null;
-    if (obj.charts && !Array.isArray(obj.charts)) return null;
-    return obj;
-  } catch {
-    return null;
-  }
-}
-
 function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Stable id for the widget’s container (prevents widget from “losing” its node between renders)
@@ -52,7 +36,6 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
       containerRef.current.innerHTML = "";
 
       try {
-        const layout = safeGetLayout();
         const cfg = buildTvConfig({
           symbol: `BINANCE:${normalizedSymbol}`,
           timeframe: normalizedInterval,
@@ -80,24 +63,7 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
         widgetRef.current = new (window as any).TradingView.widget(cfg);
 
         widgetRef.current?.onChartReady?.(() => {
-          try {
-            if (layout) widgetRef.current?.load?.(layout);
-          } catch (e) {
-            console.warn("Ignoring invalid TradingView layout, clearing key", e);
-            try {
-              window.localStorage.removeItem(LAYOUT_KEY);
-            } catch {
-              /* ignore */
-            }
-          }
-
-          widgetRef.current?.save?.((state: any) => {
-            try {
-              window.localStorage.setItem(LAYOUT_KEY, JSON.stringify(state));
-            } catch {
-              /* ignore */
-            }
-          });
+          // no-op; we intentionally skip layout persistence until schema mismatches are resolved
         });
       } catch (e) {
         console.warn("TradingView widget init failed, using fallback chart", e);
