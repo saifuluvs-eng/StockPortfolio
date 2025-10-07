@@ -19,6 +19,21 @@
   gap: 12px;
 }
 
+.headerMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-transform: none;
+}
+
+.headerCaption {
+  font-size: 10px;
+  letter-spacing: 0.2px;
+  opacity: 0.75;
+  text-transform: uppercase;
+}
+
 .timestamp {
   font-size: 10px;
   letter-spacing: 0.2px;
