@@ -26,17 +26,26 @@ function SidebarItem({
   to,
   activeWhen,
   children,
+  style,
 }: {
   to: string;
   activeWhen?: string | RegExp;
   children: React.ReactNode;
+  style?: React.CSSProperties;
 }) {
   const [location] = useLocation();
   const activeMatch =
     activeWhen !== undefined ? isActivePath(location, activeWhen) : location === to;
 
   return (
-    <Link to={to} style={activeMatch ? { ...baseLink, ...active } : baseLink}>
+    <Link
+      to={to}
+      style={
+        activeMatch
+          ? { ...baseLink, ...style, ...active }
+          : { ...baseLink, ...style }
+      }
+    >
       {children}
     </Link>
   );
@@ -63,6 +72,13 @@ export function Sidebar() {
         {/* Analyse (single menu item, active for /charts or /analyse) */}
         <SidebarItem to="/analyse" activeWhen={/^\/(charts|analyse)(\/|$)/}>
           Analyse
+        </SidebarItem>
+        <SidebarItem
+          to="/analyse-v2"
+          activeWhen={/^\/analyse-v2(\/|$)/}
+          style={{ marginLeft: 12, fontSize: 14 }}
+        >
+          Analyse v2 (beta)
         </SidebarItem>
 
         {/* Gainers */}
