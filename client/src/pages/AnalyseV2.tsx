@@ -25,7 +25,7 @@ export default function AnalyseV2() {
   const [aiState, setAiState] = useState<AIPayload | null>(null);
   const [loading, setLoading] = useState<"tech" | "ai" | null>(null);
 
-  const { credits, canSpend, spend, refund } = useCredits();
+  const { credits, canSpend, spend, refund, ready } = useCredits();
 
   useEffect(() => {
     setTechState(null);
@@ -42,8 +42,8 @@ export default function AnalyseV2() {
   const hasTechCache = Boolean(getCached<TechPayload>(keyTech));
   const hasAiCache = Boolean(getCached<AIPayload>(keyAI));
 
-  const canAffordTech = canSpend(COST.TECH);
-  const canAffordAI = canSpend(COST.AI);
+  const canAffordTech = ready && canSpend(COST.TECH);
+  const canAffordAI = ready && canSpend(COST.AI);
 
   const handleRunTech = async () => {
     if (loading) return;
@@ -52,7 +52,7 @@ export default function AnalyseV2() {
       setTechState(cached);
       return;
     }
-    if (!canSpend(COST.TECH)) return;
+    if (!ready || !canSpend(COST.TECH)) return;
     setLoading("tech");
     try {
       await spendGuard(
@@ -85,7 +85,7 @@ export default function AnalyseV2() {
       }
       return;
     }
-    if (!canSpend(COST.AI)) return;
+    if (!ready || !canSpend(COST.AI)) return;
     setLoading("ai");
     try {
       await spendGuard(
@@ -120,15 +120,17 @@ export default function AnalyseV2() {
   const aiDisabled =
     loading === "tech" || (!canAffordAI && !hasAiCache && !aiState);
 
-  const techTooltip =
-    !canAffordTech && !hasTechCache && !techState
-      ? "Not enough credits. Buy more to continue."
-      : "Runs all indicators (RSI, MACD, ADX, EMAs, ATR, volume stats, SR proximity) for the selected timeframe. Uses 2 credits per timeframe. Cached ~10 min.";
+  const techTooltip = !ready
+    ? "Loading credits…"
+    : !canAffordTech && !hasTechCache && !techState
+    ? "Not enough credits. Buy more to continue."
+    : "Runs all indicators (RSI, MACD, ADX, EMAs, ATR, volume stats, SR proximity) for the selected timeframe. Uses 2 credits per timeframe. Cached ~10 min.";
 
-  const aiTooltip =
-    !canAffordAI && !hasAiCache && !aiState
-      ? "Not enough credits. Buy more to continue."
-      : "Computes technicals and generates an AI summary with entry/target/invalidation for the selected timeframe. Uses 5 credits per timeframe. Cached ~10 min.";
+  const aiTooltip = !ready
+    ? "Loading credits…"
+    : !canAffordAI && !hasAiCache && !aiState
+    ? "Not enough credits. Buy more to continue."
+    : "Computes technicals and generates an AI summary with entry/target/invalidation for the selected timeframe. Uses 5 credits per timeframe. Cached ~10 min.";
 
   const aiLastRun = relativeTimeFrom(aiState?.generatedAt);
 
@@ -145,6 +147,7 @@ export default function AnalyseV2() {
               setTfChart(nextTf);
             }}
             credits={credits}
+            creditsReady={ready}
             loading={loading}
             onRunTech={handleRunTech}
             onRunAI={handleRunAI}
@@ -172,7 +175,9 @@ export default function AnalyseV2() {
         <div className={styles.panelHeader}>
           <span>AI Summary</span>
           <div className={styles.panelHeaderMeta}>
-            <span className={styles.panelHeaderCredits}>Credits: {credits}</span>
+            <span className={styles.panelHeaderCredits}>
+              Credits: {ready ? credits : "…"}
+            </span>
             {aiState && (
               <>
                 <span className={styles.panelHeaderCaption}>Analysed @ {tfAnalysis}</span>

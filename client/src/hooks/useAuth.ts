@@ -1,7 +1,8 @@
 import { useFirebaseAuth } from "./useFirebaseAuth";
 
 export function useAuth() {
-    const { user, loading, idToken, getIdToken, signInWithGoogle, signOut } = useFirebaseAuth();
+  const { user, loading, idToken, getIdToken, signInWithGoogle, signOut } =
+    useFirebaseAuth();
   return {
     user,
     idToken,
@@ -9,6 +10,7 @@ export function useAuth() {
     signInWithGoogle,
     signOut,
     isLoading: loading,
+    authReady: !loading,
     isAuthenticated: !!user,
   };
 }
