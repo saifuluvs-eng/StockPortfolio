@@ -70,9 +70,9 @@ export default function Portfolio() {
     enabled: networkEnabled,
   });
 
-  const totalValue = data?.totalValue ?? 0;
-  const totalPnL = data?.totalPnL ?? 0;
-  const totalPnLPercent = data?.totalPnLPercent ?? 0;
+  const serverTotalValue = data?.totalValue ?? 0;
+  const serverTotalPnL = data?.totalPnL ?? 0;
+  const serverTotalPnLPercent = data?.totalPnLPercent ?? 0;
   const positions = Array.isArray(data?.positions) ? data!.positions : [];
 
   // ---------- LIVE PRICES ----------
@@ -172,6 +172,41 @@ export default function Portfolio() {
     if (Number.isFinite(liveHTTP[S])) return liveHTTP[S];
     return fallback;
   }
+
+  const { totalValue, totalPnL, totalPnLPercent } = useMemo(() => {
+    if (positions.length === 0) {
+      return {
+        totalValue: serverTotalValue,
+        totalPnL: serverTotalPnL,
+        totalPnLPercent: serverTotalPnLPercent,
+      };
+    }
+
+    let invested = 0;
+    let currentWorth = 0;
+    for (const pos of positions) {
+      const symbol = pos.symbol.toUpperCase();
+      const latestPrice = currentPriceFor(symbol, pos.livePrice ?? pos.avgPrice);
+      invested += pos.avgPrice * pos.qty;
+      currentWorth += latestPrice * pos.qty;
+    }
+
+    const pnlValue = currentWorth - invested;
+    const pnlPercent = invested > 0 ? (pnlValue / invested) * 100 : 0;
+
+    return {
+      totalValue: currentWorth,
+      totalPnL: pnlValue,
+      totalPnLPercent: pnlPercent,
+    };
+  }, [
+    positions,
+    liveHTTP,
+    liveWS,
+    serverTotalPnL,
+    serverTotalPnLPercent,
+    serverTotalValue,
+  ]);
 
   // ---------- Add / Delete ----------
   const [open, setOpen] = useState(false);
