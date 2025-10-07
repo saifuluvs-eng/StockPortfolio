@@ -1,0 +1,48 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tabs {
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px 0 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.tab {
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.tabActive {
+  opacity: 1;
+  position: relative;
+}
+
+.tabActive::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 100%;
+  height: 2px;
+  background: #3fb950;
+  border-radius: 4px;
+}
+
+.canvas {
+  flex: 1;
+  margin: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  min-height: 65vh;
+}

@@ -19,8 +19,10 @@ import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
 import Charts from "@/pages/charts";
 import Analyse from "@/pages/analyse";
+import AnalyseV2 from "@/pages/AnalyseV2";
 import Watchlist from "@/pages/watchlist";
 import Alerts from "@/pages/alerts";
+import { CreditProvider } from "@/stores/creditStore";
 
 // (keep for later) Protected HOC
 function Protected<T extends React.ComponentType<any>>(Component: T) {
@@ -79,6 +81,7 @@ function Router() {
 
       {/* ANALYSE */}
       <Route path="/analyse/:symbol?" component={withLayout(Analyse)} />
+      <Route path="/analyse-v2/:symbol?" component={withLayout(AnalyseV2)} />
 
       {/* CHARTS */}
       <Route path="/charts/:symbol?" component={withLayout(Charts)} />
@@ -92,12 +95,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="cryptotrader-theme">
-        <TooltipProvider>
-          <Toaster />
-          <Router />
-        </TooltipProvider>
-      </ThemeProvider>
+      <CreditProvider>
+        <ThemeProvider defaultTheme="dark" storageKey="cryptotrader-theme">
+          <TooltipProvider>
+            <Toaster />
+            <Router />
+          </TooltipProvider>
+        </ThemeProvider>
+      </CreditProvider>
     </QueryClientProvider>
   );
 }
