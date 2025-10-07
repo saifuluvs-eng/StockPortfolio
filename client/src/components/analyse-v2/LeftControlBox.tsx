@@ -8,6 +8,7 @@ type Props = {
   onChangeSymbol: (s: string) => void;
   onChangeTimeframe: (tf: Timeframe) => void;
   credits: number;
+  creditsReady: boolean;
   loading: "tech" | "ai" | null;
   onRunTech: () => void;
   onRunAI: () => void;
@@ -25,6 +26,7 @@ export default function LeftControlBox({
   onChangeSymbol,
   onChangeTimeframe,
   credits,
+  creditsReady,
   loading,
   onRunTech,
   onRunAI,
@@ -72,7 +74,9 @@ export default function LeftControlBox({
       </div>
 
       <div className={styles.creditsRow}>
-        <span className={styles.creditsChip}>Credits: {credits}</span>
+        <span className={styles.creditsChip}>
+          Credits: {creditsReady ? credits : "…"}
+        </span>
       </div>
 
       <div className={styles.actions}>

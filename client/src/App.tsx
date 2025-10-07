@@ -1,5 +1,5 @@
 // client/src/App.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import type { RouteComponentProps } from "wouter";
 import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -22,6 +22,7 @@ import Analyse from "@/pages/analyse";
 import AnalyseV2 from "@/pages/AnalyseV2";
 import Watchlist from "@/pages/watchlist";
 import Alerts from "@/pages/alerts";
+import { useCredits } from "@/stores/creditStore";
 
 // (keep for later) Protected HOC
 function Protected<T extends React.ComponentType<any>>(Component: T) {
@@ -58,7 +59,7 @@ const withLayout = <C extends React.ComponentType<any>>(Component: C) => {
   return WithLayoutComponent;
 };
 
-function Router() {
+function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <div>Loading Application...</div>;
 
@@ -91,13 +92,33 @@ function Router() {
   );
 }
 
+function AppShell({ children }: { children: React.ReactNode }) {
+  const { user, authReady } = useAuth();
+  const init = useCredits((state) => state.init);
+  const ready = useCredits((state) => state.ready);
+  const userId = user?.uid ?? null;
+
+  useEffect(() => {
+    if (!authReady) return;
+    init(userId);
+  }, [authReady, init, userId]);
+
+  if (!ready) {
+    return <div style={{ padding: 16 }}>Loading…</div>;
+  }
+
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="cryptotrader-theme">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <AppShell>
+            <AppRouter />
+          </AppShell>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
