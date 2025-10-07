@@ -34,6 +34,42 @@
   border-radius: 4px;
 }
 
+.toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+.tfGroup {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tfBtn {
+  border: none;
+  background: transparent;
+  color: #d7d7d7;
+  font-size: 11px;
+  padding: 6px 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.tfBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tfActive {
+  background: rgba(63, 185, 80, 0.2);
+  color: #ffffff;
+}
+
 .canvas {
   flex: 1;
   margin: 12px;

@@ -1,62 +1,55 @@
-import React from "react";
 import styles from "./TechnicalPanel.module.css";
+import type { TechPayload } from "@/lib/analyseClient";
+import { relativeTimeFrom } from "@/lib/time";
 
 type TechnicalPanelProps = {
   symbol: string;
   tf: string;
+  data: TechPayload | null;
 };
 
-type Metric = {
-  label: string;
-  value: string;
-  status: "bullish" | "neutral" | "bearish";
-};
+function formatValue(value: unknown): string {
+  if (value == null) return "—";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
 
-const statusColor: Record<Metric["status"], string> = {
-  bullish: "#3fb950",
-  neutral: "#f2c744",
-  bearish: "#f85149",
-};
+export function TechnicalPanel({ symbol, tf, data }: TechnicalPanelProps) {
+  const lastRun = relativeTimeFrom(data?.generatedAt);
+  const entries = data ? Object.entries(data.indicators ?? {}) : [];
 
-const mockMetrics: Metric[] = [
-  { label: "RSI (14)", value: "48 · Neutral", status: "neutral" },
-  { label: "MACD", value: "Signal +0.6", status: "bullish" },
-  { label: "ADX", value: "24 · Trend Weak", status: "neutral" },
-  { label: "EMA Stack", value: "50 > 100 > 200", status: "bullish" },
-  { label: "EMA Distance", value: "+2.8%", status: "bullish" },
-  { label: "ATR %", value: "3.1%", status: "neutral" },
-  { label: "Vol. Z-Score", value: "+1.8", status: "bullish" },
-  { label: "SR Proximity", value: "-1.3% from R", status: "bearish" },
-  { label: "Trend Score", value: "62 / 100", status: "bullish" },
-  { label: "Momentum", value: "Cooling", status: "bearish" },
-  { label: "Liquidity", value: "Healthy", status: "bullish" },
-  { label: "Funding", value: "0.013%", status: "neutral" },
-  { label: "OI Drift", value: "+4%", status: "bullish" },
-  { label: "Volatility", value: "Contracting", status: "bearish" },
-];
-
-export function TechnicalPanel({ symbol, tf }: TechnicalPanelProps) {
   return (
     <div className={styles.card} role="region" aria-label="Technical breakdown">
-      <div className={styles.header}>TECHNICAL BREAKDOWN</div>
+      <div className={styles.header}>
+        <span>Technical Breakdown</span>
+        {lastRun && <span className={styles.timestamp}>Last analysed · {lastRun}</span>}
+      </div>
       <div className={styles.body}>
         <div className={styles.subtle}>
           {symbol.toUpperCase()} · {tf.toUpperCase()} snapshot
         </div>
-        <div className={styles.list}>
-          {mockMetrics.map((metric) => (
-            <div key={metric.label} className={styles.row}>
-              <span className={styles.labelWrap}>
-                <span
-                  className={styles.dot}
-                  style={{ backgroundColor: statusColor[metric.status] }}
-                />
-                <span className={styles.label}>{metric.label}</span>
-              </span>
-              <span className={styles.value}>{metric.value}</span>
+        {data ? (
+          <>
+            <div className={styles.summary}>{data.summary}</div>
+            <div className={styles.list}>
+              {entries.length === 0 ? (
+                <div className={styles.emptyRow}>No indicator data.</div>
+              ) : (
+                entries.map(([label, value]) => (
+                  <div key={label} className={styles.row}>
+                    <span className={styles.label}>{label}</span>
+                    <span className={styles.value}>{formatValue(value)}</span>
+                  </div>
+                ))
+              )}
             </div>
-          ))}
-        </div>
+          </>
+        ) : (
+          <div className={styles.empty}>
+            <div className={styles.emptyTitle}>Run Technical Analysis</div>
+            <div className={styles.emptySub}>Execute the technical scan to populate this section.</div>
+          </div>
+        )}
       </div>
     </div>
   );

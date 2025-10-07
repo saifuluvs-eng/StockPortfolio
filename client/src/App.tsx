@@ -22,7 +22,6 @@ import Analyse from "@/pages/analyse";
 import AnalyseV2 from "@/pages/AnalyseV2";
 import Watchlist from "@/pages/watchlist";
 import Alerts from "@/pages/alerts";
-import { CreditProvider } from "@/stores/creditStore";
 
 // (keep for later) Protected HOC
 function Protected<T extends React.ComponentType<any>>(Component: T) {
@@ -95,14 +94,12 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <CreditProvider>
-        <ThemeProvider defaultTheme="dark" storageKey="cryptotrader-theme">
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
-        </ThemeProvider>
-      </CreditProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="cryptotrader-theme">
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
