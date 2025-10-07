@@ -29,17 +29,38 @@ function safeNum(x: unknown, d = 0) {
   return Number.isFinite(n) ? n : d;
 }
 
+type InsightSource = "api" | "fallback";
+
+type InsightPayload = {
+  insights: Insight[];
+  table: Binance24hr[];
+  source: InsightSource;
+  primaryErrorCode?: string;
+};
+
+class InsightError extends Error {
+  code?: string;
+  source?: InsightSource;
+
+  constructor(message: string, code?: string, source?: InsightSource) {
+    super(message);
+    this.name = "InsightError";
+    this.code = code;
+    this.source = source;
+  }
+}
+
 async function fetchInsightsFallback(): Promise<{ insights: Insight[]; table: Binance24hr[] }> {
   try {
     const res = await fetch("https://api.binance.com/api/v3/ticker/24hr");
     if (res.status === 429) {
-      throw Object.assign(new Error("Binance rate limited"), { code: "BINANCE_RATE_LIMIT" });
+      throw new InsightError("Binance rate limited", "BINANCE_RATE_LIMIT", "fallback");
     }
     if (res.status === 401 || res.status === 403) {
-      throw Object.assign(new Error("Binance auth required"), { code: "BINANCE_AUTH" });
+      throw new InsightError("Binance auth required", "BINANCE_AUTH", "fallback");
     }
     if (!res.ok) {
-      throw Object.assign(new Error("Binance request failed"), { code: "BINANCE_ERROR" });
+      throw new InsightError("Binance request failed", "BINANCE_ERROR", "fallback");
     }
     const all = (await res.json()) as Binance24hr[];
     const usdt = all.filter((r) => r.symbol.endsWith("USDT"));
@@ -59,42 +80,47 @@ async function fetchInsightsFallback(): Promise<{ insights: Insight[]; table: Bi
     const byRangePos = [...enriched].sort((a, b) => b._pos - a._pos);
     const byVolume = [...enriched].sort((a, b) => b._qv - a._qv);
 
-    const topBreakouts = byRangePos.filter((x) => x._chg > 3 && x._pos > 0.7).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+    const topBreakouts = byRangePos
+      .filter((x) => x._chg > 3 && x._pos > 0.7)
+      .slice(0, 5)
+      .map((x) => x.symbol.replace("USDT", ""));
     const momentumLeaders = byChange.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
     const liquidityLeaders = byVolume.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
-    const overheated = enriched.filter((x) => x._chg > 15 && x._pos > 0.9).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
+    const overheated = enriched
+      .filter((x) => x._chg > 15 && x._pos > 0.9)
+      .slice(0, 5)
+      .map((x) => x.symbol.replace("USDT", ""));
 
     const insights: Insight[] = [
-      { title: "Breakout candidates near 24h highs", detail: topBreakouts.length ? topBreakouts.join(", ") : "No clear breakouts right now.", tags: ["breakout", "price-action"] },
-      { title: "Top momentum leaders (24h %)", detail: momentumLeaders.length ? momentumLeaders.join(", ") : "No strong momentum standouts.", tags: ["momentum"] },
-      { title: "Highest liquidity (quote volume)", detail: liquidityLeaders.length ? liquidityLeaders.join(", ") : "Low liquidity market.", tags: ["liquidity"] },
-      { title: "Potentially overheated (extended move)", detail: overheated.length ? overheated.join(", ") : "No overheated clusters.", tags: ["risk", "overextension"] },
+      {
+        title: "Breakout candidates near 24h highs",
+        detail: topBreakouts.length ? topBreakouts.join(", ") : "No clear breakouts right now.",
+        tags: ["breakout", "price-action"],
+      },
+      {
+        title: "Top momentum leaders (24h %)",
+        detail: momentumLeaders.length ? momentumLeaders.join(", ") : "No strong momentum standouts.",
+        tags: ["momentum"],
+      },
+      {
+        title: "Highest liquidity (quote volume)",
+        detail: liquidityLeaders.length ? liquidityLeaders.join(", ") : "Low liquidity market.",
+        tags: ["liquidity"],
+      },
+      {
+        title: "Potentially overheated (extended move)",
+        detail: overheated.length ? overheated.join(", ") : "No overheated clusters.",
+        tags: ["risk", "overextension"],
+      },
     ];
 
     return { insights, table: byChange.slice(0, 50) }; // keep table light
-  } catch {
-    throw Object.assign(new Error("Binance request failed"), { code: "BINANCE_ERROR" });
-  }
-}
-
-type InsightSource = "api" | "fallback";
-
-type InsightPayload = {
-  insights: Insight[];
-  table: Binance24hr[];
-  source: InsightSource;
-  primaryErrorCode?: string;
-};
-
-class InsightError extends Error {
-  code?: string;
-  source?: InsightSource;
-
-  constructor(message: string, code?: string, source?: InsightSource) {
-    super(message);
-    this.name = "InsightError";
-    this.code = code;
-    this.source = source;
+  } catch (err) {
+    if (err instanceof InsightError) {
+      throw err;
+    }
+    const code = typeof err === "object" && err && "code" in err ? (err as { code?: string }).code : undefined;
+    throw new InsightError("Binance request failed", (code as string | undefined) ?? "BINANCE_ERROR", "fallback");
   }
 }
 
@@ -146,7 +172,9 @@ export default function AIInsights() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [data, setData] = useState<{ insights: Insight[]; table: Binance24hr[] }>({ insights: [], table: [] });
-  const [lastSuccessfulData, setLastSuccessfulData] = useState<{ insights: Insight[]; table: Binance24hr[] } | null>(null);
+  const [lastSuccessfulData, setLastSuccessfulData] = useState<
+    { insights: Insight[]; table: Binance24hr[]; source: InsightSource }
+  | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isUsingCache, setIsUsingCache] = useState(false);
   const [activeSource, setActiveSource] = useState<InsightSource | null>(null);
@@ -156,10 +184,11 @@ export default function AIInsights() {
     queryFn: fetchInsights,
     enabled: isAuthenticated,
     refetchOnWindowFocus: true,
-    refetchInterval: () => (typeof document !== "undefined" && document.visibilityState === "visible" ? 5 * 60 * 1000 : false),
+    refetchInterval: () =>
+      typeof document !== "undefined" && document.visibilityState === "visible" ? 5 * 60 * 1000 : false,
     onSuccess: (payload) => {
       setData({ insights: payload.insights, table: payload.table });
-      setLastSuccessfulData({ insights: payload.insights, table: payload.table });
+      setLastSuccessfulData({ insights: payload.insights, table: payload.table, source: payload.source });
       setLastUpdated(new Date());
       setIsUsingCache(false);
       setActiveSource(payload.source);
@@ -189,8 +218,9 @@ export default function AIInsights() {
       }
 
       if (lastSuccessfulData) {
-        setData(lastSuccessfulData);
+        setData({ insights: lastSuccessfulData.insights, table: lastSuccessfulData.table });
         setIsUsingCache(true);
+        setActiveSource(lastSuccessfulData.source);
         toast({
           title: message,
           description: description ?? "Showing your last saved insights instead.",
@@ -199,6 +229,7 @@ export default function AIInsights() {
       } else {
         setData({ insights: [], table: [] });
         setIsUsingCache(false);
+        setActiveSource(null);
         toast({
           title: message,
           description,
