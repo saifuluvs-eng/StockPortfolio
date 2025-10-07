@@ -7,6 +7,7 @@ import { aiService } from "./services/aiService";
 import { portfolioService } from "./services/portfolioService";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
+import { registerMetricsRoute } from "./routes/metrics";
 
 function parseBooleanQuery(value: unknown): boolean {
   if (Array.isArray(value)) return parseBooleanQuery(value[0]);
@@ -35,6 +36,8 @@ export function registerRoutes(app: Express): void {
   // Auth middleware
   // TODO: Uncomment this when you are ready to enable real authentication.
   //await setupAuth(app);
+
+  registerMetricsRoute(app);
 
   // Auth routes
   // This route should also be protected to get the currently logged-in user.
