@@ -1,5 +1,5 @@
 // client/src/pages/Home.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -52,6 +52,18 @@ type TickerResponse = {
   price?: string | number;
   priceChangePercent?: string | number;
 } & Record<string, unknown>;
+type Position = {
+  symbol: string;
+  qty: number;
+  avgPrice: number;
+  livePrice?: number;
+};
+type SanitizedPortfolio = {
+  totalValue: number | null;
+  totalPnl: number | null;
+  totalPnlPercent: number | null;
+  positions: Position[];
+};
 
 // ---------- Utils ----------
 const nf2 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -127,17 +139,183 @@ export default function Home() {
   }, [networkEnabled]);
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
-  const { data: port } = useQuery({
+  const { data: port } = useQuery<SanitizedPortfolio | null>({
     queryKey: ["/api/portfolio", user?.uid],
     queryFn: getQueryFn<PortfolioSummary | null>({ on401: "returnNull" }),
     select: (summary) => {
       const totalValue = toNum(summary?.totalValue ?? null);
+      const totalPnl = toNum(summary?.totalPnL ?? null);
       const totalPnlPercent = toNum(summary?.totalPnLPercent ?? null);
-      return { totalValue: totalValue ?? null, totalPnlPercent: totalPnlPercent ?? null };
+      const rawPositions = Array.isArray(summary?.positions) ? summary?.positions : [];
+
+      const positions = rawPositions
+        .map((raw) => {
+          const symbol =
+            typeof (raw as any)?.symbol === "string"
+              ? ((raw as any).symbol as string).trim().toUpperCase()
+              : null;
+          const qty = toNum((raw as any)?.qty);
+          const avgPrice = toNum((raw as any)?.avgPrice);
+          const livePrice = toNum((raw as any)?.livePrice);
+          if (!symbol || qty === null || avgPrice === null) return null;
+          return {
+            symbol,
+            qty,
+            avgPrice,
+            livePrice: livePrice ?? undefined,
+          };
+        })
+        .filter(Boolean) as Position[];
+
+      return {
+        totalValue: totalValue ?? null,
+        totalPnl: totalPnl ?? null,
+        totalPnlPercent: totalPnlPercent ?? null,
+        positions,
+      };
     },
     refetchInterval: 120_000,
     enabled: networkEnabled && !!user, // compute only when network is allowed and user is signed in
   });
+
+  const positions = port?.positions ?? [];
+  const serverTotalValue = port?.totalValue ?? 0;
+  const serverTotalPnl = port?.totalPnl ?? 0;
+  const serverTotalPnlPercent = port?.totalPnlPercent ?? 0;
+
+  const [liveWS, setLiveWS] = useState<Record<string, number>>({});
+  const [liveHTTP, setLiveHTTP] = useState<Record<string, number>>({});
+  const positionsKey = useMemo(
+    () => positions.map((p) => p.symbol).sort().join(","),
+    [positions],
+  );
+
+  useEffect(() => {
+    if (!positions.length) return;
+    if (!networkEnabled) return;
+    if (typeof window === "undefined") return;
+
+    const symbols = Array.from(new Set(positions.map((p) => p.symbol)));
+    if (!symbols.length) return;
+
+    const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
+    const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      symbols.forEach((s) => ws.send(JSON.stringify({ type: "subscribe", symbol: s })));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg?.type === "price_update" && msg?.data && typeof msg.data === "object") {
+          setLiveWS((prev) => {
+            let changed = false;
+            const next = { ...prev };
+            for (const [sym, price] of Object.entries(msg.data)) {
+              const symbol = sym.toUpperCase();
+              const parsed = Number(price as any);
+              if (Number.isFinite(parsed) && next[symbol] !== parsed) {
+                next[symbol] = parsed;
+                changed = true;
+              }
+            }
+            return changed ? next : prev;
+          });
+        }
+      } catch {}
+    };
+
+    return () => {
+      try {
+        ws.close();
+      } catch {}
+    };
+  }, [networkEnabled, positionsKey]);
+
+  useEffect(() => {
+    if (!positions.length) return;
+
+    const symbols = Array.from(new Set(positions.map((p) => p.symbol)));
+    if (!symbols.length) return;
+
+    let cancelled = false;
+
+    async function fetchPrices() {
+      try {
+        const url =
+          "https://api.binance.com/api/v3/ticker/price?symbols=" +
+          encodeURIComponent(JSON.stringify(symbols));
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const arr: Array<{ symbol: string; price: string }> = await res.json();
+        if (cancelled) return;
+
+        setLiveHTTP((prev) => {
+          const next = { ...prev };
+          for (const row of arr) {
+            const price = Number(row.price);
+            if (Number.isFinite(price)) next[row.symbol.toUpperCase()] = price;
+          }
+          return next;
+        });
+      } catch {
+        // ignore polling errors
+      }
+    }
+
+    fetchPrices();
+    const id = setInterval(fetchPrices, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [positionsKey]);
+
+  const currentPriceFor = (sym: string, fallback: number) => {
+    const S = sym.toUpperCase();
+    if (Number.isFinite(liveWS[S])) return liveWS[S];
+    if (Number.isFinite(liveHTTP[S])) return liveHTTP[S];
+    return fallback;
+  };
+
+  const totals = useMemo(() => {
+    if (!positions.length) {
+      return {
+        totalValue: serverTotalValue,
+        totalPnl: serverTotalPnl,
+        totalPnlPercent: serverTotalPnlPercent,
+      };
+    }
+
+    let invested = 0;
+    let currentWorth = 0;
+    for (const pos of positions) {
+      const latest = currentPriceFor(pos.symbol, pos.livePrice ?? pos.avgPrice);
+      invested += pos.avgPrice * pos.qty;
+      currentWorth += latest * pos.qty;
+    }
+
+    const pnlValue = currentWorth - invested;
+    const pnlPercent = invested > 0 ? (pnlValue / invested) * 100 : 0;
+
+    return {
+      totalValue: currentWorth,
+      totalPnl: pnlValue,
+      totalPnlPercent: pnlPercent,
+    };
+  }, [
+    positions,
+    liveHTTP,
+    liveWS,
+    serverTotalPnl,
+    serverTotalPnlPercent,
+    serverTotalValue,
+  ]);
+
+  const safeTotalValue = Number.isFinite(totals.totalValue) ? totals.totalValue : 0;
+  const safeTotalPnlPercent = Number.isFinite(totals.totalPnlPercent) ? totals.totalPnlPercent : 0;
 
   const { data: gain } = useQuery({
     queryKey: ["/api/market/gainers"],
@@ -195,11 +373,9 @@ export default function Home() {
   });
 
   // ---------- Displays ----------
-  const portfolioValueDisplay = port?.totalValue == null ? "$0.00" : `$${nf2.format(port.totalValue)}`;
-  const portfolioPctDisplay =
-    port?.totalPnlPercent == null
-      ? "+0.00%"
-      : `${port.totalPnlPercent >= 0 ? "+" : ""}${nf2.format(port.totalPnlPercent)}%`;
+  const portfolioValueDisplay = `$${nf2.format(safeTotalValue)}`;
+  const portfolioPctDisplay = `${safeTotalPnlPercent >= 0 ? "+" : ""}${nf2.format(safeTotalPnlPercent)}%`;
+  const pctColorClass = safeTotalPnlPercent >= 0 ? "text-green-500" : "text-red-500";
 
   const top3 = gain?.top ?? null;
   const gainersDisplay =
@@ -243,8 +419,8 @@ export default function Home() {
                     <h3 className="font-semibold text-foreground mb-1">Portfolio</h3>
                     <p className="text-2xl font-bold text-foreground" data-testid="text-portfolio-value">{portfolioValueDisplay}</p>
                     <div className="flex items-center space-x-1 mt-1">
-                      <TrendingUp className={`w-3 h-3 ${(port?.totalPnlPercent ?? 0) >= 0 ? "text-green-500" : "text-red-500"}`} />
-                      <span className={`text-xs ${(port?.totalPnlPercent ?? 0) >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="text-portfolio-change">
+                      <TrendingUp className={`w-3 h-3 ${pctColorClass}`} />
+                      <span className={`text-xs ${pctColorClass}`} data-testid="text-portfolio-change">
                         {portfolioPctDisplay}
                       </span>
                     </div>
@@ -297,7 +473,7 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Total P&L</h3>
-                    <p className={`text-2xl font-bold ${(port?.totalPnlPercent ?? 0) >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="text-total-pnl-percent">
+                    <p className={`text-2xl font-bold ${pctColorClass}`} data-testid="text-total-pnl-percent">
                       {portfolioPctDisplay}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">Overall performance</p>
