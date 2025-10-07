@@ -1,0 +1,15 @@
+.app-shell {
+  --sidebar-w: 240px;
+  display: flex;
+  min-height: 100vh;
+}
+.app-shell.is-collapsed { --sidebar-w: 64px; }
+
+.app-shell > aside { width: var(--sidebar-w); }
+.app-content {
+  flex: 1;
+  min-width: 0;
+  background: var(--app-bg, #0b0b0b);
+  padding: 16px;
+  box-sizing: border-box;
+}
