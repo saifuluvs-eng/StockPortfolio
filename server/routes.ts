@@ -6,6 +6,7 @@ import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
 import { portfolioService } from "./services/portfolioService";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
+import { registerMetricsRoute } from "./routes/metrics";
 import { z } from "zod";
 
 function parseBooleanQuery(value: unknown): boolean {
@@ -48,6 +49,8 @@ export function registerRoutes(app: Express): void {
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
+
+  registerMetricsRoute(app);
 
   // Enhanced Portfolio routes
   app.get('/api/portfolio', isAuthenticated, async (req: Request, res: Response) => {
