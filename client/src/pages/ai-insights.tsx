@@ -1,7 +1,7 @@
 // client/src/pages/ai-insights.tsx
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNowStrict } from "date-fns";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +53,13 @@ type InsightsPayload = {
   marketOverview: MarketOverview | null;
   symbolInsights: SymbolInsight[];
   heuristicHighlights: HeuristicHighlight[];
+};
+
+type ApiResponse = Partial<InsightsPayload> & {
+  lastUpdated?: string | null;
+  heuristicHighlights?: HeuristicHighlight[] | null;
+  symbolInsights?: SymbolInsight[] | null;
+  marketOverview?: MarketOverview | null;
 };
 
 type Binance24hr = {
@@ -274,6 +281,19 @@ async function fetchInsightsFallback(): Promise<InsightsPayload> {
   }
 }
 
+async function fetchInsights(): Promise<ApiResponse | InsightsPayload> {
+  try {
+    const r = await api("/api/ai/insights");
+    if (r.ok) {
+      return (await r.json()) as ApiResponse;
+    }
+  } catch {
+    /* swallow so we can fall back below */
+  }
+
+  return await fetchInsightsFallback();
+}
+
 export default function AIInsights() {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -283,13 +303,6 @@ export default function AIInsights() {
     symbolInsights: [],
     heuristicHighlights: [],
   });
-
-  type ApiResponse = Partial<InsightsPayload> & {
-    lastUpdated?: string | null;
-    heuristicHighlights?: HeuristicHighlight[] | null;
-    symbolInsights?: SymbolInsight[] | null;
-    marketOverview?: MarketOverview | null;
-  };
 
   const normalisePayload = (payload: ApiResponse | InsightsPayload): InsightsPayload => {
     const isoTimestamp =
@@ -308,20 +321,12 @@ export default function AIInsights() {
     };
   };
 
-  const runMutation = useMutation({
-    mutationFn: async () => {
-      // 1) Try your API if it exists
-      try {
-        const r = await api("/api/ai/insights");
-        if (r.ok) {
-          return (await r.json()) as ApiResponse;
-        }
-      } catch {
-        /* fall back below */
-      }
-      // 2) Fallback: local “AI-style” insights from Binance data
-      return await fetchInsightsFallback();
-    },
+  const query = useQuery({
+    queryKey: ["ai-insights"],
+    queryFn: fetchInsights,
+    enabled: false,
+    retry: false,
+    refetchOnWindowFocus: false,
     onSuccess: (payload) => {
       setData(normalisePayload(payload));
       toast({ title: "Insights updated" });
@@ -338,9 +343,9 @@ export default function AIInsights() {
       !data.marketOverview &&
       data.symbolInsights.length === 0 &&
       data.heuristicHighlights.length === 0 &&
-      !runMutation.isPending
+      !query.isFetching
     ) {
-      runMutation.mutate();
+      void query.refetch();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -370,13 +375,13 @@ export default function AIInsights() {
               <Link href="/gainers">View full gainers table</Link>
             </Button>
             <Button
-              onClick={() => runMutation.mutate()}
-              disabled={!isAuthenticated || runMutation.isPending}
+              onClick={() => void query.refetch()}
+              disabled={!isAuthenticated || query.isFetching}
               className="bg-primary text-primary-foreground"
               data-testid="button-refresh-insights"
             >
-              <RefreshCw className={`w-4 h-4 ${runMutation.isPending ? "animate-spin" : ""}`} />
-              <span className="ml-2">{runMutation.isPending ? "Refreshing..." : "Refresh"}</span>
+              <RefreshCw className={`w-4 h-4 ${query.isFetching ? "animate-spin" : ""}`} />
+              <span className="ml-2">{query.isFetching ? "Refreshing..." : "Refresh"}</span>
             </Button>
           </div>
         </div>
