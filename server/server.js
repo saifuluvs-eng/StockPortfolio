@@ -195,7 +195,96 @@ app.options('*', cors(corsOptions), (req, res) => {
 app.use(express.json());
 
 // ensure memory store exists once
-const memory = globalThis.__MEM__ ?? (globalThis.__MEM__ = { portfolio: [], scans: [] });
+const memory =
+  globalThis.__MEM__ ?? (globalThis.__MEM__ = { portfolio: { users: {} }, scans: [] });
+
+function ensurePortfolioStore() {
+  const store = memory.portfolio;
+  if (!store || typeof store !== "object" || Array.isArray(store)) {
+    memory.portfolio = { users: {} };
+    return memory.portfolio;
+  }
+  if (!store.users || typeof store.users !== "object") {
+    store.users = {};
+  }
+  return store;
+}
+
+function resolveUid(value) {
+  if (Array.isArray(value)) {
+    return resolveUid(value[0]);
+  }
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function getUid(req, body) {
+  return resolveUid(body?.uid) ?? resolveUid(req.query?.uid);
+}
+
+function getUserPortfolio(uid) {
+  const store = ensurePortfolioStore();
+  const key = uid ?? "__default__";
+  if (!store.users[key]) {
+    store.users[key] = { positions: [] };
+  }
+  return store.users[key];
+}
+
+function resolveSymbol(...inputs) {
+  for (const input of inputs) {
+    if (typeof input !== "string") continue;
+    const trimmed = input.trim();
+    if (!trimmed) continue;
+    return normalizeSymbol(trimmed);
+  }
+  return "";
+}
+
+function toFiniteNumber(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function refreshPositionMetrics(position) {
+  const qty = toFiniteNumber(position.qty) ?? 0;
+  const avg = toFiniteNumber(position.avgPrice) ?? 0;
+  const liveCandidate = toFiniteNumber(position.livePrice);
+  const live =
+    liveCandidate != null && liveCandidate > 0 ? liveCandidate : avg > 0 ? avg : 0;
+  position.qty = qty;
+  position.avgPrice = avg;
+  position.livePrice = live;
+  position.pnl = live * qty - avg * qty;
+}
+
+function serializePositions(positions) {
+  return positions.map((position) => {
+    refreshPositionMetrics(position);
+    const { id, ...rest } = position;
+    return rest;
+  });
+}
+
+function computeTotals(positions) {
+  let totalValue = 0;
+  let invested = 0;
+  for (const position of positions) {
+    refreshPositionMetrics(position);
+    totalValue += position.livePrice * position.qty;
+    invested += position.avgPrice * position.qty;
+  }
+  const totalPnL = totalValue - invested;
+  const totalPnLPercent = invested > 0 ? (totalPnL / invested) * 100 : 0;
+  return { totalValue, totalPnL, totalPnLPercent };
+}
 
 app.get("/", (_req, res) => {
   res.json({ message: "Stock Portfolio backend is running" });
@@ -264,45 +353,132 @@ app.post("/api/echo", (req, res) => {
   res.json({ echo: req.body ?? null });
 });
 
-app.get("/api/portfolio", (_req, res) => {
-  res.json(memory.portfolio);
+app.get("/api/portfolio", (req, res) => {
+  const uid = getUid(req, req.body ?? {});
+  if (!uid) {
+    res.status(400).json({ error: "missing_uid" });
+    return;
+  }
+  const user = getUserPortfolio(uid);
+  const totals = computeTotals(user.positions);
+  res.json({ ...totals, positions: serializePositions(user.positions) });
 });
 
 app.post("/api/portfolio", (req, res) => {
-  const { symbol, qty = null, entry = null, createdAt = new Date().toISOString() } = req.body ?? {};
+  const body = req.body ?? {};
+  const uid = getUid(req, body);
+  if (!uid) {
+    res.status(400).json({ error: "missing_uid" });
+    return;
+  }
 
-  const trimmed = typeof symbol === "string" ? symbol.trim() : "";
-  const normalizedSymbol = trimmed ? normalizeSymbol(trimmed) : "";
+  const user = getUserPortfolio(uid);
+  const action = typeof body.action === "string" ? body.action.toLowerCase() : "add";
 
-  if (!normalizedSymbol) {
+  if (action === "delete") {
+    const targetId =
+      typeof body.id === "string" && body.id.trim().length > 0 ? body.id.trim() : null;
+    const symbol = resolveSymbol(body.symbol, body.position?.symbol, req.query?.symbol);
+    if (!symbol && !targetId) {
+      res.status(400).json({ error: "invalid_symbol" });
+      return;
+    }
+
+    const before = user.positions.length;
+    user.positions = user.positions.filter((position) => {
+      const matchesSymbol = symbol ? resolveSymbol(position.symbol) === symbol : false;
+      const matchesId = targetId ? position.id === targetId : false;
+      return !matchesSymbol && !matchesId;
+    });
+    const totals = computeTotals(user.positions);
+    res.json({ ok: before !== user.positions.length, ...totals, positions: serializePositions(user.positions) });
+    return;
+  }
+
+  const payload =
+    body.position && typeof body.position === "object" ? body.position : body;
+  const symbol = resolveSymbol(payload?.symbol, payload?.sym);
+  if (!symbol) {
     res.status(400).json({ error: "invalid_symbol" });
     return;
   }
 
-  const row = {
-    id: randomUUID(),
-    symbol: normalizedSymbol,
-    qty,
-    entry,
-    createdAt,
-  };
+  const qty = toFiniteNumber(payload?.qty);
+  if (qty == null || qty <= 0) {
+    res.status(400).json({ error: "invalid_quantity" });
+    return;
+  }
 
-  memory.portfolio.push(row);
+  const avgPrice = toFiniteNumber(payload?.avgPrice ?? body?.entry ?? payload?.entry);
+  if (avgPrice == null || avgPrice <= 0) {
+    res.status(400).json({ error: "invalid_avg_price" });
+    return;
+  }
 
-  res.status(201).json(row);
+  const existing = user.positions.find(
+    (position) => resolveSymbol(position.symbol) === symbol || position.id === symbol,
+  );
+
+  if (existing) {
+    const newQty = existing.qty + qty;
+    const newAvg =
+      newQty > 0
+        ? (existing.avgPrice * existing.qty + avgPrice * qty) / newQty
+        : avgPrice;
+    existing.qty = newQty;
+    existing.avgPrice = newAvg;
+    if (!toFiniteNumber(existing.livePrice)) {
+      existing.livePrice = avgPrice;
+    }
+    refreshPositionMetrics(existing);
+  } else {
+    const position = {
+      id: randomUUID(),
+      symbol,
+      qty,
+      avgPrice,
+      livePrice: avgPrice,
+      pnl: 0,
+    };
+    refreshPositionMetrics(position);
+    user.positions.unshift(position);
+  }
+
+  const totals = computeTotals(user.positions);
+  res.json({ ok: true, ...totals, positions: serializePositions(user.positions) });
 });
 
 app.delete("/api/portfolio/:id", (req, res) => {
-  const { id } = req.params;
-  const index = memory.portfolio.findIndex((item) => item.id === id);
+  const uid = getUid(req, req.body ?? {});
+  if (!uid) {
+    res.status(400).json({ error: "missing_uid" });
+    return;
+  }
 
-  if (index === -1) {
+  const user = getUserPortfolio(uid);
+  const rawParam = typeof req.params?.id === "string" ? req.params.id.trim() : "";
+  const targetId = rawParam || (typeof req.query?.id === "string" ? req.query.id.trim() : "");
+  const symbol = resolveSymbol(req.query?.symbol, rawParam);
+  if (!symbol && !targetId) {
+    res.status(400).json({ error: "invalid_symbol" });
+    return;
+  }
+
+  const before = user.positions.length;
+  user.positions = user.positions.filter((position) => {
+    const matchesSymbol = symbol ? resolveSymbol(position.symbol) === symbol : false;
+    const matchesId =
+      targetId && typeof position.id === "string" ? position.id === targetId : false;
+    return !matchesSymbol && !matchesId;
+  });
+
+  if (before === user.positions.length) {
     res.status(404).json({ error: "not_found" });
     return;
   }
 
-  const [removed] = memory.portfolio.splice(index, 1);
-  res.json(removed);
+  const totals = computeTotals(user.positions);
+  res.json({ ok: true, ...totals, positions: serializePositions(user.positions) });
 });
 
 const BINANCE = "https://api.binance.com";
