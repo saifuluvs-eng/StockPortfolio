@@ -1,14 +1,14 @@
 .card {
   position: sticky;
   top: 8px;
-  z-index: 2;
+  z-index: 3;
   background: var(--card-bg, #101010);
   border: 1px solid var(--card-border, #2a2a2a);
   border-radius: 10px;
   padding: 10px;
-  margin-bottom: 10px;
   font-size: 12px;
   line-height: 1.2;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
 }
 
 .label {
@@ -100,8 +100,6 @@
   align-items: center;
   gap: 8px;
   margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px dashed var(--card-border, #2a2a2a);
   color: #bdbdbd;
 }
 

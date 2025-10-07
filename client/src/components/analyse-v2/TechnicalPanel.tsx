@@ -37,22 +37,27 @@ const mockMetrics: Metric[] = [
 
 export function TechnicalPanel({ symbol, tf }: TechnicalPanelProps) {
   return (
-    <div>
-      <ul className={styles.list}>
-        <li className={styles.meta}>{symbol.toUpperCase()} · {tf.toUpperCase()} snapshot</li>
-        {mockMetrics.map((metric) => (
-          <li key={metric.label} className={styles.row}>
-            <span className={styles.labelWrap}>
-              <span
-                className={styles.dot}
-                style={{ backgroundColor: statusColor[metric.status] }}
-              />
-              <span className={styles.label}>{metric.label}</span>
-            </span>
-            <span className={styles.value}>{metric.value}</span>
-          </li>
-        ))}
-      </ul>
+    <div className={styles.card} role="region" aria-label="Technical breakdown">
+      <div className={styles.header}>TECHNICAL BREAKDOWN</div>
+      <div className={styles.body}>
+        <div className={styles.subtle}>
+          {symbol.toUpperCase()} · {tf.toUpperCase()} snapshot
+        </div>
+        <div className={styles.list}>
+          {mockMetrics.map((metric) => (
+            <div key={metric.label} className={styles.row}>
+              <span className={styles.labelWrap}>
+                <span
+                  className={styles.dot}
+                  style={{ backgroundColor: statusColor[metric.status] }}
+                />
+                <span className={styles.label}>{metric.label}</span>
+              </span>
+              <span className={styles.value}>{metric.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

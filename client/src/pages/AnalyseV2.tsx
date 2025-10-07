@@ -17,8 +17,7 @@ export default function AnalyseV2() {
   return (
     <div className={styles.layout}>
       <section className={`${styles.panel} ${styles.panelTechnical} ${styles.dense}`}>
-        <div className={styles.panelHeader}>Technical Breakdown</div>
-        <div className={styles.panelBody}>
+        <div className={styles.leftBody}>
           <LeftControlBox
             symbol={symbol}
             timeframe={timeframe}
