@@ -1,6 +1,16 @@
 export type TechPayload = {
-  summary: string;
-  indicators: Record<string, any>;
+  summary?: string;
+  indicators: {
+    close: number;
+    rsi?: number;
+    macd?: { macd: number; signal: number; histogram: number };
+    adx?: number;
+    ema: { e20?: number; e50?: number; e200?: number };
+    atrPct?: number;
+    vol: { last: number; zScore: number; xAvg50: number };
+    srProximityPct?: number;
+    trendScore: number;
+  };
   generatedAt: string;
 };
 
@@ -19,12 +29,12 @@ export async function computeTechnicalAll(
   symbol: string,
   tf: string,
 ): Promise<TechPayload> {
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  return {
-    summary: `Technical snapshot for ${symbol} @ ${tf}`,
-    indicators: { rsi: 60, macd: "bullish" },
-    generatedAt: new Date().toISOString(),
-  };
+  const r = await fetch(
+    `/api/metrics?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`,
+  );
+  if (!r.ok) throw new Error("metrics_failed");
+  const data = await r.json();
+  return data as { indicators: TechPayload["indicators"]; generatedAt: string };
 }
 
 export async function computeAI(

@@ -8,15 +8,84 @@ type TechnicalPanelProps = {
   data: TechPayload | null;
 };
 
-function formatValue(value: unknown): string {
-  if (value == null) return "—";
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+const numberFormatter = new Intl.NumberFormat(undefined, {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+function formatNumber(value: number | null | undefined, digits = 2): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+function formatPercent(value: number | null | undefined, digits = 1): string {
+  const formatted = formatNumber(value, digits);
+  return formatted === "—" ? formatted : `${formatted}%`;
 }
 
 export function TechnicalPanel({ symbol, tf, data }: TechnicalPanelProps) {
   const lastRun = relativeTimeFrom(data?.generatedAt);
-  const entries = data ? Object.entries(data.indicators ?? {}) : [];
+  const indicators = data?.indicators;
+
+  const rows = indicators
+    ? [
+        {
+          label: "Close",
+          value:
+            indicators.close == null
+              ? "—"
+              : numberFormatter.format(indicators.close),
+        },
+        {
+          label: "RSI",
+          value: formatNumber(indicators.rsi, 1),
+        },
+        {
+          label: "MACD",
+          value:
+            indicators.macd == null
+              ? "—"
+              : [
+                  formatNumber(indicators.macd.macd, 2),
+                  formatNumber(indicators.macd.signal, 2),
+                  formatNumber(indicators.macd.histogram, 2),
+                ].join(" / "),
+        },
+        {
+          label: "ADX",
+          value: formatNumber(indicators.adx, 1),
+        },
+        {
+          label: "EMA (20/50/200)",
+          value: [indicators.ema?.e20, indicators.ema?.e50, indicators.ema?.e200]
+            .map((value) =>
+              value == null ? "—" : numberFormatter.format(value),
+            )
+            .join(" / "),
+        },
+        {
+          label: "ATR %",
+          value: formatPercent(indicators.atrPct, 1),
+        },
+        {
+          label: "Volume",
+          value: indicators.vol
+            ? `Last ${numberFormatter.format(indicators.vol.last)} · z ${formatNumber(indicators.vol.zScore, 2)} · 50 avg ${numberFormatter.format(indicators.vol.xAvg50)}`
+            : "—",
+        },
+        {
+          label: "SR proximity",
+          value: formatPercent(indicators.srProximityPct, 1),
+        },
+        {
+          label: "Trend score",
+          value: formatNumber(indicators.trendScore, 2),
+        },
+      ]
+    : [];
 
   return (
     <div className={styles.card} role="region" aria-label="Technical breakdown">
@@ -33,15 +102,15 @@ export function TechnicalPanel({ symbol, tf, data }: TechnicalPanelProps) {
         </div>
         {data ? (
           <>
-            <div className={styles.summary}>{data.summary}</div>
+            {data.summary && <div className={styles.summary}>{data.summary}</div>}
             <div className={styles.list}>
-              {entries.length === 0 ? (
+              {rows.length === 0 ? (
                 <div className={styles.emptyRow}>No indicator data.</div>
               ) : (
-                entries.map(([label, value]) => (
+                rows.map(({ label, value }) => (
                   <div key={label} className={styles.row}>
                     <span className={styles.label}>{label}</span>
-                    <span className={styles.value}>{formatValue(value)}</span>
+                    <span className={styles.value}>{value}</span>
                   </div>
                 ))
               )}
