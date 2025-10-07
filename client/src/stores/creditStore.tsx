@@ -49,3 +49,5 @@ export function useCreditStore() {
   }
   return context;
 }
+
+export const useCredits = useCreditStore;
