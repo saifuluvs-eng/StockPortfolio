@@ -6,7 +6,6 @@ type AISummaryPanelProps = {
   symbol: string;
   tf: string;
   data: AIPayload | null;
-  hasTechnical: boolean;
   onRunAI: () => void;
   aiDisabled: boolean;
   aiTooltip: string;
@@ -23,7 +22,6 @@ export function AISummaryPanel({
   symbol,
   tf,
   data,
-  hasTechnical,
   onRunAI,
   aiDisabled,
   aiTooltip,
@@ -32,23 +30,8 @@ export function AISummaryPanel({
   const lastRun = relativeTimeFrom(data?.generatedAt);
 
   if (!data) {
-    if (!hasTechnical) {
-      return (
-        <div className={styles.wrapper}>
-          <div className={styles.emptyNeutral}>
-            <div className={styles.emptyTitle}>Run a scan to see AI insights here.</div>
-          </div>
-        </div>
-      );
-    }
-
     return (
       <div className={`${styles.wrapper} ${styles.overlayWrapper}`}>
-        <div className={styles.overlayGhost}>
-          <div className={styles.summary} style={{ opacity: 0.35 }}>
-            AI insights will appear here once generated.
-          </div>
-        </div>
         <div className={styles.overlayCta}>
           <button
             type="button"
@@ -59,11 +42,10 @@ export function AISummaryPanel({
             disabled={aiDisabled}
             title={aiTooltip}
           >
-            {isLoading ? "Running…" : "Run Technical Analysis with AI (5 credits)"}
+            {isLoading
+              ? "Running…"
+              : "Run Technical Analysis with AI (5 credits) for a deeper summary."}
           </button>
-          <p className={styles.overlayHelper}>
-            Generate the technical analysis with AI summary for deeper context.
-          </p>
         </div>
       </div>
     );
