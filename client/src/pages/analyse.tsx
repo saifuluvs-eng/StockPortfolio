@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -768,6 +769,27 @@ export default function Analyse() {
           </Button>
         </div>
       </header>
+
+      <Alert
+        variant="warning"
+        className="border border-amber-500/60 bg-amber-500/10 text-amber-900 dark:border-amber-400/50 dark:bg-amber-500/20 dark:text-amber-50"
+      >
+        <AlertTitle>Prefer Analyse v2 for the latest tools</AlertTitle>
+        <AlertDescription className="flex flex-col gap-3 text-sm text-current sm:flex-row sm:items-center sm:justify-between">
+          <span className="max-w-2xl text-sm">
+            This legacy view remains available for reference, but all active development now happens in Analyse v2.
+            Jump over to explore refreshed technicals, AI insights, and a streamlined layout.
+          </span>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={() => setLocation("/analyse-v2")}
+          >
+            Open Analyse v2
+          </Button>
+        </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <Card className="border border-border/60 bg-card/70">
