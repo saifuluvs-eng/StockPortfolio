@@ -6,6 +6,11 @@ type AISummaryPanelProps = {
   symbol: string;
   tf: string;
   data: AIPayload | null;
+  hasTechnical: boolean;
+  onRunAI: () => void;
+  aiDisabled: boolean;
+  aiTooltip: string;
+  isLoading: boolean;
 };
 
 const confidenceLabel: Record<AIPayload["confidence"], string> = {
@@ -14,17 +19,51 @@ const confidenceLabel: Record<AIPayload["confidence"], string> = {
   high: "High",
 };
 
-export function AISummaryPanel({ symbol, tf, data }: AISummaryPanelProps) {
+export function AISummaryPanel({
+  symbol,
+  tf,
+  data,
+  hasTechnical,
+  onRunAI,
+  aiDisabled,
+  aiTooltip,
+  isLoading,
+}: AISummaryPanelProps) {
   const lastRun = relativeTimeFrom(data?.generatedAt);
 
   if (!data) {
-    return (
-      <div className={styles.wrapper}>
-        <div className={styles.empty}>
-          <div className={styles.emptyTitle}>Run the AI report</div>
-          <div className={styles.emptySub}>
-            Generate the technical analysis with AI summary to see insights here.
+    if (!hasTechnical) {
+      return (
+        <div className={styles.wrapper}>
+          <div className={styles.emptyNeutral}>
+            <div className={styles.emptyTitle}>Run a scan to see AI insights here.</div>
           </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`${styles.wrapper} ${styles.overlayWrapper}`}>
+        <div className={styles.overlayGhost}>
+          <div className={styles.summary} style={{ opacity: 0.35 }}>
+            AI insights will appear here once generated.
+          </div>
+        </div>
+        <div className={styles.overlayCta}>
+          <button
+            type="button"
+            className={styles.overlayButton}
+            onClick={() => {
+              void onRunAI();
+            }}
+            disabled={aiDisabled}
+            title={aiTooltip}
+          >
+            {isLoading ? "Running…" : "Run Technical Analysis with AI (5 credits)"}
+          </button>
+          <p className={styles.overlayHelper}>
+            Generate the technical analysis with AI summary for deeper context.
+          </p>
         </div>
       </div>
     );

@@ -5,12 +5,12 @@ type Timeframe = "15m" | "1h" | "4h" | "1d";
 type ChartPanelProps = {
   symbol: string;
   tf: Timeframe;
-  onChangeDisplayTf?: (tf: Timeframe) => void;
+  onChangeChartTf?: (tf: Timeframe) => void;
 };
 
 const TFS: Timeframe[] = ["15m", "1h", "4h", "1d"];
 
-export function ChartPanel({ symbol, tf, onChangeDisplayTf }: ChartPanelProps) {
+export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
   return (
     <div className={styles.wrapper}>
       <div className={styles.tabs}>
@@ -25,7 +25,7 @@ export function ChartPanel({ symbol, tf, onChangeDisplayTf }: ChartPanelProps) {
               key={option}
               type="button"
               className={`${styles.tfBtn} ${tf === option ? styles.tfActive : ""}`}
-              onClick={() => onChangeDisplayTf?.(option)}
+              onClick={() => onChangeChartTf?.(option)}
             >
               {option}
             </button>

@@ -22,7 +22,10 @@ export function TechnicalPanel({ symbol, tf, data }: TechnicalPanelProps) {
     <div className={styles.card} role="region" aria-label="Technical breakdown">
       <div className={styles.header}>
         <span>Technical Breakdown</span>
-        {lastRun && <span className={styles.timestamp}>Last analysed · {lastRun}</span>}
+        <span className={styles.headerMeta}>
+          <span className={styles.headerCaption}>Analysed @ {tf}</span>
+          {lastRun && <span className={styles.timestamp}>Last analysed · {lastRun}</span>}
+        </span>
       </div>
       <div className={styles.body}>
         <div className={styles.subtle}>

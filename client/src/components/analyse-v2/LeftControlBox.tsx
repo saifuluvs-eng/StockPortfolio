@@ -1,14 +1,4 @@
-import { useState } from "react";
 import styles from "./LeftControlBox.module.css";
-import { useCredits } from "@/stores/creditStore";
-import { COST, spendGuard } from "@/lib/credits";
-import { getCached, kAI, kTech, setCached } from "@/lib/cache";
-import {
-  AIPayload,
-  TechPayload,
-  computeAI,
-  computeTechnicalAll,
-} from "@/lib/analyseClient";
 
 type Timeframe = "15m" | "1h" | "4h" | "1d";
 
@@ -17,8 +7,14 @@ type Props = {
   tfAnalysis: Timeframe;
   onChangeSymbol: (s: string) => void;
   onChangeTimeframe: (tf: Timeframe) => void;
-  setTechState: (payload: TechPayload | null) => void;
-  setAIState: (payload: AIPayload | null) => void;
+  credits: number;
+  loading: "tech" | "ai" | null;
+  onRunTech: () => void;
+  onRunAI: () => void;
+  techDisabled: boolean;
+  aiDisabled: boolean;
+  techTooltip: string;
+  aiTooltip: string;
 };
 
 const TFS: Timeframe[] = ["15m", "1h", "4h", "1d"];
@@ -28,97 +24,18 @@ export default function LeftControlBox({
   tfAnalysis,
   onChangeSymbol,
   onChangeTimeframe,
-  setTechState,
-  setAIState,
+  credits,
+  loading,
+  onRunTech,
+  onRunAI,
+  techDisabled,
+  aiDisabled,
+  techTooltip,
+  aiTooltip,
 }: Props) {
-  const { credits, canSpend, spend, refund } = useCredits();
-  const [loading, setLoading] = useState<"tech" | "ai" | null>(null);
-
-  const techCached = getCached<TechPayload>(kTech(symbol, tfAnalysis));
-  const aiCached = getCached<AIPayload>(kAI(symbol, tfAnalysis));
-  const hasTechCache = Boolean(techCached);
-  const hasAiCache = Boolean(aiCached);
-
   const handleSelectTf = (tf: Timeframe) => {
     if (tf === tfAnalysis) return;
     onChangeTimeframe(tf);
-  };
-
-  const handleTech = async () => {
-    if (loading) return;
-    const key = kTech(symbol, tfAnalysis);
-    const cached = getCached<TechPayload>(key);
-    if (cached) {
-      setTechState(cached);
-      return;
-    }
-    if (!canSpend(COST.TECH)) return;
-    setLoading("tech");
-    try {
-      const result = await spendGuard(
-        canSpend,
-        spend,
-        refund,
-        COST.TECH,
-        "tech",
-        async () => {
-          const tech = await computeTechnicalAll(symbol, tfAnalysis);
-          setCached(key, tech);
-          setTechState(tech);
-          return tech;
-        },
-        { symbol, tf: tfAnalysis },
-      );
-      return result;
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleAI = async () => {
-    if (loading) return;
-    const techKey = kTech(symbol, tfAnalysis);
-    const aiKey = kAI(symbol, tfAnalysis);
-
-    const cachedAI = getCached<AIPayload>(aiKey);
-    if (cachedAI) {
-      setAIState(cachedAI);
-      const cachedTech = getCached<TechPayload>(techKey);
-      if (cachedTech) {
-        setTechState(cachedTech);
-      }
-      return;
-    }
-
-    if (!canSpend(COST.AI)) return;
-    setLoading("ai");
-    try {
-      await spendGuard(
-        canSpend,
-        spend,
-        refund,
-        COST.AI,
-        "ai",
-        async () => {
-          let tech = getCached<TechPayload>(techKey);
-          if (!tech) {
-            tech = await computeTechnicalAll(symbol, tfAnalysis);
-            setCached(techKey, tech);
-            setTechState(tech);
-          } else {
-            setTechState(tech);
-          }
-
-          const ai = await computeAI(symbol, tfAnalysis, tech);
-          setCached(aiKey, ai);
-          setAIState(ai);
-          return ai;
-        },
-        { symbol, tf: tfAnalysis },
-      );
-    } finally {
-      setLoading(null);
-    }
   };
 
   return (
@@ -162,9 +79,11 @@ export default function LeftControlBox({
         <button
           type="button"
           className={styles.actionButton}
-          disabled={loading === "ai" || (!canSpend(COST.TECH) && !hasTechCache)}
-          onClick={handleTech}
-          title="Runs all indicators (RSI, MACD, ADX, EMAs, ATR, volume stats, SR proximity) for the selected timeframe. Uses 2 credits per timeframe. Cached ~10 min."
+          disabled={techDisabled}
+          onClick={() => {
+            void onRunTech();
+          }}
+          title={techTooltip}
         >
           {loading === "tech" ? "Running…" : "Technical Analysis"}
           <span className={styles.costBadge}>(2 credits)</span>
@@ -172,9 +91,11 @@ export default function LeftControlBox({
         <button
           type="button"
           className={styles.actionButton}
-          disabled={loading === "tech" || (!canSpend(COST.AI) && !hasAiCache)}
-          onClick={handleAI}
-          title="Computes technicals and generates an AI summary with entry/target/invalidations for the selected timeframe. Uses 5 credits per timeframe. Cached ~10 min."
+          disabled={aiDisabled}
+          onClick={() => {
+            void onRunAI();
+          }}
+          title={aiTooltip}
         >
           {loading === "ai" ? "Running…" : "Technical Analysis With AI report"}
           <span className={styles.costBadge}>(5 credits)</span>

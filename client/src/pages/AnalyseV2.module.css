@@ -54,37 +54,38 @@
   opacity: 0.85;
 }
 
+.panelHeaderMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-transform: none;
+}
+
+.panelHeaderCredits {
+  font-size: 11px;
+  letter-spacing: 0.2px;
+  opacity: 0.75;
+  text-transform: none;
+}
+
+.panelHeaderCaption {
+  font-size: 10px;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.panelHeaderSub {
+  font-size: 10px;
+  letter-spacing: 0.2px;
+  opacity: 0.6;
+  text-transform: none;
+}
+
 .panelBody {
   flex: 1;
   padding: 0;
-}
-
-.syncBanner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 10px;
-  background: rgba(255, 255, 255, 0.05);
-  border-bottom: 1px solid var(--card-border, #2a2a2a);
-  font-size: 11px;
-  letter-spacing: 0.2px;
-}
-
-.syncButton {
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: transparent;
-  color: #f1f1f1;
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.2px;
-  cursor: pointer;
-}
-
-.syncButton:hover {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .dense {
