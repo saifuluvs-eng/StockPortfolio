@@ -80,38 +80,16 @@ async function fetchInsightsFallback(): Promise<{ insights: Insight[]; table: Bi
     const byRangePos = [...enriched].sort((a, b) => b._pos - a._pos);
     const byVolume = [...enriched].sort((a, b) => b._qv - a._qv);
 
-    const topBreakouts = byRangePos
-      .filter((x) => x._chg > 3 && x._pos > 0.7)
-      .slice(0, 5)
-      .map((x) => x.symbol.replace("USDT", ""));
+    const topBreakouts = byRangePos.filter((x) => x._chg > 3 && x._pos > 0.7).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
     const momentumLeaders = byChange.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
     const liquidityLeaders = byVolume.slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
-    const overheated = enriched
-      .filter((x) => x._chg > 15 && x._pos > 0.9)
-      .slice(0, 5)
-      .map((x) => x.symbol.replace("USDT", ""));
+    const overheated = enriched.filter((x) => x._chg > 15 && x._pos > 0.9).slice(0, 5).map((x) => x.symbol.replace("USDT", ""));
 
     const insights: Insight[] = [
-      {
-        title: "Breakout candidates near 24h highs",
-        detail: topBreakouts.length ? topBreakouts.join(", ") : "No clear breakouts right now.",
-        tags: ["breakout", "price-action"],
-      },
-      {
-        title: "Top momentum leaders (24h %)",
-        detail: momentumLeaders.length ? momentumLeaders.join(", ") : "No strong momentum standouts.",
-        tags: ["momentum"],
-      },
-      {
-        title: "Highest liquidity (quote volume)",
-        detail: liquidityLeaders.length ? liquidityLeaders.join(", ") : "Low liquidity market.",
-        tags: ["liquidity"],
-      },
-      {
-        title: "Potentially overheated (extended move)",
-        detail: overheated.length ? overheated.join(", ") : "No overheated clusters.",
-        tags: ["risk", "overextension"],
-      },
+      { title: "Breakout candidates near 24h highs", detail: topBreakouts.length ? topBreakouts.join(", ") : "No clear breakouts right now.", tags: ["breakout", "price-action"] },
+      { title: "Top momentum leaders (24h %)", detail: momentumLeaders.length ? momentumLeaders.join(", ") : "No strong momentum standouts.", tags: ["momentum"] },
+      { title: "Highest liquidity (quote volume)", detail: liquidityLeaders.length ? liquidityLeaders.join(", ") : "Low liquidity market.", tags: ["liquidity"] },
+      { title: "Potentially overheated (extended move)", detail: overheated.length ? overheated.join(", ") : "No overheated clusters.", tags: ["risk", "overextension"] },
     ];
 
     return { insights, table: byChange.slice(0, 50) }; // keep table light
@@ -173,8 +151,8 @@ export default function AIInsights() {
   const { toast } = useToast();
   const [data, setData] = useState<{ insights: Insight[]; table: Binance24hr[] }>({ insights: [], table: [] });
   const [lastSuccessfulData, setLastSuccessfulData] = useState<
-    { insights: Insight[]; table: Binance24hr[]; source: InsightSource }
-  | null>(null);
+    { insights: Insight[]; table: Binance24hr[]; source: InsightSource } | null
+  >(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isUsingCache, setIsUsingCache] = useState(false);
   const [activeSource, setActiveSource] = useState<InsightSource | null>(null);
@@ -194,7 +172,10 @@ export default function AIInsights() {
       setActiveSource(payload.source);
 
       if (payload.source === "fallback" && payload.primaryErrorCode === "RATE_LIMITED") {
-        toast({ title: "Using Binance fallback", description: "Primary insights are rate limited. Showing market-based estimates." });
+        toast({
+          title: "Using Binance fallback",
+          description: "Primary insights are rate limited. Showing market-based estimates.",
+        });
       } else if (payload.source === "fallback" && payload.primaryErrorCode === "AUTH_REQUIRED") {
         toast({
           title: "Sign in required",
