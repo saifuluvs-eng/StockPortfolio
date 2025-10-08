@@ -12,9 +12,9 @@ export const NAV: NavItem[] = [
   { label: "Dashboard", to: "/", icon: Home },
   {
     label: "Analyse",
-    to: "/analyse-v2",
+    to: "/analyse",
     icon: LineChart,
-    match: [/^\/(analyse-v2|charts)(\/|$)/],
+    match: [/^\/(analyse|charts)(\/|$)/],
   },
   { label: "Gainers", to: "/gainers", icon: TrendingUp },
   { label: "Portfolio", to: "/portfolio", icon: Wallet },
