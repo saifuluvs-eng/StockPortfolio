@@ -573,6 +573,25 @@ app.get("/api/watchlist", (_req, res) => {
 
 app.post("/api/watchlist", (req, res) => res.json({ data: [] }));
 
+// Minimal metrics endpoint (stub)
+// GET /api/metrics?symbol=INJUSDT&tf=1h
+app.get("/api/metrics", async (req, res) => {
+  const { symbol, tf } = req.query;
+  res.json({
+    ok: true,
+    symbol: String(symbol ?? ""),
+    timeframe: String(tf ?? ""),
+    indicators: {
+      rsi: null,
+      macd: { macd: null, signal: null, histogram: null },
+      ema: { ema20: null, ema50: null, ema200: null },
+      atr: null,
+      trendScore: 0,
+    },
+    message: "stub",
+  });
+});
+
 app.post('/api/scanner/scan', async (req, res) => {
   try {
     const { timeframe = '4h' } = req.body || {};
