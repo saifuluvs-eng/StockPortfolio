@@ -7,6 +7,7 @@ import LeftControlBox from "@/components/analyse-v2/LeftControlBox";
 import { useCredits } from "@/stores/creditStore";
 import { getCached, kAI, kTech, setCached } from "@/lib/cache";
 import { COST, spendGuard } from "@/lib/credits";
+import { toBinance } from "@/lib/symbols";
 import {
   computeAI,
   computeTechnicalAll,
@@ -29,20 +30,28 @@ export default function AnalyseV2() {
   const { credits, canSpend, spend, refund, ready } = useCredits();
   const { toast } = useToast();
 
+  const normalizedSymbol = useMemo(() => toBinance(symbol), [symbol]);
+
   useEffect(() => {
     setTechState(null);
     setAiState(null);
-    const tech = getCached<TechPayload>(kTech(symbol, tfAnalysis));
+    const tech = getCached<TechPayload>(kTech(normalizedSymbol, tfAnalysis));
     if (tech?.isPlaceholder && typeof window !== "undefined") {
-      window.sessionStorage?.removeItem(kTech(symbol, tfAnalysis));
+      window.sessionStorage?.removeItem(kTech(normalizedSymbol, tfAnalysis));
     }
     setTechState(tech && !tech.isPlaceholder ? tech : null);
-    const ai = getCached<AIPayload>(kAI(symbol, tfAnalysis));
+    const ai = getCached<AIPayload>(kAI(normalizedSymbol, tfAnalysis));
     setAiState(ai ?? null);
-  }, [symbol, tfAnalysis]);
+  }, [normalizedSymbol, tfAnalysis]);
 
-  const keyTech = useMemo(() => kTech(symbol, tfAnalysis), [symbol, tfAnalysis]);
-  const keyAI = useMemo(() => kAI(symbol, tfAnalysis), [symbol, tfAnalysis]);
+  const keyTech = useMemo(
+    () => kTech(normalizedSymbol, tfAnalysis),
+    [normalizedSymbol, tfAnalysis],
+  );
+  const keyAI = useMemo(
+    () => kAI(normalizedSymbol, tfAnalysis),
+    [normalizedSymbol, tfAnalysis],
+  );
 
   const hasTechCache = (() => {
     const cached = getCached<TechPayload>(keyTech);
@@ -73,9 +82,9 @@ export default function AnalyseV2() {
         COST.TECH,
         "tech",
         async () => {
-          return await computeTechnicalAll(symbol, tfAnalysis);
+          return await computeTechnicalAll(normalizedSymbol, tfAnalysis);
         },
-        { symbol, tf: tfAnalysis },
+        { symbol: normalizedSymbol, tf: tfAnalysis },
       );
       if (!result) {
         toast({
@@ -90,7 +99,7 @@ export default function AnalyseV2() {
         if (typeof window !== "undefined") {
           window.sessionStorage?.removeItem(keyTech);
         }
-        refund(COST.TECH, "tech:placeholder", { symbol, tf: tfAnalysis });
+        refund(COST.TECH, "tech:placeholder", { symbol: normalizedSymbol, tf: tfAnalysis });
         toast({
           title: "Technical data unavailable",
           description:
@@ -142,15 +151,15 @@ export default function AnalyseV2() {
             if (cachedTech?.isPlaceholder && typeof window !== "undefined") {
               window.sessionStorage?.removeItem(keyTech);
             }
-            return await computeTechnicalAll(symbol, tfAnalysis);
+            return await computeTechnicalAll(normalizedSymbol, tfAnalysis);
           })();
           if (tech.isPlaceholder) {
             return { tech, ai: null as AIPayload | null };
           }
-          const ai = await computeAI(symbol, tfAnalysis, tech);
+          const ai = await computeAI(normalizedSymbol, tfAnalysis, tech);
           return { tech, ai };
         },
-        { symbol, tf: tfAnalysis },
+        { symbol: normalizedSymbol, tf: tfAnalysis },
       );
       if (!result) {
         toast({
@@ -168,7 +177,7 @@ export default function AnalyseV2() {
           window.sessionStorage?.removeItem(keyTech);
           window.sessionStorage?.removeItem(keyAI);
         }
-        refund(COST.AI, "ai:placeholder", { symbol, tf: tfAnalysis });
+        refund(COST.AI, "ai:placeholder", { symbol: normalizedSymbol, tf: tfAnalysis });
         toast({
           title: "AI summary unavailable",
           description:
@@ -220,6 +229,7 @@ export default function AnalyseV2() {
         <div className={styles.leftBody}>
           <LeftControlBox
             symbol={symbol}
+            normalizedSymbol={normalizedSymbol}
             tfAnalysis={tfAnalysis}
             onChangeSymbol={(next) => setSymbol(next)}
             onChangeTimeframe={(nextTf) => {
@@ -236,7 +246,7 @@ export default function AnalyseV2() {
             techTooltip={techTooltip}
             aiTooltip={aiTooltip}
           />
-          <TechnicalPanel symbol={symbol} tf={tfAnalysis} data={techState} />
+          <TechnicalPanel symbol={normalizedSymbol} tf={tfAnalysis} data={techState} />
         </div>
       </section>
 
@@ -244,7 +254,7 @@ export default function AnalyseV2() {
         <div className={styles.panelHeader}>Chart @ {tfChart}</div>
         <div className={styles.panelBody}>
           <ChartPanel
-            symbol={symbol}
+            symbol={normalizedSymbol}
             tf={tfChart}
             onChangeChartTf={(next) => setTfChart(next)}
           />
@@ -270,7 +280,7 @@ export default function AnalyseV2() {
         </div>
         <div className={styles.panelBody}>
           <AISummaryPanel
-            symbol={symbol}
+            symbol={normalizedSymbol}
             tf={tfAnalysis}
             data={aiState}
             techData={techState}

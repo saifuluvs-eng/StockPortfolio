@@ -1,9 +1,11 @@
 import styles from "./LeftControlBox.module.css";
+import { toBinance } from "@/lib/symbols";
 
 type Timeframe = "15m" | "1h" | "4h" | "1d";
 
 type Props = {
   symbol: string;
+  normalizedSymbol?: string;
   tfAnalysis: Timeframe;
   onChangeSymbol: (s: string) => void;
   onChangeTimeframe: (tf: Timeframe) => void;
@@ -22,6 +24,7 @@ const TFS: Timeframe[] = ["15m", "1h", "4h", "1d"];
 
 export default function LeftControlBox({
   symbol,
+  normalizedSymbol,
   tfAnalysis,
   onChangeSymbol,
   onChangeTimeframe,
@@ -35,6 +38,8 @@ export default function LeftControlBox({
   techTooltip,
   aiTooltip,
 }: Props) {
+  const displaySymbol = normalizedSymbol ?? toBinance(symbol);
+
   const handleSelectTf = (tf: Timeframe) => {
     if (tf === tfAnalysis) return;
     onChangeTimeframe(tf);
@@ -108,7 +113,7 @@ export default function LeftControlBox({
 
       <div className={styles.rowInfo}>
         <div className={styles.nowViewing}>
-          Currently viewing <b>{symbol}</b>
+          Currently viewing <b>{displaySymbol}</b>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { toBinance } from "@/lib/symbols";
 
 export type TechPayload = {
   summary?: string;
@@ -52,7 +53,8 @@ type OhlcvResponse = {
   candles: OhlcvCandle[];
 };
 
-const ENABLE_LEGACY_SCANNER = false;
+const ENABLE_LEGACY_SCANNER =
+  (import.meta.env.VITE_ENABLE_LEGACY_SCANNER ?? "true").toLowerCase() !== "false";
 
 type LegacyScanRow = {
   title?: string;
@@ -241,7 +243,8 @@ export async function computeTechnicalAll(
   symbol: string,
   tf: string,
 ): Promise<TechPayload> {
-  const url = `/api/metrics?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`;
+  const normalizedSymbol = toBinance(symbol);
+  const url = `/api/metrics?symbol=${encodeURIComponent(normalizedSymbol)}&tf=${encodeURIComponent(tf)}`;
 
   try {
     const res = await api(url);
@@ -249,7 +252,7 @@ export async function computeTechnicalAll(
     if (!res.ok) {
       if (res.status === 404) {
         return createPlaceholderTechnical(
-          symbol,
+          normalizedSymbol,
           tf,
           "Metrics API unavailable (404). Showing placeholder indicators.",
         );
@@ -274,11 +277,11 @@ export async function computeTechnicalAll(
     console.warn("computeTechnicalAll: metrics fetch failed", error);
     // Attempt legacy fallback when metrics endpoint is unavailable.
     try {
-      return await fetchLegacyTechnical(symbol, tf);
+      return await fetchLegacyTechnical(normalizedSymbol, tf);
     } catch (legacyError) {
       console.warn("computeTechnicalAll: legacy fallback failed", legacyError);
       return createPlaceholderTechnical(
-        symbol,
+        normalizedSymbol,
         tf,
         "Unable to load live technical metrics. Showing placeholder indicators.",
       );
@@ -291,10 +294,11 @@ export async function computeAI(
   tf: string,
   tech?: TechPayload,
 ): Promise<AIPayload> {
+  const normalizedSymbol = toBinance(symbol);
   await new Promise((resolve) => setTimeout(resolve, 500));
   return {
     source: "heuristic",
-    summary: `AI-style read for ${symbol} @ ${tf}`,
+    summary: `AI-style read for ${normalizedSymbol} @ ${tf}`,
     entry: "—",
     target: "—",
     stop: "—",
@@ -304,15 +308,21 @@ export async function computeAI(
 }
 
 export async function fetchOhlcv(symbol: string, tf: string): Promise<OhlcvCandle[]> {
-  const url = `/api/ohlcv?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`;
-  const res = await api(url);
-  if (!res.ok) {
-    const detail = await res.text();
-    throw new Error(detail || `Failed to load OHLCV data (${res.status})`);
+  const normalizedSymbol = toBinance(symbol);
+  const url = `/api/ohlcv?symbol=${encodeURIComponent(normalizedSymbol)}&tf=${encodeURIComponent(tf)}`;
+  try {
+    const res = await api(url);
+    if (!res.ok) {
+      const detail = await res.text();
+      throw new Error(detail || `Failed to load OHLCV data (${res.status})`);
+    }
+    const payload = (await res.json()) as OhlcvResponse;
+    if (!payload?.candles || !Array.isArray(payload.candles)) {
+      throw new Error("OHLCV payload missing candles");
+    }
+    return payload.candles;
+  } catch (error) {
+    console.warn("fetchOhlcv: falling back to empty data", error);
+    return [];
   }
-  const payload = (await res.json()) as OhlcvResponse;
-  if (!payload?.candles || !Array.isArray(payload.candles)) {
-    throw new Error("OHLCV payload missing candles");
-  }
-  return payload.candles;
 }
