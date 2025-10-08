@@ -348,7 +348,7 @@ function resolveUid(value) {
 }
 
 function getUid(req, body) {
-  return resolveUid(body?.uid) ?? resolveUid(req.query?.uid);
+  return resolveUid(body?.uid) ?? resolveUid(req.query?.uid) ?? "demo-user";
 }
 
 function getUserPortfolio(uid) {
