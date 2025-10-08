@@ -14,13 +14,46 @@ type TradingViewWidgetProps = {
 
 const DEFAULT_STUDIES: string[] = [];
 const LEGACY_LAYOUT_KEYS = ["tv_layout_v1"];
+const TRADINGVIEW_STORAGE_PREFIXES = [
+  "tradingview.chart",
+  "tradingview.widget",
+  "tradingview.settings",
+  "tradingview.favorite",
+  "tradingview.symbols",
+  "chartproperties",
+  "chartprefs",
+  "chartfavorite",
+  "charttemplates",
+  "study_templates",
+  "drawing_templates",
+  "favorite_draw",
+];
 
 function purgeLegacyTradingViewLayout() {
   if (typeof window === "undefined") return;
   try {
-    for (const key of LEGACY_LAYOUT_KEYS) {
-      window.localStorage.removeItem(key);
-    }
+    const removeMatching = (storage: Storage) => {
+      for (const key of LEGACY_LAYOUT_KEYS) {
+        storage.removeItem(key);
+      }
+
+      for (let i = storage.length - 1; i >= 0; i -= 1) {
+        const storageKey = storage.key(i);
+        if (!storageKey) continue;
+        const normalized = storageKey.toLowerCase();
+        if (
+          TRADINGVIEW_STORAGE_PREFIXES.some((prefix) =>
+            normalized.startsWith(prefix),
+          ) ||
+          normalized.includes("tradingview")
+        ) {
+          storage.removeItem(storageKey);
+        }
+      }
+    };
+
+    removeMatching(window.localStorage);
+    removeMatching(window.sessionStorage);
   } catch {
     // Ignore storage access issues (Safari private mode, etc.)
   }
