@@ -578,24 +578,6 @@ export default function Analyse() {
   };
 
   const handleSearch = () => {
-    if (!networkEnabled) {
-      if (backendOffline) {
-        toast({
-          title: "Backend required",
-          description: "Connect this dashboard to your backend build before searching symbols.",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
-    if (!isAuthenticated) {
-      toast({
-        title: "Feature locked",
-        description: "Please log in to search for other coins.",
-        variant: "destructive",
-      });
-      return;
-    }
     const raw = (searchInput || "").trim().toUpperCase();
     if (!raw) {
       toast({
@@ -605,10 +587,36 @@ export default function Analyse() {
       });
       return;
     }
+
     const fullSymbol = toUsdtSymbol(raw);
     setSelectedSymbol(fullSymbol);
     setScanResult(null);
     setSearchInput("");
+
+    if (!networkEnabled) {
+      if (backendOffline) {
+        toast({
+          title: "Backend required",
+          description: `Symbol set to ${displayPair(fullSymbol)}. Connect this dashboard to your backend build to load analysis.`,
+          variant: "destructive",
+        });
+      } else if (backendPending) {
+        toast({
+          title: "Symbol updated",
+          description: `Waiting for backend status before loading ${displayPair(fullSymbol)}.`,
+        });
+      }
+      return;
+    }
+
+    if (!isAuthenticated) {
+      toast({
+        title: "Symbol updated",
+        description: `Showing ${displayPair(fullSymbol)} price data. Sign in to run full analysis.`,
+      });
+      return;
+    }
+
     toast({
       title: "Symbol updated",
       description: `Loading ${displayPair(fullSymbol)} chart`,
@@ -616,24 +624,6 @@ export default function Analyse() {
   };
 
   const handleScan = () => {
-    if (!networkEnabled) {
-      if (backendOffline) {
-        toast({
-          title: "Backend required",
-          description: "Provide a backend URL (VITE_API_BASE) to run scans from Vercel.",
-          variant: "destructive",
-        });
-      }
-      return;
-    }
-    if (!isAuthenticated) {
-      toast({
-        title: "Feature locked",
-        description: "Please sign in to run scans.",
-        variant: "destructive",
-      });
-      return;
-    }
     const raw = (searchInput || "").trim().toUpperCase();
     if (
       raw &&
@@ -643,12 +633,38 @@ export default function Analyse() {
       const fullSymbol = toUsdtSymbol(raw);
       setSelectedSymbol(fullSymbol);
       setSearchInput("");
+
+      if (!networkEnabled) {
+        if (backendOffline) {
+          toast({
+            title: "Backend required",
+            description: `Symbol set to ${displayPair(fullSymbol)}. Provide a backend URL (VITE_API_BASE) to run scans from Vercel.`,
+            variant: "destructive",
+          });
+        } else if (backendPending) {
+          toast({
+            title: "Symbol updated",
+            description: `Waiting for backend status before analysing ${displayPair(fullSymbol)}.`,
+          });
+        }
+        return;
+      }
+
+      if (!isAuthenticated) {
+        toast({
+          title: "Symbol updated",
+          description: `Sign in to analyse ${displayPair(fullSymbol)}.`,
+        });
+        return;
+      }
+
       toast({
         title: "Symbol updated",
         description: `Analyzing ${displayPair(fullSymbol)}`,
       });
       return;
     }
+
     if (!selectedSymbol) {
       toast({
         title: "Invalid symbol",
@@ -657,6 +673,32 @@ export default function Analyse() {
       });
       return;
     }
+
+    if (!networkEnabled) {
+      if (backendOffline) {
+        toast({
+          title: "Backend required",
+          description: "Provide a backend URL (VITE_API_BASE) to run scans from Vercel.",
+          variant: "destructive",
+        });
+      } else if (backendPending) {
+        toast({
+          title: "Please wait",
+          description: "Still checking backend status. Try again in a moment.",
+        });
+      }
+      return;
+    }
+
+    if (!isAuthenticated) {
+      toast({
+        title: "Feature locked",
+        description: "Please sign in to run scans.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     runScan(selectedSymbol, selectedTimeframe);
   };
 
@@ -803,13 +845,12 @@ export default function Analyse() {
                   onKeyPress={handleKeyPress}
                   className="h-11 w-full min-w-0 pl-10"
                   data-testid="input-search-symbol"
-                  disabled={!isAuthenticated || !networkEnabled}
                 />
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               </div>
               <Button
                 onClick={handleScan}
-                disabled={isScanning || !isAuthenticated || !networkEnabled}
+                disabled={isScanning || !networkEnabled}
                 className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 lg:w-auto"
                 data-testid="button-scan"
               >
