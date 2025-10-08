@@ -39,6 +39,13 @@ const intervalMap = (tf) =>
     '1m': '1M',
   }[String(tf)] || '4h');
 
+const ohlcvTimeframeMap = Object.freeze({
+  '15m': '15m',
+  '1h': '1h',
+  '4h': '4h',
+  '1d': '1d',
+});
+
 const fmt = (v) =>
   typeof v === 'string'
     ? v
@@ -67,14 +74,23 @@ async function getKlines(symbol, timeframe, limit = 500) {
   const lows = [];
   const closes = [];
   const volumes = [];
+  const candles = [];
   for (const k of rows) {
-    opens.push(+k[1]);
-    highs.push(+k[2]);
-    lows.push(+k[3]);
-    closes.push(+k[4]);
-    volumes.push(+k[5]);
+    const openTime = Number(k[0]);
+    const open = Number(k[1]);
+    const high = Number(k[2]);
+    const low = Number(k[3]);
+    const close = Number(k[4]);
+    const volume = Number(k[5]);
+    const closeTime = Number(k[6]);
+    candles.push({ openTime, closeTime, open, high, low, close, volume });
+    opens.push(open);
+    highs.push(high);
+    lows.push(low);
+    closes.push(close);
+    volumes.push(volume);
   }
-  return { opens, highs, lows, closes, volumes, lastClose: closes.at(-1) };
+  return { opens, highs, lows, closes, volumes, lastClose: closes.at(-1), candles };
 }
 
 function classify(value, { gt, lt }) {
@@ -351,6 +367,44 @@ app.get("/api/time", (_req, res) => {
 
 app.post("/api/echo", (req, res) => {
   res.json({ echo: req.body ?? null });
+});
+
+app.get("/api/ohlcv", async (req, res) => {
+  const rawSymbol = Array.isArray(req.query.symbol) ? req.query.symbol[0] : req.query.symbol;
+  const rawTf = Array.isArray(req.query.tf) ? req.query.tf[0] : req.query.tf;
+  const symbolInput = typeof rawSymbol === "string" ? rawSymbol.trim() : "";
+  const tfInput = typeof rawTf === "string" ? rawTf.trim() : "";
+  const mappedTf = ohlcvTimeframeMap[tfInput];
+
+  if (!symbolInput || !mappedTf) {
+    res.status(400).json({ error: "bad_params" });
+    return;
+  }
+
+  const symbol = normalizeSymbol(symbolInput);
+
+  try {
+    const kl = await getKlines(symbol, mappedTf, 500);
+    if (kl?.error) {
+      const status = kl.status ?? 502;
+      res.status(status).json({ error: kl.error, status });
+      return;
+    }
+
+    const candles = Array.isArray(kl.candles) ? kl.candles : [];
+    res.set("cache-control", "public, max-age=30, s-maxage=30");
+    res.json({
+      symbol,
+      tf: tfInput,
+      generatedAt: new Date().toISOString(),
+      candles,
+    });
+  } catch (error) {
+    res.status(502).json({
+      error: "upstream",
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 });
 
 app.get("/api/portfolio", (req, res) => {
