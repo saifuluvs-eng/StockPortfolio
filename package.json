@@ -9,7 +9,8 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "test": "vitest run",
-    "db:push": "npx drizzle-kit@0.31.5 push"
+    "db:push": "npx drizzle-kit@0.31.5 push",
+    "reset:users": "tsx server/scripts/resetUsers.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

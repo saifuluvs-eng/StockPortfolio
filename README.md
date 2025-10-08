@@ -47,3 +47,13 @@ Before deploying to Vercel, ensure the project settings include both sets of Fir
 - **Server credentials**: add the `FIREBASE_*` variables required by the API so the Firebase Admin SDK can authenticate.
 
 Vercel must have both groups of environment variables configured; otherwise the deployment will fail at build time or when handling authenticated requests.
+
+## Resetting demo/test user data
+
+If you need to wipe all locally stored user records (Firebase Auth users, Firestore profiles, and SQLite tables) so that test email addresses can be re-used, run:
+
+```bash
+npm run reset:users
+```
+
+The script deletes every Firebase Auth user, clears the `users` collection in Firestore, and truncates the SQLite tables defined in [`shared/schema.ts`](shared/schema.ts). Ensure the relevant Firebase Admin credentials are available in your environment before executing the command.
