@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import TradingViewChart from "@/components/scanner/trading-view-chart";
 import styles from "./ChartPanel.module.css";
 import { fetchOhlcv } from "@/lib/analyseClient";
+import TradingViewWidget from "@/components/charts/TradingViewWidget";
+import { FallbackChart } from "@/components/scanner/fallback-chart";
 
 type Timeframe = "15m" | "1h" | "4h" | "1d";
 
@@ -26,6 +27,14 @@ export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
     () => (symbol || "BTCUSDT").trim().toUpperCase(),
     [symbol],
   );
+  const [widgetFailed, setWidgetFailed] = useState(false);
+
+  useEffect(() => {
+    setWidgetFailed(false);
+  }, [normalizedSymbol, activeInterval]);
+  const handleWidgetError = useCallback(() => {
+    setWidgetFailed(true);
+  }, []);
   const {
     data: candles,
     isLoading,
@@ -88,12 +97,20 @@ export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
               Failed to load live chart data. Showing fallback visuals.
             </div>
           )}
-          <TradingViewChart
-            symbol={normalizedSymbol}
-            interval={activeInterval}
-            candles={candles}
-            isLoadingFallback={loading}
-          />
+          {widgetFailed ? (
+            <FallbackChart
+              symbol={normalizedSymbol}
+              interval={activeInterval}
+              candles={candles}
+              isLoading={loading}
+            />
+          ) : (
+            <TradingViewWidget
+              symbol={normalizedSymbol}
+              interval={activeInterval}
+              onError={handleWidgetError}
+            />
+          )}
         </div>
       </div>
     </div>
