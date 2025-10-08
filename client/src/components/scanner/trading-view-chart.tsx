@@ -16,6 +16,54 @@ declare global {
   }
 }
 
+const TV_SCRIPT_ID = "tradingview-widget-script";
+const TV_SCRIPT_SRC = "https://s3.tradingview.com/tv.js";
+const LEGACY_LAYOUT_KEYS = ["tv_layout_v1"];
+
+function purgeLegacyLayoutArtifacts() {
+  if (typeof window === "undefined") return;
+  try {
+    for (const key of LEGACY_LAYOUT_KEYS) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore storage access issues
+  }
+}
+
+function loadTradingViewScriptOnce(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") {
+      reject(new Error("Window is not available"));
+      return;
+    }
+
+    if (window.TradingView) {
+      resolve();
+      return;
+    }
+
+    const existing = document.getElementById(TV_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("TradingView script failed to load")),
+        { once: true },
+      );
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = TV_SCRIPT_ID;
+    script.src = TV_SCRIPT_SRC;
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("TradingView script failed to load"));
+    document.head.appendChild(script);
+  });
+}
+
 function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Stable id for the widget’s container (prevents widget from “losing” its node between renders)
@@ -28,14 +76,19 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
   useEffect(() => {
     setUseFallback(false);
 
-    const createWidget = () => {
-      if (!containerRef.current || !window.TradingView) return;
+    let cancelled = false;
 
-      // Ensure the DOM node has the expected id and is clean
-      containerRef.current.id = idRef.current;
-      containerRef.current.innerHTML = "";
-
+    const mountWidget = async () => {
       try {
+        await loadTradingViewScriptOnce();
+        if (cancelled || !containerRef.current || !window.TradingView) return;
+
+        purgeLegacyLayoutArtifacts();
+
+        // Ensure the DOM node has the expected id and is clean
+        containerRef.current.id = idRef.current;
+        containerRef.current.innerHTML = "";
+
         const cfg = buildTvConfig({
           symbol: `BINANCE:${normalizedSymbol}`,
           timeframe: normalizedInterval,
@@ -46,7 +99,7 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
 
         Object.assign(cfg, {
           timezone: "Etc/UTC",
-          style: "1",
+          style: 1,
           allow_symbol_change: true,
           hide_top_toolbar: false,
           hide_legend: false,
@@ -60,37 +113,37 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
           ],
         });
 
-        widgetRef.current = new (window as any).TradingView.widget(cfg);
+        const instantiate = () => {
+          if (cancelled || !containerRef.current) return;
+          try {
+            widgetRef.current = new (window as any).TradingView.widget(cfg);
+            widgetRef.current?.onChartReady?.(() => {
+              // widget ready; we intentionally skip layout persistence to avoid schema mismatches
+            });
+          } catch (error) {
+            console.warn("TradingView widget init failed, using fallback chart", error);
+            setUseFallback(true);
+          }
+        };
 
-        widgetRef.current?.onChartReady?.(() => {
-          // no-op; we intentionally skip layout persistence until schema mismatches are resolved
-        });
+        if (typeof window.TradingView.onready === "function") {
+          window.TradingView.onready(instantiate);
+        } else {
+          instantiate();
+        }
       } catch (e) {
         console.warn("TradingView widget init failed, using fallback chart", e);
         setUseFallback(true);
       }
     };
 
-    if (!window.TradingView) {
-      const script = document.createElement("script");
-      script.src = "https://s3.tradingview.com/tv.js";
-      script.async = true;
-      script.onload = createWidget;
-      script.onerror = () => {
-        console.warn("Failed to load TradingView script, using fallback.");
-        setUseFallback(true);
-      };
-      document.head.appendChild(script);
-      return () => {
-        // no special cleanup needed for the script tag
-      };
-    } else {
-      createWidget();
-    }
+    mountWidget();
 
     return () => {
+      cancelled = true;
       try {
         widgetRef.current?.remove?.();
+        widgetRef.current?.destroy?.();
       } catch (error) {
         console.warn("TradingView widget removal failed", error);
       } finally {

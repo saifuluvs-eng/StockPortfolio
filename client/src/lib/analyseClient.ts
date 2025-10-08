@@ -35,7 +35,6 @@ type MetricsResponse = {
   indicators: TechPayload["indicators"];
 };
 
-let metricsUnsupported = false;
 const ENABLE_LEGACY_SCANNER = false;
 
 type LegacyScanRow = {
@@ -226,20 +225,12 @@ export async function computeTechnicalAll(
   tf: string,
 ): Promise<TechPayload> {
   const url = `/api/metrics?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`;
-  if (metricsUnsupported) {
-    return createPlaceholderTechnical(
-      symbol,
-      tf,
-      "Metrics API unavailable. Showing placeholder indicators.",
-    );
-  }
 
   try {
     const res = await api(url);
 
     if (!res.ok) {
       if (res.status === 404) {
-        metricsUnsupported = true;
         return createPlaceholderTechnical(
           symbol,
           tf,
