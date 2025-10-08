@@ -1,7 +1,7 @@
 // client/src/App.tsx
 import React, { useEffect } from "react";
 import type { RouteComponentProps } from "wouter";
-import { Switch, Route, Redirect } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -18,7 +18,6 @@ import Portfolio from "@/pages/portfolio";
 import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
 import Charts from "@/pages/charts";
-import Analyse from "@/pages/analyse";
 import AnalyseV2 from "@/pages/AnalyseV2";
 import Watchlist from "@/pages/watchlist";
 import Alerts from "@/pages/alerts";
@@ -59,6 +58,16 @@ const withLayout = <C extends React.ComponentType<any>>(Component: C) => {
   return WithLayoutComponent;
 };
 
+const AnalyseRedirect: React.FC<RouteComponentProps<{ symbol?: string }>> = ({
+  params,
+}) => {
+  const [location] = useLocation();
+  const queryIndex = location.indexOf("?");
+  const query = queryIndex >= 0 ? location.slice(queryIndex) : "";
+  const symbolSegment = params?.symbol ? `/${params.symbol}` : "";
+  return <Redirect to={`/analyse-v2${symbolSegment}${query}`} />;
+};
+
 function AppRouter() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return <div>Loading Application...</div>;
@@ -80,7 +89,7 @@ function AppRouter() {
       <Route path="/alerts" component={withLayout(Alerts)} />
 
       {/* ANALYSE */}
-      <Route path="/analyse/:symbol?" component={withLayout(Analyse)} />
+      <Route path="/analyse/:symbol?" component={AnalyseRedirect} />
       <Route path="/analyse-v2/:symbol?" component={withLayout(AnalyseV2)} />
 
       {/* CHARTS */}

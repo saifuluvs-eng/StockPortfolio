@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./AnalyseV2.module.css";
 import { TechnicalPanel } from "@/components/analyse-v2/TechnicalPanel";
 import { ChartPanel } from "@/components/analyse-v2/ChartPanel";
@@ -16,13 +16,35 @@ import {
 } from "@/lib/analyseClient";
 import { relativeTimeFrom } from "@/lib/time";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation, useRoute } from "wouter";
 
 type Timeframe = "15m" | "1h" | "4h" | "1d";
 
+const DEFAULT_SYMBOL = "INJUSDT";
+const DEFAULT_TF: Timeframe = "1h";
+const TIMEFRAMES: Timeframe[] = ["15m", "1h", "4h", "1d"];
+
+function toTimeframe(value: string | null | undefined): Timeframe {
+  if (!value) return DEFAULT_TF;
+  const normalized = value.trim().toLowerCase();
+  const match = TIMEFRAMES.find((tf) => tf === normalized);
+  return (match ?? DEFAULT_TF) as Timeframe;
+}
+
 export default function AnalyseV2() {
-  const [symbol, setSymbol] = useState("INJUSDT");
-  const [tfAnalysis, setTfAnalysis] = useState<Timeframe>("1h");
-  const [tfChart, setTfChart] = useState<Timeframe>("1h");
+  const [match, params] = useRoute("/analyse-v2/:symbol?");
+  const [location, setLocation] = useLocation();
+  const locationState = useMemo(() => {
+    const raw = location ?? "";
+    const [pathPart, searchPart = ""] = raw.split("?");
+    const path = pathPart || "/";
+    return { path, search: searchPart };
+  }, [location]);
+  const syncingFromLocation = useRef(false);
+
+  const [symbol, setSymbol] = useState(DEFAULT_SYMBOL);
+  const [tfAnalysis, setTfAnalysis] = useState<Timeframe>(DEFAULT_TF);
+  const [tfChart, setTfChart] = useState<Timeframe>(DEFAULT_TF);
   const [techState, setTechState] = useState<TechPayload | null>(null);
   const [aiState, setAiState] = useState<AIPayload | null>(null);
   const [loading, setLoading] = useState<"tech" | "ai" | null>(null);
@@ -31,6 +53,67 @@ export default function AnalyseV2() {
   const { toast } = useToast();
 
   const normalizedSymbol = useMemo(() => toBinance(symbol), [symbol]);
+
+  useEffect(() => {
+    if (!match) return;
+
+    const nextSymbol = params?.symbol ? toBinance(params.symbol) : DEFAULT_SYMBOL;
+    const searchParams = new URLSearchParams(locationState.search);
+    const nextTf = toTimeframe(searchParams.get("tf"));
+    const nextChartTf = toTimeframe(searchParams.get("chartTf") ?? nextTf);
+
+    const updates: Array<() => void> = [];
+    if (symbol !== nextSymbol) {
+      updates.push(() => setSymbol(nextSymbol));
+    }
+    if (tfAnalysis !== nextTf) {
+      updates.push(() => setTfAnalysis(nextTf));
+    }
+    if (tfChart !== nextChartTf) {
+      updates.push(() => setTfChart(nextChartTf));
+    }
+
+    if (updates.length > 0) {
+      syncingFromLocation.current = true;
+      updates.forEach((update) => update());
+    }
+  }, [match, params?.symbol, locationState.search, symbol, tfAnalysis, tfChart]);
+
+  useEffect(() => {
+    if (!match) return;
+    if (syncingFromLocation.current) {
+      syncingFromLocation.current = false;
+      return;
+    }
+
+    const searchParams = new URLSearchParams();
+    if (tfAnalysis !== DEFAULT_TF) {
+      searchParams.set("tf", tfAnalysis);
+    }
+    if (tfChart !== tfAnalysis) {
+      searchParams.set("chartTf", tfChart);
+    }
+
+    const search = searchParams.toString();
+    const targetPath = `/analyse-v2/${normalizedSymbol}`;
+    const target = search ? `${targetPath}?${search}` : targetPath;
+    const current =
+      locationState.search !== ""
+        ? `${locationState.path}?${locationState.search}`
+        : locationState.path;
+
+    if (current !== target) {
+      setLocation(target);
+    }
+  }, [
+    match,
+    normalizedSymbol,
+    tfAnalysis,
+    tfChart,
+    locationState.path,
+    locationState.search,
+    setLocation,
+  ]);
 
   useEffect(() => {
     setTechState(null);
