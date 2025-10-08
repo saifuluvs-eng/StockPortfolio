@@ -22,12 +22,36 @@ declare global {
 const TV_SCRIPT_ID = "tradingview-widget-script";
 const TV_SCRIPT_SRC = "https://s3.tradingview.com/tv.js";
 const LEGACY_LAYOUT_KEYS = ["tv_layout_v1"];
+const TRADINGVIEW_STORAGE_PREFIXES = [
+  "tradingview.chart",
+  "tradingview.widget",
+  "chartproperties",
+  "chartprefs",
+  "study_templates",
+  "drawing_templates",
+  "chartfavorites",
+];
+const TV_DISABLED_FEATURES = [
+  "use_localstorage_for_settings",
+  "save_chart_properties_to_local_storage",
+  "save_chart_properties_to_local_storage_sync",
+  "study_templates_auto_save",
+] as const;
 
 function purgeLegacyLayoutArtifacts() {
   if (typeof window === "undefined") return;
   try {
+    const storage = window.localStorage;
     for (const key of LEGACY_LAYOUT_KEYS) {
-      window.localStorage.removeItem(key);
+      storage.removeItem(key);
+    }
+
+    for (let i = storage.length - 1; i >= 0; i -= 1) {
+      const key = storage.key(i);
+      if (!key) continue;
+      if (TRADINGVIEW_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
+        storage.removeItem(key);
+      }
     }
   } catch {
     // ignore storage access issues
@@ -119,6 +143,10 @@ function TradingViewChart({
             "RSI@tv-basicstudies",
             "MACD@tv-basicstudies",
           ],
+          load_last_chart: false,
+          save_last_chart: false,
+          disabled_features: [...TV_DISABLED_FEATURES],
+          autosave: false,
         });
 
         const instantiate = () => {
