@@ -33,7 +33,10 @@ export default function AnalyseV2() {
     setTechState(null);
     setAiState(null);
     const tech = getCached<TechPayload>(kTech(symbol, tfAnalysis));
-    setTechState(tech ?? null);
+    if (tech?.isPlaceholder && typeof window !== "undefined") {
+      window.sessionStorage?.removeItem(kTech(symbol, tfAnalysis));
+    }
+    setTechState(tech && !tech.isPlaceholder ? tech : null);
     const ai = getCached<AIPayload>(kAI(symbol, tfAnalysis));
     setAiState(ai ?? null);
   }, [symbol, tfAnalysis]);
@@ -41,7 +44,10 @@ export default function AnalyseV2() {
   const keyTech = useMemo(() => kTech(symbol, tfAnalysis), [symbol, tfAnalysis]);
   const keyAI = useMemo(() => kAI(symbol, tfAnalysis), [symbol, tfAnalysis]);
 
-  const hasTechCache = Boolean(getCached<TechPayload>(keyTech));
+  const hasTechCache = (() => {
+    const cached = getCached<TechPayload>(keyTech);
+    return Boolean(cached && !cached.isPlaceholder);
+  })();
   const hasAiCache = Boolean(getCached<AIPayload>(keyAI));
 
   const canAffordTech = ready && canSpend(COST.TECH);
@@ -50,9 +56,12 @@ export default function AnalyseV2() {
   const handleRunTech = async () => {
     if (loading) return;
     const cached = getCached<TechPayload>(keyTech);
-    if (cached) {
+    if (cached && !cached.isPlaceholder) {
       setTechState(cached);
       return;
+    }
+    if (cached?.isPlaceholder && typeof window !== "undefined") {
+      window.sessionStorage?.removeItem(keyTech);
     }
     if (!ready || !canSpend(COST.TECH)) return;
     setLoading("tech");
@@ -64,10 +73,7 @@ export default function AnalyseV2() {
         COST.TECH,
         "tech",
         async () => {
-          const tech = await computeTechnicalAll(symbol, tfAnalysis);
-          setCached(keyTech, tech);
-          setTechState(tech);
-          return tech;
+          return await computeTechnicalAll(symbol, tfAnalysis);
         },
         { symbol, tf: tfAnalysis },
       );
@@ -77,6 +83,21 @@ export default function AnalyseV2() {
           description: "You need more credits to run the technical scan.",
           variant: "destructive",
         });
+        return;
+      }
+      setTechState(result);
+      if (result.isPlaceholder) {
+        if (typeof window !== "undefined") {
+          window.sessionStorage?.removeItem(keyTech);
+        }
+        refund(COST.TECH, "tech:placeholder", { symbol, tf: tfAnalysis });
+        toast({
+          title: "Technical data unavailable",
+          description:
+            "Indicators are temporarily offline. Your credits have been refunded.",
+        });
+      } else {
+        setCached(keyTech, result);
       }
     } catch (error) {
       console.error("analyse-v2:tech", error);
@@ -98,8 +119,10 @@ export default function AnalyseV2() {
     if (cachedAI) {
       setAiState(cachedAI);
       const cachedTech = getCached<TechPayload>(keyTech);
-      if (cachedTech) {
+      if (cachedTech && !cachedTech.isPlaceholder) {
         setTechState(cachedTech);
+      } else if (cachedTech?.isPlaceholder && typeof window !== "undefined") {
+        window.sessionStorage?.removeItem(keyTech);
       }
       return;
     }
@@ -115,16 +138,17 @@ export default function AnalyseV2() {
         async () => {
           const tech = await (async () => {
             const cachedTech = getCached<TechPayload>(keyTech);
-            if (cachedTech) return cachedTech;
-            const computed = await computeTechnicalAll(symbol, tfAnalysis);
-            setCached(keyTech, computed);
-            return computed;
+            if (cachedTech && !cachedTech.isPlaceholder) return cachedTech;
+            if (cachedTech?.isPlaceholder && typeof window !== "undefined") {
+              window.sessionStorage?.removeItem(keyTech);
+            }
+            return await computeTechnicalAll(symbol, tfAnalysis);
           })();
-          setTechState(tech);
+          if (tech.isPlaceholder) {
+            return { tech, ai: null as AIPayload | null };
+          }
           const ai = await computeAI(symbol, tfAnalysis, tech);
-          setCached(keyAI, ai);
-          setAiState(ai);
-          return ai;
+          return { tech, ai };
         },
         { symbol, tf: tfAnalysis },
       );
@@ -134,7 +158,29 @@ export default function AnalyseV2() {
           description: "You need more credits to run the AI summary.",
           variant: "destructive",
         });
+        return;
       }
+      const { tech, ai } = result;
+      setTechState(tech);
+      if (tech.isPlaceholder) {
+        setAiState(null);
+        if (typeof window !== "undefined") {
+          window.sessionStorage?.removeItem(keyTech);
+          window.sessionStorage?.removeItem(keyAI);
+        }
+        refund(COST.AI, "ai:placeholder", { symbol, tf: tfAnalysis });
+        toast({
+          title: "AI summary unavailable",
+          description:
+            "Indicators are offline right now. No credits were deducted for AI.",
+        });
+        return;
+      }
+      if (ai) {
+        setAiState(ai);
+        setCached(keyAI, ai);
+      }
+      setCached(keyTech, tech);
     } catch (error) {
       console.error("analyse-v2:ai", error);
       const message =

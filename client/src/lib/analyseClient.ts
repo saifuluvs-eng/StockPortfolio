@@ -14,6 +14,7 @@ export type TechPayload = {
     trendScore: number;
   };
   generatedAt: string;
+  isPlaceholder?: boolean;
 };
 
 export type AIPayload = {
@@ -89,6 +90,7 @@ const createPlaceholderTechnical = (symbol: string, tf: string, reason?: string)
       trendScore: 0,
     },
     generatedAt: new Date().toISOString(),
+    isPlaceholder: true,
   };
 };
 
@@ -207,6 +209,7 @@ async function fetchLegacyTechnical(symbol: string, tf: string): Promise<TechPay
       summary: result.summary?.label,
       indicators,
       generatedAt: result.ts ? new Date(result.ts).toISOString() : new Date().toISOString(),
+      isPlaceholder: false,
     };
   } catch (error) {
     console.warn("Legacy scanner request encountered an error", error);
@@ -257,6 +260,7 @@ export async function computeTechnicalAll(
       summary: data.summary,
       indicators: data.indicators,
       generatedAt: data.generatedAt ?? new Date().toISOString(),
+      isPlaceholder: false,
     };
   } catch (error) {
     console.warn("computeTechnicalAll: metrics fetch failed", error);
