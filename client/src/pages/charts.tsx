@@ -433,6 +433,18 @@ export default function Charts() {
   );
   const symbolInWatchlist = watchlistSymbols.includes(selectedSymbol.toUpperCase());
 
+  const navigateToSymbol = (fullSymbol: string) => {
+    const normalized = toUsdtSymbol(fullSymbol);
+    setSelectedSymbol(normalized);
+    const nextParams = new URLSearchParams(locationInfo.search);
+    nextParams.set("tf", selectedTimeframe);
+    const queryString = nextParams.toString();
+    const targetPath = `/charts/${normalized}`;
+    const target = queryString ? `${targetPath}?${queryString}` : targetPath;
+    setLocation(target);
+    clearWindowSearch();
+  };
+
   const handleToggleWatchlist = () => {
     if (!isAuthenticated) {
       toast({
@@ -468,7 +480,7 @@ export default function Charts() {
       return;
     }
     const fullSymbol = toUsdtSymbol(raw);
-    setSelectedSymbol(fullSymbol);
+    navigateToSymbol(fullSymbol);
     setSearchInput("");
     toast({
       title: "Symbol updated",
@@ -492,7 +504,7 @@ export default function Charts() {
       raw !== asString(displayPair(selectedSymbol)).replace("/USDT", "")
     ) {
       const fullSymbol = toUsdtSymbol(raw);
-      setSelectedSymbol(fullSymbol);
+      navigateToSymbol(fullSymbol);
       setSearchInput("");
       toast({
         title: "Symbol updated",
