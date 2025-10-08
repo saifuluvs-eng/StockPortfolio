@@ -227,6 +227,7 @@ export default function AnalyseV2() {
             symbol={symbol}
             tf={tfAnalysis}
             data={aiState}
+            techData={techState}
             onRunAI={handleRunAI}
             aiDisabled={aiDisabled}
             aiTooltip={aiTooltip}

@@ -1,11 +1,12 @@
 import styles from "./AISummaryPanel.module.css";
-import type { AIPayload } from "@/lib/analyseClient";
+import type { AIPayload, TechPayload } from "@/lib/analyseClient";
 import { relativeTimeFrom } from "@/lib/time";
 
 type AISummaryPanelProps = {
   symbol: string;
   tf: string;
   data: AIPayload | null;
+  techData: TechPayload | null;
   onRunAI: () => void;
   aiDisabled: boolean;
   aiTooltip: string;
@@ -22,16 +23,70 @@ export function AISummaryPanel({
   symbol,
   tf,
   data,
+  techData,
   onRunAI,
   aiDisabled,
   aiTooltip,
   isLoading,
 }: AISummaryPanelProps) {
   const lastRun = relativeTimeFrom(data?.generatedAt);
+  const indicators = techData?.indicators;
+
+  const formatNumber = (value: number | null | undefined, digits = 1) => {
+    if (value == null || Number.isNaN(value)) return "—";
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+  };
+
+  const formatPercent = (value: number | null | undefined, digits = 1) => {
+    const numeric = formatNumber(value, digits);
+    return numeric === "—" ? "—" : `${numeric}%`;
+  };
 
   if (!data) {
     return (
       <div className={`${styles.wrapper} ${styles.overlayWrapper}`}>
+        {techData && (
+          <div className={styles.overlayBackdrop} aria-hidden="true">
+            <div className={styles.overlayBackdropHeader}>
+              <span>{symbol.toUpperCase()}</span>
+              <span>{tf.toUpperCase()} snapshot</span>
+            </div>
+            {techData.summary && (
+              <p className={styles.overlaySummary}>{techData.summary}</p>
+            )}
+            {indicators && (
+              <div className={styles.overlayMetrics}>
+                <div className={styles.overlayMetric}>
+                  <span className={styles.overlayMetricLabel}>RSI</span>
+                  <span className={styles.overlayMetricValue}>
+                    {formatNumber(indicators.rsi, 1)}
+                  </span>
+                </div>
+                <div className={styles.overlayMetric}>
+                  <span className={styles.overlayMetricLabel}>Trend</span>
+                  <span className={styles.overlayMetricValue}>
+                    {formatNumber(indicators.trendScore, 2)}
+                  </span>
+                </div>
+                <div className={styles.overlayMetric}>
+                  <span className={styles.overlayMetricLabel}>MACD</span>
+                  <span className={styles.overlayMetricValue}>
+                    {formatNumber(indicators.macd?.macd, 2)}
+                  </span>
+                </div>
+                <div className={styles.overlayMetric}>
+                  <span className={styles.overlayMetricLabel}>ATR %</span>
+                  <span className={styles.overlayMetricValue}>
+                    {formatPercent(indicators.atrPct, 1)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         <div className={styles.overlayCta}>
           <button
             type="button"
@@ -44,8 +99,12 @@ export function AISummaryPanel({
           >
             {isLoading
               ? "Running…"
-              : "Run Technical Analysis with AI (5 credits) for a deeper summary."}
+              : "Run Technical Analysis with AI (5 credits)"}
           </button>
+          <p className={styles.overlayHint}>
+            Unlock an AI-crafted narrative with entry, target, and risk levels for more
+            accurate decisions.
+          </p>
         </div>
       </div>
     );
