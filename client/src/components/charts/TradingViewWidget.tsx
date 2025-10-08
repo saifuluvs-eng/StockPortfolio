@@ -34,6 +34,9 @@ function TradingViewWidgetComponent({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetRef = useRef<HTMLDivElement | null>(null);
   const scriptRef = useRef<HTMLScriptElement | null>(null);
+  const widgetIdRef = useRef<string>(
+    `tradingview-widget-${Math.random().toString(36).slice(2)}`,
+  );
 
   useEffect(() => {
     const containerEl = containerRef.current;
@@ -41,6 +44,7 @@ function TradingViewWidgetComponent({
     if (!containerEl || !widgetEl) return;
 
     widgetEl.innerHTML = "";
+    widgetEl.id = widgetIdRef.current;
     scriptRef.current?.remove();
     const script = document.createElement("script");
     script.src =
@@ -72,6 +76,7 @@ function TradingViewWidgetComponent({
       compareSymbols: [],
       studies,
       autosize: true,
+      container_id: widgetIdRef.current,
     };
 
     script.innerHTML = JSON.stringify(config, null, 2);
@@ -100,7 +105,6 @@ function TradingViewWidgetComponent({
     hideTopToolbar,
     backgroundColor,
     gridColor,
-    onLoad,
     onError,
   ]);
 
