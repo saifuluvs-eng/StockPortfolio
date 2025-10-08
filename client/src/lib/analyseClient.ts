@@ -35,6 +35,23 @@ type MetricsResponse = {
   indicators: TechPayload["indicators"];
 };
 
+export type OhlcvCandle = {
+  openTime: number;
+  closeTime: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+};
+
+type OhlcvResponse = {
+  symbol: string;
+  tf: string;
+  generatedAt: string;
+  candles: OhlcvCandle[];
+};
+
 const ENABLE_LEGACY_SCANNER = false;
 
 type LegacyScanRow = {
@@ -284,4 +301,18 @@ export async function computeAI(
     confidence: "med",
     generatedAt: new Date().toISOString(),
   };
+}
+
+export async function fetchOhlcv(symbol: string, tf: string): Promise<OhlcvCandle[]> {
+  const url = `/api/ohlcv?symbol=${encodeURIComponent(symbol)}&tf=${encodeURIComponent(tf)}`;
+  const res = await api(url);
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `Failed to load OHLCV data (${res.status})`);
+  }
+  const payload = (await res.json()) as OhlcvResponse;
+  if (!payload?.candles || !Array.isArray(payload.candles)) {
+    throw new Error("OHLCV payload missing candles");
+  }
+  return payload.candles;
 }

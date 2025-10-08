@@ -1,6 +1,8 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import TradingViewChart from "@/components/scanner/trading-view-chart";
 import styles from "./ChartPanel.module.css";
+import { fetchOhlcv } from "@/lib/analyseClient";
 
 type Timeframe = "15m" | "1h" | "4h" | "1d";
 
@@ -24,6 +26,19 @@ export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
     () => (symbol || "BTCUSDT").trim().toUpperCase(),
     [symbol],
   );
+  const {
+    data: candles,
+    isLoading,
+    isFetching,
+    refetch,
+    error,
+  } = useQuery({
+    queryKey: ["ohlcv", normalizedSymbol, tf],
+    queryFn: () => fetchOhlcv(normalizedSymbol, tf),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
+  });
+  const loading = isLoading || isFetching;
 
   return (
     <div className={styles.wrapper}>
@@ -48,6 +63,17 @@ export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          className={styles.refreshBtn}
+          onClick={() => {
+            void refetch();
+          }}
+          disabled={loading}
+          title="Refresh chart data"
+        >
+          {loading ? "Refreshing…" : "Refresh"}
+        </button>
       </div>
       <div className={styles.canvas}>
         <div className={styles.chartHeader}>
@@ -57,7 +83,17 @@ export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
           <div className={styles.chartHint}>Powered by TradingView</div>
         </div>
         <div className={styles.chartBody}>
-          <TradingViewChart symbol={normalizedSymbol} interval={activeInterval} />
+          {error && (
+            <div className={styles.chartError} role="status">
+              Failed to load live chart data. Showing fallback visuals.
+            </div>
+          )}
+          <TradingViewChart
+            symbol={normalizedSymbol}
+            interval={activeInterval}
+            candles={candles}
+            isLoadingFallback={loading}
+          />
         </div>
       </div>
     </div>

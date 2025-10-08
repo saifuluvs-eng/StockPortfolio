@@ -8,6 +8,7 @@ import { portfolioService } from "./services/portfolioService";
 import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
 import { z } from "zod";
 import { registerMetricsRoute } from "./routes/metrics";
+import { registerOhlcvRoute } from "./routes/ohlcv";
 
 function parseBooleanQuery(value: unknown): boolean {
   if (Array.isArray(value)) return parseBooleanQuery(value[0]);
@@ -38,6 +39,7 @@ export function registerRoutes(app: Express): void {
   //await setupAuth(app);
 
   registerMetricsRoute(app);
+  registerOhlcvRoute(app);
 
   // Auth routes
   // This route should also be protected to get the currently logged-in user.

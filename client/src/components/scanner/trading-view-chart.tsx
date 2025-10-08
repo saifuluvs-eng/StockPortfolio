@@ -4,10 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { buildTvConfig } from "@/lib/tradingview";
 
 import { FallbackChart } from "./fallback-chart";
+import type { OhlcvCandle } from "@/lib/analyseClient";
 
 interface TradingViewChartProps {
-  symbol: string;        // e.g. "BTCUSDT"
-  interval: string;      // e.g. "15", "60", "240", "D", "W"
+  symbol: string; // e.g. "BTCUSDT"
+  interval: string; // e.g. "15", "60", "240", "D", "W"
+  candles?: OhlcvCandle[] | undefined;
+  isLoadingFallback?: boolean;
 }
 
 declare global {
@@ -64,7 +67,12 @@ function loadTradingViewScriptOnce(): Promise<void> {
   });
 }
 
-function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
+function TradingViewChart({
+  symbol,
+  interval,
+  candles,
+  isLoadingFallback,
+}: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // Stable id for the widget’s container (prevents widget from “losing” its node between renders)
   const idRef = useRef<string>(`tradingview-${Math.random().toString(36).slice(2)}`);
@@ -156,7 +164,14 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
   }, [normalizedSymbol, normalizedInterval]);
 
   if (useFallback) {
-    return <FallbackChart symbol={normalizedSymbol} interval={normalizedInterval} />;
+    return (
+      <FallbackChart
+        symbol={normalizedSymbol}
+        interval={normalizedInterval}
+        candles={candles}
+        isLoading={Boolean(isLoadingFallback)}
+      />
+    );
   }
 
   return (

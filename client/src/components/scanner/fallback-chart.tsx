@@ -1,10 +1,13 @@
 // client/src/components/scanner/fallback-chart.tsx
 import { useEffect, useState, useMemo } from "react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import type { OhlcvCandle } from "@/lib/analyseClient";
 
 type FallbackChartProps = {
   symbol: string;
   interval: string; // accepts: "15" | "60" | "240" | "D" | "W" | "15m" | "1h" | "4h" | "1d" | "1w"
+  candles?: OhlcvCandle[];
+  isLoading?: boolean;
 };
 
 type ChartData = {
@@ -84,13 +87,39 @@ function generateFallbackData(symbol: string, intervalKey: string, points: numbe
   return data;
 }
 
-export function FallbackChart({ symbol, interval }: FallbackChartProps) {
+function candlesToChartData(symbol: string, candles: OhlcvCandle[]): ChartData[] {
+  const dec = decimalsForSymbol(symbol);
+  const subset = candles.slice(-150);
+  return subset.map((candle) => {
+    const timeLabel = new Date(candle.openTime).toLocaleString([], {
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return {
+      time: timeLabel,
+      price: parseFloat(candle.close.toFixed(dec)),
+      volume: candle.volume,
+    };
+  });
+}
+
+export function FallbackChart({ symbol, interval, candles, isLoading }: FallbackChartProps) {
   const { key, points, stepMs, label } = useMemo(() => normalizeInterval(interval), [interval]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
 
   useEffect(() => {
+    if (isLoading) {
+      setChartData([]);
+      return;
+    }
+    if (candles && candles.length) {
+      setChartData(candlesToChartData(symbol, candles));
+      return;
+    }
     setChartData(generateFallbackData(symbol, key, points, stepMs));
-  }, [symbol, key, points, stepMs]);
+  }, [symbol, key, points, stepMs, candles, isLoading]);
 
   const dec = decimalsForSymbol(symbol);
 
@@ -100,6 +129,10 @@ export function FallbackChart({ symbol, interval }: FallbackChartProps) {
         <h3 className="text-lg font-semibold text-foreground">{symbol.toUpperCase()}</h3>
         <p className="text-sm text-muted-foreground">Demo Chart — {label} timeframe</p>
       </div>
+
+      {isLoading && (
+        <div className="mb-4 text-sm text-muted-foreground">Loading price data…</div>
+      )}
 
       <ResponsiveContainer width="100%" height="85%">
         <LineChart data={chartData}>
@@ -144,7 +177,7 @@ export function FallbackChart({ symbol, interval }: FallbackChartProps) {
       </ResponsiveContainer>
 
       <div className="mt-2 text-xs text-muted-foreground text-center">
-        Fallback chart — Real TradingView chart loads in production.
+        Fallback chart — using cached OHLC data when available.
       </div>
     </div>
   );
