@@ -13,6 +13,18 @@ type TradingViewWidgetProps = {
 };
 
 const DEFAULT_STUDIES: string[] = [];
+const LEGACY_LAYOUT_KEYS = ["tv_layout_v1"];
+
+function purgeLegacyTradingViewLayout() {
+  if (typeof window === "undefined") return;
+  try {
+    for (const key of LEGACY_LAYOUT_KEYS) {
+      window.localStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore storage access issues (Safari private mode, etc.)
+  }
+}
 
 function normalizeSymbol(raw: string) {
   const trimmed = (raw || "").trim().toUpperCase();
@@ -46,6 +58,8 @@ function TradingViewWidgetComponent({
     const containerEl = containerRef.current;
     const widgetEl = widgetRef.current;
     if (!containerEl || !widgetEl) return;
+
+    purgeLegacyTradingViewLayout();
 
     widgetEl.innerHTML = "";
     widgetEl.id = widgetIdRef.current;
