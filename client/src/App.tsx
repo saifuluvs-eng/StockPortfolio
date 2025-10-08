@@ -19,7 +19,6 @@ import Gainers from "@/pages/gainers";
 import AIInsights from "@/pages/ai-insights";
 import Charts from "@/pages/charts";
 import Analyse from "@/pages/analyse";
-import AnalyseV2 from "@/pages/AnalyseV2";
 import Watchlist from "@/pages/watchlist";
 import Alerts from "@/pages/alerts";
 import { useCredits } from "@/stores/creditStore";
@@ -81,7 +80,6 @@ function AppRouter() {
 
       {/* ANALYSE */}
       <Route path="/analyse/:symbol?" component={withLayout(Analyse)} />
-      <Route path="/analyse-v2/:symbol?" component={withLayout(AnalyseV2)} />
 
       {/* CHARTS */}
       <Route path="/charts/:symbol?" component={withLayout(Charts)} />
