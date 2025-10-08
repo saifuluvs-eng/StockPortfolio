@@ -1,7 +1,8 @@
 // client/src/components/scanner/trading-view-chart.tsx
 import { useEffect, useRef, useState } from "react";
 
-import { buildTvConfig } from "@/lib/tradingview";
+import TradingViewWidget from "@/components/charts/TradingViewWidget";
+import { buildTvConfig, tvIntervalFrom } from "@/lib/tradingview";
 
 import { FallbackChart } from "./fallback-chart";
 import type { OhlcvCandle } from "@/lib/analyseClient";
@@ -103,6 +104,8 @@ function loadTradingViewScriptOnce(): Promise<void> {
   });
 }
 
+type RenderMode = "tv" | "widget" | "fallback";
+
 function TradingViewChart({
   symbol,
   interval,
@@ -113,13 +116,17 @@ function TradingViewChart({
   // Stable id for the widget’s container (prevents widget from “losing” its node between renders)
   const idRef = useRef<string>(`tradingview-${Math.random().toString(36).slice(2)}`);
   const widgetRef = useRef<any>(null);
-  const [useFallback, setUseFallback] = useState(false);
+  const [mode, setMode] = useState<RenderMode>("tv");
   const normalizedSymbol = (symbol || "").toString().trim().toUpperCase() || "BTCUSDT";
   const normalizedInterval = (interval || "4h").toString();
+  const embedInterval = tvIntervalFrom(normalizedInterval);
 
   useEffect(() => {
-    setUseFallback(false);
+    setMode("tv");
+  }, [normalizedSymbol, normalizedInterval]);
 
+  useEffect(() => {
+    if (mode !== "tv") return undefined;
     let cancelled = false;
 
     const mountWidget = async () => {
@@ -170,8 +177,10 @@ function TradingViewChart({
               // widget ready; we intentionally skip layout persistence to avoid schema mismatches
             });
           } catch (error) {
-            console.warn("TradingView widget init failed, using fallback chart", error);
-            setUseFallback(true);
+            console.warn("TradingView widget init failed, using widget fallback", error);
+            if (!cancelled) {
+              setMode((prev) => (prev === "tv" ? "widget" : prev));
+            }
           }
         };
 
@@ -181,8 +190,10 @@ function TradingViewChart({
           instantiate();
         }
       } catch (e) {
-        console.warn("TradingView widget init failed, using fallback chart", e);
-        setUseFallback(true);
+        console.warn("TradingView widget init failed, using widget fallback", e);
+        if (!cancelled) {
+          setMode((prev) => (prev === "tv" ? "widget" : prev));
+        }
       }
     };
 
@@ -202,9 +213,26 @@ function TradingViewChart({
         containerRef.current.innerHTML = "";
       }
     };
-  }, [normalizedSymbol, normalizedInterval]);
+  }, [mode, normalizedSymbol, normalizedInterval]);
 
-  if (useFallback) {
+  if (mode === "widget") {
+    return (
+      <div
+        className="h-[400px] w-full rounded-b-xl md:h-[520px] lg:h-[620px]"
+        data-testid="tradingview-chart"
+      >
+        <TradingViewWidget
+          key={`${normalizedSymbol}-${embedInterval}`}
+          symbol={normalizedSymbol}
+          interval={embedInterval}
+          hideSideToolbar
+          onError={() => setMode("fallback")}
+        />
+      </div>
+    );
+  }
+
+  if (mode === "fallback") {
     return (
       <FallbackChart
         symbol={normalizedSymbol}
