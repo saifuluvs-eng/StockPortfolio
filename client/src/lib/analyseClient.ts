@@ -1,3 +1,5 @@
+import { ADX, ATR, EMA, MACD, RSI } from "technicalindicators";
+
 import { api } from "@/lib/api";
 import { toBinance } from "@/lib/symbols";
 
@@ -261,6 +263,182 @@ function generateSyntheticTechnical(symbol: string, tf: string): TechPayload {
   };
 }
 
+const BINANCE_INTERVAL_MAP: Record<string, string> = {
+  "15m": "15m",
+  "1h": "1h",
+  "4h": "4h",
+  "1d": "1d",
+};
+
+async function fetchBinanceKlines(symbol: string, tf: string, limit = 500): Promise<OhlcvCandle[]> {
+  const interval = BINANCE_INTERVAL_MAP[tf];
+  if (!interval) {
+    throw new Error(`Unsupported timeframe: ${tf}`);
+  }
+  const url = new URL("https://api.binance.com/api/v3/klines");
+  url.searchParams.set("symbol", symbol.toUpperCase());
+  url.searchParams.set("interval", interval);
+  url.searchParams.set("limit", String(Math.max(200, Math.min(limit, 1000))));
+
+  const res = await fetch(url.toString(), { headers: { Accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error(`Binance klines error: ${res.status}`);
+  }
+  const raw = (await res.json()) as any[];
+  if (!Array.isArray(raw)) {
+    throw new Error("Unexpected klines payload");
+  }
+
+  return raw.map((row) => ({
+    openTime: Number(row[0]),
+    open: Number(row[1]),
+    high: Number(row[2]),
+    low: Number(row[3]),
+    close: Number(row[4]),
+    volume: Number(row[5]),
+    closeTime: Number(row[6]),
+  }));
+}
+
+function round(value?: number | null, decimals = 2): number | undefined {
+  if (value === null || value === undefined || Number.isNaN(value)) return undefined;
+  const factor = Math.pow(10, decimals);
+  return Math.round(value * factor) / factor;
+}
+
+function computeIndicatorsFromCandles(candles: OhlcvCandle[]): TechPayload["indicators"] {
+  if (!candles.length) {
+    throw new Error("Cannot compute indicators without candles");
+  }
+
+  const closes = candles.map((c) => c.close);
+  const highs = candles.map((c) => c.high);
+  const lows = candles.map((c) => c.low);
+  const volumes = candles.map((c) => c.volume);
+  const lastIndex = candles.length - 1;
+  const lastClose = closes[lastIndex];
+  const lastVolume = volumes[lastIndex];
+
+  const takeLast = <T,>(arr: T[]): T | undefined => (arr.length ? arr[arr.length - 1] : undefined);
+
+  const rsiSeries = RSI.calculate({ period: 14, values: closes });
+  const macdSeries = MACD.calculate({
+    fastPeriod: 12,
+    slowPeriod: 26,
+    signalPeriod: 9,
+    SimpleMAOscillator: false,
+    SimpleMASignal: false,
+    values: closes,
+  });
+  const adxSeries = ADX.calculate({ period: 14, close: closes, high: highs, low: lows });
+  const ema20Series = EMA.calculate({ period: 20, values: closes });
+  const ema50Series = EMA.calculate({ period: 50, values: closes });
+  const ema200Series = EMA.calculate({ period: 200, values: closes });
+  const atrSeries = ATR.calculate({ period: 14, close: closes, high: highs, low: lows });
+
+  const rsi = takeLast(rsiSeries);
+  const macd = takeLast(macdSeries);
+  const adx = takeLast(adxSeries)?.adx;
+  const ema20 = takeLast(ema20Series);
+  const ema50 = takeLast(ema50Series);
+  const ema200 = takeLast(ema200Series);
+  const atr = takeLast(atrSeries);
+
+  const volumeWindow = Math.min(50, volumes.length);
+  const recent = volumes.slice(-volumeWindow);
+  const mean = recent.reduce((sum, v) => sum + v, 0) / Math.max(1, recent.length);
+  const variance = recent.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / Math.max(1, recent.length);
+  const stddev = Math.sqrt(variance);
+  const volZ = stddev ? (volumes[lastIndex] - mean) / stddev : 0;
+  const volX = mean ? volumes[lastIndex] / mean : 1;
+
+  const lookback = Math.max(60, 20 * 3);
+  const sample = candles.slice(-lookback);
+  let swingHigh = sample[0]?.high ?? lastClose;
+  let swingLow = sample[0]?.low ?? lastClose;
+  for (let i = 1; i < sample.length - 1; i += 1) {
+    const current = sample[i];
+    const prev = sample[i - 1];
+    const next = sample[i + 1];
+    if (current.high > prev.high && current.high > next.high) {
+      swingHigh = Math.max(swingHigh, current.high);
+    }
+    if (current.low < prev.low && current.low < next.low) {
+      swingLow = Math.min(swingLow, current.low);
+    }
+  }
+  const distanceToHigh = lastClose
+    ? Math.abs(((swingHigh - lastClose) / lastClose) * 100)
+    : undefined;
+  const distanceToLow = lastClose ? Math.abs(((lastClose - swingLow) / lastClose) * 100) : undefined;
+  const srProximityPct =
+    distanceToHigh !== undefined && distanceToLow !== undefined
+      ? round(Math.min(distanceToHigh, distanceToLow))
+      : undefined;
+
+  let trendScore = 50;
+  if (ema20 !== undefined && ema50 !== undefined && ema200 !== undefined) {
+    if (ema20 > ema50 && ema50 > ema200) trendScore += 15;
+    if (ema20 < ema50 && ema50 < ema200) trendScore -= 15;
+    const prevEma20 = ema20Series[ema20Series.length - 2];
+    if (prevEma20 !== undefined) {
+      const slope = Math.sign(ema20 - prevEma20);
+      trendScore += slope * 5;
+    }
+  }
+  if (typeof rsi === "number") {
+    if (rsi >= 55 && rsi <= 65) trendScore += 5;
+    if (rsi < 45 || rsi > 75) trendScore -= 5;
+  }
+  if (typeof adx === "number") {
+    if (adx > 25) trendScore += 5;
+    if (adx < 15) trendScore -= 5;
+  }
+  trendScore = Math.max(0, Math.min(100, Math.round(trendScore)));
+
+  const macdPayload =
+    macd && typeof macd.MACD === "number" && typeof macd.signal === "number" && typeof macd.histogram === "number"
+      ? {
+          macd: round(macd.MACD),
+          signal: round(macd.signal),
+          histogram: round(macd.histogram),
+        }
+      : undefined;
+
+  const atrPct = atr && lastClose ? round((atr / lastClose) * 100, 1) : undefined;
+
+  return {
+    close: lastClose ?? null,
+    rsi: round(rsi, 1),
+    macd: macdPayload,
+    adx: round(adx, 1),
+    ema: {
+      e20: round(ema20),
+      e50: round(ema50),
+      e200: round(ema200),
+    },
+    atrPct,
+    vol: {
+      last: lastVolume ?? null,
+      zScore: round(volZ),
+      xAvg50: round(volX),
+    },
+    srProximityPct,
+    trendScore,
+  };
+}
+
+async function computeLocalTechnical(symbol: string, tf: string): Promise<TechPayload> {
+  const candles = await fetchBinanceKlines(symbol, tf, 500);
+  const indicators = computeIndicatorsFromCandles(candles);
+  return {
+    summary: `Technical snapshot generated from live Binance data for ${symbol} @ ${tf}.`,
+    indicators,
+    generatedAt: new Date().toISOString(),
+    isPlaceholder: false,
+  };
+}
+
 function parseNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value !== "string") return null;
@@ -417,6 +595,11 @@ export async function computeTechnicalAll(
     };
   } catch (error) {
     console.warn("computeTechnicalAll: metrics fetch failed", error);
+    try {
+      return await computeLocalTechnical(normalizedSymbol, tf);
+    } catch (localError) {
+      console.warn("computeTechnicalAll: local technical computation failed", localError);
+    }
     // Attempt legacy fallback when metrics endpoint is unavailable.
     try {
       const legacy = await fetchLegacyTechnical(normalizedSymbol, tf);
@@ -455,23 +638,21 @@ export async function fetchOhlcv(symbol: string, tf: string): Promise<OhlcvResul
     const res = await api(url);
     if (!res.ok) {
       const detail = await res.text();
-      console.warn("fetchOhlcv: upstream returned error", res.status, detail);
-      return {
-        candles: generateSyntheticOhlcv(normalizedSymbol, tf),
-        source: "synthetic",
-      };
+      throw new Error(detail || `Failed to load ohlcv (${res.status})`);
     }
     const payload = (await res.json()) as OhlcvResponse;
     if (!payload?.candles || !Array.isArray(payload.candles) || payload.candles.length === 0) {
-      console.warn("fetchOhlcv: payload missing candles, using synthetic data");
-      return {
-        candles: generateSyntheticOhlcv(normalizedSymbol, tf),
-        source: "synthetic",
-      };
+      throw new Error("Payload missing candles");
     }
     return { candles: payload.candles, source: "live" };
   } catch (error) {
-    console.warn("fetchOhlcv: falling back to synthetic data", error);
+    console.warn("fetchOhlcv: backend fetch failed, attempting direct Binance fetch", error);
+    try {
+      const candles = await fetchBinanceKlines(normalizedSymbol, tf, 500);
+      return { candles, source: "live" };
+    } catch (directError) {
+      console.warn("fetchOhlcv: direct Binance fetch failed, using synthetic data", directError);
+    }
     return {
       candles: generateSyntheticOhlcv(normalizedSymbol, tf),
       source: "synthetic",
