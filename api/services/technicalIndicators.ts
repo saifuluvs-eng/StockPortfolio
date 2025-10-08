@@ -44,7 +44,7 @@ class TechnicalIndicators {
     return ema;
   }
 
-  // Relative Strength Index using Wilder's smoothing method (matches TradingView)
+  // Relative Strength Index using Wilder's smoothing method
   private calculateRSI(prices: number[], period: number = 14): number {
     if (prices.length < period + 1) return 50; // Not enough data
     
