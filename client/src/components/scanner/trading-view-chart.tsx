@@ -89,10 +89,16 @@ function TradingViewChart({ symbol, interval }: TradingViewChartProps) {
     }
 
     return () => {
+      try {
+        widgetRef.current?.remove?.();
+      } catch (error) {
+        console.warn("TradingView widget removal failed", error);
+      } finally {
+        widgetRef.current = null;
+      }
       if (containerRef.current) {
         containerRef.current.innerHTML = "";
       }
-      widgetRef.current = null;
     };
   }, [normalizedSymbol, normalizedInterval]);
 
