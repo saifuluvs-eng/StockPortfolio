@@ -25,11 +25,16 @@ const LEGACY_LAYOUT_KEYS = ["tv_layout_v1"];
 const TRADINGVIEW_STORAGE_PREFIXES = [
   "tradingview.chart",
   "tradingview.widget",
+  "tradingview.settings",
+  "tradingview.favorite",
+  "tradingview.symbols",
   "chartproperties",
   "chartprefs",
+  "chartfavorite",
+  "charttemplates",
   "study_templates",
   "drawing_templates",
-  "chartfavorites",
+  "favorite_draw",
 ];
 const TV_DISABLED_FEATURES = [
   "use_localstorage_for_settings",
@@ -41,18 +46,25 @@ const TV_DISABLED_FEATURES = [
 function purgeLegacyLayoutArtifacts() {
   if (typeof window === "undefined") return;
   try {
-    const storage = window.localStorage;
-    for (const key of LEGACY_LAYOUT_KEYS) {
-      storage.removeItem(key);
-    }
-
-    for (let i = storage.length - 1; i >= 0; i -= 1) {
-      const key = storage.key(i);
-      if (!key) continue;
-      if (TRADINGVIEW_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
-        storage.removeItem(key);
+    const removeMatching = (storage: Storage) => {
+      for (const legacy of LEGACY_LAYOUT_KEYS) {
+        storage.removeItem(legacy);
       }
-    }
+      for (let i = storage.length - 1; i >= 0; i -= 1) {
+        const key = storage.key(i);
+        if (!key) continue;
+        const lowerKey = key.toLowerCase();
+        if (
+          TRADINGVIEW_STORAGE_PREFIXES.some((prefix) => lowerKey.startsWith(prefix)) ||
+          lowerKey.includes("tradingview")
+        ) {
+          storage.removeItem(key);
+        }
+      }
+    };
+
+    removeMatching(window.localStorage);
+    removeMatching(window.sessionStorage);
   } catch {
     // ignore storage access issues
   }
@@ -112,6 +124,7 @@ function TradingViewChart({
 
     const mountWidget = async () => {
       try {
+        purgeLegacyLayoutArtifacts();
         await loadTradingViewScriptOnce();
         if (cancelled || !containerRef.current || !window.TradingView) return;
 
