@@ -1,3 +1,4 @@
+import { useId } from "react";
 import styles from "./LeftControlBox.module.css";
 import { toBinance } from "@/lib/symbols";
 
@@ -39,6 +40,8 @@ export default function LeftControlBox({
   aiTooltip,
 }: Props) {
   const displaySymbol = normalizedSymbol ?? toBinance(symbol);
+  const symbolInputId = useId();
+  const timeframeLabelId = useId();
 
   const handleSelectTf = (tf: Timeframe) => {
     if (tf === tfAnalysis) return;
@@ -49,9 +52,12 @@ export default function LeftControlBox({
     <div className={styles.card} role="region" aria-label="Analyse controls">
       <div className={styles.rowTop}>
         <div className={styles.symbolWrap}>
-          <label className={styles.label}>Symbol</label>
+          <label className={styles.label} htmlFor={symbolInputId}>
+            Symbol
+          </label>
           <input
             className={styles.input}
+            id={symbolInputId}
             value={symbol}
             onChange={(e) => onChangeSymbol(e.target.value.toUpperCase())}
             placeholder="e.g., INJUSDT"
@@ -60,15 +66,18 @@ export default function LeftControlBox({
         </div>
 
         <div className={styles.tfWrap}>
-          <label className={styles.label}>Analysis timeframe</label>
-          <div className={styles.segment}>
+          <span className={styles.label} id={timeframeLabelId}>
+            Analysis timeframe
+          </span>
+          <div className={styles.segment} role="radiogroup" aria-labelledby={timeframeLabelId}>
             {TFS.map((tf) => (
               <button
                 key={tf}
                 type="button"
                 className={`${styles.segBtn} ${tfAnalysis === tf ? styles.segActive : ""}`}
                 onClick={() => handleSelectTf(tf)}
-                aria-pressed={tfAnalysis === tf}
+                role="radio"
+                aria-checked={tfAnalysis === tf}
                 title={`Set analysis to ${tf}`}
               >
                 {tf}

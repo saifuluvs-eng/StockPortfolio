@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import styles from "./ChartPanel.module.css";
-import { fetchOhlcv } from "@/lib/analyseClient";
+import { fetchOhlcv, type OhlcvResult } from "@/lib/analyseClient";
 import TradingViewWidget from "@/components/charts/TradingViewWidget";
 import { FallbackChart } from "@/components/scanner/fallback-chart";
 
@@ -36,25 +36,48 @@ export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
     setWidgetFailed(true);
   }, []);
   const {
-    data: candles,
+    data,
     isLoading,
     isFetching,
     refetch,
     error,
-  } = useQuery({
+  } = useQuery<OhlcvResult>({
     queryKey: ["ohlcv", normalizedSymbol, tf],
     queryFn: () => fetchOhlcv(normalizedSymbol, tf),
     staleTime: 60_000,
     gcTime: 5 * 60_000,
   });
   const loading = isLoading || isFetching;
+  const candles = data?.candles;
+  const isSynthetic = data?.source === "synthetic";
+  const statusMessage = error
+    ? "Failed to load live chart data. Showing fallback visuals."
+    : isSynthetic
+    ? "Live OHLC service unavailable. Displaying generated fallback candles."
+    : null;
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.tabs}>
-        <span className={`${styles.tab} ${styles.tabActive}`}>Chart</span>
-        <span className={`${styles.tab} ${styles.tabMuted}`}>Info</span>
-        <span className={`${styles.tab} ${styles.tabMuted}`}>Depth</span>
+      <div className={styles.tabs} role="tablist" aria-label="Chart views">
+        <span className={`${styles.tab} ${styles.tabActive}`} role="tab" aria-selected="true">
+          Chart
+        </span>
+        <span
+          className={`${styles.tab} ${styles.tabDisabled}`}
+          role="tab"
+          aria-selected="false"
+          aria-disabled="true"
+        >
+          Info
+        </span>
+        <span
+          className={`${styles.tab} ${styles.tabDisabled}`}
+          role="tab"
+          aria-selected="false"
+          aria-disabled="true"
+        >
+          Depth
+        </span>
       </div>
       <div className={styles.toolbar}>
         <div className={styles.tfGroup}>
@@ -92,9 +115,9 @@ export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
           <div className={styles.chartHint}>Powered by TradingView</div>
         </div>
         <div className={styles.chartBody}>
-          {error && (
-            <div className={styles.chartError} role="status">
-              Failed to load live chart data. Showing fallback visuals.
+          {statusMessage && (
+            <div className={styles.chartStatus} role="status">
+              {statusMessage}
             </div>
           )}
           {widgetFailed ? (

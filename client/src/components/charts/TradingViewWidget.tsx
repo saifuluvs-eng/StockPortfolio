@@ -37,6 +37,10 @@ function TradingViewWidgetComponent({
   const widgetIdRef = useRef<string>(
     `tradingview-widget-${Math.random().toString(36).slice(2)}`,
   );
+  const normalizedSymbol = normalizeSymbol(symbol);
+  const [exchange, pair] = normalizedSymbol.split(":");
+  const linkSymbol = (pair ?? exchange ?? "BTCUSDT").toUpperCase();
+  const linkExchange = (pair ? exchange : "BINANCE") ?? "BINANCE";
 
   useEffect(() => {
     const containerEl = containerRef.current;
@@ -66,7 +70,7 @@ function TradingViewWidgetComponent({
       locale: "en",
       save_image: true,
       style: "1",
-      symbol: normalizeSymbol(symbol),
+      symbol: normalizedSymbol,
       theme,
       timezone: "Etc/UTC",
       backgroundColor,
@@ -97,7 +101,7 @@ function TradingViewWidgetComponent({
       widgetEl.innerHTML = "";
     };
   }, [
-    symbol,
+    normalizedSymbol,
     interval,
     theme,
     studies,
@@ -121,11 +125,11 @@ function TradingViewWidgetComponent({
       />
       <div className="tradingview-widget-copyright">
         <a
-          href="https://www.tradingview.com/symbols/BTCUSDT/?exchange=BINANCE"
+          href={`https://www.tradingview.com/symbols/${linkSymbol}/?exchange=${linkExchange}`}
           rel="noopener nofollow"
           target="_blank"
         >
-          <span className="blue-text">BTCUSDT chart</span>
+          <span className="blue-text">{linkSymbol} chart</span>
         </a>
         <span className="trademark"> by TradingView</span>
       </div>

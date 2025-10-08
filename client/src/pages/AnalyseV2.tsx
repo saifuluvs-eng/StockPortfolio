@@ -155,7 +155,15 @@ export default function AnalyseV2() {
     if (cached?.isPlaceholder && typeof window !== "undefined") {
       window.sessionStorage?.removeItem(keyTech);
     }
-    if (!ready || !canSpend(COST.TECH)) return;
+    if (!ready) return;
+    if (!canSpend(COST.TECH)) {
+      toast({
+        title: "Not enough credits",
+        description: "You need more credits to run the technical scan.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading("tech");
     try {
       const result = await spendGuard(
@@ -218,7 +226,15 @@ export default function AnalyseV2() {
       }
       return;
     }
-    if (!ready || !canSpend(COST.AI)) return;
+    if (!ready) return;
+    if (!canSpend(COST.AI)) {
+      toast({
+        title: "Not enough credits",
+        description: "You need more credits to run the AI summary.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading("ai");
     try {
       const result = await spendGuard(
@@ -288,9 +304,9 @@ export default function AnalyseV2() {
   };
 
   const techDisabled =
-    loading === "ai" || (!canAffordTech && !hasTechCache && !techState);
+    loading === "ai" || loading === "tech" || (!canAffordTech && !hasTechCache && !techState);
   const aiDisabled =
-    loading === "tech" || (!canAffordAI && !hasAiCache && !aiState);
+    loading === "tech" || loading === "ai" || (!canAffordAI && !hasAiCache && !aiState);
 
   const techTooltip = !ready
     ? "Loading credits…"

@@ -15,10 +15,10 @@
 
 .tab {
   opacity: 0.6;
-  cursor: pointer;
+  cursor: default;
 }
 
-.tabMuted {
+.tabDisabled {
   opacity: 0.4;
   cursor: default;
 }
@@ -145,7 +145,7 @@
   flex: 1;
 }
 
-.chartError {
+.chartStatus {
   position: absolute;
   top: 8px;
   left: 8px;

@@ -46,6 +46,11 @@ export type OhlcvCandle = {
   volume: number;
 };
 
+export type OhlcvResult = {
+  candles: OhlcvCandle[];
+  source: "live" | "synthetic";
+};
+
 type OhlcvResponse = {
   symbol: string;
   tf: string;
@@ -443,7 +448,7 @@ export async function computeAI(
   };
 }
 
-export async function fetchOhlcv(symbol: string, tf: string): Promise<OhlcvCandle[]> {
+export async function fetchOhlcv(symbol: string, tf: string): Promise<OhlcvResult> {
   const normalizedSymbol = toBinance(symbol);
   const url = `/api/ohlcv?symbol=${encodeURIComponent(normalizedSymbol)}&tf=${encodeURIComponent(tf)}`;
   try {
@@ -451,16 +456,25 @@ export async function fetchOhlcv(symbol: string, tf: string): Promise<OhlcvCandl
     if (!res.ok) {
       const detail = await res.text();
       console.warn("fetchOhlcv: upstream returned error", res.status, detail);
-      return generateSyntheticOhlcv(normalizedSymbol, tf);
+      return {
+        candles: generateSyntheticOhlcv(normalizedSymbol, tf),
+        source: "synthetic",
+      };
     }
     const payload = (await res.json()) as OhlcvResponse;
     if (!payload?.candles || !Array.isArray(payload.candles) || payload.candles.length === 0) {
       console.warn("fetchOhlcv: payload missing candles, using synthetic data");
-      return generateSyntheticOhlcv(normalizedSymbol, tf);
+      return {
+        candles: generateSyntheticOhlcv(normalizedSymbol, tf),
+        source: "synthetic",
+      };
     }
-    return payload.candles;
+    return { candles: payload.candles, source: "live" };
   } catch (error) {
     console.warn("fetchOhlcv: falling back to synthetic data", error);
-    return generateSyntheticOhlcv(normalizedSymbol, tf);
+    return {
+      candles: generateSyntheticOhlcv(normalizedSymbol, tf),
+      source: "synthetic",
+    };
   }
 }
