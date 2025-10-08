@@ -106,6 +106,7 @@ export function ChartPanel({ symbol, tf, onChangeChartTf }: ChartPanelProps) {
             />
           ) : (
             <TradingViewWidget
+              key={`${normalizedSymbol}-${activeInterval}`}
               symbol={normalizedSymbol}
               interval={activeInterval}
               onError={handleWidgetError}

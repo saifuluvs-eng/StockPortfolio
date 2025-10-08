@@ -12,7 +12,7 @@ type TradingViewWidgetProps = {
   onError?: (error?: Error) => void;
 };
 
-const DEFAULT_STUDIES = ["STD;Divergence%1Indicator"];
+const DEFAULT_STUDIES: string[] = [];
 
 function normalizeSymbol(raw: string) {
   const trimmed = (raw || "").trim().toUpperCase();
