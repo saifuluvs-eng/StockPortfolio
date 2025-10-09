@@ -16,6 +16,7 @@ import {
 } from "@/components/ui";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@/lib/api";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { asArray, asString } from "@/lib/utils";
@@ -29,6 +30,7 @@ import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { toBinance } from "@/lib/symbols";
+import { getFirebaseIdToken } from "@/lib/firebase";
 import { useRoute, useLocation } from "wouter";
 import {
   Activity,
@@ -274,23 +276,30 @@ export default function Analyse() {
   const initialTimeframe = toFrontendTimeframe(queryTimeframe || undefined);
 
   const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
+  const [timeframe, setTimeframe] = useState<string>(initialTimeframe);
   const [chartSymbol, setChartSymbol] = useState<string>(normalizeSymbol(initialSymbol));
   const [chartTf, setChartTf] = useState<string>(initialTimeframe);
   const [chartKey, setChartKey] = useState<string>(() => `tv-${Date.now()}`);
   const syncingFromQueryRef = useRef(false);
-  const [searchInput, setSearchInput] = useState<string>(() => {
-    const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
-    return base || "BTC";
-  });
+  const [symbolInput, setSymbolInput] = useState<string>(initialSymbol || DEFAULT_SYMBOL);
   const [scanResult, setScanResult] = useState<ScannerAnalysis | ScanResult | null>(
     null,
   );
-  const [isScanning, setIsScanning] = useState(false);
-  const lastRequestIdRef = useRef<string>("");
+  const [isScanning, setIsScanning] = useState<boolean>(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const lastScanRef = useRef<string>("");
   const previousSymbolRef = useRef<string>(initialSymbol);
   const isFirstRenderRef = useRef(true);
   const initialExplicitSymbolRef = useRef(Boolean(params?.symbol || querySymbol));
+
+  useEffect(() => {
+    setIsScanning(false);
+    return () => {
+      try {
+        abortRef.current?.abort();
+      } catch {}
+    };
+  }, []);
 
   useEffect(() => {
     const nextSymbol = toUsdtSymbol(params?.symbol || querySymbol || DEFAULT_SYMBOL);
@@ -299,12 +308,16 @@ export default function Analyse() {
       setSelectedSymbol(nextSymbol);
     }
     const nextTimeframe = toFrontendTimeframe(queryTimeframe || undefined);
-    if (nextTimeframe !== selectedTimeframe) {
+    if (nextTimeframe !== timeframe) {
       syncingFromQueryRef.current = true;
-      setSelectedTimeframe(nextTimeframe);
+      setTimeframe(nextTimeframe);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.symbol, querySymbol, queryTimeframe]);
+
+  useEffect(() => {
+    setSymbolInput(selectedSymbol || DEFAULT_SYMBOL);
+  }, [selectedSymbol]);
 
   useEffect(() => {
     if (!matchWithParam) return;
@@ -315,7 +328,7 @@ export default function Analyse() {
     }
 
     const nextParams = new URLSearchParams(locationInfo.search);
-    nextParams.set("tf", selectedTimeframe);
+    nextParams.set("tf", timeframe);
     const queryString = nextParams.toString();
     const targetPath = `/analyse/${selectedSymbol}`;
     const target = queryString ? `${targetPath}?${queryString}` : targetPath;
@@ -330,7 +343,7 @@ export default function Analyse() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedSymbol,
-    selectedTimeframe,
+    timeframe,
     locationInfo.path,
     locationInfo.search,
     locationInfo.hashSearch,
@@ -364,7 +377,7 @@ export default function Analyse() {
       active = false;
       unsubscribe?.();
     };
-  }, [selectedSymbol, selectedTimeframe, networkEnabled]);
+  }, [selectedSymbol, timeframe, networkEnabled]);
 
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
@@ -378,45 +391,71 @@ export default function Analyse() {
   const safeRecommendation = rawRecommendation.toLowerCase();
   const recommendationLabel = rawRecommendation.replace(/_/g, " ").toUpperCase();
 
-  const runScan = useCallback(
-    async (symbol: string, timeframe: string) => {
-      const rid = crypto.randomUUID();
-      lastRequestIdRef.current = rid;
-      setIsScanning(true);
-      setScanResult(null);
+  const runAnalysis = useCallback(
+    async (symbolOverride?: string, timeframeOverride?: string) => {
+      const fallbackSymbol = symbolOverride ?? selectedSymbol ?? symbolInput ?? DEFAULT_SYMBOL;
+      const resolvedSymbol = toUsdtSymbol(fallbackSymbol);
+      const normalizedSymbol = normalizeSymbol(resolvedSymbol || DEFAULT_SYMBOL);
+      const tfValue = timeframeOverride ?? timeframe ?? DEFAULT_TIMEFRAME;
 
-      const normalizedSymbol = normalizeSymbol(symbol);
-      setChartSymbol(normalizedSymbol);
-      setChartTf(timeframe);
-
-      const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === timeframe);
-      const backendTimeframe = timeframeConfig?.backend ?? timeframe ?? "1d";
-      const apiSymbol = toBinance(symbol);
+      const key = `${normalizedSymbol}|${tfValue}`;
+      if (key === lastScanRef.current && isScanning) return;
+      lastScanRef.current = key;
 
       try {
+        abortRef.current?.abort();
+      } catch {}
+      const ac = new AbortController();
+      abortRef.current = ac;
+
+      setIsScanning(true);
+      setScanResult(null);
+      setChartSymbol(normalizedSymbol);
+      setChartTf(tfValue);
+      setChartKey(`tv-${normalizedSymbol}-${tfValue}-${Date.now()}`);
+
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      try {
+        timeoutId = setTimeout(() => ac.abort(), 25_000);
+
+        const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === tfValue);
+        const backendTimeframe = timeframeConfig?.backend ?? tfValue ?? "1d";
+        const apiSymbol = toBinance(resolvedSymbol);
+
         toast.dismiss(ANALYSE_TOAST_ID);
         toast.loading("Analysing…", { id: ANALYSE_TOAST_ID });
-        const resPromise = apiRequest(
-          "POST",
-          "/api/scanner/scan",
-          {
-            symbol: apiSymbol,
-            timeframe: backendTimeframe,
-          },
-        );
+
         window.dispatchEvent(
           new CustomEvent("tv:update", {
             detail: {
-              symbol: normalizeSymbol(apiSymbol),
+              symbol: normalizedSymbol,
               timeframe: backendTimeframe,
             },
           }),
         );
-        const res = await resPromise;
+
+        const token = await getFirebaseIdToken();
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+
+        const res = await api("/api/scanner/scan", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ symbol: apiSymbol, timeframe: backendTimeframe }),
+          signal: ac.signal,
+        });
+
+        if (res.status === 401) {
+          throw new Error("401: Unauthorized");
+        }
+
+        if (!res.ok) {
+          throw new Error(`Scan HTTP ${res.status}`);
+        }
+
         const payload = await res.json().catch(() => null);
-
-        if (lastRequestIdRef.current !== rid) return;
-
         const item = extractScanResult<ScannerAnalysis | ScanResult>(payload);
         if (!item) {
           toast.error("Analysis unavailable", { id: ANALYSE_TOAST_ID });
@@ -424,14 +463,17 @@ export default function Analyse() {
           return;
         }
 
-        const resolvedSymbol = asString(item.symbol || apiSymbol).toUpperCase();
-        toast.success(`${resolvedSymbol} analysed`, { id: ANALYSE_TOAST_ID });
+        const resolved = asString(item.symbol || apiSymbol).toUpperCase();
+        toast.success(`${resolved} analysed`, { id: ANALYSE_TOAST_ID });
         setScanResult(item);
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
-      } catch (error) {
-        if (lastRequestIdRef.current !== rid) return;
 
-        if (isUnauthorizedError(error)) {
+        window.__tvSet?.(normalizedSymbol, tfValue);
+        console.log("[Analyse] Run Analysis →", normalizedSymbol, tfValue);
+      } catch (error: any) {
+        if (error?.name === "AbortError") {
+          console.warn("[Analyse] scan aborted");
+        } else if (isUnauthorizedError(error)) {
           toast.dismiss(ANALYSE_TOAST_ID);
           toast({
             title: "Sign in required",
@@ -441,24 +483,25 @@ export default function Analyse() {
           signInWithGoogle().catch((authError) => {
             console.error("Failed to sign in after unauthorized error", authError);
           });
-          return;
+        } else {
+          toast.error("Analysis failed", { id: ANALYSE_TOAST_ID });
+          console.error("[Analyse] scan failed", error);
         }
-
-        toast.error("Analysis failed", { id: ANALYSE_TOAST_ID });
       } finally {
-        if (lastRequestIdRef.current === rid) {
-          setIsScanning(false);
-          const sym = normalizeSymbol(apiSymbol);
-          const tf = backendTimeframe;
-          setChartSymbol(sym);
-          setChartTf(tf);
-          setChartKey(`tv-${sym}-${tf}-${Date.now()}`);
-          window.__tvSet?.(sym, tf);
-          console.log("[Analyse] TV remount →", sym, tf);
-        }
+        if (timeoutId) clearTimeout(timeoutId);
+        abortRef.current = null;
+        setIsScanning(false);
       }
     },
-    [queryClient, signInWithGoogle, toast],
+    [
+      isScanning,
+      queryClient,
+      selectedSymbol,
+      signInWithGoogle,
+      symbolInput,
+      timeframe,
+      toast,
+    ],
   );
 
   useEffect(() => {
@@ -471,7 +514,7 @@ export default function Analyse() {
         isAuthenticated &&
         networkEnabled
       ) {
-        runScan(selectedSymbol, selectedTimeframe);
+        void runAnalysis(selectedSymbol, timeframe);
       }
       return;
     }
@@ -486,8 +529,8 @@ export default function Analyse() {
       return;
     }
 
-    runScan(selectedSymbol, selectedTimeframe);
-  }, [selectedSymbol, selectedTimeframe, isAuthenticated, networkEnabled, runScan]);
+    void runAnalysis(selectedSymbol, timeframe);
+  }, [selectedSymbol, timeframe, isAuthenticated, networkEnabled, runAnalysis]);
 
   const watchlistQuery = useQuery<WatchlistItem[]>({
     queryKey: ["watchlist"],
@@ -516,8 +559,8 @@ export default function Analyse() {
 
   const watchlistItems = asArray<WatchlistItem>(watchlistQuery.data);
   const timeframeConfig = useMemo(
-    () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
-    [selectedTimeframe],
+    () => TIMEFRAMES.find((tf) => tf.value === timeframe),
+    [timeframe],
   );
 
   const addToWatchlist = useMutation({
@@ -616,7 +659,7 @@ export default function Analyse() {
   };
 
   const handleSearch = () => {
-    const raw = (searchInput || "").trim().toUpperCase();
+    const raw = (symbolInput || "").trim().toUpperCase();
     if (!raw) {
       toast({
         title: "Invalid input",
@@ -629,9 +672,9 @@ export default function Analyse() {
     const fullSymbol = toUsdtSymbol(raw);
     setSelectedSymbol(fullSymbol);
     setScanResult(null);
-    setSearchInput("");
+    setSymbolInput(fullSymbol);
     setChartSymbol(normalizeSymbol(fullSymbol));
-    setChartTf(selectedTimeframe);
+    setChartTf(timeframe);
 
     if (!networkEnabled) {
       if (backendOffline) {
@@ -664,51 +707,21 @@ export default function Analyse() {
   };
 
   const handleScan = () => {
-    const raw = (searchInput || "").trim().toUpperCase();
+    const raw = (symbolInput || "").trim().toUpperCase();
+    let targetSymbol = selectedSymbol;
+
     if (
       raw &&
       raw !== selectedSymbol &&
       raw !== asString(displayPair(selectedSymbol)).replace("/USDT", "")
     ) {
       const fullSymbol = toUsdtSymbol(raw);
-      const normalizedFullSymbol = normalizeSymbol(fullSymbol);
+      targetSymbol = fullSymbol;
       setSelectedSymbol(fullSymbol);
-      setSearchInput("");
-      setChartSymbol(normalizedFullSymbol);
-      setChartTf(selectedTimeframe);
-
-      if (!networkEnabled) {
-        if (backendOffline) {
-          toast({
-            title: "Backend required",
-            description: `Symbol set to ${displayPair(fullSymbol)}. Provide a backend URL (VITE_API_BASE) to run scans from Vercel.`,
-            variant: "destructive",
-          });
-        } else if (backendPending) {
-          toast({
-            title: "Symbol updated",
-            description: `Waiting for backend status before analysing ${displayPair(fullSymbol)}.`,
-          });
-        }
-        return;
-      }
-
-      if (!isAuthenticated) {
-        toast({
-          title: "Symbol updated",
-          description: `Sign in to analyse ${displayPair(fullSymbol)}.`,
-        });
-        return;
-      }
-
-      toast({
-        title: "Symbol updated",
-        description: `Analyzing ${displayPair(fullSymbol)}`,
-      });
-      return;
+      setSymbolInput(fullSymbol);
     }
 
-    if (!selectedSymbol) {
+    if (!targetSymbol) {
       toast({
         title: "Invalid symbol",
         description: "Select a valid symbol first.",
@@ -717,7 +730,12 @@ export default function Analyse() {
       return;
     }
 
+    const normalizedTarget = normalizeSymbol(targetSymbol);
+
     if (!networkEnabled) {
+      setChartSymbol(normalizedTarget);
+      setChartTf(timeframe);
+      setChartKey(`tv-${normalizedTarget}-${timeframe}-${Date.now()}`);
       if (backendOffline) {
         toast({
           title: "Backend required",
@@ -734,6 +752,9 @@ export default function Analyse() {
     }
 
     if (!isAuthenticated) {
+      setChartSymbol(normalizedTarget);
+      setChartTf(timeframe);
+      setChartKey(`tv-${normalizedTarget}-${timeframe}-${Date.now()}`);
       toast({
         title: "Feature locked",
         description: "Please sign in to run scans.",
@@ -742,11 +763,14 @@ export default function Analyse() {
       return;
     }
 
-    const normalizedSelected = normalizeSymbol(selectedSymbol);
-    runScan(selectedSymbol, selectedTimeframe);
-    setChartSymbol(normalizedSelected);
-    setChartTf(selectedTimeframe);
-    window.__tvSet?.(normalizedSelected, selectedTimeframe);
+    const displayTarget = displayPair(targetSymbol);
+    toast({
+      title: "Symbol updated",
+      description: `Analyzing ${displayTarget}`,
+    });
+
+    setScanResult(null);
+    void runAnalysis(targetSymbol, timeframe);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -866,8 +890,8 @@ export default function Analyse() {
               <div className="relative flex-1">
                 <Input
                   placeholder="Enter coin (BTC, ETH, SOL...)"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
+                  value={symbolInput}
+                  onChange={(e) => setSymbolInput(e.target.value)}
                   onKeyPress={handleKeyPress}
                   className="h-11 w-full min-w-0 pl-10"
                   data-testid="input-search-symbol"
@@ -875,8 +899,10 @@ export default function Analyse() {
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               </div>
               <Button
+                type="button"
                 onClick={handleScan}
-                disabled={isScanning || !networkEnabled}
+                disabled={isScanning}
+                aria-busy={isScanning ? "true" : "false"}
                 className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 lg:w-auto"
                 data-testid="button-scan"
               >
@@ -888,7 +914,7 @@ export default function Analyse() {
               <div className="flex items-center gap-2">
                 <Clock3 className="h-4 w-4" />
                 <span className="whitespace-nowrap">Timeframe</span>
-                <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+                <Select value={timeframe} onValueChange={setTimeframe}>
                   <SelectTrigger
                     className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
                     data-testid="select-timeframe"
@@ -910,7 +936,7 @@ export default function Analyse() {
                   {displayPair(selectedSymbol)}
                 </Badge>
                 <span className="whitespace-nowrap text-xs">
-                  ({timeframeConfig?.display ?? selectedTimeframe})
+                  ({timeframeConfig?.display ?? timeframe})
                 </span>
               </div>
             </div>
