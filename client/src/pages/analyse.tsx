@@ -234,6 +234,36 @@ function getRawBreakdownRows(item: ScannerAnalysis | ScanResult | null | undefin
   return [] as any[];
 }
 
+type MiniStatProps = {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  tone?: "default" | "up" | "down";
+  icon?: React.ReactNode;
+};
+
+const MiniStat: React.FC<MiniStatProps> = ({ label, value, hint, tone = "default", icon }) => {
+  const toneCls =
+    tone === "up"
+      ? "text-emerald-400"
+      : tone === "down"
+        ? "text-rose-400"
+        : "text-slate-200";
+  return (
+    <div
+      className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-800/40 px-3 py-1.5 shadow-sm ring-1 ring-black/5"
+      role="status"
+      aria-label={label}
+      title={typeof value === "string" ? `${label}: ${value}` : label}
+    >
+      {icon ? <span className="opacity-80">{icon}</span> : null}
+      <span className="text-xs text-slate-400">{label}</span>
+      <span className={`text-sm font-semibold ${toneCls}`}>{value}</span>
+      {hint ? <span className="text-[11px] text-slate-500">{hint}</span> : null}
+    </div>
+  );
+};
+
 export default function Analyse() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -886,58 +916,126 @@ export default function Analyse() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <Card className="border border-border/60 bg-card/70">
           <CardContent className="flex h-full flex-col gap-4 p-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <div className="relative flex-1">
-                <Input
-                  placeholder="Enter coin (BTC, ETH, SOL...)"
-                  value={symbolInput}
-                  onChange={(e) => setSymbolInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="h-11 w-full min-w-0 pl-10"
-                  data-testid="input-search-symbol"
-                />
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              </div>
-              <Button
-                type="button"
-                onClick={handleScan}
-                disabled={isScanning}
-                aria-busy={isScanning ? "true" : "false"}
-                className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 lg:w-auto"
-                data-testid="button-scan"
-              >
-                <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
-                {isScanning ? "Scanning..." : "Run Analysis"}
-              </Button>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Clock3 className="h-4 w-4" />
-                <span className="whitespace-nowrap">Timeframe</span>
-                <Select value={timeframe} onValueChange={setTimeframe}>
-                  <SelectTrigger
-                    className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
-                    data-testid="select-timeframe"
+            <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4">
+              <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                <div className="min-w-[220px] basis-full grow md:basis-auto md:grow-0">
+                  <div className="relative">
+                    <Input
+                      placeholder="Enter coin (BTC, ETH, SOL...)"
+                      value={symbolInput}
+                      onChange={(e) => setSymbolInput(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="h-11 w-full min-w-0 pl-10"
+                      data-testid="input-search-symbol"
+                    />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground md:text-sm">
+                  <div className="flex items-center gap-2">
+                    <Clock3 className="h-4 w-4" />
+                    <span className="whitespace-nowrap">Timeframe</span>
+                    <Select value={timeframe} onValueChange={setTimeframe}>
+                      <SelectTrigger
+                        className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
+                        data-testid="select-timeframe"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TIMEFRAMES.map((tf) => (
+                          <SelectItem key={tf.value} value={tf.value}>
+                            {tf.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    <Badge className="truncate bg-zinc-800/80 px-2 py-1 text-xs font-medium uppercase text-foreground">
+                      {displayPair(selectedSymbol)}
+                    </Badge>
+                    <span className="whitespace-nowrap text-xs">
+                      ({timeframeConfig?.display ?? timeframe})
+                    </span>
+                  </div>
+                </div>
+
+                <div className="ml-auto flex flex-wrap items-center gap-2 md:gap-3">
+                  <MiniStat
+                    label="Current Price"
+                    value={
+                      showLoadingState
+                        ? loadingMessage
+                        : formatPrice(latestPrice?.lastPrice)
+                    }
+                    icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
+                  />
+                  <MiniStat
+                    label="24h Change"
+                    value={
+                      showLoadingState
+                        ? loadingMessage
+                        : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
+                    }
+                    tone={
+                      showLoadingState
+                        ? "default"
+                        : priceChange > 0
+                          ? "up"
+                          : priceChange < 0
+                            ? "down"
+                            : "default"
+                    }
+                    icon={
+                      showLoadingState ? (
+                        <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                      ) : isPositive ? (
+                        <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
+                      ) : priceChange < 0 ? (
+                        <TrendingDown className="h-3.5 w-3.5 text-rose-300" />
+                      ) : (
+                        <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                      )
+                    }
+                  />
+                  <MiniStat
+                    label="24h Volume"
+                    value={
+                      showLoadingState
+                        ? loadingMessage
+                        : formatVolume(latestPrice?.quoteVolume)
+                    }
+                    icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
+                  />
+                  <MiniStat
+                    label="Today's Range"
+                    value={
+                      showLoadingState ? (
+                        loadingMessage
+                      ) : (
+                        `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
+                      )
+                    }
+                    icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
+                  />
+                </div>
+
+                <div className="shrink-0">
+                  <Button
+                    type="button"
+                    onClick={handleScan}
+                    disabled={isScanning}
+                    aria-busy={isScanning ? "true" : "false"}
+                    className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 lg:w-auto"
+                    data-testid="button-scan"
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIMEFRAMES.map((tf) => (
-                      <SelectItem key={tf.value} value={tf.value}>
-                        {tf.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex min-w-0 items-center gap-2">
-                <Activity className="h-4 w-4" />
-                <Badge className="truncate bg-zinc-800/80 px-2 py-1 text-xs font-medium uppercase text-foreground">
-                  {displayPair(selectedSymbol)}
-                </Badge>
-                <span className="whitespace-nowrap text-xs">
-                  ({timeframeConfig?.display ?? timeframe})
-                </span>
+                    <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
+                    {isScanning ? "Scanning..." : "Run Analysis"}
+                  </Button>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -951,7 +1049,7 @@ export default function Analyse() {
         />
       </div>
 
-      {priceSummaryCards}
+      {false && priceSummaryCards}
 
       <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[2fr_1fr]">
         <Card className="flex h-full flex-col border-border/70 bg-card/70">
