@@ -1,5 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
 
@@ -12,10 +11,6 @@ interface SpotGainerRow {
   low: number;
 }
 
-type SpotGainerResponse = {
-  rows: SpotGainerRow[];
-};
-
 function resolveRows(data: unknown): SpotGainerRow[] | null {
   if (!data) return null;
 
@@ -27,6 +22,10 @@ function resolveRows(data: unknown): SpotGainerRow[] | null {
     const record = data as Record<string, unknown>;
     if (Array.isArray(record.rows)) {
       return record.rows as SpotGainerRow[];
+    }
+
+    if (Array.isArray(record.items)) {
+      return record.items as SpotGainerRow[];
     }
 
     const nested = record.data;
@@ -45,38 +44,77 @@ function resolveRows(data: unknown): SpotGainerRow[] | null {
   return null;
 }
 
-async function fetchGainers(): Promise<SpotGainerResponse> {
-  try {
-    const res = await api("/api/market/gainers");
-    if (!res.ok) {
-      throw new Error("Failed to fetch gainers");
-    }
-
-    const data: unknown = await res.json();
-    const rows = resolveRows(data);
-    if (rows) {
-      return { rows };
-    }
-
-    throw new Error("Invalid gainers response");
-  } catch (error) {
-    console.error(error);
-    return { rows: [] };
-  }
-}
-
 const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
 
 export default function Gainers() {
-  const { data, isLoading } = useQuery<SpotGainerResponse>({
-    queryKey: ["gainers", "spot-usdt"],
-    queryFn: fetchGainers,
-    staleTime: 30_000,
-  });
+  const [gainers, setGainers] = useState<any[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const endpoints = ["/api/gainers", "/api/scan?mode=gainers", "/api/scan?type=gainers"];
+        let payload: any = null;
+        let list: SpotGainerRow[] = [];
+        let success = false;
+        let lastError: any = null;
+
+        for (const endpoint of endpoints) {
+          try {
+            const res = await api(endpoint, { method: "GET" });
+            if (!res.ok) {
+              lastError = new Error(`[${endpoint}] HTTP ${res.status}`);
+              console.error("[Gainers] error", lastError);
+              continue;
+            }
+
+            const data: unknown = await res.json();
+            payload = data;
+            const rows = resolveRows(data) ?? [];
+            list = rows;
+            success = true;
+            break;
+          } catch (innerError) {
+            console.error("[Gainers] error", innerError);
+            lastError = innerError;
+          }
+        }
+
+        if (!success) {
+          throw lastError || new Error("Failed to load gainers.");
+        }
+
+        if (!active) return;
+        console.log("[Gainers] fetched", payload);
+        setGainers(list);
+        setError(list.length ? null : "No gainers returned by API.");
+      } catch (e: any) {
+        if (!active) return;
+        console.error("[Gainers] error", e);
+        setError(e?.message || "Failed to load gainers.");
+        setGainers([]);
+      } finally {
+        if (!active) return;
+        setLoading(false);
+      }
+    };
+
+    load();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const safeRows = useMemo<SpotGainerRow[]>(() => {
-    return Array.isArray(data?.rows) ? data.rows : [];
-  }, [data]);
+    return Array.isArray(gainers) ? (gainers as SpotGainerRow[]) : [];
+  }, [gainers]);
 
   const cleaned = useMemo(() => {
     return safeRows.filter((r: any): r is SpotGainerRow => {
@@ -92,7 +130,7 @@ export default function Gainers() {
     });
   }, [safeRows]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <main className="p-4 text-zinc-200">
         <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
@@ -103,7 +141,18 @@ export default function Gainers() {
     );
   }
 
-  if (!cleaned.length) {
+  if (error) {
+    return (
+      <main className="p-4 text-zinc-200">
+        <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
+        <div className="rounded-xl border border-zinc-800">
+          <div className="py-10 text-center text-red-400">{error}</div>
+        </div>
+      </main>
+    );
+  }
+
+  if ((Array.isArray(gainers) && gainers.length === 0) || !cleaned.length) {
     return (
       <main className="p-4 text-zinc-200">
         <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
