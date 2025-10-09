@@ -24,14 +24,16 @@ interface OverallAnalysisCardProps {
   data?: OverallResult | null;
   variant?: "full" | "compact";
   className?: string;
+  size?: "auto" | "fixed";
 }
 
 export function OverallAnalysisCard({
   data,
   variant = "full",
   className,
+  size = "auto",
 }: OverallAnalysisCardProps) {
-  const compact = variant === "compact";
+  const compact = variant === "compact" || size === "fixed";
   const hasResult = Boolean(data);
   const score = data?.score ?? 0;
   const normalizedRecommendation = data?.recommendation?.toString().toLowerCase() ?? "";
@@ -62,12 +64,19 @@ export function OverallAnalysisCard({
     return "bg-amber-400";
   })();
 
+  const fixed = size === "fixed";
+
   if (compact) {
+    const base = "rounded-xl border border-slate-700/60 bg-slate-900/50";
+    const dims = fixed ? "h-[110px] md:h-[120px]" : "";
+
     return (
-      <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-3">
-        <div className="flex items-center gap-3">
-          <div className="text-sm font-medium text-slate-200">Overall Analysis</div>
-          <div className="flex-1">
+      <div className={cn(base, dims, "p-3 md:p-3 overflow-hidden", className)}>
+        <div className="flex h-full items-center gap-3">
+          <div className="text-sm font-medium text-slate-200 whitespace-nowrap">
+            Overall Analysis
+          </div>
+          <div className="flex-1 min-w-0">
             {hasResult ? (
               <div className="flex items-center gap-3">
                 <span
@@ -86,13 +95,13 @@ export function OverallAnalysisCard({
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-slate-400 truncate">
+              <div className="truncate text-xs text-slate-400">
                 No analysis yet · Run a scan to unlock
               </div>
             )}
           </div>
           {compactConfidence ? (
-            <div className="text-[11px] text-slate-400">{compactConfidence}</div>
+            <div className="text-[11px] text-slate-400 whitespace-nowrap">{compactConfidence}</div>
           ) : null}
         </div>
       </div>

@@ -922,7 +922,7 @@ export default function Analyse() {
           </Button>
         </div>
       </header>
-      <div className="flex flex-col items-stretch gap-4 lg:flex-row">
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch">
         <div className="flex-1 min-w-0">
           <Card className="border border-border/60 bg-card/70">
             <CardContent className="flex h-full flex-col gap-4 p-6">
@@ -1052,11 +1052,8 @@ export default function Analyse() {
           </Card>
         </div>
 
-        <div className="w-full shrink-0 lg:w-[360px] xl:w-[380px]">
-          <OverallAnalysisCard
-            data={overallResult}
-            variant={overallResult ? "full" : "compact"}
-          />
+        <div className="w-full shrink-0 lg:w-[380px] xl:w-[420px]">
+          <OverallAnalysisCard data={overallResult ?? null} size="fixed" />
         </div>
       </div>
 
