@@ -120,6 +120,12 @@ function displayPair(sym: string) {
   return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : (s || DEFAULT_SYMBOL);
 }
 
+function normalizeSymbol(raw: string) {
+  const v = (raw || "").toString().trim().toUpperCase();
+  const noEx = v.includes(":") ? v.split(":").pop()! : v;
+  return noEx.replace(/\s+/g, "");
+}
+
 type TimeframeOption = (typeof TIMEFRAMES)[number];
 
 const TIMEFRAME_LEGACY_MAP = TIMEFRAMES.reduce<Record<string, TimeframeOption>>((acc, tf) => {
@@ -270,6 +276,8 @@ export default function Analyse() {
 
   const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
+  const [chartSymbol, setChartSymbol] = useState<string>(normalizeSymbol(initialSymbol));
+  const [chartTf, setChartTf] = useState<string>(initialTimeframe);
   const syncingFromQueryRef = useRef(false);
   const [searchInput, setSearchInput] = useState<string>(() => {
     const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
@@ -376,6 +384,9 @@ export default function Analyse() {
       lastRequestIdRef.current = rid;
       setIsScanning(true);
       setScanResult(null);
+
+      setChartSymbol(normalizeSymbol(symbol));
+      setChartTf(timeframe);
 
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === timeframe);
       const backendTimeframe = timeframeConfig?.backend ?? timeframe ?? "1d";
@@ -491,7 +502,6 @@ export default function Analyse() {
     () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
     [selectedTimeframe],
   );
-  const chartTimeframe = timeframeConfig?.backend ?? selectedTimeframe;
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
@@ -603,6 +613,8 @@ export default function Analyse() {
     setSelectedSymbol(fullSymbol);
     setScanResult(null);
     setSearchInput("");
+    setChartSymbol(normalizeSymbol(fullSymbol));
+    setChartTf(selectedTimeframe);
 
     if (!networkEnabled) {
       if (backendOffline) {
@@ -644,6 +656,8 @@ export default function Analyse() {
       const fullSymbol = toUsdtSymbol(raw);
       setSelectedSymbol(fullSymbol);
       setSearchInput("");
+      setChartSymbol(normalizeSymbol(fullSymbol));
+      setChartTf(selectedTimeframe);
 
       if (!networkEnabled) {
         if (backendOffline) {
@@ -711,6 +725,8 @@ export default function Analyse() {
     }
 
     runScan(selectedSymbol, selectedTimeframe);
+    setChartSymbol(normalizeSymbol(selectedSymbol));
+    setChartTf(selectedTimeframe);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -899,7 +915,7 @@ export default function Analyse() {
             </CardHeader>
             <CardContent className="p-0">
               <div style={{ width: "100%", minHeight: "60vh" }}>
-                <TVChart symbol={selectedSymbol.toUpperCase()} timeframe={chartTimeframe} />
+                <TVChart symbol={chartSymbol} timeframe={chartTf} />
               </div>
             </CardContent>
           </Card>
