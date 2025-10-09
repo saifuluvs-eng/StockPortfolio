@@ -25,10 +25,6 @@ import {
   BreakdownSection,
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
-import {
-  OverallAnalysisCard,
-  type OverallResult,
-} from "@/features/analyse/OverallAnalysisCard";
 import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
@@ -810,14 +806,6 @@ export default function Analyse() {
     if (e.key === "Enter") handleSearch();
   };
 
-  const hasScanResult = Boolean(scanResult);
-  const overallResult: OverallResult | null = hasScanResult
-    ? {
-        score: safeTotalScore,
-        recommendation: safeRecommendation,
-        recommendationLabel,
-      }
-    : null;
 
   const priceSummaryCards = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -922,144 +910,133 @@ export default function Analyse() {
           </Button>
         </div>
       </header>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="min-w-0">
-          <Card className="border border-border/60 bg-card/70">
-            <CardContent className="flex h-full flex-col gap-4 p-6">
-              <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4">
-                <div className="flex flex-wrap items-center gap-3 md:gap-4">
-                  <div className="min-w-[220px] basis-full grow md:basis-auto md:grow-0">
-                    <div className="relative">
-                      <Input
-                        placeholder="Enter coin (BTC, ETH, SOL...)"
-                        value={symbolInput}
-                        onChange={(e) => setSymbolInput(e.target.value)}
-                        onKeyPress={handleKeyPress}
-                        className="h-11 w-full min-w-0 pl-10"
-                        data-testid="input-search-symbol"
-                      />
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    </div>
-                  </div>
+      {/* HEADER */}
+      <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 p-3 md:p-3">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4">
+          <div className="min-w-[220px] basis-full grow md:basis-auto md:grow-0">
+            <div className="relative">
+              <Input
+                placeholder="Enter coin (BTC, ETH, SOL...)"
+                value={symbolInput}
+                onChange={(e) => setSymbolInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="h-11 w-full min-w-0 pl-10"
+                data-testid="input-search-symbol"
+              />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            </div>
+          </div>
 
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground md:text-sm">
-                    <div className="flex items-center gap-2">
-                      <Clock3 className="h-4 w-4" />
-                      <span className="whitespace-nowrap">Timeframe</span>
-                      <Select value={timeframe} onValueChange={setTimeframe}>
-                        <SelectTrigger
-                          className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
-                          data-testid="select-timeframe"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TIMEFRAMES.map((tf) => (
-                            <SelectItem key={tf.value} value={tf.value}>
-                              {tf.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Activity className="h-4 w-4" />
-                      <Badge className="truncate bg-zinc-800/80 px-2 py-1 text-xs font-medium uppercase text-foreground">
-                        {displayPair(selectedSymbol)}
-                      </Badge>
-                      <span className="whitespace-nowrap text-xs">
-                        ({timeframeConfig?.display ?? timeframe})
-                      </span>
-                    </div>
-                  </div>
+          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground md:text-sm">
+            <div className="flex items-center gap-2">
+              <Clock3 className="h-4 w-4" />
+              <span className="whitespace-nowrap">Timeframe</span>
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <SelectTrigger
+                  className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
+                  data-testid="select-timeframe"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEFRAMES.map((tf) => (
+                    <SelectItem key={tf.value} value={tf.value}>
+                      {tf.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex min-w-0 items-center gap-2">
+              <Activity className="h-4 w-4" />
+              <Badge className="truncate bg-zinc-800/80 px-2 py-1 text-xs font-medium uppercase text-foreground">
+                {displayPair(selectedSymbol)}
+              </Badge>
+              <span className="whitespace-nowrap text-xs">
+                ({timeframeConfig?.display ?? timeframe})
+              </span>
+            </div>
+          </div>
 
-                  <div className="ml-auto flex flex-wrap items-center gap-2 md:gap-3">
-                    <MiniStat
-                      label="Current Price"
-                      value={
-                        showLoadingState
-                          ? loadingMessage
-                          : formatPrice(latestPrice?.lastPrice)
-                      }
-                      icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
-                    />
-                    <MiniStat
-                      label="24h Change"
-                      value={
-                        showLoadingState
-                          ? loadingMessage
-                          : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
-                      }
-                      tone={
-                        showLoadingState
-                          ? "default"
-                          : priceChange > 0
-                            ? "up"
-                            : priceChange < 0
-                              ? "down"
-                              : "default"
-                      }
-                      icon={
-                        showLoadingState ? (
-                          <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
-                        ) : isPositive ? (
-                          <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
-                        ) : priceChange < 0 ? (
-                          <TrendingDown className="h-3.5 w-3.5 text-rose-300" />
-                        ) : (
-                          <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
-                        )
-                      }
-                    />
-                    <MiniStat
-                      label="24h Volume"
-                      value={
-                        showLoadingState
-                          ? loadingMessage
-                          : formatVolume(latestPrice?.quoteVolume)
-                      }
-                      icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
-                    />
-                    <MiniStat
-                      label="Today's Range"
-                      value={
-                        showLoadingState ? (
-                          loadingMessage
-                        ) : (
-                          `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
-                        )
-                      }
-                      icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
-                    />
-                  </div>
+          <div className="ml-auto flex flex-wrap items-center gap-2 md:gap-3">
+            <MiniStat
+              label="Current Price"
+              value={
+                showLoadingState
+                  ? loadingMessage
+                  : formatPrice(latestPrice?.lastPrice)
+              }
+              icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
+            />
+            <MiniStat
+              label="24h Change"
+              value={
+                showLoadingState
+                  ? loadingMessage
+                  : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
+              }
+              tone={
+                showLoadingState
+                  ? "default"
+                  : priceChange > 0
+                    ? "up"
+                    : priceChange < 0
+                      ? "down"
+                      : "default"
+              }
+              icon={
+                showLoadingState ? (
+                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                ) : isPositive ? (
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
+                ) : priceChange < 0 ? (
+                  <TrendingDown className="h-3.5 w-3.5 text-rose-300" />
+                ) : (
+                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                )
+              }
+            />
+            <MiniStat
+              label="24h Volume"
+              value={
+                showLoadingState
+                  ? loadingMessage
+                  : formatVolume(latestPrice?.quoteVolume)
+              }
+              icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
+            />
+            <MiniStat
+              label="Today's Range"
+              value={
+                showLoadingState ? (
+                  loadingMessage
+                ) : (
+                  `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
+                )
+              }
+              icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
+            />
+          </div>
 
-                  <div className="shrink-0">
-                    <Button
-                      type="button"
-                      onClick={handleScan}
-                      disabled={isScanning}
-                      aria-busy={isScanning ? "true" : "false"}
-                      className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 lg:w-auto"
-                      data-testid="button-scan"
-                    >
-                      <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
-                      {isScanning ? "Scanning..." : "Run Analysis"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="min-w-0">
-          <OverallAnalysisCard data={overallResult ?? null} size="fixed" />
+          <div className="shrink-0">
+            <Button
+              type="button"
+              onClick={handleScan}
+              disabled={isScanning}
+              aria-busy={isScanning ? "true" : "false"}
+              className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 lg:w-auto"
+              data-testid="button-scan"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
+              {isScanning ? "Scanning..." : "Run Analysis"}
+            </Button>
+          </div>
         </div>
       </div>
 
       {false && priceSummaryCards}
 
-      <section className="mt-4 grid grid-cols-12 gap-4">
+      <section className="mt-3 grid grid-cols-12 items-start gap-4">
         <div className="col-span-12 lg:col-span-7">
           <Card className="flex h-full flex-col border-border/70 bg-card/70">
             <CardHeader className="pb-2">
