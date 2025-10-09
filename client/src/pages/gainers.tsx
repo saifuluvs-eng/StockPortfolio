@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { api } from "@/lib/api";
-
 interface SpotGainerRow {
   symbol: string;
   price: number;
@@ -47,88 +45,149 @@ function resolveRows(data: unknown): SpotGainerRow[] | null {
 const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
 
 export default function Gainers() {
-  const [gainers, setGainers] = useState<any[] | null>(null);
+  const [rows, setRows] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let active = true;
+    let cancelled = false;
 
-    const load = async () => {
-      setLoading(true);
-      setError(null);
+    const tryUrls = async () => {
+      const urls = [
+        "/api/gainers",
+        "/api/scan?mode=gainers",
+        "/api/scan?type=gainers",
+      ];
+
+      for (const url of urls) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            continue;
+          }
+
+          const data = await response.json();
+          if (cancelled) return;
+          const list = resolveRows(data) ?? [];
+          if (list.length) {
+            setRows(list);
+            setError(null);
+            setLoading(false);
+            return;
+          }
+        } catch {}
+      }
 
       try {
-        const endpoints = ["/api/gainers", "/api/scan?mode=gainers", "/api/scan?type=gainers"];
-        let payload: any = null;
-        let list: SpotGainerRow[] = [];
-        let success = false;
-        let lastError: any = null;
-
-        for (const endpoint of endpoints) {
-          try {
-            const res = await api(endpoint, { method: "GET" });
-            if (!res.ok) {
-              lastError = new Error(`[${endpoint}] HTTP ${res.status}`);
-              console.error("[Gainers] error", lastError);
-              continue;
-            }
-
-            const data: unknown = await res.json();
-            payload = data;
-            const rows = resolveRows(data) ?? [];
-            list = rows;
-            success = true;
-            break;
-          } catch (innerError) {
-            console.error("[Gainers] error", innerError);
-            lastError = innerError;
-          }
+        const response = await fetch("/api/watchlist");
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
+        const data = await response.json();
+        if (cancelled) return;
+        const list = Array.isArray(data) ? data : (data?.items ?? []);
+        const withChange = (Array.isArray(list) ? list : [])
+          .map((item: any) => ({
+            ...item,
+            _chg:
+              item?.percentChange24h ??
+              item?.change24h ??
+              item?.pct_change_24h ??
+              item?.priceChangePercent ??
+              0,
+          }))
+          .sort((a: any, b: any) => (Number(b?._chg) || 0) - (Number(a?._chg) || 0))
+          .slice(0, 20);
 
-        if (!success) {
-          throw lastError || new Error("Failed to load gainers.");
-        }
-
-        if (!active) return;
-        console.log("[Gainers] fetched", payload);
-        setGainers(list);
-        setError(list.length ? null : "No gainers returned by API.");
+        setRows(withChange);
+        setError(null);
       } catch (e: any) {
-        if (!active) return;
-        console.error("[Gainers] error", e);
-        setError(e?.message || "Failed to load gainers.");
-        setGainers([]);
+        if (!cancelled) {
+          setError(e?.message || "No gainers endpoint available.");
+          setRows([]);
+        }
       } finally {
-        if (!active) return;
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    load();
+    setLoading(true);
+    setError(null);
+    setRows(null);
+    void tryUrls();
 
     return () => {
-      active = false;
+      cancelled = true;
     };
   }, []);
 
-  const safeRows = useMemo<SpotGainerRow[]>(() => {
-    return Array.isArray(gainers) ? (gainers as SpotGainerRow[]) : [];
-  }, [gainers]);
+  const processedRows = useMemo<SpotGainerRow[]>(() => {
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .map((item: any): SpotGainerRow | null => {
+        if (!item || typeof item !== "object") return null;
+
+        const rawSymbol =
+          typeof item.symbol === "string"
+            ? item.symbol
+            : typeof (item as any).pair === "string"
+            ? (item as any).pair
+            : typeof (item as any).asset === "string"
+            ? (item as any).asset
+            : typeof (item as any).ticker === "string"
+            ? (item as any).ticker
+            : "";
+
+        const symbol = (rawSymbol || "").toUpperCase();
+        if (!symbol) return null;
+
+        const pickNumber = (values: any[], fallback = 0) => {
+          for (const value of values) {
+            const num = Number(value);
+            if (Number.isFinite(num)) return num;
+          }
+          return fallback;
+        };
+
+        const price = pickNumber(
+          [item.price, item.lastPrice, item.close, item.last, item.markPrice],
+          0,
+        );
+        const changePct = pickNumber(
+          [
+            item.changePct,
+            item.percentChange24h,
+            item.change24h,
+            item.pct_change_24h,
+            item.priceChangePercent,
+            item._chg,
+          ],
+          0,
+        );
+        const volume = pickNumber(
+          [item.volume, item.quoteVolume, item.baseVolume, item.vol, item.totalVolume],
+          0,
+        );
+        const high = pickNumber([item.high, item.highPrice, item.high24h], price);
+        const low = pickNumber([item.low, item.lowPrice, item.low24h], price);
+
+        return {
+          symbol,
+          price,
+          changePct,
+          volume,
+          high,
+          low,
+        };
+      })
+      .filter((item): item is SpotGainerRow => Boolean(item));
+  }, [rows]);
 
   const cleaned = useMemo(() => {
-    return safeRows.filter((r: any): r is SpotGainerRow => {
-      return (
-        r &&
-        typeof r.symbol === "string" &&
-        r.symbol.endsWith("USDT") &&
-        Number.isFinite(r.price) &&
-        r.price > 0 &&
-        Number.isFinite(r.volume) &&
-        r.volume > 0
-      );
-    });
-  }, [safeRows]);
+    return processedRows.filter((r) => typeof r.symbol === "string" && r.symbol.endsWith("USDT"));
+  }, [processedRows]);
 
   if (loading) {
     return (
@@ -152,7 +211,7 @@ export default function Gainers() {
     );
   }
 
-  if ((Array.isArray(gainers) && gainers.length === 0) || !cleaned.length) {
+  if ((Array.isArray(rows) && rows.length === 0) || !cleaned.length) {
     return (
       <main className="p-4 text-zinc-200">
         <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>

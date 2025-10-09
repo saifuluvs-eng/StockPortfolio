@@ -390,28 +390,27 @@ export default function Analyse() {
 
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === timeframe);
       const backendTimeframe = timeframeConfig?.backend ?? timeframe ?? "1d";
+      const apiSymbol = toBinance(symbol);
 
       try {
-        const normalized = toBinance(symbol);
         toast.dismiss(ANALYSE_TOAST_ID);
         toast.loading("Analysing…", { id: ANALYSE_TOAST_ID });
         const resPromise = apiRequest(
           "POST",
           "/api/scanner/scan",
           {
-            symbol: normalized,
+            symbol: apiSymbol,
             timeframe: backendTimeframe,
           },
         );
         window.dispatchEvent(
           new CustomEvent("tv:update", {
             detail: {
-              symbol: normalizeSymbol(normalized),
+              symbol: normalizeSymbol(apiSymbol),
               timeframe: backendTimeframe,
             },
           }),
         );
-        console.log("[Analyse] TV update →", normalizeSymbol(normalized), backendTimeframe);
         const res = await resPromise;
         const payload = await res.json().catch(() => null);
 
@@ -424,7 +423,7 @@ export default function Analyse() {
           return;
         }
 
-        const resolvedSymbol = asString(item.symbol || normalized).toUpperCase();
+        const resolvedSymbol = asString(item.symbol || apiSymbol).toUpperCase();
         toast.success(`${resolvedSymbol} analysed`, { id: ANALYSE_TOAST_ID });
         setScanResult(item);
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
@@ -448,6 +447,8 @@ export default function Analyse() {
       } finally {
         if (lastRequestIdRef.current === rid) {
           setIsScanning(false);
+          window.__tvSet?.(normalizeSymbol(apiSymbol), backendTimeframe);
+          console.log("[Analyse] TV update →", normalizeSymbol(apiSymbol), backendTimeframe);
         }
       }
     },
@@ -739,15 +740,7 @@ export default function Analyse() {
     runScan(selectedSymbol, selectedTimeframe);
     setChartSymbol(normalizedSelected);
     setChartTf(selectedTimeframe);
-    console.log("[Analyse] Updating TV:", normalizedSelected, selectedTimeframe);
-    window.dispatchEvent(
-      new CustomEvent("tv:update", {
-        detail: {
-          symbol: normalizedSelected,
-          timeframe: selectedTimeframe,
-        },
-      }),
-    );
+    window.__tvSet?.(normalizedSelected, selectedTimeframe);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

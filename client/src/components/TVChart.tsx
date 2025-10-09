@@ -12,12 +12,22 @@ declare global {
   interface Window {
     TradingView?: any;
     _tvScriptLoading?: boolean;
+    __tvSet?: (sym: string, tf: string) => void;
   }
 }
 
 const TV_SRC = "https://s3.tradingview.com/tv.js";
 
-const mapInterval = (tf: string): string => {
+const normalizeSymbol = (raw: string) =>
+  (raw || "")
+    .toString()
+    .trim()
+    .toUpperCase()
+    .split(":")
+    .pop()!
+    .replace(/\s+/g, "");
+
+const mapInterval = (tf: string) => {
   const t = (tf || "").toLowerCase();
   const m: Record<string, string> = {
     "15m": "15",
@@ -35,15 +45,10 @@ const mapInterval = (tf: string): string => {
     "1w": "W",
     "1m": "M",
   };
-  if (t === "1d" || t === "1day") return "D";
+  if (t === "1day") return "D";
   if (t === "1w") return "W";
   if (t === "1m") return "M";
   return m[t] ?? "240";
-};
-
-const normalizeSymbol = (raw: string) => {
-  const v = (raw || "").toString().trim().toUpperCase();
-  return (v.includes(":") ? v.split(":").pop()! : v).replace(/\s+/g, "");
 };
 
 export default function TVChart({
@@ -59,7 +64,32 @@ export default function TVChart({
   const latestSymbolRef = useRef(normalizeSymbol(symbol));
   const latestTfRef = useRef(timeframe);
 
-  const setSymbolAndTf = useCallback(
+  const setSymbolAndTf = (sym: string, tf: string) => {
+    const s = `BINANCE:${normalizeSymbol(sym)}`;
+    const i = mapInterval(tf);
+    const widget = widgetRef.current;
+    if (!widget || typeof widget.activeChart !== "function") {
+      pendingRef.current = { s, i };
+      return;
+    }
+    if (!readyRef.current) {
+      pendingRef.current = { s, i };
+      return;
+    }
+    try {
+      widget.activeChart().setSymbol(s, i);
+      pendingRef.current = null;
+    } catch {
+      setTimeout(() => {
+        try {
+          widgetRef.current?.activeChart().setSymbol(s, i);
+          pendingRef.current = null;
+        } catch {}
+      }, 200);
+    }
+  };
+
+  const queueSymbolAndTf = useCallback(
     (nextSymbol?: string, nextTf?: string) => {
       const resolvedSymbol = normalizeSymbol(
         nextSymbol || latestSymbolRef.current || symbol || "BTCUSDT",
@@ -71,31 +101,7 @@ export default function TVChart({
       const resolvedTf = resolvedTfString || "4h";
       latestSymbolRef.current = resolvedSymbol;
       latestTfRef.current = resolvedTf;
-
-      const payload = { s: `BINANCE:${resolvedSymbol}`, i: mapInterval(resolvedTf) };
-      const widget = widgetRef.current;
-
-      if (!widget || typeof widget.activeChart !== "function") {
-        pendingRef.current = payload;
-        return;
-      }
-
-      if (!readyRef.current) {
-        pendingRef.current = payload;
-        return;
-      }
-
-      try {
-        widget.activeChart().setSymbol(payload.s, payload.i);
-        pendingRef.current = null;
-      } catch {
-        setTimeout(() => {
-          try {
-            widgetRef.current?.activeChart().setSymbol(payload.s, payload.i);
-            pendingRef.current = null;
-          } catch {}
-        }, 200);
-      }
+      setSymbolAndTf(resolvedSymbol, resolvedTf);
     },
     [symbol, timeframe],
   );
@@ -103,11 +109,25 @@ export default function TVChart({
   useEffect(() => {
     latestSymbolRef.current = normalizeSymbol(symbol);
     latestTfRef.current = timeframe;
-    setSymbolAndTf(symbol, timeframe);
-  }, [symbol, timeframe, setSymbolAndTf]);
+    queueSymbolAndTf(symbol, timeframe);
+  }, [symbol, timeframe, queueSymbolAndTf]);
 
   useEffect(() => {
     let cancelled = false;
+
+    window.__tvSet = (sym: string, tf: string) => {
+      try {
+        const normalized = normalizeSymbol(sym);
+        if (!normalized) return;
+        const tfValue =
+          tf && `${tf}`.trim()
+            ? tf
+            : latestTfRef.current || timeframe || "4h";
+        latestSymbolRef.current = normalized;
+        latestTfRef.current = tfValue;
+        setSymbolAndTf(normalized, tfValue);
+      } catch {}
+    };
 
     const ensureScript = () =>
       new Promise<void>((resolve, reject) => {
@@ -191,6 +211,7 @@ export default function TVChart({
 
     return () => {
       cancelled = true;
+      window.__tvSet = undefined;
       try {
         roRef.current?.disconnect();
         roRef.current = null;
@@ -209,7 +230,7 @@ export default function TVChart({
       const { symbol: nextSymbol, timeframe: nextTf } =
         (e as CustomEvent<{ symbol?: string; timeframe?: string }>).detail || {};
       if (nextSymbol && nextTf) {
-        setSymbolAndTf(nextSymbol, nextTf);
+        queueSymbolAndTf(nextSymbol, nextTf);
       }
     };
 
@@ -217,7 +238,7 @@ export default function TVChart({
     return () => {
       window.removeEventListener("tv:update", listener as EventListener);
     };
-  }, [setSymbolAndTf]);
+  }, [queueSymbolAndTf]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.fetch !== "function") return;
@@ -339,7 +360,7 @@ export default function TVChart({
           const tfValueRaw =
             rawTf !== undefined && rawTf !== null ? `${rawTf}` : undefined;
           const tfValue = tfValueRaw && tfValueRaw.trim() ? tfValueRaw.trim() : undefined;
-          setSymbolAndTf(cleanedSymbol, tfValue);
+          queueSymbolAndTf(cleanedSymbol, tfValue);
           window.dispatchEvent(
             new CustomEvent("tv:update", {
               detail: { symbol: cleanedSymbol, timeframe: tfValue },
@@ -363,7 +384,7 @@ export default function TVChart({
       } catch {}
       restoreFetchRef.current = null;
     };
-  }, [setSymbolAndTf]);
+  }, [queueSymbolAndTf]);
 
   return <div ref={hostRef} className="w-full h-full" />;
 }
