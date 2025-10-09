@@ -1,5 +1,5 @@
 // client/src/components/TVChart.tsx
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useId, useRef } from "react";
 
 type TVChartProps = {
   // Defaults from parent are fine (BTCUSDT / 4h). Component will
@@ -13,6 +13,7 @@ declare global {
     TradingView?: any;
     _tvScriptLoading?: boolean;
     __tvSet?: (sym: string, tf: string) => void;
+    __tvScriptLoaded?: boolean;
   }
 }
 
@@ -55,7 +56,7 @@ export default function TVChart({
   symbol = "BTCUSDT",
   timeframe = "4h",
 }: TVChartProps) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetRef = useRef<any>(null);
   const readyRef = useRef(false);
   const pendingRef = useRef<{ s: string; i: string } | null>(null);
@@ -63,6 +64,7 @@ export default function TVChart({
   const restoreFetchRef = useRef<(() => void) | null>(null);
   const latestSymbolRef = useRef(normalizeSymbol(symbol));
   const latestTfRef = useRef(timeframe);
+  const cid = useId().replace(/:/g, "_");
 
   const setSymbolAndTf = (sym: string, tf: string) => {
     const s = `BINANCE:${normalizeSymbol(sym)}`;
@@ -131,45 +133,75 @@ export default function TVChart({
 
     const ensureScript = () =>
       new Promise<void>((resolve, reject) => {
-        if (window.TradingView) return resolve();
+        if (window.TradingView) {
+          resolve();
+          return;
+        }
+
+        const poll = () => {
+          if (window.TradingView) {
+            resolve();
+          } else if (!cancelled) {
+            setTimeout(poll, 50);
+          }
+        };
+
+        if ((window as any).__tvScriptLoaded) {
+          poll();
+          return;
+        }
+
         const existing = document.querySelector<HTMLScriptElement>(`script[src="${TV_SRC}"]`);
-        const poll = () => (window.TradingView ? resolve() : setTimeout(poll, 50));
-        if (existing || window._tvScriptLoading) return poll();
+        if (existing) {
+          poll();
+          return;
+        }
+
+        if (window._tvScriptLoading) {
+          poll();
+          return;
+        }
+
         window._tvScriptLoading = true;
         const script = document.createElement("script");
         script.src = TV_SRC;
         script.async = true;
-        script.onload = () => resolve();
-        script.onerror = (e) => reject(e);
-        document.body.appendChild(script);
+        script.onload = () => {
+          (window as any).__tvScriptLoaded = true;
+          window._tvScriptLoading = false;
+          if (window.TradingView) {
+            resolve();
+          } else {
+            poll();
+          }
+        };
+        script.onerror = (e) => {
+          window._tvScriptLoading = false;
+          reject(e);
+        };
+        document.head.appendChild(script);
       });
 
     const init = () => {
-      if (cancelled || !hostRef.current || !window.TradingView) return;
+      if (cancelled || !containerRef.current || !window.TradingView) return;
 
-      const host = hostRef.current;
-      const currentHeight = host.getBoundingClientRect().height;
-      if (currentHeight < 300) {
-        host.style.minHeight = "60vh";
-        host.style.height = "100%";
-      }
-
+      const host = containerRef.current;
       host.innerHTML = "";
-      const div = document.createElement("div");
-      div.id = "tv-chart";
-      div.style.width = "100%";
-      div.style.height = "100%";
-      host.appendChild(div);
 
       readyRef.current = false;
 
-      const initialSymbol = normalizeSymbol(latestSymbolRef.current || symbol || "BTCUSDT") || "BTCUSDT";
+      const initialSymbol =
+        normalizeSymbol(latestSymbolRef.current || symbol || "BTCUSDT") || "BTCUSDT";
       const initialTf = latestTfRef.current || timeframe || "4h";
       latestSymbolRef.current = initialSymbol;
       latestTfRef.current = initialTf;
 
+      try {
+        widgetRef.current?.remove?.();
+      } catch {}
+
       const widget = new window.TradingView.widget({
-        container_id: "tv-chart",
+        container_id: cid,
         symbol: `BINANCE:${initialSymbol}`,
         interval: mapInterval(initialTf),
         theme: "dark",
@@ -197,7 +229,10 @@ export default function TVChart({
         }
       });
 
-      if ("ResizeObserver" in window) {
+      if (typeof ResizeObserver !== "undefined") {
+        try {
+          roRef.current?.disconnect();
+        } catch {}
         roRef.current = new ResizeObserver(() => {
           try {
             widgetRef.current?.resize?.();
@@ -215,15 +250,18 @@ export default function TVChart({
       try {
         roRef.current?.disconnect();
         roRef.current = null;
-        if (hostRef.current) {
-          hostRef.current.innerHTML = "";
+        if (containerRef.current) {
+          containerRef.current.innerHTML = "";
         }
+      } catch {}
+      try {
+        widgetRef.current?.remove?.();
       } catch {}
       widgetRef.current = null;
       readyRef.current = false;
       pendingRef.current = null;
     };
-  }, []);
+  }, [cid]);
 
   useEffect(() => {
     const listener = (e: Event) => {
@@ -386,5 +424,5 @@ export default function TVChart({
     };
   }, [queueSymbolAndTf]);
 
-  return <div ref={hostRef} className="w-full h-full" />;
+  return <div id={cid} ref={containerRef} className="h-full w-full" />;
 }

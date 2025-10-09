@@ -1042,13 +1042,15 @@ export default function Analyse() {
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
             </CardHeader>
-            <CardContent className="grow min-h-[60vh] p-0">
-              <div className="h-full">
-                <TVChart
-                  key={chartKey}
-                  symbol={chartSymbol}
-                  timeframe={chartTf}
-                />
+            <CardContent className="p-0">
+              <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 h-[560px] md:h-[620px]">
+                <div className="h-full w-full">
+                  <TVChart
+                    key={chartKey}
+                    symbol={chartSymbol}
+                    timeframe={chartTf}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
