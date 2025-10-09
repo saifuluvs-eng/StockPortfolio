@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 
 declare global {
   interface Window {
@@ -7,122 +7,110 @@ declare global {
   }
 }
 
-const TV_SCRIPT_SRC = "https://s3.tradingview.com/tv.js";
-
-function ensureTradingViewScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.TradingView) {
-      resolve();
-      return;
-    }
-
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      `script[src="${TV_SCRIPT_SRC}"]`,
-    );
-
-    const waitForWidget = () => {
-      if (window.TradingView) {
-        resolve();
-      } else {
-        setTimeout(waitForWidget, 50);
-      }
-    };
-
-    if (existingScript) {
-      waitForWidget();
-      return;
-    }
-
-    if (window._tvScriptLoading) {
-      waitForWidget();
-      return;
-    }
-
-    window._tvScriptLoading = true;
-    const script = document.createElement("script");
-    script.src = TV_SCRIPT_SRC;
-    script.async = true;
-    script.onload = () => {
-      window._tvScriptLoading = false;
-      if (window.TradingView) {
-        resolve();
-      } else {
-        reject(new Error("TradingView library failed to initialize"));
-      }
-    };
-    script.onerror = (event) => {
-      window._tvScriptLoading = false;
-      reject(event);
-    };
-    document.body.appendChild(script);
-  });
-}
+const TV_SRC = "https://s3.tradingview.com/tv.js";
 
 export default function TVChart() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const widgetRef = useRef<any>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    const createWidget = () => {
-      if (cancelled || !containerRef.current || !window.TradingView) {
-        return;
-      }
+    const log = (...args: any[]) => console.log("[TVChart]", ...args);
 
-      const setupWidget = () => {
-        if (cancelled || !containerRef.current || !window.TradingView) {
-          return;
+    const waitForTV = () =>
+      new Promise<void>((resolve, reject) => {
+        if (window.TradingView) return resolve();
+
+        const existing = document.querySelector<HTMLScriptElement>(
+          `script[src="${TV_SRC}"]`
+        );
+
+        if (existing) {
+          log("tv.js tag found, waiting for TradingView global…");
+          const poll = () => {
+            if (window.TradingView) resolve();
+            else setTimeout(poll, 50);
+          };
+          return poll();
         }
 
-        containerRef.current.innerHTML = "";
-        widgetRef.current = new window.TradingView.widget({
-          container_id: "tv-chart",
-          symbol: "BINANCE:BTCUSDT",
-          interval: "240",
-          timezone: "Etc/UTC",
-          theme: "dark",
-          autosize: true,
-          hide_side_toolbar: false,
-          hide_top_toolbar: false,
-          studies: ["RSI@tv-basicstudies"],
-        });
-      };
-
-      if (typeof window.TradingView.onready === "function") {
-        window.TradingView.onready(setupWidget);
-      } else {
-        setupWidget();
-      }
-    };
-
-    ensureTradingViewScript()
-      .then(() => {
-        if (!cancelled) {
-          createWidget();
+        if (window._tvScriptLoading) {
+          log("tv.js already loading, waiting…");
+          const poll = () => {
+            if (window.TradingView) resolve();
+            else setTimeout(poll, 50);
+          };
+          return poll();
         }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Failed to load TradingView chart", error);
-        }
+
+        log("injecting tv.js");
+        window._tvScriptLoading = true;
+        const s = document.createElement("script");
+        s.src = TV_SRC;
+        s.async = true;
+        s.onload = () => {
+          log("tv.js loaded");
+          resolve();
+        };
+        s.onerror = (e) => {
+          console.error("[TVChart] tv.js failed to load", e);
+          reject(e);
+        };
+        document.body.appendChild(s);
       });
 
-      return () => {
-        cancelled = true;
-        if (widgetRef.current) {
-          if (typeof widgetRef.current.remove === "function") {
-            widgetRef.current.remove();
-          } else if (typeof widgetRef.current.destroy === "function") {
-            widgetRef.current.destroy();
-          }
-          widgetRef.current = null;
-        }
-        if (containerRef.current) {
-          containerRef.current.innerHTML = "";
-        }
-      };
+    const initWidget = () => {
+      if (cancelled) return;
+      const el = containerRef.current;
+      if (!el || !window.TradingView) return;
+
+      // fresh container
+      el.innerHTML = "";
+      const inner = document.createElement("div");
+      inner.id = "tv-chart";
+      inner.style.width = "100%";
+      inner.style.height = "100%";
+      el.appendChild(inner);
+
+      // Create the widget
+      new window.TradingView.widget({
+        container_id: "tv-chart",
+        symbol: "BINANCE:BTCUSDT",
+        interval: "240", // 4h
+        theme: "dark",
+        autosize: true,
+        timezone: "Etc/UTC",
+        hide_side_toolbar: false,
+        hide_top_toolbar: false,
+        withdateranges: true,
+        details: false,
+        allow_symbol_change: true,
+        studies: ["RSI@tv-basicstudies"],
+      });
+
+      log("widget created");
+    };
+
+    waitForTV()
+      .then(initWidget)
+      .catch((e) => console.error("[TVChart] init error", e));
+
+    return () => {
+      cancelled = true;
+      if (containerRef.current) containerRef.current.innerHTML = "";
+    };
   }, []);
 
-  return <div id="tv-chart" ref={containerRef} className="h-full w-full" />;
+  // Force a visible height for debugging so the widget can't be hidden by zero-height parents.
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "560px", // debug height
+        borderRadius: 12,
+        overflow: "hidden",
+      }}
+    />
+  );
 }
