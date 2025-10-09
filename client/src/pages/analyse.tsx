@@ -14,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 import { apiRequest } from "@/lib/queryClient";
@@ -32,11 +31,9 @@ import { toBinance } from "@/lib/symbols";
 import { getFirebaseIdToken } from "@/lib/firebase";
 import { useRoute, useLocation } from "wouter";
 import {
-  Activity,
   BarChart3,
   Clock3,
   DollarSign,
-  RefreshCw,
   Search,
   Star,
   Target,
@@ -913,7 +910,7 @@ export default function Analyse() {
       {/* HEADER */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 p-3 md:p-3">
         <div className="flex flex-wrap items-center gap-3 md:gap-4">
-          <div className="min-w-[220px] basis-full grow md:basis-auto md:grow-0">
+          <div className="flex-1 min-w-[220px]">
             <div className="relative">
               <Input
                 placeholder="Enter coin (BTC, ETH, SOL...)"
@@ -927,110 +924,95 @@ export default function Analyse() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground md:text-sm">
-            <div className="flex items-center gap-2">
-              <Clock3 className="h-4 w-4" />
-              <span className="whitespace-nowrap">Timeframe</span>
-              <Select value={timeframe} onValueChange={setTimeframe}>
-                <SelectTrigger
-                  className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
-                  data-testid="select-timeframe"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEFRAMES.map((tf) => (
-                    <SelectItem key={tf.value} value={tf.value}>
-                      {tf.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex min-w-0 items-center gap-2">
-              <Activity className="h-4 w-4" />
-              <Badge className="truncate bg-zinc-800/80 px-2 py-1 text-xs font-medium uppercase text-foreground">
-                {displayPair(selectedSymbol)}
-              </Badge>
-              <span className="whitespace-nowrap text-xs">
-                ({timeframeConfig?.display ?? timeframe})
-              </span>
-            </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground md:text-sm">
+            <Clock3 className="h-4 w-4" />
+            <span className="whitespace-nowrap">Timeframe</span>
+            <Select value={timeframe} onValueChange={setTimeframe}>
+              <SelectTrigger
+                className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
+                data-testid="select-timeframe"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEFRAMES.map((tf) => (
+                  <SelectItem key={tf.value} value={tf.value}>
+                    {tf.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-2 md:gap-3">
-            <MiniStat
-              label="Current Price"
-              value={
-                showLoadingState
-                  ? loadingMessage
-                  : formatPrice(latestPrice?.lastPrice)
-              }
-              icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
-            />
-            <MiniStat
-              label="24h Change"
-              value={
-                showLoadingState
-                  ? loadingMessage
-                  : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
-              }
-              tone={
-                showLoadingState
-                  ? "default"
-                  : priceChange > 0
-                    ? "up"
-                    : priceChange < 0
-                      ? "down"
-                      : "default"
-              }
-              icon={
-                showLoadingState ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
-                ) : isPositive ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
-                ) : priceChange < 0 ? (
-                  <TrendingDown className="h-3.5 w-3.5 text-rose-300" />
-                ) : (
-                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
-                )
-              }
-            />
-            <MiniStat
-              label="24h Volume"
-              value={
-                showLoadingState
-                  ? loadingMessage
-                  : formatVolume(latestPrice?.quoteVolume)
-              }
-              icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
-            />
-            <MiniStat
-              label="Today's Range"
-              value={
-                showLoadingState ? (
-                  loadingMessage
-                ) : (
-                  `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
-                )
-              }
-              icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
-            />
-          </div>
+          <button
+            type="button"
+            onClick={handleScan}
+            disabled={isScanning}
+            className="ml-auto rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium hover:bg-sky-400 disabled:opacity-60"
+            data-testid="button-scan"
+          >
+            {isScanning ? "Scanning…" : "Run Analysis"}
+          </button>
+        </div>
 
-          <div className="shrink-0">
-            <Button
-              type="button"
-              onClick={handleScan}
-              disabled={isScanning}
-              aria-busy={isScanning ? "true" : "false"}
-              className="h-11 whitespace-nowrap bg-primary px-4 text-primary-foreground hover:bg-primary/90 lg:w-auto"
-              data-testid="button-scan"
-            >
-              <RefreshCw className={`mr-2 h-4 w-4 ${isScanning ? "animate-spin" : ""}`} />
-              {isScanning ? "Scanning..." : "Run Analysis"}
-            </Button>
-          </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3 md:gap-4">
+          <MiniStat
+            label="Current Price"
+            value={
+              showLoadingState
+                ? loadingMessage
+                : formatPrice(latestPrice?.lastPrice)
+            }
+            icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
+          />
+          <MiniStat
+            label="24h Change"
+            value={
+              showLoadingState
+                ? loadingMessage
+                : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
+            }
+            tone={
+              showLoadingState
+                ? "default"
+                : priceChange > 0
+                  ? "up"
+                  : priceChange < 0
+                    ? "down"
+                    : "default"
+            }
+            icon={
+              showLoadingState ? (
+                <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+              ) : isPositive ? (
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
+              ) : priceChange < 0 ? (
+                <TrendingDown className="h-3.5 w-3.5 text-rose-300" />
+              ) : (
+                <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+              )
+            }
+          />
+          <MiniStat
+            label="24h Volume"
+            value={
+              showLoadingState
+                ? loadingMessage
+                : formatVolume(latestPrice?.quoteVolume)
+            }
+            icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
+          />
+          <MiniStat
+            label="Today's Range"
+            value={
+              showLoadingState ? (
+                loadingMessage
+              ) : (
+                `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
+              )
+            }
+            icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
+          />
         </div>
       </div>
 
