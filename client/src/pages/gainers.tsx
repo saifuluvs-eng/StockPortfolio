@@ -3,96 +3,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
 
-// Try common fields; fall back to derived % if needed
-const pct24 = (x: any): number => {
-  const direct =
-    x.price_change_percentage_24h ??
-    x.percentChange24h ??
-    x.change24h ??
-    x.changePercent24h ??
-    x.pct_change_24h ??
-    x?.stats?.percentChange24h ??
-    x.priceChangePercent; // Binance key
-  if (direct !== undefined && direct !== null) {
-    const n = Number(direct);
-    return Number.isFinite(n) ? n : 0;
-  }
-  const price = x.price ?? x.last ?? x.close ?? x.c ?? x?.stats?.last;
-  const prev = x.open24h ?? x.prev_close ?? x.previousClose ?? x.o ?? x?.stats?.prevClose;
-  if (price != null && prev != null) {
-    const p = Number(price);
-    const pc = Number(prev);
-    if (Number.isFinite(p) && Number.isFinite(pc) && pc !== 0) return ((p - pc) / pc) * 100;
-  }
-  return 0;
+const MIN_USD_VOL = 1_000_000;
+
+const isLeveragedName = (s: string) => /(UP|DOWN|BULL|BEAR|3L|3S)(USDT)?$/i.test(s);
+
+const num = (v: any) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
 };
-
-const symOf = (x: any) => (x.symbol ?? x.ticker ?? x.id ?? x.base ?? "").toString().toUpperCase();
-
-function toNumber(value: unknown): number | null {
-  if (value === null || value === undefined) return null;
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function priceOf(x: any): number | null {
-  const sources = [x.price, x.last, x.close, x.c, x.lastPrice, x.markPrice, x?.stats?.last];
-  for (const candidate of sources) {
-    const num = toNumber(candidate);
-    if (num !== null) return num;
-  }
-  return null;
-}
-
-function volumeOf(x: any): number | null {
-  const sources = [
-    x.volume,
-    x.quoteVolume,
-    x.baseVolume,
-    x.vol,
-    x.totalVolume,
-    x.qv,
-    x?.stats?.volume24h,
-  ];
-  for (const candidate of sources) {
-    const num = toNumber(candidate);
-    if (num !== null) return num;
-  }
-  return null;
-}
-
-function highOf(x: any): number | null {
-  const sources = [x.high, x.highPrice, x.high24h, x.h, x?.stats?.high24h];
-  for (const candidate of sources) {
-    const num = toNumber(candidate);
-    if (num !== null) return num;
-  }
-  return null;
-}
-
-function lowOf(x: any): number | null {
-  const sources = [x.low, x.lowPrice, x.low24h, x.l, x?.stats?.low24h];
-  for (const candidate of sources) {
-    const num = toNumber(candidate);
-    if (num !== null) return num;
-  }
-  return null;
-}
 
 function formatPrice(value: number | null): string {
   if (value === null) return "—";
   if (value === 0) return "$0";
   const fixed = value >= 1 ? value.toFixed(2) : value.toFixed(6);
   return `$${fixed.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1")}`;
-}
-
-function formatHighLow(high: number | null, low: number | null): JSX.Element {
-  return (
-    <>
-      H: {high === null ? "—" : `$${high.toFixed(4).replace(/(\.\d*?)0+$/, "$1")}`}
-      <br />L: {low === null ? "—" : `$${low.toFixed(4).replace(/(\.\d*?)0+$/, "$1")}`}
-    </>
-  );
 }
 
 function GainersSkeleton() {
@@ -117,11 +41,9 @@ interface GainerRowProps {
   change24h: number;
   price: number | null;
   volume: number | null;
-  high: number | null;
-  low: number | null;
 }
 
-function GainerRow({ index, symbol, name, change24h, price, volume, high, low }: GainerRowProps) {
+function GainerRow({ index, symbol, name, change24h, price, volume }: GainerRowProps) {
   const changeDisplay = Number.isFinite(change24h) ? change24h : 0;
   const isUp = changeDisplay >= 0;
   const formattedVolume = volume === null ? "—" : `$${numberFormatter.format(volume)}`;
@@ -143,7 +65,6 @@ function GainerRow({ index, symbol, name, change24h, price, volume, high, low }:
         {changeDisplay.toFixed(2)}%
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-right">{formattedVolume}</td>
-      <td className="whitespace-nowrap px-4 py-3 text-right">{formatHighLow(high, low)}</td>
       <td className="whitespace-nowrap px-4 py-3 text-right">
         <a
           href={`/#/analyse/${symbol}`}
@@ -162,8 +83,6 @@ interface DisplayRow {
   price: number | null;
   change24h: number;
   volume: number | null;
-  high: number | null;
-  low: number | null;
 }
 
 export default function Gainers() {
@@ -173,74 +92,56 @@ export default function Gainers() {
 
   useEffect(() => {
     let cancelled = false;
-
-    const toList = (d: any) => (Array.isArray(d) ? d : d?.items ?? []);
-    const tryOnce = async (url: string) => {
-      const r = await fetch(url);
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return toList(await r.json());
-    };
-
-    const pickTop = (list: any[], n = 20) =>
-      list
-        .map((x) => ({ ...x, _chg24: Number(pct24(x) || 0) }))
-        .sort((a, b) => b._chg24 - a._chg24)
-        .slice(0, n);
-
     const run = async () => {
       setLoading(true);
       setError(null);
       setRows(null);
       try {
-        for (const u of ["/api/gainers", "/api/scan?mode=gainers", "/api/scan?type=gainers"]) {
-          try {
-            const list = await tryOnce(u);
-            if (list?.length) {
-              if (!cancelled) {
-                setRows(pickTop(list));
-              }
-              return;
-            }
-          } catch {
-            /* ignore */
-          }
-        }
+        const [exRes, tRes] = await Promise.all([
+          fetch("https://api.binance.com/api/v3/exchangeInfo"),
+          fetch("https://api.binance.com/api/v3/ticker/24hr"),
+        ]);
 
-        try {
-          const wl = await tryOnce("/api/watchlist");
-          if (wl?.length) {
-            if (!cancelled) {
-              setRows(pickTop(wl));
-            }
-            return;
-          }
-        } catch {
-          /* ignore */
-        }
+        if (!exRes.ok) throw new Error(`exchangeInfo HTTP ${exRes.status}`);
+        if (!tRes.ok) throw new Error(`ticker24hr HTTP ${tRes.status}`);
 
-        const rb = await fetch("https://api.binance.com/api/v3/ticker/24hr");
-        if (rb.ok) {
-          const all = await rb.json();
-          const usdt = (all || []).filter(
-            (it: any) => typeof it?.symbol === "string" && it.symbol.endsWith("USDT"),
-          );
-          const mapped = usdt.map((it: any) => ({
-            symbol: it.symbol,
-            name: it.symbol,
-            price: Number(it.lastPrice ?? it.prevClosePrice ?? it.weightedAvgPrice ?? 0),
-            price_change_percentage_24h: Number(it.priceChangePercent ?? 0),
-          }));
-          const top = pickTop(mapped);
-          if (!cancelled) {
-            if (top.length) {
-              setRows(top);
-            } else {
-              setError("No gainers available from Binance.");
-            }
-          }
-          return;
+        const ex = await exRes.json();
+        const tickers: any[] = await tRes.json();
+
+        const allowed = new Set<string>(
+          (ex?.symbols ?? [])
+            .filter(
+              (s: any) =>
+                s?.status === "TRADING" &&
+                s?.quoteAsset === "USDT" &&
+                (s?.isSpotTradingAllowed === true || (s?.permissions ?? []).includes("SPOT")),
+            )
+            .map((s: any) => String(s?.symbol)),
+        );
+
+        const top = tickers
+          .filter((t: any) => {
+            const sym = String(t?.symbol || "");
+            if (!allowed.has(sym)) return false;
+            if (isLeveragedName(sym)) return false;
+            const volUSD = num(t?.quoteVolume);
+            return volUSD >= MIN_USD_VOL;
+          })
+          .map((t: any) => ({
+            symbol: t.symbol,
+            name: t.symbol,
+            price: num(t.lastPrice ?? t.prevClosePrice ?? t.weightedAvgPrice),
+            change24h: num(t.priceChangePercent),
+            volumeUSDT: num(t.quoteVolume),
+          }))
+          .sort((a: any, b: any) => b.change24h - a.change24h)
+          .slice(0, 20);
+
+        if (!cancelled) {
+          if (top.length === 0)
+            setError("No gainers matched the SPOT/USDT/$1M filters.");
+          setRows(top);
         }
-        throw new Error(`Binance HTTP ${rb.status}`);
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load gainers.");
       } finally {
@@ -258,19 +159,18 @@ export default function Gainers() {
     if (!Array.isArray(rows)) return [];
     return rows
       .map((item) => {
-        const symbol = symOf(item);
+        const symbol = String(item?.symbol ?? "");
         if (!symbol) return null;
-        const price = priceOf(item);
-        const high = highOf(item);
-        const low = lowOf(item);
+        const rawPrice = item?.price;
+        const rawVolume = item?.volumeUSDT ?? item?.volume;
         return {
           symbol,
-          name: item.name ?? item.fullName ?? symbol,
-          price,
-          change24h: Number.isFinite(item?._chg24) ? item._chg24 : pct24(item),
-          volume: volumeOf(item),
-          high: high ?? price,
-          low: low ?? price,
+          name: item?.name ?? symbol,
+          price:
+            rawPrice === null || rawPrice === undefined ? null : num(rawPrice),
+          change24h: num(item?.change24h),
+          volume:
+            rawVolume === null || rawVolume === undefined ? null : num(rawVolume),
         };
       })
       .filter((item): item is DisplayRow => Boolean(item));
@@ -302,7 +202,6 @@ export default function Gainers() {
                 <th className="whitespace-nowrap px-4 py-3 text-right">Price</th>
                 <th className="whitespace-nowrap px-4 py-3 text-right">24h Change</th>
                 <th className="whitespace-nowrap px-4 py-3 text-right">Volume</th>
-                <th className="whitespace-nowrap px-4 py-3 text-right">High/Low</th>
                 <th className="whitespace-nowrap px-4 py-3 text-right">Quick Analysis</th>
               </tr>
             </thead>
@@ -316,8 +215,6 @@ export default function Gainers() {
                   change24h={row.change24h}
                   price={row.price}
                   volume={row.volume}
-                  high={row.high}
-                  low={row.low}
                 />
               ))}
             </tbody>
