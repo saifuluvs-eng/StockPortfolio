@@ -42,6 +42,18 @@ function resolveRows(data: unknown): SpotGainerRow[] | null {
   return null;
 }
 
+const pct24 = (x: any): number => {
+  return (
+    x.percentChange24h ??
+    x.change24h ??
+    x.price_change_percentage_24h ??
+    x.changePercent24h ??
+    x.pct_change_24h ??
+    x?.stats?.percentChange24h ??
+    0
+  );
+};
+
 const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
 
 export default function Gainers() {
@@ -52,62 +64,51 @@ export default function Gainers() {
   useEffect(() => {
     let cancelled = false;
 
-    const tryUrls = async () => {
-      const urls = [
-        "/api/gainers",
-        "/api/scan?mode=gainers",
-        "/api/scan?type=gainers",
-      ];
-
-      for (const url of urls) {
-        try {
-          const response = await fetch(url);
-          if (!response.ok) {
-            continue;
-          }
-
-          const data = await response.json();
-          if (cancelled) return;
-          const list = resolveRows(data) ?? [];
-          if (list.length) {
-            setRows(list);
-            setError(null);
-            setLoading(false);
-            return;
-          }
-        } catch {}
-      }
-
-      try {
-        const response = await fetch("/api/watchlist");
+    const run = async () => {
+      const tryOnce = async (url: string) => {
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
         const data = await response.json();
+        return resolveRows(data) ?? (Array.isArray(data) ? data : data?.items ?? []);
+      };
+
+      try {
+        const endpoints = [
+          "/api/gainers",
+          "/api/scan?mode=gainers",
+          "/api/scan?type=gainers",
+        ];
+
+        for (const url of endpoints) {
+          try {
+            const list = await tryOnce(url);
+            if (cancelled) return;
+            if (list?.length) {
+              setRows(list);
+              setError(null);
+              setLoading(false);
+              return;
+            }
+          } catch {
+            // ignore individual endpoint failures
+          }
+        }
+
+        const watch = await tryOnce("/api/watchlist");
         if (cancelled) return;
-        const list = Array.isArray(data) ? data : (data?.items ?? []);
-        const withChange = (Array.isArray(list) ? list : [])
-          .map((item: any) => ({
-            ...item,
-            _chg:
-              item?.percentChange24h ??
-              item?.change24h ??
-              item?.pct_change_24h ??
-              item?.priceChangePercent ??
-              0,
-          }))
-          .sort((a: any, b: any) => (Number(b?._chg) || 0) - (Number(a?._chg) || 0))
+        const derived = (watch || [])
+          .map((item: any) => ({ ...item, _chg: Number(pct24(item) || 0) }))
+          .sort((a: any, b: any) => b._chg - a._chg)
           .slice(0, 20);
 
-        setRows(withChange);
-        setError(null);
+        setRows(derived);
+        setError(derived.length ? null : "No gainers returned by watchlist.");
+        setLoading(false);
       } catch (e: any) {
         if (!cancelled) {
-          setError(e?.message || "No gainers endpoint available.");
-          setRows([]);
-        }
-      } finally {
-        if (!cancelled) {
+          setError(e?.message || "Failed to load gainers.");
           setLoading(false);
         }
       }
@@ -116,7 +117,7 @@ export default function Gainers() {
     setLoading(true);
     setError(null);
     setRows(null);
-    void tryUrls();
+    void run();
 
     return () => {
       cancelled = true;
@@ -162,6 +163,8 @@ export default function Gainers() {
             item.change24h,
             item.pct_change_24h,
             item.priceChangePercent,
+            item.changePercent24h,
+            pct24(item),
             item._chg,
           ],
           0,
