@@ -421,8 +421,8 @@ export default function Analyse() {
         window.dispatchEvent(
           new CustomEvent("tv:update", {
             detail: {
-              symbol: normalizedSymbol,
-              timeframe,
+              symbol: normalizeSymbol(normalized),
+              timeframe: backendTimeframe,
             },
           }),
         );

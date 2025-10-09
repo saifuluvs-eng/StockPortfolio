@@ -1,10 +1,10 @@
 // client/src/components/TVChart.tsx
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 
 type TVChartProps = {
   // Defaults from parent are fine (BTCUSDT / 4h). Component will
-  // also auto-update when it sees /api/metrics?symbol=...&tf=... fetches.
-  symbol?: string;    // e.g. "BTCUSDT"
+  // also auto-update when it sees /api/scan fetches and tv:update events.
+  symbol?: string; // e.g. "BTCUSDT"
   timeframe?: string; // e.g. "4h"
 };
 
@@ -20,8 +20,20 @@ const TV_SRC = "https://s3.tradingview.com/tv.js";
 const mapInterval = (tf: string): string => {
   const t = (tf || "").toLowerCase();
   const m: Record<string, string> = {
-    "15m": "15", "30m": "30", "1h": "60", "2h": "120", "3h": "180", "4h": "240",
-    "6h": "360", "8h": "480", "12h": "720", "1d": "D", "1day": "D", "1w": "W", "1m": "M",
+    "15m": "15",
+    "30m": "30",
+    "45m": "45",
+    "1h": "60",
+    "2h": "120",
+    "3h": "180",
+    "4h": "240",
+    "6h": "360",
+    "8h": "480",
+    "12h": "720",
+    "1d": "D",
+    "1day": "D",
+    "1w": "W",
+    "1m": "M",
   };
   if (t === "1d" || t === "1day") return "D";
   if (t === "1w") return "W";
@@ -44,48 +56,56 @@ export default function TVChart({
   const pendingRef = useRef<{ s: string; i: string } | null>(null);
   const roRef = useRef<ResizeObserver | null>(null);
   const restoreFetchRef = useRef<(() => void) | null>(null);
-  const eventHandlerRef = useRef<((event: Event) => void) | null>(null);
-  const latestSymbolRef = useRef(symbol);
+  const latestSymbolRef = useRef(normalizeSymbol(symbol));
   const latestTfRef = useRef(timeframe);
-  const applyUpdateRef = useRef<(sym?: string, tf?: string) => void>(() => undefined);
 
-  useEffect(() => {
-    latestSymbolRef.current = symbol;
-    latestTfRef.current = timeframe;
-  }, [symbol, timeframe]);
+  const setSymbolAndTf = useCallback(
+    (nextSymbol?: string, nextTf?: string) => {
+      const resolvedSymbol = normalizeSymbol(
+        nextSymbol || latestSymbolRef.current || symbol || "BTCUSDT",
+      );
+      if (!resolvedSymbol) return;
 
-  const setSymbolAndTf = (sym: string, tf: string) => {
-    const s = `BINANCE:${normalizeSymbol(sym)}`;
-    const i = mapInterval(tf);
-    const w = widgetRef.current;
+      const resolvedTfRaw = nextTf ?? latestTfRef.current ?? timeframe ?? "4h";
+      const resolvedTfString = `${resolvedTfRaw}`.trim();
+      const resolvedTf = resolvedTfString || "4h";
+      latestSymbolRef.current = resolvedSymbol;
+      latestTfRef.current = resolvedTf;
 
-    if (!w || typeof w.activeChart !== "function") {
-      pendingRef.current = { s, i };
-      return;
-    }
-    if (readyRef.current) {
-      try { w.activeChart().setSymbol(s, i); }
-      catch {
+      const payload = { s: `BINANCE:${resolvedSymbol}`, i: mapInterval(resolvedTf) };
+      const widget = widgetRef.current;
+
+      if (!widget || typeof widget.activeChart !== "function") {
+        pendingRef.current = payload;
+        return;
+      }
+
+      if (!readyRef.current) {
+        pendingRef.current = payload;
+        return;
+      }
+
+      try {
+        widget.activeChart().setSymbol(payload.s, payload.i);
+        pendingRef.current = null;
+      } catch {
         setTimeout(() => {
-          try { widgetRef.current?.activeChart().setSymbol(s, i); } catch {}
+          try {
+            widgetRef.current?.activeChart().setSymbol(payload.s, payload.i);
+            pendingRef.current = null;
+          } catch {}
         }, 200);
       }
-    } else {
-      pendingRef.current = { s, i };
-    }
-  };
+    },
+    [symbol, timeframe],
+  );
 
-  const handleTvUpdate = (nextSymbol: string | undefined, nextTf: string | undefined) => {
-    const resolvedSymbol = nextSymbol && nextSymbol.trim() ? nextSymbol : latestSymbolRef.current;
-    const resolvedTf = nextTf && nextTf.trim() ? nextTf : latestTfRef.current;
-    if (!resolvedSymbol) return;
-    const fallbackTf = resolvedTf || latestTfRef.current || timeframe;
-    setSymbolAndTf(resolvedSymbol, fallbackTf);
-  };
+  useEffect(() => {
+    latestSymbolRef.current = normalizeSymbol(symbol);
+    latestTfRef.current = timeframe;
+    setSymbolAndTf(symbol, timeframe);
+  }, [symbol, timeframe, setSymbolAndTf]);
 
-  applyUpdateRef.current = handleTvUpdate;
-
-  // Load script + create widget once
   useEffect(() => {
     let cancelled = false;
 
@@ -96,37 +116,42 @@ export default function TVChart({
         const poll = () => (window.TradingView ? resolve() : setTimeout(poll, 50));
         if (existing || window._tvScriptLoading) return poll();
         window._tvScriptLoading = true;
-        const s = document.createElement("script");
-        s.src = TV_SRC; s.async = true;
-        s.onload = () => resolve();
-        s.onerror = (e) => reject(e);
-        document.body.appendChild(s);
+        const script = document.createElement("script");
+        script.src = TV_SRC;
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = (e) => reject(e);
+        document.body.appendChild(script);
       });
 
     const init = () => {
       if (cancelled || !hostRef.current || !window.TradingView) return;
 
-      // Fallback height to avoid tiny chart
-      const h = hostRef.current;
-      const currentH = h.getBoundingClientRect().height;
-      if (currentH < 300) {
-        h.style.minHeight = "60vh";
-        h.style.height = "100%";
+      const host = hostRef.current;
+      const currentHeight = host.getBoundingClientRect().height;
+      if (currentHeight < 300) {
+        host.style.minHeight = "60vh";
+        host.style.height = "100%";
       }
 
-      // Clean & create container
-      h.innerHTML = "";
+      host.innerHTML = "";
       const div = document.createElement("div");
       div.id = "tv-chart";
       div.style.width = "100%";
       div.style.height = "100%";
-      h.appendChild(div);
+      host.appendChild(div);
 
       readyRef.current = false;
-      const w = new window.TradingView.widget({
+
+      const initialSymbol = normalizeSymbol(latestSymbolRef.current || symbol || "BTCUSDT") || "BTCUSDT";
+      const initialTf = latestTfRef.current || timeframe || "4h";
+      latestSymbolRef.current = initialSymbol;
+      latestTfRef.current = initialTf;
+
+      const widget = new window.TradingView.widget({
         container_id: "tv-chart",
-        symbol: `BINANCE:${normalizeSymbol(symbol)}`,
-        interval: mapInterval(timeframe),
+        symbol: `BINANCE:${initialSymbol}`,
+        interval: mapInterval(initialTf),
         theme: "dark",
         autosize: true,
         timezone: "Etc/UTC",
@@ -137,23 +162,28 @@ export default function TVChart({
         allow_symbol_change: true,
         studies: ["RSI@tv-basicstudies"],
       });
-      widgetRef.current = w;
 
-      w.onChartReady?.(() => {
+      widgetRef.current = widget;
+
+      widget.onChartReady?.(() => {
+        if (cancelled) return;
         readyRef.current = true;
-        if (pendingRef.current) {
-          const { s, i } = pendingRef.current;
-          try { w.activeChart().setSymbol(s, i); } catch {}
+        const pending = pendingRef.current;
+        if (pending) {
+          try {
+            widget.activeChart().setSymbol(pending.s, pending.i);
+          } catch {}
           pendingRef.current = null;
         }
       });
 
-      // Keep widget sized with parent
       if ("ResizeObserver" in window) {
         roRef.current = new ResizeObserver(() => {
-          try { widgetRef.current?.resize?.(); } catch {}
+          try {
+            widgetRef.current?.resize?.();
+          } catch {}
         });
-        roRef.current.observe(h);
+        roRef.current.observe(host);
       }
     };
 
@@ -162,60 +192,178 @@ export default function TVChart({
     return () => {
       cancelled = true;
       try {
-        roRef.current?.disconnect(); roRef.current = null;
-        if (hostRef.current) hostRef.current.innerHTML = "";
+        roRef.current?.disconnect();
+        roRef.current = null;
+        if (hostRef.current) {
+          hostRef.current.innerHTML = "";
+        }
       } catch {}
       widgetRef.current = null;
       readyRef.current = false;
       pendingRef.current = null;
     };
-  }, []); // once
-
-  // Intercept /api/metrics fetches so the chart updates instantly on Run Analysis
-  useEffect(() => {
-    if (restoreFetchRef.current) return; // already wrapped
-
-    const origFetch = window.fetch.bind(window);
-    window.fetch = async (...args: any[]) => {
-      try {
-        const url = typeof args[0] === "string" ? args[0] : args[0]?.url;
-        if (typeof url === "string" && url.includes("/api/metrics")) {
-          const u = new URL(url, window.location.origin);
-          const sym = u.searchParams.get("symbol") || undefined;
-          const tf = u.searchParams.get("tf") || undefined;
-          applyUpdateRef.current(sym ?? undefined, tf ?? undefined);
-        }
-      } catch {}
-      return origFetch(...(args as Parameters<typeof fetch>));
-    };
-
-    restoreFetchRef.current = () => { window.fetch = origFetch; };
-    return () => { try { restoreFetchRef.current?.(); } catch {} restoreFetchRef.current = null; };
   }, []);
 
   useEffect(() => {
-    if (eventHandlerRef.current) return;
-
-    const listener = (event: Event) => {
-      try {
-        const detail = (event as CustomEvent<{ symbol?: string; timeframe?: string }>).detail || {};
-        applyUpdateRef.current(detail?.symbol, detail?.timeframe);
-      } catch {}
-    };
-
-    eventHandlerRef.current = listener;
-    window.addEventListener("tv:update", listener as EventListener);
-
-    return () => {
-      if (eventHandlerRef.current === listener) {
-        window.removeEventListener("tv:update", listener as EventListener);
-        eventHandlerRef.current = null;
+    const listener = (e: Event) => {
+      const { symbol: nextSymbol, timeframe: nextTf } =
+        (e as CustomEvent<{ symbol?: string; timeframe?: string }>).detail || {};
+      if (nextSymbol && nextTf) {
+        setSymbolAndTf(nextSymbol, nextTf);
       }
     };
-  }, []);
 
-  // React to prop changes too (first paint uses defaults)
-  useEffect(() => { setSymbolAndTf(symbol, timeframe); }, [symbol, timeframe]);
+    window.addEventListener("tv:update", listener as EventListener);
+    return () => {
+      window.removeEventListener("tv:update", listener as EventListener);
+    };
+  }, [setSymbolAndTf]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.fetch !== "function") return;
+    if (restoreFetchRef.current) return;
+
+    let disposed = false;
+    const originalFetch = window.fetch.bind(window);
+
+    const extractScanParams = async (
+      args: Parameters<typeof fetch>,
+    ): Promise<{ matched: boolean; symbol?: string; timeframe?: string }> => {
+      try {
+        const [input, init] = args;
+        let urlString: string | undefined;
+        let method: string | undefined = init?.method;
+        let requestClone: Request | null = null;
+        let initBody: BodyInit | null | undefined = init?.body ?? null;
+
+        if (input instanceof Request) {
+          urlString = input.url;
+          method = input.method || method;
+          requestClone = input.clone();
+          initBody = initBody ?? null;
+        } else if (typeof input === "string" || input instanceof URL) {
+          urlString = input.toString();
+        } else if (input && typeof input === "object" && "url" in input) {
+          const maybeUrl = (input as { url?: string }).url;
+          if (typeof maybeUrl === "string") {
+            urlString = maybeUrl;
+          }
+        }
+
+        if (!urlString || !urlString.includes("/api/scan")) {
+          return { matched: false };
+        }
+
+        let symbol: string | undefined;
+        let timeframeValue: string | undefined;
+
+        try {
+          const parsed = new URL(urlString, window.location.origin);
+          symbol =
+            parsed.searchParams.get("symbol") ??
+            parsed.searchParams.get("pair") ??
+            undefined;
+          timeframeValue =
+            parsed.searchParams.get("tf") ??
+            parsed.searchParams.get("timeframe") ??
+            undefined;
+        } catch {}
+
+        const methodUpper = (method || (initBody ? "POST" : "GET")).toUpperCase();
+
+        const parseTextPayload = async (text: string | null | undefined) => {
+          if (!text) return;
+          try {
+            const parsedJson = JSON.parse(text);
+            if (parsedJson && typeof parsedJson === "object") {
+              const candidate = parsedJson as Record<string, unknown>;
+              symbol = (candidate.symbol ?? candidate.pair ?? symbol) as string | undefined;
+              timeframeValue =
+                (candidate.tf ?? candidate.timeframe ?? candidate.interval ?? timeframeValue) as
+                  | string
+                  | undefined;
+            }
+            return;
+          } catch {}
+
+          try {
+            const params = new URLSearchParams(text);
+            symbol = symbol ?? params.get("symbol") ?? params.get("pair") ?? undefined;
+            timeframeValue =
+              timeframeValue ?? params.get("tf") ?? params.get("timeframe") ?? undefined;
+          } catch {}
+        };
+
+        if (methodUpper !== "GET") {
+          if (requestClone) {
+            try {
+              const bodyText = await requestClone.text();
+              await parseTextPayload(bodyText);
+            } catch {}
+          } else if (initBody) {
+            if (typeof initBody === "string") {
+              await parseTextPayload(initBody);
+            } else if (
+              typeof URLSearchParams !== "undefined" &&
+              initBody instanceof URLSearchParams
+            ) {
+              await parseTextPayload(initBody.toString());
+            } else if (typeof FormData !== "undefined" && initBody instanceof FormData) {
+              const pairs: string[] = [];
+              initBody.forEach((value, key) => {
+                if (typeof value === "string") {
+                  pairs.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+                }
+              });
+              if (pairs.length > 0) {
+                await parseTextPayload(pairs.join("&"));
+              }
+            }
+          }
+        }
+
+        return { matched: true, symbol, timeframe: timeframeValue };
+      } catch {
+        return { matched: false };
+      }
+    };
+
+    const wrappedFetch: typeof window.fetch = (...args) => {
+      const paramsPromise = extractScanParams(args as Parameters<typeof fetch>);
+      paramsPromise
+        .then(({ matched, symbol: rawSymbol, timeframe: rawTf }) => {
+          if (!matched || disposed) return;
+          if (!rawSymbol) return;
+          const cleanedSymbol = normalizeSymbol(rawSymbol);
+          if (!cleanedSymbol) return;
+          const tfValueRaw =
+            rawTf !== undefined && rawTf !== null ? `${rawTf}` : undefined;
+          const tfValue = tfValueRaw && tfValueRaw.trim() ? tfValueRaw.trim() : undefined;
+          setSymbolAndTf(cleanedSymbol, tfValue);
+          window.dispatchEvent(
+            new CustomEvent("tv:update", {
+              detail: { symbol: cleanedSymbol, timeframe: tfValue },
+            }),
+          );
+        })
+        .catch(() => {});
+
+      return originalFetch(...(args as Parameters<typeof fetch>));
+    };
+
+    window.fetch = wrappedFetch;
+    restoreFetchRef.current = () => {
+      window.fetch = originalFetch;
+    };
+
+    return () => {
+      disposed = true;
+      try {
+        restoreFetchRef.current?.();
+      } catch {}
+      restoreFetchRef.current = null;
+    };
+  }, [setSymbolAndTf]);
 
   return <div ref={hostRef} className="w-full h-full" />;
 }
