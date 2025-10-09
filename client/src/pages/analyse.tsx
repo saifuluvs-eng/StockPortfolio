@@ -913,8 +913,8 @@ export default function Analyse() {
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
-              <div style={{ width: "100%", minHeight: "60vh" }}>
+            <CardContent className="w-full min-h-[60vh] p-0">
+              <div className="h-full">
                 <TVChart symbol={chartSymbol} timeframe={chartTf} />
               </div>
             </CardContent>

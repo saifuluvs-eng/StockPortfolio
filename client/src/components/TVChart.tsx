@@ -16,7 +16,7 @@ const TV_SRC = "https://s3.tradingview.com/tv.js";
 
 // Map our timeframe → TradingView interval
 const mapInterval = (tf: string): string => {
-  const t = tf.toLowerCase();
+  const t = (tf || "").toLowerCase();
   const m: Record<string, string> = {
     "15m": "15",
     "30m": "30",
@@ -64,6 +64,9 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
     const init = () => {
       if (cancelled || !containerRef.current || !window.TradingView) return;
 
+      // avoid double-rendered widget in strict/dev
+      if (containerRef.current.querySelector("#tv-chart")) return;
+
       containerRef.current.innerHTML = "";
       const inner = document.createElement("div");
       inner.id = "tv-chart";
@@ -99,7 +102,7 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
   // React to symbol/timeframe changes after mount
   useEffect(() => {
     const w = widgetRef.current;
-    if (!w || !w.activeChart) return;
+    if (!w || typeof w.activeChart !== "function") return;
     const tvInterval = mapInterval(timeframe);
     try {
       w.activeChart().setSymbol(`BINANCE:${symbol}`, tvInterval);
@@ -115,5 +118,5 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
     }
   }, [symbol, timeframe]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+  return <div ref={containerRef} className="h-full w-full" />;
 }
