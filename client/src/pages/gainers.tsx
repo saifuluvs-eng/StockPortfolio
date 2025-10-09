@@ -1,60 +1,175 @@
 import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface SpotGainerRow {
-  symbol: string;
-  price: number;
-  changePct: number;
-  volume: number;
-  high: number;
-  low: number;
+const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
+
+// Try common fields; fall back to derived % if needed
+const pct24 = (x: any): number => {
+  const direct =
+    x.percentChange24h ??
+    x.price_change_percentage_24h ??
+    x.change24h ??
+    x.changePercent24h ??
+    x.pct_change_24h ??
+    x?.stats?.percentChange24h;
+
+  if (direct !== undefined && direct !== null) {
+    const n = Number(direct);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  // Derive from price + open/prev close if available
+  const price = x.price ?? x.last ?? x.close ?? x.c ?? x?.stats?.last ?? null;
+  const prev = x.open24h ?? x.prev_close ?? x.previousClose ?? x.o ?? x?.stats?.prevClose ?? null;
+
+  if (price != null && prev != null) {
+    const p = Number(price);
+    const pc = Number(prev);
+    if (Number.isFinite(p) && Number.isFinite(pc) && pc !== 0) {
+      return ((p - pc) / pc) * 100;
+    }
+  }
+  return 0;
+};
+
+const symOf = (x: any) => (x.symbol ?? x.ticker ?? x.id ?? x.base ?? "").toString().toUpperCase();
+
+function toNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
 }
 
-function resolveRows(data: unknown): SpotGainerRow[] | null {
-  if (!data) return null;
-
-  if (Array.isArray(data)) {
-    return data as SpotGainerRow[];
+function priceOf(x: any): number | null {
+  const sources = [x.price, x.last, x.close, x.c, x.lastPrice, x.markPrice, x?.stats?.last];
+  for (const candidate of sources) {
+    const num = toNumber(candidate);
+    if (num !== null) return num;
   }
-
-  if (typeof data === "object") {
-    const record = data as Record<string, unknown>;
-    if (Array.isArray(record.rows)) {
-      return record.rows as SpotGainerRow[];
-    }
-
-    if (Array.isArray(record.items)) {
-      return record.items as SpotGainerRow[];
-    }
-
-    const nested = record.data;
-    if (Array.isArray(nested)) {
-      return nested as SpotGainerRow[];
-    }
-
-    if (nested && typeof nested === "object") {
-      const nestedRows = resolveRows(nested);
-      if (nestedRows) {
-        return nestedRows;
-      }
-    }
-  }
-
   return null;
 }
 
-const pct24 = (x: any): number => {
-  return (
-    x.percentChange24h ??
-    x.change24h ??
-    x.price_change_percentage_24h ??
-    x.changePercent24h ??
-    x.pct_change_24h ??
-    x?.stats?.percentChange24h ??
-    0
-  );
-};
+function volumeOf(x: any): number | null {
+  const sources = [
+    x.volume,
+    x.quoteVolume,
+    x.baseVolume,
+    x.vol,
+    x.totalVolume,
+    x.qv,
+    x?.stats?.volume24h,
+  ];
+  for (const candidate of sources) {
+    const num = toNumber(candidate);
+    if (num !== null) return num;
+  }
+  return null;
+}
 
-const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
+function highOf(x: any): number | null {
+  const sources = [x.high, x.highPrice, x.high24h, x.h, x?.stats?.high24h];
+  for (const candidate of sources) {
+    const num = toNumber(candidate);
+    if (num !== null) return num;
+  }
+  return null;
+}
+
+function lowOf(x: any): number | null {
+  const sources = [x.low, x.lowPrice, x.low24h, x.l, x?.stats?.low24h];
+  for (const candidate of sources) {
+    const num = toNumber(candidate);
+    if (num !== null) return num;
+  }
+  return null;
+}
+
+function formatPrice(value: number | null): string {
+  if (value === null) return "—";
+  if (value === 0) return "$0";
+  const fixed = value >= 1 ? value.toFixed(2) : value.toFixed(6);
+  return `$${fixed.replace(/\.0+$/, "").replace(/(\.\d*?)0+$/, "$1")}`;
+}
+
+function formatHighLow(high: number | null, low: number | null): JSX.Element {
+  return (
+    <>
+      H: {high === null ? "—" : `$${high.toFixed(4).replace(/(\.\d*?)0+$/, "$1")}`}
+      <br />L: {low === null ? "—" : `$${low.toFixed(4).replace(/(\.\d*?)0+$/, "$1")}`}
+    </>
+  );
+}
+
+function GainersSkeleton() {
+  return (
+    <main className="p-4 text-zinc-200">
+      <h1 className="mb-4 text-xl font-semibold">All Top Gainers</h1>
+      <div className="rounded-xl border border-zinc-800 bg-black/40">
+        <div className="space-y-2 p-6">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <Skeleton key={index} className="h-12 w-full rounded-lg bg-zinc-900/80" />
+          ))}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+interface GainerRowProps {
+  index: number;
+  symbol: string;
+  name: string;
+  change24h: number;
+  price: number | null;
+  volume: number | null;
+  high: number | null;
+  low: number | null;
+}
+
+function GainerRow({ index, symbol, name, change24h, price, volume, high, low }: GainerRowProps) {
+  const changeDisplay = Number.isFinite(change24h) ? change24h : 0;
+  const isUp = changeDisplay >= 0;
+  const formattedVolume = volume === null ? "—" : `$${numberFormatter.format(volume)}`;
+
+  return (
+    <tr className="border-t border-zinc-900">
+      <td className="whitespace-nowrap px-4 py-3">{index + 1}</td>
+      <td className="whitespace-nowrap px-4 py-3">
+        <div className="flex flex-col">
+          <span>{symbol}</span>
+          {name && name !== symbol ? (
+            <span className="text-xs text-zinc-500">{name}</span>
+          ) : null}
+        </div>
+      </td>
+      <td className="whitespace-nowrap px-4 py-3 text-right">{formatPrice(price)}</td>
+      <td className={`whitespace-nowrap px-4 py-3 text-right ${isUp ? "text-green-500" : "text-red-500"}`}>
+        {isUp ? "+" : ""}
+        {changeDisplay.toFixed(2)}%
+      </td>
+      <td className="whitespace-nowrap px-4 py-3 text-right">{formattedVolume}</td>
+      <td className="whitespace-nowrap px-4 py-3 text-right">{formatHighLow(high, low)}</td>
+      <td className="whitespace-nowrap px-4 py-3 text-right">
+        <a
+          href={`/#/analyse/${symbol}`}
+          className="inline-block rounded-lg border border-zinc-700 px-3 py-1 hover:bg-zinc-900"
+        >
+          Analyse
+        </a>
+      </td>
+    </tr>
+  );
+}
+
+interface DisplayRow {
+  symbol: string;
+  name: string;
+  price: number | null;
+  change24h: number;
+  volume: number | null;
+  high: number | null;
+  low: number | null;
+}
 
 export default function Gainers() {
   const [rows, setRows] = useState<any[] | null>(null);
@@ -65,216 +180,103 @@ export default function Gainers() {
     let cancelled = false;
 
     const run = async () => {
-      const tryOnce = async (url: string) => {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
-        return resolveRows(data) ?? (Array.isArray(data) ? data : data?.items ?? []);
-      };
-
+      setLoading(true);
+      setError(null);
+      setRows(null);
       try {
-        const endpoints = [
-          "/api/gainers",
-          "/api/scan?mode=gainers",
-          "/api/scan?type=gainers",
-        ];
+        const r = await fetch("/api/watchlist");
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const d = await r.json();
+        const list: any[] = Array.isArray(d) ? d : d?.items ?? [];
 
-        for (const url of endpoints) {
-          try {
-            const list = await tryOnce(url);
-            if (cancelled) return;
-            if (list?.length) {
-              setRows(list);
-              setError(null);
-              setLoading(false);
-              return;
-            }
-          } catch {
-            // ignore individual endpoint failures
-          }
-        }
-
-        const watch = await tryOnce("/api/watchlist");
-        if (cancelled) return;
-        const derived = (watch || [])
-          .map((item: any) => ({ ...item, _chg: Number(pct24(item) || 0) }))
-          .sort((a: any, b: any) => b._chg - a._chg)
+        // Map + sort by 24h % desc, take top 20
+        const enriched = list
+          .map((x) => ({ ...x, _chg24: Number(pct24(x) || 0) }))
+          .sort((a, b) => b._chg24 - a._chg24)
           .slice(0, 20);
 
-        setRows(derived);
-        setError(derived.length ? null : "No gainers returned by watchlist.");
-        setLoading(false);
-      } catch (e: any) {
         if (!cancelled) {
-          setError(e?.message || "Failed to load gainers.");
-          setLoading(false);
+          setRows(enriched);
+          setError(enriched.length ? null : "No gainers found in watchlist.");
         }
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || "Failed to load gainers.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
 
-    setLoading(true);
-    setError(null);
-    setRows(null);
-    void run();
-
+    run();
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const processedRows = useMemo<SpotGainerRow[]>(() => {
+  const displayRows = useMemo<DisplayRow[]>(() => {
     if (!Array.isArray(rows)) return [];
     return rows
-      .map((item: any): SpotGainerRow | null => {
-        if (!item || typeof item !== "object") return null;
-
-        const rawSymbol =
-          typeof item.symbol === "string"
-            ? item.symbol
-            : typeof (item as any).pair === "string"
-            ? (item as any).pair
-            : typeof (item as any).asset === "string"
-            ? (item as any).asset
-            : typeof (item as any).ticker === "string"
-            ? (item as any).ticker
-            : "";
-
-        const symbol = (rawSymbol || "").toUpperCase();
+      .map((item) => {
+        const symbol = symOf(item);
         if (!symbol) return null;
-
-        const pickNumber = (values: any[], fallback = 0) => {
-          for (const value of values) {
-            const num = Number(value);
-            if (Number.isFinite(num)) return num;
-          }
-          return fallback;
-        };
-
-        const price = pickNumber(
-          [item.price, item.lastPrice, item.close, item.last, item.markPrice],
-          0,
-        );
-        const changePct = pickNumber(
-          [
-            item.changePct,
-            item.percentChange24h,
-            item.change24h,
-            item.pct_change_24h,
-            item.priceChangePercent,
-            item.changePercent24h,
-            pct24(item),
-            item._chg,
-          ],
-          0,
-        );
-        const volume = pickNumber(
-          [item.volume, item.quoteVolume, item.baseVolume, item.vol, item.totalVolume],
-          0,
-        );
-        const high = pickNumber([item.high, item.highPrice, item.high24h], price);
-        const low = pickNumber([item.low, item.lowPrice, item.low24h], price);
-
+        const price = priceOf(item);
+        const high = highOf(item);
+        const low = lowOf(item);
         return {
           symbol,
+          name: item.name ?? item.fullName ?? symbol,
           price,
-          changePct,
-          volume,
-          high,
-          low,
+          change24h: Number.isFinite(item?._chg24) ? item._chg24 : pct24(item),
+          volume: volumeOf(item),
+          high: high ?? price,
+          low: low ?? price,
         };
       })
-      .filter((item): item is SpotGainerRow => Boolean(item));
+      .filter((item): item is DisplayRow => Boolean(item));
   }, [rows]);
 
-  const cleaned = useMemo(() => {
-    return processedRows.filter((r) => typeof r.symbol === "string" && r.symbol.endsWith("USDT"));
-  }, [processedRows]);
-
   if (loading) {
-    return (
-      <main className="p-4 text-zinc-200">
-        <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
-        <div className="rounded-xl border border-zinc-800">
-          <div className="py-10 text-center text-zinc-400">Loading gainers...</div>
-        </div>
-      </main>
-    );
+    return <GainersSkeleton />;
   }
 
   if (error) {
-    return (
-      <main className="p-4 text-zinc-200">
-        <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
-        <div className="rounded-xl border border-zinc-800">
-          <div className="py-10 text-center text-red-400">{error}</div>
-        </div>
-      </main>
-    );
+    return <div className="text-sm opacity-75">{error}</div>;
   }
 
-  if ((Array.isArray(rows) && rows.length === 0) || !cleaned.length) {
-    return (
-      <main className="p-4 text-zinc-200">
-        <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
-        <div className="rounded-xl border border-zinc-800">
-          <div className="py-10 text-center text-zinc-400">No gainers data available.</div>
-        </div>
-      </main>
-    );
+  if (!displayRows.length) {
+    return <div>No gainers data available</div>;
   }
 
   return (
     <main className="p-4 text-zinc-200">
-      <h1 className="text-xl font-semibold mb-4">All Top Gainers</h1>
+      <h1 className="mb-4 text-xl font-semibold">All Top Gainers</h1>
 
-      <div className="rounded-xl border border-zinc-800 overflow-hidden">
+      <div className="overflow-hidden rounded-xl border border-zinc-800">
         <div className="h-[78vh] overflow-auto">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-black/85 backdrop-blur z-10">
-              <tr className="text-zinc-300">
-                <th className="py-3 px-4 text-left whitespace-nowrap">Rank</th>
-                <th className="py-3 px-4 text-left whitespace-nowrap">Symbol</th>
-                <th className="py-3 px-4 text-right whitespace-nowrap">Price</th>
-                <th className="py-3 px-4 text-right whitespace-nowrap">24h Change</th>
-                <th className="py-3 px-4 text-right whitespace-nowrap">Volume</th>
-                <th className="py-3 px-4 text-right whitespace-nowrap">High/Low</th>
-                <th className="py-3 px-4 text-right whitespace-nowrap">Quick Analysis</th>
+            <thead className="sticky top-0 z-10 bg-black/85 text-zinc-300 backdrop-blur">
+              <tr>
+                <th className="whitespace-nowrap px-4 py-3 text-left">Rank</th>
+                <th className="whitespace-nowrap px-4 py-3 text-left">Symbol</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right">Price</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right">24h Change</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right">Volume</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right">High/Low</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right">Quick Analysis</th>
               </tr>
             </thead>
             <tbody>
-              {cleaned.map((r, i) => (
-                <tr key={r.symbol} className="border-t border-zinc-900">
-                  <td className="py-3 px-4 whitespace-nowrap">{i + 1}</td>
-                  <td className="py-3 px-4 whitespace-nowrap">{r.symbol}</td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    ${r.price.toFixed(6).replace(/\.?0+$/, "")}
-                  </td>
-                  <td
-                    className={`py-3 px-4 text-right whitespace-nowrap ${
-                      r.changePct >= 0 ? "text-green-500" : "text-red-500"
-                    }`}
-                  >
-                    {r.changePct >= 0 ? "+" : ""}
-                    {r.changePct.toFixed(2)}%
-                  </td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    ${numberFormatter.format(r.volume)}
-                  </td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    H: ${r.high.toFixed(4)}
-                    <br />L: ${r.low.toFixed(4)}
-                  </td>
-                  <td className="py-3 px-4 text-right whitespace-nowrap">
-                    <a
-                      href={`/#/analyse/${r.symbol}`}
-                      className="inline-block rounded-lg px-3 py-1 border border-zinc-700 hover:bg-zinc-900"
-                    >
-                      Analyse
-                    </a>
-                  </td>
-                </tr>
+              {displayRows.map((row, index) => (
+                <GainerRow
+                  key={`${row.symbol}-${index}`}
+                  index={index}
+                  symbol={row.symbol}
+                  name={row.name}
+                  change24h={row.change24h}
+                  price={row.price}
+                  volume={row.volume}
+                  high={row.high}
+                  low={row.low}
+                />
               ))}
             </tbody>
           </table>
