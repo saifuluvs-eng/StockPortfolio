@@ -92,16 +92,16 @@ interface WatchlistItem {
   createdAt?: number | string | null;
 }
 
-const DEFAULT_TIMEFRAME = "240"; // 4h
+const DEFAULT_TIMEFRAME = "4h";
 const DEFAULT_SYMBOL = "BTCUSDT";
 const ANALYSE_TOAST_ID = "analyse-status";
 
 const TIMEFRAMES = [
-  { value: "15", label: "15min", display: "15m", backend: "15m" },
-  { value: "60", label: "1hr", display: "1h", backend: "1h" },
-  { value: "240", label: "4hr", display: "4h", backend: "4h" },
-  { value: "D", label: "1Day", display: "1D", backend: "1d" },
-  { value: "W", label: "1Week", display: "1W", backend: "1w" },
+  { value: "15m", label: "15min", display: "15m", backend: "15m", legacy: ["15"] },
+  { value: "1h", label: "1hr", display: "1h", backend: "1h", legacy: ["60"] },
+  { value: "4h", label: "4hr", display: "4h", backend: "4h", legacy: ["240"] },
+  { value: "1d", label: "1Day", display: "1D", backend: "1d", legacy: ["D", "1day"] },
+  { value: "1w", label: "1Week", display: "1W", backend: "1w", legacy: ["W"] },
 ] as const;
 
 function BackendWarningBanner({ status }: { status: boolean | null }) {
@@ -120,10 +120,21 @@ function displayPair(sym: string) {
   return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : (s || DEFAULT_SYMBOL);
 }
 
+type TimeframeOption = (typeof TIMEFRAMES)[number];
+
+const TIMEFRAME_LEGACY_MAP = TIMEFRAMES.reduce<Record<string, TimeframeOption>>((acc, tf) => {
+  acc[tf.value.toLowerCase()] = tf;
+  acc[tf.backend.toLowerCase()] = tf;
+  tf.legacy?.forEach((legacy) => {
+    acc[legacy.toLowerCase()] = tf;
+  });
+  return acc;
+}, {});
+
 function toFrontendTimeframe(value: string | undefined) {
   if (!value) return DEFAULT_TIMEFRAME;
-  const match = TIMEFRAMES.find((tf) => tf.backend === value || tf.value === value);
-  return match?.value ?? DEFAULT_TIMEFRAME;
+  const resolved = TIMEFRAME_LEGACY_MAP[value.toLowerCase()];
+  return resolved?.value ?? DEFAULT_TIMEFRAME;
 }
 
 function formatRelativeTime(input?: number | string | null) {
@@ -480,6 +491,7 @@ export default function Analyse() {
     () => TIMEFRAMES.find((tf) => tf.value === selectedTimeframe),
     [selectedTimeframe],
   );
+  const chartTimeframe = timeframeConfig?.backend ?? selectedTimeframe;
 
   const addToWatchlist = useMutation({
     mutationFn: async (symbol: string) => {
@@ -887,7 +899,7 @@ export default function Analyse() {
             </CardHeader>
             <CardContent className="p-0">
               <div style={{ width: "100%", minHeight: "60vh" }}>
-                <TVChart />
+                <TVChart symbol={selectedSymbol.toUpperCase()} timeframe={chartTimeframe} />
               </div>
             </CardContent>
           </Card>
