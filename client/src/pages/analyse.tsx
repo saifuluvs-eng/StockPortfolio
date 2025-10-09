@@ -737,6 +737,15 @@ export default function Analyse() {
     runScan(selectedSymbol, selectedTimeframe);
     setChartSymbol(normalizedSelected);
     setChartTf(selectedTimeframe);
+    console.log("[Analyse] Updating TV:", normalizedSelected, selectedTimeframe);
+    window.dispatchEvent(
+      new CustomEvent("tv:update", {
+        detail: {
+          symbol: normalizedSelected,
+          timeframe: selectedTimeframe,
+        },
+      }),
+    );
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {

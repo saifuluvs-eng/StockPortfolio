@@ -44,6 +44,15 @@ export default function TVChart({
   const pendingRef = useRef<{ s: string; i: string } | null>(null);
   const roRef = useRef<ResizeObserver | null>(null);
   const restoreFetchRef = useRef<(() => void) | null>(null);
+  const eventHandlerRef = useRef<((event: Event) => void) | null>(null);
+  const latestSymbolRef = useRef(symbol);
+  const latestTfRef = useRef(timeframe);
+  const applyUpdateRef = useRef<(sym?: string, tf?: string) => void>(() => undefined);
+
+  useEffect(() => {
+    latestSymbolRef.current = symbol;
+    latestTfRef.current = timeframe;
+  }, [symbol, timeframe]);
 
   const setSymbolAndTf = (sym: string, tf: string) => {
     const s = `BINANCE:${normalizeSymbol(sym)}`;
@@ -65,6 +74,16 @@ export default function TVChart({
       pendingRef.current = { s, i };
     }
   };
+
+  const handleTvUpdate = (nextSymbol: string | undefined, nextTf: string | undefined) => {
+    const resolvedSymbol = nextSymbol && nextSymbol.trim() ? nextSymbol : latestSymbolRef.current;
+    const resolvedTf = nextTf && nextTf.trim() ? nextTf : latestTfRef.current;
+    if (!resolvedSymbol) return;
+    const fallbackTf = resolvedTf || latestTfRef.current || timeframe;
+    setSymbolAndTf(resolvedSymbol, fallbackTf);
+  };
+
+  applyUpdateRef.current = handleTvUpdate;
 
   // Load script + create widget once
   useEffect(() => {
@@ -161,12 +180,10 @@ export default function TVChart({
       try {
         const url = typeof args[0] === "string" ? args[0] : args[0]?.url;
         if (typeof url === "string" && url.includes("/api/metrics")) {
-          // Parse symbol & tf from query params
           const u = new URL(url, window.location.origin);
-          const sym = u.searchParams.get("symbol") || symbol;
-          const tf = u.searchParams.get("tf") || timeframe;
-          // Update chart immediately
-          setSymbolAndTf(sym!, tf!);
+          const sym = u.searchParams.get("symbol") || undefined;
+          const tf = u.searchParams.get("tf") || undefined;
+          applyUpdateRef.current(sym ?? undefined, tf ?? undefined);
         }
       } catch {}
       return origFetch(...(args as Parameters<typeof fetch>));
@@ -174,7 +191,28 @@ export default function TVChart({
 
     restoreFetchRef.current = () => { window.fetch = origFetch; };
     return () => { try { restoreFetchRef.current?.(); } catch {} restoreFetchRef.current = null; };
-  }, [symbol, timeframe]);
+  }, []);
+
+  useEffect(() => {
+    if (eventHandlerRef.current) return;
+
+    const listener = (event: Event) => {
+      try {
+        const detail = (event as CustomEvent<{ symbol?: string; timeframe?: string }>).detail || {};
+        applyUpdateRef.current(detail?.symbol, detail?.timeframe);
+      } catch {}
+    };
+
+    eventHandlerRef.current = listener;
+    window.addEventListener("tv:update", listener as EventListener);
+
+    return () => {
+      if (eventHandlerRef.current === listener) {
+        window.removeEventListener("tv:update", listener as EventListener);
+        eventHandlerRef.current = null;
+      }
+    };
+  }, []);
 
   // React to prop changes too (first paint uses defaults)
   useEffect(() => { setSymbolAndTf(symbol, timeframe); }, [symbol, timeframe]);
