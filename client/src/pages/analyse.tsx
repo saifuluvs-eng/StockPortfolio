@@ -120,11 +120,10 @@ function displayPair(sym: string) {
   return s.endsWith("USDT") ? `${s.slice(0, -4)}/USDT` : (s || DEFAULT_SYMBOL);
 }
 
-function normalizeSymbol(raw: string) {
+const normalizeSymbol = (raw: string) => {
   const v = (raw || "").toString().trim().toUpperCase();
-  const noEx = v.includes(":") ? v.split(":").pop()! : v;
-  return noEx.replace(/\s+/g, "");
-}
+  return (v.includes(":") ? v.split(":").pop()! : v).replace(/\s+/g, "");
+};
 
 type TimeframeOption = (typeof TIMEFRAMES)[number];
 
@@ -385,7 +384,8 @@ export default function Analyse() {
       setIsScanning(true);
       setScanResult(null);
 
-      setChartSymbol(normalizeSymbol(symbol));
+      const normalizedSymbol = normalizeSymbol(symbol);
+      setChartSymbol(normalizedSymbol);
       setChartTf(timeframe);
 
       const timeframeConfig = TIMEFRAMES.find((tf) => tf.value === timeframe);
@@ -418,6 +418,14 @@ export default function Analyse() {
         toast.success(`${resolvedSymbol} analysed`, { id: ANALYSE_TOAST_ID });
         setScanResult(item);
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
+        window.dispatchEvent(
+          new CustomEvent("tv:update", {
+            detail: {
+              symbol: normalizedSymbol,
+              timeframe,
+            },
+          }),
+        );
       } catch (error) {
         if (lastRequestIdRef.current !== rid) return;
 
@@ -659,14 +667,6 @@ export default function Analyse() {
       setSearchInput("");
       setChartSymbol(normalizedFullSymbol);
       setChartTf(selectedTimeframe);
-      window.dispatchEvent(
-        new CustomEvent("tv:update", {
-          detail: {
-            symbol: normalizedFullSymbol,
-            timeframe: selectedTimeframe,
-          },
-        }),
-      );
 
       if (!networkEnabled) {
         if (backendOffline) {
@@ -737,14 +737,6 @@ export default function Analyse() {
     runScan(selectedSymbol, selectedTimeframe);
     setChartSymbol(normalizedSelected);
     setChartTf(selectedTimeframe);
-    window.dispatchEvent(
-      new CustomEvent("tv:update", {
-        detail: {
-          symbol: normalizedSelected,
-          timeframe: selectedTimeframe,
-        },
-      }),
-    );
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
