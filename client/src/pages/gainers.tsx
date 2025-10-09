@@ -6,28 +6,23 @@ const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
 // Try common fields; fall back to derived % if needed
 const pct24 = (x: any): number => {
   const direct =
-    x.percentChange24h ??
     x.price_change_percentage_24h ??
+    x.percentChange24h ??
     x.change24h ??
     x.changePercent24h ??
     x.pct_change_24h ??
-    x?.stats?.percentChange24h;
-
+    x?.stats?.percentChange24h ??
+    x.priceChangePercent; // Binance key
   if (direct !== undefined && direct !== null) {
     const n = Number(direct);
     return Number.isFinite(n) ? n : 0;
   }
-
-  // Derive from price + open/prev close if available
-  const price = x.price ?? x.last ?? x.close ?? x.c ?? x?.stats?.last ?? null;
-  const prev = x.open24h ?? x.prev_close ?? x.previousClose ?? x.o ?? x?.stats?.prevClose ?? null;
-
+  const price = x.price ?? x.last ?? x.close ?? x.c ?? x?.stats?.last;
+  const prev = x.open24h ?? x.prev_close ?? x.previousClose ?? x.o ?? x?.stats?.prevClose;
   if (price != null && prev != null) {
     const p = Number(price);
     const pc = Number(prev);
-    if (Number.isFinite(p) && Number.isFinite(pc) && pc !== 0) {
-      return ((p - pc) / pc) * 100;
-    }
+    if (Number.isFinite(p) && Number.isFinite(pc) && pc !== 0) return ((p - pc) / pc) * 100;
   }
   return 0;
 };
@@ -179,26 +174,73 @@ export default function Gainers() {
   useEffect(() => {
     let cancelled = false;
 
+    const toList = (d: any) => (Array.isArray(d) ? d : d?.items ?? []);
+    const tryOnce = async (url: string) => {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return toList(await r.json());
+    };
+
+    const pickTop = (list: any[], n = 20) =>
+      list
+        .map((x) => ({ ...x, _chg24: Number(pct24(x) || 0) }))
+        .sort((a, b) => b._chg24 - a._chg24)
+        .slice(0, n);
+
     const run = async () => {
       setLoading(true);
       setError(null);
       setRows(null);
       try {
-        const r = await fetch("/api/watchlist");
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const d = await r.json();
-        const list: any[] = Array.isArray(d) ? d : d?.items ?? [];
-
-        // Map + sort by 24h % desc, take top 20
-        const enriched = list
-          .map((x) => ({ ...x, _chg24: Number(pct24(x) || 0) }))
-          .sort((a, b) => b._chg24 - a._chg24)
-          .slice(0, 20);
-
-        if (!cancelled) {
-          setRows(enriched);
-          setError(enriched.length ? null : "No gainers found in watchlist.");
+        for (const u of ["/api/gainers", "/api/scan?mode=gainers", "/api/scan?type=gainers"]) {
+          try {
+            const list = await tryOnce(u);
+            if (list?.length) {
+              if (!cancelled) {
+                setRows(pickTop(list));
+              }
+              return;
+            }
+          } catch {
+            /* ignore */
+          }
         }
+
+        try {
+          const wl = await tryOnce("/api/watchlist");
+          if (wl?.length) {
+            if (!cancelled) {
+              setRows(pickTop(wl));
+            }
+            return;
+          }
+        } catch {
+          /* ignore */
+        }
+
+        const rb = await fetch("https://api.binance.com/api/v3/ticker/24hr");
+        if (rb.ok) {
+          const all = await rb.json();
+          const usdt = (all || []).filter(
+            (it: any) => typeof it?.symbol === "string" && it.symbol.endsWith("USDT"),
+          );
+          const mapped = usdt.map((it: any) => ({
+            symbol: it.symbol,
+            name: it.symbol,
+            price: Number(it.lastPrice ?? it.prevClosePrice ?? it.weightedAvgPrice ?? 0),
+            price_change_percentage_24h: Number(it.priceChangePercent ?? 0),
+          }));
+          const top = pickTop(mapped);
+          if (!cancelled) {
+            if (top.length) {
+              setRows(top);
+            } else {
+              setError("No gainers available from Binance.");
+            }
+          }
+          return;
+        }
+        throw new Error(`Binance HTTP ${rb.status}`);
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load gainers.");
       } finally {
