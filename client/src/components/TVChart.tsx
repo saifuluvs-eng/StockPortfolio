@@ -2,8 +2,10 @@
 import React, { useEffect, useRef } from "react";
 
 type TVChartProps = {
-  symbol: string;    // e.g. "BTCUSDT"
-  timeframe: string; // e.g. "4h"
+  // Defaults from parent are fine (BTCUSDT / 4h). Component will
+  // also auto-update when it sees /api/metrics?symbol=...&tf=... fetches.
+  symbol?: string;    // e.g. "BTCUSDT"
+  timeframe?: string; // e.g. "4h"
 };
 
 declare global {
@@ -27,15 +29,24 @@ const mapInterval = (tf: string): string => {
   return m[t] ?? "240";
 };
 
-export default function TVChart({ symbol, timeframe }: TVChartProps) {
+const normalizeSymbol = (raw: string) => {
+  const v = (raw || "").toString().trim().toUpperCase();
+  return (v.includes(":") ? v.split(":").pop()! : v).replace(/\s+/g, "");
+};
+
+export default function TVChart({
+  symbol = "BTCUSDT",
+  timeframe = "4h",
+}: TVChartProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const widgetRef = useRef<any>(null);
-  const readyRef  = useRef(false);
+  const readyRef = useRef(false);
   const pendingRef = useRef<{ s: string; i: string } | null>(null);
+  const roRef = useRef<ResizeObserver | null>(null);
+  const restoreFetchRef = useRef<(() => void) | null>(null);
 
-  // update helper (used by props + event)
   const setSymbolAndTf = (sym: string, tf: string) => {
-    const s = `BINANCE:${sym}`;
+    const s = `BINANCE:${normalizeSymbol(sym)}`;
     const i = mapInterval(tf);
     const w = widgetRef.current;
 
@@ -45,16 +56,21 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
     }
     if (readyRef.current) {
       try { w.activeChart().setSymbol(s, i); }
-      catch { setTimeout(() => { try { widgetRef.current?.activeChart().setSymbol(s, i); } catch {} }, 200); }
+      catch {
+        setTimeout(() => {
+          try { widgetRef.current?.activeChart().setSymbol(s, i); } catch {}
+        }, 200);
+      }
     } else {
       pendingRef.current = { s, i };
     }
   };
 
+  // Load script + create widget once
   useEffect(() => {
     let cancelled = false;
 
-    const waitForTV = () =>
+    const ensureScript = () =>
       new Promise<void>((resolve, reject) => {
         if (window.TradingView) return resolve();
         const existing = document.querySelector<HTMLScriptElement>(`script[src="${TV_SRC}"]`);
@@ -62,8 +78,7 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
         if (existing || window._tvScriptLoading) return poll();
         window._tvScriptLoading = true;
         const s = document.createElement("script");
-        s.src = TV_SRC;
-        s.async = true;
+        s.src = TV_SRC; s.async = true;
         s.onload = () => resolve();
         s.onerror = (e) => reject(e);
         document.body.appendChild(s);
@@ -72,20 +87,26 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
     const init = () => {
       if (cancelled || !hostRef.current || !window.TradingView) return;
 
-      // StrictMode/dev guard: don't create duplicate widget
-      if (hostRef.current.querySelector("#tv-chart")) return;
+      // Fallback height to avoid tiny chart
+      const h = hostRef.current;
+      const currentH = h.getBoundingClientRect().height;
+      if (currentH < 300) {
+        h.style.minHeight = "60vh";
+        h.style.height = "100%";
+      }
 
-      hostRef.current.innerHTML = "";
+      // Clean & create container
+      h.innerHTML = "";
       const div = document.createElement("div");
       div.id = "tv-chart";
       div.style.width = "100%";
       div.style.height = "100%";
-      hostRef.current.appendChild(div);
+      h.appendChild(div);
 
       readyRef.current = false;
       const w = new window.TradingView.widget({
         container_id: "tv-chart",
-        symbol: `BINANCE:${symbol}`,
+        symbol: `BINANCE:${normalizeSymbol(symbol)}`,
         interval: mapInterval(timeframe),
         theme: "dark",
         autosize: true,
@@ -108,37 +129,55 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
         }
       });
 
-      // Listen for global update events dispatched by Analyse
-      const handler = (e: Event) => {
-        const { symbol: evSym, timeframe: evTf } = (e as CustomEvent).detail || {};
-        if (evSym && evTf) setSymbolAndTf(evSym, evTf);
-      };
-      window.addEventListener("tv:update", handler);
-
-      // Cleanup
-      return () => {
-        window.removeEventListener("tv:update", handler);
-      };
+      // Keep widget sized with parent
+      if ("ResizeObserver" in window) {
+        roRef.current = new ResizeObserver(() => {
+          try { widgetRef.current?.resize?.(); } catch {}
+        });
+        roRef.current.observe(h);
+      }
     };
 
-    waitForTV().then(init).catch((e) => console.error("[TVChart] load error", e));
+    ensureScript().then(init).catch((e) => console.error("[TVChart] load error", e));
 
     return () => {
-      // SAFETY: never throw on unmount (prevents blank pages)
+      cancelled = true;
       try {
-        pendingRef.current = null;
-        readyRef.current = false;
-        // do not call any unknown widget .remove() to avoid exceptions
+        roRef.current?.disconnect(); roRef.current = null;
         if (hostRef.current) hostRef.current.innerHTML = "";
       } catch {}
       widgetRef.current = null;
+      readyRef.current = false;
+      pendingRef.current = null;
     };
-  }, []); // create once
+  }, []); // once
 
-  // react to prop changes instantly
+  // Intercept /api/metrics fetches so the chart updates instantly on Run Analysis
   useEffect(() => {
-    setSymbolAndTf(symbol, timeframe);
+    if (restoreFetchRef.current) return; // already wrapped
+
+    const origFetch = window.fetch.bind(window);
+    window.fetch = async (...args: any[]) => {
+      try {
+        const url = typeof args[0] === "string" ? args[0] : args[0]?.url;
+        if (typeof url === "string" && url.includes("/api/metrics")) {
+          // Parse symbol & tf from query params
+          const u = new URL(url, window.location.origin);
+          const sym = u.searchParams.get("symbol") || symbol;
+          const tf = u.searchParams.get("tf") || timeframe;
+          // Update chart immediately
+          setSymbolAndTf(sym!, tf!);
+        }
+      } catch {}
+      return origFetch(...(args as Parameters<typeof fetch>));
+    };
+
+    restoreFetchRef.current = () => { window.fetch = origFetch; };
+    return () => { try { restoreFetchRef.current?.(); } catch {} restoreFetchRef.current = null; };
   }, [symbol, timeframe]);
+
+  // React to prop changes too (first paint uses defaults)
+  useEffect(() => { setSymbolAndTf(symbol, timeframe); }, [symbol, timeframe]);
 
   return <div ref={hostRef} className="w-full h-full" />;
 }
