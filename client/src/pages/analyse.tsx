@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import PriceActionPlaceholder from "@/components/scanner/price-action-placeholder";
+import TVChart from "@/components/TVChart";
 import {
   Card,
   CardContent,
@@ -886,10 +886,9 @@ export default function Analyse() {
               <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <PriceActionPlaceholder
-                title="Chart data unavailable"
-                description={`Interactive charts for ${displayPair(selectedSymbol)} (${timeframeConfig?.display ?? selectedTimeframe}) are not available in this build.`}
-              />
+              <div className="min-h-[70vh] w-full">
+                <TVChart />
+              </div>
             </CardContent>
           </Card>
         </div>
