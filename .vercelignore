@@ -1,6 +1,5 @@
-# Ignore everything in /api except the single route we need now
-api/**
-!api/portfolio.js
+# API handlers should be deployed alongside the rest of the project, so we no longer
+# blanket-ignore the /api directory.
 
 # Usual ignores
 node_modules
