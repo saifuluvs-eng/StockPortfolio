@@ -18,6 +18,19 @@ import {
 } from 'technicalindicators';
 import { randomUUID } from 'node:crypto';
 
+const BINANCE_API_BASE = "https://api.binance.com";
+const BINANCE_USER_AGENT =
+  process.env.BINANCE_USER_AGENT ?? "StockPortfolio/1.0 (+https://stockportfolio.app)";
+const BINANCE_MIN_REQUEST_INTERVAL_MS = 120;
+const BINANCE_CACHE_TTL_MS = 45_000;
+const BINANCE_BACKOFF_MS = 60_000;
+
+const klinesCache = new Map();
+let binanceLimiter = Promise.resolve();
+let lastBinanceRequestAt = 0;
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const intervalMap = (tf) =>
   ({
     '15m': '15m',
@@ -174,30 +187,107 @@ const buildKlineResponse = (candles) => {
   };
 };
 
+function scheduleBinanceRequest(task) {
+  const run = async () => {
+    const now = Date.now();
+    const wait = Math.max(0, BINANCE_MIN_REQUEST_INTERVAL_MS - (now - lastBinanceRequestAt));
+    if (wait > 0) {
+      await delay(wait);
+    }
+    lastBinanceRequestAt = Date.now();
+    return task();
+  };
+
+  const chained = binanceLimiter.then(run);
+  binanceLimiter = chained.catch(() => {});
+  return chained;
+}
+
+async function fetchBinanceKlines(symbol, interval, limit = 500) {
+  const key = `${symbol}|${interval}|${limit}`;
+  const now = Date.now();
+  const cached = klinesCache.get(key);
+  if (cached && now - cached.ts < BINANCE_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const url = new URL("/api/v3/klines", BINANCE_API_BASE);
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("interval", interval);
+  url.searchParams.set("limit", String(limit));
+
+  const performRequest = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": BINANCE_USER_AGENT },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const status = response.status;
+        if (status === 418 || status === 429) {
+          console.warn(`[binance] rate limited/banned (status ${status}); backing off 60s`);
+          if (cached) {
+            return cached.data;
+          }
+          await delay(BINANCE_BACKOFF_MS);
+          const error = new Error(`binance ${status}`);
+          error.status = status;
+          throw error;
+        }
+
+        if (cached) {
+          console.warn(`[binance] non-ok response ${status}; serving cached data`);
+          return cached.data;
+        }
+
+        const error = new Error(`binance ${status}`);
+        error.status = status;
+        throw error;
+      }
+
+      const payload = await response.json();
+      klinesCache.set(key, { ts: Date.now(), data: payload });
+      return payload;
+    } catch (error) {
+      if (cached) {
+        console.warn("[binance] request failed; serving cached data", error);
+        return cached.data;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
+  return scheduleBinanceRequest(performRequest);
+}
+
 async function getKlines(symbol, timeframe, limit = 500) {
   const interval = intervalMap(timeframe);
-  const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(
-    symbol,
-  )}&interval=${interval}&limit=${limit}`;
   try {
-    const r = await fetch(url);
-    if (!r.ok) {
-      throw new Error(`binance ${r.status}`);
+    const rows = await fetchBinanceKlines(symbol, interval, limit);
+    const candles = Array.isArray(rows)
+      ? rows.map((k) => ({
+          openTime: Number(k[0]),
+          open: Number(k[1]),
+          high: Number(k[2]),
+          low: Number(k[3]),
+          close: Number(k[4]),
+          volume: Number(k[5]),
+          closeTime: Number(k[6]),
+        }))
+      : [];
+    if (candles.length === 0) {
+      throw new Error('empty_binance_response');
     }
-    const rows = await r.json();
-    const candles = rows.map((k) => ({
-      openTime: Number(k[0]),
-      open: Number(k[1]),
-      high: Number(k[2]),
-      low: Number(k[3]),
-      close: Number(k[4]),
-      volume: Number(k[5]),
-      closeTime: Number(k[6]),
-    }));
     return buildKlineResponse(candles);
   } catch (error) {
     console.warn(
-      '[getKlines] Falling back to synthetic candles due to upstream error:',
+      "[getKlines] Falling back to synthetic candles due to upstream error:",
       error,
     );
     const synthetic = generateSyntheticCandles(symbol, interval, limit);
@@ -217,7 +307,7 @@ function push(arr, title, value, signal = 'neutral', reason = '') {
   arr.push({ title, value: fmt(value), signal, reason });
 }
 
-const PORT = Number.parseInt(process.env.PORT ?? "4000", 10);
+const PORT = Number(process.env.PORT) || 8080;
 const normalizeOrigin = (origin) => origin?.replace(/\/+$/, '') ?? null;
 
 const ALLOW_ORIGINS = [
@@ -416,6 +506,10 @@ function computeTotals(positions) {
 
 app.get("/", (_req, res) => {
   res.json({ message: "Stock Portfolio backend is running" });
+});
+
+app.get("/healthz", (_req, res) => {
+  res.status(200).send("ok");
 });
 
 const healthPayload = () => ({ ok: true, ts: Date.now() });
@@ -925,8 +1019,6 @@ app.use((err, req, res, _next) => {
   res.status(status).json({ error: message });
 });
 
-const server = http.createServer(app);
-
 const wss = new WebSocketServer({ noServer: true });
 
 wss.on("connection", (socket) => {
@@ -934,6 +1026,16 @@ wss.on("connection", (socket) => {
     socket.send(message.toString());
   });
 });
+
+let server;
+
+if (process.env.NODE_ENV === "test") {
+  server = http.createServer(app);
+} else {
+  server = app.listen(PORT, "0.0.0.0", () => {
+    console.log(`[server] listening on ${PORT}`);
+  });
+}
 
 server.on("upgrade", (request, socket, head) => {
   if (request.url !== "/ws") {
@@ -945,11 +1047,5 @@ server.on("upgrade", (request, socket, head) => {
     wss.emit("connection", websocket, request);
   });
 });
-
-if (process.env.NODE_ENV !== "test") {
-  server.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-  });
-}
 
 export { app, server, wss };
