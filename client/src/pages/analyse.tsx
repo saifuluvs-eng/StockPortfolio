@@ -277,6 +277,7 @@ export default function Analyse() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
   const [chartSymbol, setChartSymbol] = useState<string>(normalizeSymbol(initialSymbol));
   const [chartTf, setChartTf] = useState<string>(initialTimeframe);
+  const [chartKey, setChartKey] = useState<string>(() => `tv-${Date.now()}`);
   const syncingFromQueryRef = useRef(false);
   const [searchInput, setSearchInput] = useState<string>(() => {
     const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
@@ -447,8 +448,13 @@ export default function Analyse() {
       } finally {
         if (lastRequestIdRef.current === rid) {
           setIsScanning(false);
-          window.__tvSet?.(normalizeSymbol(apiSymbol), backendTimeframe);
-          console.log("[Analyse] TV update →", normalizeSymbol(apiSymbol), backendTimeframe);
+          const sym = normalizeSymbol(apiSymbol);
+          const tf = backendTimeframe;
+          setChartSymbol(sym);
+          setChartTf(tf);
+          setChartKey(`tv-${sym}-${tf}-${Date.now()}`);
+          window.__tvSet?.(sym, tf);
+          console.log("[Analyse] TV remount →", sym, tf);
         }
       }
     },
@@ -928,7 +934,11 @@ export default function Analyse() {
           </CardHeader>
           <CardContent className="grow min-h-[60vh] p-0">
             <div className="h-full">
-              <TVChart symbol={chartSymbol} timeframe={chartTf} />
+              <TVChart
+                key={chartKey}
+                symbol={chartSymbol}
+                timeframe={chartTf}
+              />
             </div>
           </CardContent>
         </Card>
