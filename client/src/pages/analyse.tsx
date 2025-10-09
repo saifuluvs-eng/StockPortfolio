@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import TVChart from "../components/TVChart";
+import TVChart, { TVChartHandle } from "../components/TVChart";
 import {
   Card,
   CardContent,
@@ -278,6 +278,7 @@ export default function Analyse() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
   const [chartSymbol, setChartSymbol] = useState<string>(normalizeSymbol(initialSymbol));
   const [chartTf, setChartTf] = useState<string>(initialTimeframe);
+  const chartRef = useRef<TVChartHandle | null>(null);
   const syncingFromQueryRef = useRef(false);
   const [searchInput, setSearchInput] = useState<string>(() => {
     const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
@@ -654,10 +655,13 @@ export default function Analyse() {
       raw !== asString(displayPair(selectedSymbol)).replace("/USDT", "")
     ) {
       const fullSymbol = toUsdtSymbol(raw);
+      const normalizedFullSymbol = normalizeSymbol(fullSymbol);
       setSelectedSymbol(fullSymbol);
       setSearchInput("");
-      setChartSymbol(normalizeSymbol(fullSymbol));
+      setChartSymbol(normalizedFullSymbol);
       setChartTf(selectedTimeframe);
+      chartRef.current?.setSymbolAndTf(normalizedFullSymbol, selectedTimeframe);
+      window.__updateTVChart?.(normalizedFullSymbol, selectedTimeframe);
 
       if (!networkEnabled) {
         if (backendOffline) {
@@ -724,9 +728,12 @@ export default function Analyse() {
       return;
     }
 
+    const normalizedSelected = normalizeSymbol(selectedSymbol);
     runScan(selectedSymbol, selectedTimeframe);
-    setChartSymbol(normalizeSymbol(selectedSymbol));
+    setChartSymbol(normalizedSelected);
     setChartTf(selectedTimeframe);
+    chartRef.current?.setSymbolAndTf(normalizedSelected, selectedTimeframe);
+    window.__updateTVChart?.(normalizedSelected, selectedTimeframe);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -907,19 +914,17 @@ export default function Analyse() {
 
       {priceSummaryCards}
 
-      <div className="grid grid-cols-1 gap-6 items-stretch lg:grid-cols-[2fr_1fr]">
-        <div className="flex h-full flex-col">
-          <Card className="flex h-full flex-col border-border/70 bg-card/70">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-            </CardHeader>
-            <CardContent className="grow min-h-[60vh] p-0">
-              <div className="h-full">
-                <TVChart symbol={chartSymbol} timeframe={chartTf} />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[2fr_1fr]">
+        <Card className="flex h-full flex-col border-border/70 bg-card/70">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+          </CardHeader>
+          <CardContent className="grow min-h-[60vh] p-0">
+            <div className="h-full">
+              <TVChart ref={chartRef} symbol={chartSymbol} timeframe={chartTf} />
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="flex flex-col">
           {scanResult ? (

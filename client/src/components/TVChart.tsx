@@ -1,36 +1,28 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 
 type TVChartProps = {
-  symbol: string; // e.g. "BTCUSDT"
-  timeframe: string; // e.g. "4h"
+  symbol: string;    // default passed by parent (e.g., "BTCUSDT")
+  timeframe: string; // default passed by parent (e.g., "4h")
+};
+
+export type TVChartHandle = {
+  setSymbolAndTf: (sym: string, tf: string) => void;
 };
 
 declare global {
   interface Window {
     TradingView?: any;
     _tvScriptLoading?: boolean;
+    __updateTVChart?: (sym: string, tf: string) => void; // global fallback
   }
 }
 
 const TV_SRC = "https://s3.tradingview.com/tv.js";
-
-// Map our timeframe to TradingView interval codes
 const mapInterval = (tf: string): string => {
   const t = (tf || "").toLowerCase();
   const m: Record<string, string> = {
-    "15m": "15",
-    "30m": "30",
-    "1h": "60",
-    "2h": "120",
-    "3h": "180",
-    "4h": "240",
-    "6h": "360",
-    "8h": "480",
-    "12h": "720",
-    "1d": "D",
-    "1day": "D",
-    "1w": "W",
-    "1m": "M",
+    "15m": "15", "30m": "30", "1h": "60", "2h": "120", "3h": "180", "4h": "240",
+    "6h": "360", "8h": "480", "12h": "720", "1d": "D", "1day": "D", "1w": "W", "1m": "M",
   };
   if (t === "1d" || t === "1day") return "D";
   if (t === "1w") return "W";
@@ -38,12 +30,31 @@ const mapInterval = (tf: string): string => {
   return m[t] ?? "240";
 };
 
-export default function TVChart({ symbol, timeframe }: TVChartProps) {
+const TVChart = forwardRef<TVChartHandle, TVChartProps>(({ symbol, timeframe }, ref) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const widgetRef = useRef<any>(null);
   const readyRef = useRef(false);
   const pendingRef = useRef<{ s: string; i: string } | null>(null);
-  const roRef = useRef<ResizeObserver | null>(null);
+
+  // expose imperative method
+  const setSymbolAndTf = (sym: string, tf: string) => {
+    const s = `BINANCE:${sym}`;
+    const i = mapInterval(tf);
+    const w = widgetRef.current;
+
+    if (!w || typeof w.activeChart !== "function") {
+      pendingRef.current = { s, i };
+      return;
+    }
+    if (readyRef.current) {
+      try { w.activeChart().setSymbol(s, i); }
+      catch { setTimeout(() => w?.activeChart?.().setSymbol(s, i), 200); }
+    } else {
+      pendingRef.current = { s, i };
+    }
+  };
+
+  useImperativeHandle(ref, () => ({ setSymbolAndTf }), []);
 
   // load tv.js once and create widget
   useEffect(() => {
@@ -66,8 +77,6 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
 
     const init = () => {
       if (cancelled || !hostRef.current || !window.TradingView) return;
-
-      // Clean + container
       hostRef.current.innerHTML = "";
       const div = document.createElement("div");
       div.id = "tv-chart";
@@ -76,7 +85,6 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
       hostRef.current.appendChild(div);
 
       readyRef.current = false;
-
       const w = new window.TradingView.widget({
         container_id: "tv-chart",
         symbol: `BINANCE:${symbol}`,
@@ -91,10 +99,8 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
         allow_symbol_change: true,
         studies: ["RSI@tv-basicstudies"],
       });
-
       widgetRef.current = w;
 
-      // Ensure updates work even if props change before widget ready
       w.onChartReady?.(() => {
         readyRef.current = true;
         if (pendingRef.current) {
@@ -104,59 +110,23 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
         }
       });
 
-      // Keep widget sized with parent using ResizeObserver
-      if ("ResizeObserver" in window && hostRef.current) {
-        roRef.current = new ResizeObserver(() => {
-          try {
-            widgetRef.current?.resize?.();
-          } catch {}
-        });
-        roRef.current.observe(hostRef.current);
-      }
+      // global fallback so any code can update without importing refs
+      window.__updateTVChart = (sym, tf) => setSymbolAndTf(sym, tf);
     };
 
     waitForTV().then(init).catch((e) => console.error("[TVChart] load error", e));
-
     return () => {
       cancelled = true;
-      roRef.current?.disconnect();
-      roRef.current = null;
-      if (hostRef.current) hostRef.current.innerHTML = "";
+      if (widgetRef.current?.remove) widgetRef.current.remove();
       widgetRef.current = null;
       readyRef.current = false;
       pendingRef.current = null;
+      if (hostRef.current) hostRef.current.innerHTML = "";
+      window.__updateTVChart = undefined;
     };
   }, []); // mount once
 
-  // React to prop changes immediately; if not ready, queue them
-  useEffect(() => {
-    const w = widgetRef.current;
-    const s = `BINANCE:${symbol}`;
-    const i = mapInterval(timeframe);
-
-    if (!w || !w.activeChart) {
-      pendingRef.current = { s, i };
-      return;
-    }
-
-    if (readyRef.current) {
-      try {
-        w.activeChart().setSymbol(s, i);
-      } catch (e) {
-        // Retry once if chart not fully settled
-        setTimeout(() => {
-          try {
-            widgetRef.current?.activeChart().setSymbol(s, i);
-          } catch (err) {
-            console.error("[TVChart] setSymbol failed", err);
-          }
-        }, 200);
-      }
-    } else {
-      pendingRef.current = { s, i };
-    }
-  }, [symbol, timeframe]);
-
-  // IMPORTANT: Parent must give us height; we fill it.
   return <div ref={hostRef} className="w-full h-full" />;
-}
+});
+
+export default TVChart;
