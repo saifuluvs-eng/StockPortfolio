@@ -1,23 +1,20 @@
-import React, { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
+// client/src/components/TVChart.tsx
+import React, { useEffect, useRef } from "react";
 
 type TVChartProps = {
-  symbol: string;    // default passed by parent (e.g., "BTCUSDT")
-  timeframe: string; // default passed by parent (e.g., "4h")
-};
-
-export type TVChartHandle = {
-  setSymbolAndTf: (sym: string, tf: string) => void;
+  symbol: string;    // e.g. "BTCUSDT"
+  timeframe: string; // e.g. "4h"
 };
 
 declare global {
   interface Window {
     TradingView?: any;
     _tvScriptLoading?: boolean;
-    __updateTVChart?: (sym: string, tf: string) => void; // global fallback
   }
 }
 
 const TV_SRC = "https://s3.tradingview.com/tv.js";
+
 const mapInterval = (tf: string): string => {
   const t = (tf || "").toLowerCase();
   const m: Record<string, string> = {
@@ -30,13 +27,13 @@ const mapInterval = (tf: string): string => {
   return m[t] ?? "240";
 };
 
-const TVChart = forwardRef<TVChartHandle, TVChartProps>(({ symbol, timeframe }, ref) => {
+export default function TVChart({ symbol, timeframe }: TVChartProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const widgetRef = useRef<any>(null);
-  const readyRef = useRef(false);
+  const readyRef  = useRef(false);
   const pendingRef = useRef<{ s: string; i: string } | null>(null);
 
-  // expose imperative method
+  // update helper (used by props + event)
   const setSymbolAndTf = (sym: string, tf: string) => {
     const s = `BINANCE:${sym}`;
     const i = mapInterval(tf);
@@ -48,15 +45,12 @@ const TVChart = forwardRef<TVChartHandle, TVChartProps>(({ symbol, timeframe }, 
     }
     if (readyRef.current) {
       try { w.activeChart().setSymbol(s, i); }
-      catch { setTimeout(() => w?.activeChart?.().setSymbol(s, i), 200); }
+      catch { setTimeout(() => { try { widgetRef.current?.activeChart().setSymbol(s, i); } catch {} }, 200); }
     } else {
       pendingRef.current = { s, i };
     }
   };
 
-  useImperativeHandle(ref, () => ({ setSymbolAndTf }), []);
-
-  // load tv.js once and create widget
   useEffect(() => {
     let cancelled = false;
 
@@ -77,6 +71,10 @@ const TVChart = forwardRef<TVChartHandle, TVChartProps>(({ symbol, timeframe }, 
 
     const init = () => {
       if (cancelled || !hostRef.current || !window.TradingView) return;
+
+      // StrictMode/dev guard: don't create duplicate widget
+      if (hostRef.current.querySelector("#tv-chart")) return;
+
       hostRef.current.innerHTML = "";
       const div = document.createElement("div");
       div.id = "tv-chart";
@@ -105,28 +103,42 @@ const TVChart = forwardRef<TVChartHandle, TVChartProps>(({ symbol, timeframe }, 
         readyRef.current = true;
         if (pendingRef.current) {
           const { s, i } = pendingRef.current;
-          w.activeChart().setSymbol(s, i);
+          try { w.activeChart().setSymbol(s, i); } catch {}
           pendingRef.current = null;
         }
       });
 
-      // global fallback so any code can update without importing refs
-      window.__updateTVChart = (sym, tf) => setSymbolAndTf(sym, tf);
+      // Listen for global update events dispatched by Analyse
+      const handler = (e: Event) => {
+        const { symbol: evSym, timeframe: evTf } = (e as CustomEvent).detail || {};
+        if (evSym && evTf) setSymbolAndTf(evSym, evTf);
+      };
+      window.addEventListener("tv:update", handler);
+
+      // Cleanup
+      return () => {
+        window.removeEventListener("tv:update", handler);
+      };
     };
 
     waitForTV().then(init).catch((e) => console.error("[TVChart] load error", e));
+
     return () => {
-      cancelled = true;
-      if (widgetRef.current?.remove) widgetRef.current.remove();
+      // SAFETY: never throw on unmount (prevents blank pages)
+      try {
+        pendingRef.current = null;
+        readyRef.current = false;
+        // do not call any unknown widget .remove() to avoid exceptions
+        if (hostRef.current) hostRef.current.innerHTML = "";
+      } catch {}
       widgetRef.current = null;
-      readyRef.current = false;
-      pendingRef.current = null;
-      if (hostRef.current) hostRef.current.innerHTML = "";
-      window.__updateTVChart = undefined;
     };
-  }, []); // mount once
+  }, []); // create once
+
+  // react to prop changes instantly
+  useEffect(() => {
+    setSymbolAndTf(symbol, timeframe);
+  }, [symbol, timeframe]);
 
   return <div ref={hostRef} className="w-full h-full" />;
-});
-
-export default TVChart;
+}
