@@ -16,6 +16,7 @@ export interface OverallResult {
   recommendation: Recommendation | string;
   recommendationLabel: string;
   confidenceLabel?: string;
+  confidence?: string;
   percent?: number;
 }
 
@@ -40,6 +41,7 @@ export function OverallAnalysisCard({
     Math.min(100, data?.percent ?? ((score + 30) / 60) * 100),
   );
   const confidence = data?.confidenceLabel ?? data?.recommendationLabel;
+  const compactConfidence = data?.confidence ?? confidence;
 
   const compactBadgeTone = (() => {
     switch (normalizedRecommendation) {
@@ -62,7 +64,7 @@ export function OverallAnalysisCard({
 
   if (compact) {
     return (
-      <div className="min-h-[76px] rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 md:min-h-[84px]">
+      <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-3">
         <div className="flex items-center gap-3">
           <div className="text-sm font-medium text-slate-200">Overall Analysis</div>
           <div className="flex-1">
@@ -84,13 +86,13 @@ export function OverallAnalysisCard({
                 </div>
               </div>
             ) : (
-              <div className="text-xs text-slate-400">
+              <div className="text-xs text-slate-400 truncate">
                 No analysis yet · Run a scan to unlock
               </div>
             )}
           </div>
-          {hasResult && confidence ? (
-            <div className="text-[11px] text-slate-400">{confidence}</div>
+          {compactConfidence ? (
+            <div className="text-[11px] text-slate-400">{compactConfidence}</div>
           ) : null}
         </div>
       </div>
