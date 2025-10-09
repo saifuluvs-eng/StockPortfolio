@@ -11,27 +11,91 @@ import {
   type Recommendation,
 } from "./utils";
 
-interface OverallAnalysisCardProps {
+export interface OverallResult {
   score: number;
   recommendation: Recommendation | string;
   recommendationLabel: string;
-  hasResult: boolean;
   confidenceLabel?: string;
+  percent?: number;
+}
+
+interface OverallAnalysisCardProps {
+  data?: OverallResult | null;
+  variant?: "full" | "compact";
   className?: string;
 }
 
 export function OverallAnalysisCard({
-  score,
-  recommendation,
-  recommendationLabel,
-  hasResult,
-  confidenceLabel,
+  data,
+  variant = "full",
   className,
 }: OverallAnalysisCardProps) {
-  const normalizedRecommendation = recommendation?.toString().toLowerCase();
+  const compact = variant === "compact";
+  const hasResult = Boolean(data);
+  const score = data?.score ?? 0;
+  const normalizedRecommendation = data?.recommendation?.toString().toLowerCase() ?? "";
   const badgeClass = getRecommendationColor(normalizedRecommendation);
-  const progressValue = Math.max(0, Math.min(100, ((score + 30) / 60) * 100));
-  const confidence = confidenceLabel ?? recommendationLabel;
+  const progressValue = Math.max(
+    0,
+    Math.min(100, data?.percent ?? ((score + 30) / 60) * 100),
+  );
+  const confidence = data?.confidenceLabel ?? data?.recommendationLabel;
+
+  const compactBadgeTone = (() => {
+    switch (normalizedRecommendation) {
+      case "strong_buy":
+      case "buy":
+        return "bg-emerald-500/15 text-emerald-300";
+      case "strong_sell":
+      case "sell":
+        return "bg-rose-500/15 text-rose-300";
+      default:
+        return "bg-amber-500/15 text-amber-300";
+    }
+  })();
+
+  const compactProgressTone = (() => {
+    if (score >= 5) return "bg-emerald-400";
+    if (score <= -5) return "bg-rose-400";
+    return "bg-amber-400";
+  })();
+
+  if (compact) {
+    return (
+      <div className="min-h-[76px] rounded-xl border border-slate-700/60 bg-slate-900/50 p-3 md:min-h-[84px]">
+        <div className="flex items-center gap-3">
+          <div className="text-sm font-medium text-slate-200">Overall Analysis</div>
+          <div className="flex-1">
+            {hasResult ? (
+              <div className="flex items-center gap-3">
+                <span
+                  className={cn(
+                    "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-semibold",
+                    compactBadgeTone,
+                  )}
+                >
+                  {data?.recommendationLabel}
+                </span>
+                <div className="h-1 w-full rounded bg-slate-700/60">
+                  <div
+                    className={cn("h-1 rounded", compactProgressTone)}
+                    style={{ width: `${progressValue}%` }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400">
+                No analysis yet · Run a scan to unlock
+              </div>
+            )}
+          </div>
+          {hasResult && confidence ? (
+            <div className="text-[11px] text-slate-400">{confidence}</div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Card
@@ -59,7 +123,7 @@ export function OverallAnalysisCard({
                     className={cn(badgeClass, "px-2 py-1 text-xs")}
                     data-testid="badge-recommendation"
                   >
-                    {recommendationLabel}
+                    {data?.recommendationLabel}
                   </Badge>
                 </div>
               </div>
