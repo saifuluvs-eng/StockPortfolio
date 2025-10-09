@@ -25,7 +25,10 @@ import {
   BreakdownSection,
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
-import { OverallAnalysisCard } from "@/features/analyse/OverallAnalysisCard";
+import {
+  OverallAnalysisCard,
+  type OverallResult,
+} from "@/features/analyse/OverallAnalysisCard";
 import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
@@ -808,6 +811,13 @@ export default function Analyse() {
   };
 
   const hasScanResult = Boolean(scanResult);
+  const overallResult: OverallResult | null = hasScanResult
+    ? {
+        score: safeTotalScore,
+        recommendation: safeRecommendation,
+        recommendationLabel,
+      }
+    : null;
 
   const priceSummaryCards = (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -913,23 +923,24 @@ export default function Analyse() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-        <Card className="border border-border/60 bg-card/70">
-          <CardContent className="flex h-full flex-col gap-4 p-6">
-            <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4">
-              <div className="flex flex-wrap items-center gap-3 md:gap-4">
-                <div className="min-w-[220px] basis-full grow md:basis-auto md:grow-0">
-                  <div className="relative">
-                    <Input
-                      placeholder="Enter coin (BTC, ETH, SOL...)"
-                      value={symbolInput}
-                      onChange={(e) => setSymbolInput(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      className="h-11 w-full min-w-0 pl-10"
-                      data-testid="input-search-symbol"
-                    />
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  </div>
+      <div className="grid grid-cols-12 items-start gap-4">
+        <div className="col-span-12 lg:col-span-8">
+          <Card className="border border-border/60 bg-card/70">
+            <CardContent className="flex h-full flex-col gap-4 p-6">
+              <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4">
+                <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                  <div className="min-w-[220px] basis-full grow md:basis-auto md:grow-0">
+                    <div className="relative">
+                      <Input
+                        placeholder="Enter coin (BTC, ETH, SOL...)"
+                        value={symbolInput}
+                        onChange={(e) => setSymbolInput(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        className="h-11 w-full min-w-0 pl-10"
+                        data-testid="input-search-symbol"
+                      />
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground md:text-sm">
@@ -1036,38 +1047,41 @@ export default function Analyse() {
                     {isScanning ? "Scanning..." : "Run Analysis"}
                   </Button>
                 </div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        <OverallAnalysisCard
-          score={safeTotalScore}
-          recommendation={safeRecommendation}
-          recommendationLabel={recommendationLabel}
-          hasResult={hasScanResult}
-        />
+        <div className="col-span-12 lg:col-span-4">
+          <OverallAnalysisCard
+            data={overallResult}
+            variant={overallResult ? "full" : "compact"}
+          />
+        </div>
       </div>
 
       {false && priceSummaryCards}
 
-      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[2fr_1fr]">
-        <Card className="flex h-full flex-col border-border/70 bg-card/70">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-          </CardHeader>
-          <CardContent className="grow min-h-[60vh] p-0">
-            <div className="h-full">
-              <TVChart
-                key={chartKey}
-                symbol={chartSymbol}
-                timeframe={chartTf}
-              />
-            </div>
-          </CardContent>
-        </Card>
+      <section className="mt-4 grid grid-cols-12 gap-4">
+        <div className="col-span-12 lg:col-span-7">
+          <Card className="flex h-full flex-col border-border/70 bg-card/70">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+            </CardHeader>
+            <CardContent className="grow min-h-[60vh] p-0">
+              <div className="h-full">
+                <TVChart
+                  key={chartKey}
+                  symbol={chartSymbol}
+                  timeframe={chartTf}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        <div className="flex flex-col">
+        <div className="col-span-12 flex flex-col lg:col-span-5">
           {scanResult ? (
             (() => {
               const item = scanResult;
@@ -1121,7 +1135,7 @@ export default function Analyse() {
             />
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
