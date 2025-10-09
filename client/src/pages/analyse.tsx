@@ -395,7 +395,7 @@ export default function Analyse() {
         const normalized = toBinance(symbol);
         toast.dismiss(ANALYSE_TOAST_ID);
         toast.loading("Analysing…", { id: ANALYSE_TOAST_ID });
-        const res = await apiRequest(
+        const resPromise = apiRequest(
           "POST",
           "/api/scanner/scan",
           {
@@ -403,6 +403,16 @@ export default function Analyse() {
             timeframe: backendTimeframe,
           },
         );
+        window.dispatchEvent(
+          new CustomEvent("tv:update", {
+            detail: {
+              symbol: normalizeSymbol(normalized),
+              timeframe: backendTimeframe,
+            },
+          }),
+        );
+        console.log("[Analyse] TV update →", normalizeSymbol(normalized), backendTimeframe);
+        const res = await resPromise;
         const payload = await res.json().catch(() => null);
 
         if (lastRequestIdRef.current !== rid) return;
@@ -418,14 +428,6 @@ export default function Analyse() {
         toast.success(`${resolvedSymbol} analysed`, { id: ANALYSE_TOAST_ID });
         setScanResult(item);
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
-        window.dispatchEvent(
-          new CustomEvent("tv:update", {
-            detail: {
-              symbol: normalizeSymbol(normalized),
-              timeframe: backendTimeframe,
-            },
-          }),
-        );
       } catch (error) {
         if (lastRequestIdRef.current !== rid) return;
 
