@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import TVChart, { TVChartHandle } from "../components/TVChart";
+import TVChart from "../components/TVChart";
 import {
   Card,
   CardContent,
@@ -278,7 +278,6 @@ export default function Analyse() {
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>(initialTimeframe);
   const [chartSymbol, setChartSymbol] = useState<string>(normalizeSymbol(initialSymbol));
   const [chartTf, setChartTf] = useState<string>(initialTimeframe);
-  const chartRef = useRef<TVChartHandle | null>(null);
   const syncingFromQueryRef = useRef(false);
   const [searchInput, setSearchInput] = useState<string>(() => {
     const base = initialSymbol.endsWith("USDT") ? initialSymbol.slice(0, -4) : initialSymbol;
@@ -660,8 +659,14 @@ export default function Analyse() {
       setSearchInput("");
       setChartSymbol(normalizedFullSymbol);
       setChartTf(selectedTimeframe);
-      chartRef.current?.setSymbolAndTf(normalizedFullSymbol, selectedTimeframe);
-      window.__updateTVChart?.(normalizedFullSymbol, selectedTimeframe);
+      window.dispatchEvent(
+        new CustomEvent("tv:update", {
+          detail: {
+            symbol: normalizedFullSymbol,
+            timeframe: selectedTimeframe,
+          },
+        }),
+      );
 
       if (!networkEnabled) {
         if (backendOffline) {
@@ -732,8 +737,14 @@ export default function Analyse() {
     runScan(selectedSymbol, selectedTimeframe);
     setChartSymbol(normalizedSelected);
     setChartTf(selectedTimeframe);
-    chartRef.current?.setSymbolAndTf(normalizedSelected, selectedTimeframe);
-    window.__updateTVChart?.(normalizedSelected, selectedTimeframe);
+    window.dispatchEvent(
+      new CustomEvent("tv:update", {
+        detail: {
+          symbol: normalizedSelected,
+          timeframe: selectedTimeframe,
+        },
+      }),
+    );
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -921,7 +932,7 @@ export default function Analyse() {
           </CardHeader>
           <CardContent className="grow min-h-[60vh] p-0">
             <div className="h-full">
-              <TVChart ref={chartRef} symbol={chartSymbol} timeframe={chartTf} />
+              <TVChart symbol={chartSymbol} timeframe={chartTf} />
             </div>
           </CardContent>
         </Card>
