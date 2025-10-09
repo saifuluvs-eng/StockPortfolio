@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import TVChart from "../components/TVChart";
 import {
@@ -907,13 +907,13 @@ export default function Analyse() {
 
       {priceSummaryCards}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="flex flex-col">
-          <Card className="border-border/70 bg-card/70">
+      <div className="grid grid-cols-1 gap-6 items-stretch lg:grid-cols-[2fr_1fr]">
+        <div className="flex h-full flex-col">
+          <Card className="flex h-full flex-col border-border/70 bg-card/70">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
             </CardHeader>
-            <CardContent className="w-full min-h-[60vh] p-0">
+            <CardContent className="grow min-h-[60vh] p-0">
               <div className="h-full">
                 <TVChart symbol={chartSymbol} timeframe={chartTf} />
               </div>

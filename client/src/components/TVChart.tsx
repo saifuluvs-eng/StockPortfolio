@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
 
 type TVChartProps = {
-  symbol: string;      // e.g. "BTCUSDT", "INJUSDT"
-  timeframe: string;   // e.g. "4h", "1h", "1d"
+  symbol: string; // e.g. "BTCUSDT"
+  timeframe: string; // e.g. "4h"
 };
 
 declare global {
@@ -14,7 +14,7 @@ declare global {
 
 const TV_SRC = "https://s3.tradingview.com/tv.js";
 
-// Map our timeframe → TradingView interval
+// Map our timeframe to TradingView interval codes
 const mapInterval = (tf: string): string => {
   const t = (tf || "").toLowerCase();
   const m: Record<string, string> = {
@@ -30,19 +30,22 @@ const mapInterval = (tf: string): string => {
     "1d": "D",
     "1day": "D",
     "1w": "W",
-    "1m": "M", // 1 month
+    "1m": "M",
   };
   if (t === "1d" || t === "1day") return "D";
   if (t === "1w") return "W";
   if (t === "1m") return "M";
-  return m[t] ?? "240"; // default 4h
+  return m[t] ?? "240";
 };
 
 export default function TVChart({ symbol, timeframe }: TVChartProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const widgetRef = useRef<any>(null);
+  const readyRef = useRef(false);
+  const pendingRef = useRef<{ s: string; i: string } | null>(null);
+  const roRef = useRef<ResizeObserver | null>(null);
 
-  // Load tv.js once and create the widget
+  // load tv.js once and create widget
   useEffect(() => {
     let cancelled = false;
 
@@ -62,19 +65,19 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
       });
 
     const init = () => {
-      if (cancelled || !containerRef.current || !window.TradingView) return;
+      if (cancelled || !hostRef.current || !window.TradingView) return;
 
-      // avoid double-rendered widget in strict/dev
-      if (containerRef.current.querySelector("#tv-chart")) return;
+      // Clean + container
+      hostRef.current.innerHTML = "";
+      const div = document.createElement("div");
+      div.id = "tv-chart";
+      div.style.width = "100%";
+      div.style.height = "100%";
+      hostRef.current.appendChild(div);
 
-      containerRef.current.innerHTML = "";
-      const inner = document.createElement("div");
-      inner.id = "tv-chart";
-      inner.style.width = "100%";
-      inner.style.height = "100%";
-      containerRef.current.appendChild(inner);
+      readyRef.current = false;
 
-      widgetRef.current = new window.TradingView.widget({
+      const w = new window.TradingView.widget({
         container_id: "tv-chart",
         symbol: `BINANCE:${symbol}`,
         interval: mapInterval(timeframe),
@@ -88,35 +91,72 @@ export default function TVChart({ symbol, timeframe }: TVChartProps) {
         allow_symbol_change: true,
         studies: ["RSI@tv-basicstudies"],
       });
+
+      widgetRef.current = w;
+
+      // Ensure updates work even if props change before widget ready
+      w.onChartReady?.(() => {
+        readyRef.current = true;
+        if (pendingRef.current) {
+          const { s, i } = pendingRef.current;
+          w.activeChart().setSymbol(s, i);
+          pendingRef.current = null;
+        }
+      });
+
+      // Keep widget sized with parent using ResizeObserver
+      if ("ResizeObserver" in window && hostRef.current) {
+        roRef.current = new ResizeObserver(() => {
+          try {
+            widgetRef.current?.resize?.();
+          } catch {}
+        });
+        roRef.current.observe(hostRef.current);
+      }
     };
 
     waitForTV().then(init).catch((e) => console.error("[TVChart] load error", e));
 
     return () => {
       cancelled = true;
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      roRef.current?.disconnect();
+      roRef.current = null;
+      if (hostRef.current) hostRef.current.innerHTML = "";
       widgetRef.current = null;
+      readyRef.current = false;
+      pendingRef.current = null;
     };
-  }, []); // create once
+  }, []); // mount once
 
-  // React to symbol/timeframe changes after mount
+  // React to prop changes immediately; if not ready, queue them
   useEffect(() => {
     const w = widgetRef.current;
-    if (!w || typeof w.activeChart !== "function") return;
-    const tvInterval = mapInterval(timeframe);
-    try {
-      w.activeChart().setSymbol(`BINANCE:${symbol}`, tvInterval);
-    } catch (e) {
-      // Retry once in case widget isn't fully ready
-      setTimeout(() => {
-        try {
-          widgetRef.current?.activeChart().setSymbol(`BINANCE:${symbol}`, tvInterval);
-        } catch (err) {
-          console.error("[TVChart] setSymbol failed", err);
-        }
-      }, 250);
+    const s = `BINANCE:${symbol}`;
+    const i = mapInterval(timeframe);
+
+    if (!w || !w.activeChart) {
+      pendingRef.current = { s, i };
+      return;
+    }
+
+    if (readyRef.current) {
+      try {
+        w.activeChart().setSymbol(s, i);
+      } catch (e) {
+        // Retry once if chart not fully settled
+        setTimeout(() => {
+          try {
+            widgetRef.current?.activeChart().setSymbol(s, i);
+          } catch (err) {
+            console.error("[TVChart] setSymbol failed", err);
+          }
+        }, 200);
+      }
+    } else {
+      pendingRef.current = { s, i };
     }
   }, [symbol, timeframe]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  // IMPORTANT: Parent must give us height; we fill it.
+  return <div ref={hostRef} className="w-full h-full" />;
 }
