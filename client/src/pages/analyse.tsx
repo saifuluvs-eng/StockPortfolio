@@ -922,8 +922,8 @@ export default function Analyse() {
           </Button>
         </div>
       </header>
-      <div className="flex flex-col lg:flex-row gap-4 items-stretch">
-        <div className="flex-1 min-w-0">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="min-w-0">
           <Card className="border border-border/60 bg-card/70">
             <CardContent className="flex h-full flex-col gap-4 p-6">
               <div className="rounded-xl border border-slate-700/60 bg-slate-900/50 p-4">
@@ -1052,7 +1052,7 @@ export default function Analyse() {
           </Card>
         </div>
 
-        <div className="w-full shrink-0 lg:w-[380px] xl:w-[420px]">
+        <div className="min-w-0">
           <OverallAnalysisCard data={overallResult ?? null} size="fixed" />
         </div>
       </div>
