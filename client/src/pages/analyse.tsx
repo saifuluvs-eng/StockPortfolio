@@ -879,7 +879,7 @@ export default function Analyse() {
   );
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 md:px-6">
+    <div className="mx-auto w-full max-w-screen-2xl 2xl:max-w-[1800px] flex flex-col gap-5 px-4 py-6 md:px-6">
       <BackendWarningBanner status={backendStatus} />
       <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
@@ -1019,8 +1019,8 @@ export default function Analyse() {
 
       {false && priceSummaryCards}
 
-      <section className="mt-4 grid grid-cols-12 items-start gap-4">
-        <div className="col-span-12 flex flex-col lg:col-span-3">
+      <section className="mt-4 grid grid-cols-12 2xl:grid-cols-16 gap-4 items-start">
+        <div className="col-span-12 flex flex-col lg:col-span-3 2xl:col-span-4">
           {scanResult ? (
             (() => {
               const item = scanResult;
@@ -1075,7 +1075,7 @@ export default function Analyse() {
           )}
         </div>
 
-        <div className="col-span-12 lg:col-span-6">
+        <div className="col-span-12 lg:col-span-6 2xl:col-span-8">
           <Card className="flex h-full flex-col border-border/70 bg-card/70">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
@@ -1094,7 +1094,7 @@ export default function Analyse() {
           </Card>
         </div>
 
-        <div className="col-span-12 lg:col-span-3">
+        <div className="col-span-12 lg:col-span-3 2xl:col-span-4">
           <AiSummaryCard />
         </div>
       </section>
