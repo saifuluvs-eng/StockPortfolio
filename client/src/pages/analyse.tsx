@@ -909,8 +909,8 @@ export default function Analyse() {
       </header>
       {/* HEADER */}
       <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 p-3 md:p-3">
-        <div className="flex flex-wrap items-center gap-3 md:gap-4">
-          <div className="flex-1 min-w-[220px]">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-[260px] grow lg:basis-[66%]">
             <div className="relative">
               <Input
                 placeholder="Enter coin (BTC, ETH, SOL...)"
@@ -1018,8 +1018,8 @@ export default function Analyse() {
 
       {false && priceSummaryCards}
 
-      <section className="mt-3 grid grid-cols-12 items-start gap-4">
-        <div className="col-span-12 lg:col-span-7">
+      <section className="mt-4 grid grid-cols-12 items-start gap-4">
+        <div className="col-span-12 lg:col-span-8">
           <Card className="flex h-full flex-col border-border/70 bg-card/70">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
@@ -1038,7 +1038,7 @@ export default function Analyse() {
           </Card>
         </div>
 
-        <div className="col-span-12 flex flex-col lg:col-span-5">
+        <div className="col-span-12 flex flex-col lg:col-span-4">
           {scanResult ? (
             (() => {
               const item = scanResult;
