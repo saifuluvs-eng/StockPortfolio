@@ -879,9 +879,10 @@ export default function Analyse() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-screen-2xl 2xl:max-w-[1800px] flex flex-col gap-5 px-4 py-6 md:px-6">
-      <BackendWarningBanner status={backendStatus} />
-      <header className="flex flex-col gap-2">
+    <div className="w-full max-w-screen-2xl 2xl:max-w-[1800px] mx-auto px-4 lg:px-6">
+      <div className="flex flex-col gap-5 py-6">
+        <BackendWarningBanner status={backendStatus} />
+        <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-3xl font-bold text-foreground">
@@ -1019,86 +1020,113 @@ export default function Analyse() {
 
       {false && priceSummaryCards}
 
-      <section className="mt-4 grid grid-cols-12 2xl:grid-cols-16 gap-4 items-start">
-        <div className="col-span-12 flex flex-col lg:col-span-3 2xl:col-span-4">
-          {scanResult ? (
-            (() => {
-              const item = scanResult;
-              const rawRows = getRawBreakdownRows(item);
+      <div className="mt-4">
+        <div
+          className="
+            grid gap-6 items-start content-start
+            grid-cols-12
+            2xl:grid-cols-16
+          "
+        >
+          <section
+            className="
+              col-span-12
+              xl:col-span-4
+              2xl:col-span-4
+            "
+          >
+            {scanResult ? (
+              (() => {
+                const item = scanResult;
+                const rawRows = getRawBreakdownRows(item);
 
-              const breakdownRows: BreakdownRow[] = rawRows
-                .map((row: any) => {
-                  const rawSignal = asString(row?.signal).toLowerCase();
-                  const normalizedSignal: BreakdownRow["signal"] =
-                    rawSignal === "bullish" || rawSignal === "bearish"
-                      ? (rawSignal as BreakdownRow["signal"])
-                      : "neutral";
+                const breakdownRows: BreakdownRow[] = rawRows
+                  .map((row: any) => {
+                    const rawSignal = asString(row?.signal).toLowerCase();
+                    const normalizedSignal: BreakdownRow["signal"] =
+                      rawSignal === "bullish" || rawSignal === "bearish"
+                        ? (rawSignal as BreakdownRow["signal"])
+                        : "neutral";
 
-                  const rawValue = row?.value;
-                  const value =
-                    typeof rawValue === "number"
-                      ? rawValue
-                      : asString(rawValue);
+                    const rawValue = row?.value;
+                    const value =
+                      typeof rawValue === "number"
+                        ? rawValue
+                        : asString(rawValue);
 
-                  return {
-                    title: asString(row?.title || row?.key || row?.name),
-                    value,
-                    signal: normalizedSignal,
-                    reason: row?.reason
-                      ? asString(row.reason)
-                      : row?.description
-                        ? asString(row.description)
-                        : undefined,
-                  } satisfies BreakdownRow;
-                })
-                .filter((row: BreakdownRow) => row.title);
+                    return {
+                      title: asString(row?.title || row?.key || row?.name),
+                      value,
+                      signal: normalizedSignal,
+                      reason: row?.reason
+                        ? asString(row.reason)
+                        : row?.description
+                          ? asString(row.description)
+                          : undefined,
+                    } satisfies BreakdownRow;
+                  })
+                  .filter((row: BreakdownRow) => row.title);
 
-              if (breakdownRows.length === 0) {
-                return <BreakdownSection rows={[]} />;
-              }
+                if (breakdownRows.length === 0) {
+                  return <BreakdownSection rows={[]} />;
+                }
 
-              return <BreakdownSection rows={breakdownRows} />;
-            })()
-          ) : (
-            <BreakdownSection
-              rows={[]}
-              emptyState={
-                <div className="py-12 text-center text-white/70">
-                  <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
-                  <h4 className="text-lg font-medium text-white">No analysis yet</h4>
-                  <p className="mx-auto mt-1 max-w-xs text-sm">
-                    Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
-                  </p>
+                return <BreakdownSection rows={breakdownRows} />;
+              })()
+            ) : (
+              <BreakdownSection
+                rows={[]}
+                emptyState={
+                  <div className="py-12 text-center text-white/70">
+                    <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
+                    <h4 className="text-lg font-medium text-white">No analysis yet</h4>
+                    <p className="mx-auto mt-1 max-w-xs text-sm">
+                      Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
+                    </p>
+                  </div>
+                }
+              />
+            )}
+          </section>
+
+          <section
+            className="
+              col-span-12
+              xl:col-span-8
+              2xl:col-span-8
+            "
+          >
+            <Card className="flex h-full flex-col border-border/70 bg-card/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="h-[560px] rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
+                  <div className="h-full w-full">
+                    <TVChart
+                      key={chartKey}
+                      symbol={chartSymbol}
+                      timeframe={chartTf}
+                    />
+                  </div>
                 </div>
-              }
-            />
-          )}
-        </div>
+              </CardContent>
+            </Card>
+          </section>
 
-        <div className="col-span-12 lg:col-span-6 2xl:col-span-8">
-          <Card className="flex h-full flex-col border-border/70 bg-card/70">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="h-[560px] rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
-                <div className="h-full w-full">
-                  <TVChart
-                    key={chartKey}
-                    symbol={chartSymbol}
-                    timeframe={chartTf}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <section
+            className="
+              col-span-12
+              xl:col-span-4
+              2xl:col-span-4
+            "
+          >
+            <AiSummaryCard />
+          </section>
         </div>
-
-        <div className="col-span-12 lg:col-span-3 2xl:col-span-4">
-          <AiSummaryCard />
-        </div>
-      </section>
+      </div>
     </div>
+  </div>
   );
 }
 
