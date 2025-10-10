@@ -1024,17 +1024,11 @@ export default function Analyse() {
         <div
           className="
             grid gap-6 items-start content-start
-            grid-cols-12
-            2xl:grid-cols-16
+            grid-cols-1
+            xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]
           "
         >
-          <section
-            className="
-              col-span-12
-              xl:col-span-4
-              2xl:col-span-4
-            "
-          >
+          <section className="min-w-0 overflow-hidden">
             {scanResult ? (
               (() => {
                 const item = scanResult;
@@ -1089,19 +1083,13 @@ export default function Analyse() {
             )}
           </section>
 
-          <section
-            className="
-              col-span-12
-              xl:col-span-8
-              2xl:col-span-8
-            "
-          >
+          <section className="min-w-0 overflow-hidden">
             <Card className="flex h-full flex-col border-border/70 bg-card/70">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="h-[560px] rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
+                <div className="h-[560px] min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
                   <div className="h-full w-full">
                     <TVChart
                       key={chartKey}
@@ -1114,13 +1102,7 @@ export default function Analyse() {
             </Card>
           </section>
 
-          <section
-            className="
-              col-span-12
-              xl:col-span-4
-              2xl:col-span-4
-            "
-          >
+          <section className="min-w-0 overflow-hidden">
             <AiSummaryCard />
           </section>
         </div>
