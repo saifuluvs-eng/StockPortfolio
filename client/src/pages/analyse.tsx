@@ -24,6 +24,7 @@ import {
   BreakdownSection,
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
+import AiSummaryCard from "@/features/analyse/AiSummaryCard";
 import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
@@ -1019,26 +1020,7 @@ export default function Analyse() {
       {false && priceSummaryCards}
 
       <section className="mt-4 grid grid-cols-12 items-start gap-4">
-        <div className="col-span-12 lg:col-span-8">
-          <Card className="flex h-full flex-col border-border/70 bg-card/70">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 h-[560px] md:h-[620px]">
-                <div className="h-full w-full">
-                  <TVChart
-                    key={chartKey}
-                    symbol={chartSymbol}
-                    timeframe={chartTf}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="col-span-12 flex flex-col lg:col-span-4">
+        <div className="col-span-12 flex flex-col lg:col-span-3">
           {scanResult ? (
             (() => {
               const item = scanResult;
@@ -1091,6 +1073,29 @@ export default function Analyse() {
               }
             />
           )}
+        </div>
+
+        <div className="col-span-12 lg:col-span-6">
+          <Card className="flex h-full flex-col border-border/70 bg-card/70">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="h-[560px] rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
+                <div className="h-full w-full">
+                  <TVChart
+                    key={chartKey}
+                    symbol={chartSymbol}
+                    timeframe={chartTf}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="col-span-12 lg:col-span-3">
+          <AiSummaryCard />
         </div>
       </section>
     </div>
