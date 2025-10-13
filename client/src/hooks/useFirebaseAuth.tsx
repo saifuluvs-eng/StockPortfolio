@@ -11,11 +11,16 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
 import { auth, getFirebaseIdToken } from "@/lib/firebase";
+import { queryClient } from "@/lib/queryClient";
+import { writeCachedPositions } from "@/lib/api/portfolio";
+import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
+import { usePriceStore } from "@/lib/prices";
 
 interface FirebaseAuthContextValue {
   user: User | null;
@@ -32,6 +37,7 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
@@ -73,6 +79,23 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
     setIdToken(null);
   }, []);
+
+  useEffect(() => {
+    const currentUserId = user?.uid ?? null;
+    const previousUserId = previousUserIdRef.current;
+
+    if (currentUserId && currentUserId !== previousUserId) {
+      queryClient.invalidateQueries({ queryKey: portfolioPositionsQueryKey(currentUserId) });
+    }
+
+    if (previousUserId && previousUserId !== currentUserId) {
+      writeCachedPositions(previousUserId, null);
+      queryClient.clear();
+      usePriceStore.getState().reset();
+    }
+
+    previousUserIdRef.current = currentUserId;
+  }, [user]);
 
   const value = useMemo(
     () => ({

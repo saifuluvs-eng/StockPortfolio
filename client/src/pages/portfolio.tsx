@@ -1,6 +1,8 @@
 // client/src/pages/portfolio.tsx
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePositions } from "@/hooks/usePositions";
+import { usePortfolioStats } from "@/hooks/usePortfolioStats";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,17 +17,11 @@ import {
   Trash2,
 } from "lucide-react";
 import LiveSummary from "@/components/home/LiveSummary";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { api } from "@/lib/api";
-import {
-  deletePosition as deleteRemotePosition,
-  getPositions as fetchPositions,
-  readCachedPositions,
-  upsertPosition as saveRemotePosition,
-  writeCachedPositions,
-  type PortfolioPosition as StoredPosition,
-} from "@/lib/api/portfolio";
+import { useDeletePosition, useUpsertPosition } from "@/lib/api/portfolio-mutations";
+import { usePrices } from "@/lib/prices";
 
 type Position = {
   id: string;
@@ -42,43 +38,24 @@ type AiOverviewData = {
 
 export default function Portfolio() {
   const { user } = useAuth();
-  const qc = useQueryClient();
   const [, setLocation] = useLocation();
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
 
-  const resolvedUserId = user?.uid ?? "demo-user";
-  const portfolioQueryKey = useMemo(
-    () => ["portfolio", "positions", resolvedUserId] as const,
-    [resolvedUserId],
-  );
-
-  const initialPositions = useMemo(() => readCachedPositions(resolvedUserId) ?? undefined, [resolvedUserId]);
-
   const {
-    data: storedPositions,
+    data: storedPositions = [],
     isLoading: loadingPositions,
+    isFetching: fetchingPositions,
     isError: positionsError,
     error: positionsErrorValue,
-  } = useQuery<StoredPosition[]>({
-    queryKey: portfolioQueryKey,
-    enabled: networkEnabled,
-    queryFn: () => fetchPositions(user?.uid ?? null),
-    initialData: initialPositions,
-    placeholderData: initialPositions,
-    staleTime: 5 * 60 * 1000,
-    gcTime: 24 * 60 * 60 * 1000,
-    retry: false,
-    refetchOnWindowFocus: false,
-    onSuccess: (positions) => {
-      writeCachedPositions(resolvedUserId, positions);
-    },
-  });
+  } = usePositions({ enabled: networkEnabled && !!user });
 
-  const portfolioPositions = storedPositions ?? initialPositions ?? [];
+  const { prices, setPrices, getPrice } = usePrices();
+  const { market: totalValue, pnl: totalPnL, pnlPct: totalPnLPercent } = usePortfolioStats();
+
   const positions = useMemo<Position[]>(
     () =>
-      portfolioPositions.map((pos) => ({
+      storedPositions.map((pos) => ({
         id: pos.id,
         symbol: pos.symbol,
         qty: Number(pos.quantity),
@@ -86,25 +63,10 @@ export default function Portfolio() {
         livePrice: Number(pos.entryPrice),
         pnl: 0,
       })),
-    [portfolioPositions],
+    [storedPositions],
   );
 
-  const baseTotals = useMemo(() => {
-    let invested = 0;
-    positions.forEach((pos) => {
-      invested += pos.avgPrice * pos.qty;
-    });
-    return {
-      totalValue: invested,
-      totalPnL: 0,
-      totalPnLPercent: 0,
-    };
-  }, [positions]);
-
-  const serverTotalValue = baseTotals.totalValue;
-  const serverTotalPnL = baseTotals.totalPnL;
-  const serverTotalPnLPercent = baseTotals.totalPnLPercent;
-  const isLoading = loadingPositions && positions.length === 0;
+  const isLoading = (loadingPositions || fetchingPositions) && positions.length === 0;
   const loadError = positionsError && positions.length === 0;
   const loadErrorMessage =
     positionsErrorValue instanceof Error
@@ -118,6 +80,84 @@ export default function Portfolio() {
     }
   }, [positionsError, positionsErrorValue]);
 
+  const symbols = useMemo(
+    () => Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase()).filter(Boolean))),
+    [positions],
+  );
+  const symbolsKey = symbols.join("|");
+
+  useEffect(() => {
+    if (!symbols.length) return;
+    if (!networkEnabled) return;
+    if (typeof window === "undefined") return;
+
+    const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
+    const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
+    let ws: WebSocket | null = null;
+
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch {
+      return;
+    }
+
+    ws.onopen = () => {
+      symbols.forEach((symbol) => {
+        try {
+          ws?.send(JSON.stringify({ type: "subscribe", symbol }));
+        } catch {
+          // ignore send failures
+        }
+      });
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg?.type === "price_update" && msg?.data && typeof msg.data === "object") {
+          const updates: Record<string, number> = {};
+          for (const [rawSymbol, rawPrice] of Object.entries(msg.data)) {
+            const symbol = String(rawSymbol).toUpperCase();
+            const price = Number(rawPrice);
+            if (Number.isFinite(price)) {
+              updates[symbol] = price;
+            }
+          }
+          if (Object.keys(updates).length > 0) {
+            setPrices(updates);
+          }
+        }
+      } catch {
+        // ignore malformed updates
+      }
+    };
+
+    return () => {
+      if (ws) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        try {
+          ws.close();
+        } catch {
+          // ignore close errors
+        }
+      }
+    };
+  }, [networkEnabled, setPrices, symbols, symbolsKey]);
+
+  const currentPriceFor = useCallback(
+    (sym: string, fallback: number) => {
+      const upper = sym.toUpperCase();
+      const mapPrice = prices[upper];
+      if (Number.isFinite(mapPrice)) {
+        return mapPrice as number;
+      }
+      const latest = getPrice(sym);
+      return typeof latest === "number" && Number.isFinite(latest) ? latest : fallback;
+    },
+    [getPrice, prices],
+  );
+
   const { data: aiOverview } = useQuery<AiOverviewData>({
     queryKey: ["/api/ai/market-overview"],
     refetchInterval: 120000,
@@ -130,141 +170,9 @@ export default function Portfolio() {
   });
 
   // ---------- LIVE PRICES ----------
-  // Source A: your /ws (if it emits these symbols)
-  const [liveWS, setLiveWS] = useState<Record<string, number>>({});
-  const positionsKey = useMemo(
-    () => positions.map((p) => p.symbol).sort().join(","),
-    [positions],
-  );
-
-  useEffect(() => {
-    if (positions.length === 0) return;
-    if (!networkEnabled) return;
-    if (typeof window === "undefined") return;
-
-    const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
-    const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      const symbols = Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase())));
-      symbols.forEach((s) => ws.send(JSON.stringify({ type: "subscribe", symbol: s })));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg?.type === "price_update" && msg?.data && typeof msg.data === "object") {
-          setLiveWS((prev) => {
-            let changed = false;
-            const next = { ...prev };
-            for (const [sym, price] of Object.entries(msg.data)) {
-              const s = sym.toUpperCase();
-              const p = Number(price as any);
-              if (Number.isFinite(p) && next[s] !== p) {
-                next[s] = p;
-                changed = true;
-              }
-            }
-            return changed ? next : prev;
-          });
-        }
-      } catch {}
-    };
-
-    return () => {
-      try { ws.close(); } catch {}
-    };
-  }, [networkEnabled, positionsKey]);
-
-  // Source B: Binance REST polling (covers all symbols reliably)
-  const [liveHTTP, setLiveHTTP] = useState<Record<string, number>>({});
-  useEffect(() => {
-    if (positions.length === 0) return;
-
-    const symbols = Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase())));
-    if (symbols.length === 0) return;
-
-    let cancelled = false;
-
-    async function fetchPrices() {
-      try {
-        // batch endpoint: /api/v3/ticker/price?symbols=["BTCUSDT","ETHUSDT"]
-        const url =
-          "https://api.binance.com/api/v3/ticker/price?symbols=" +
-          encodeURIComponent(JSON.stringify(symbols));
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const arr: Array<{ symbol: string; price: string }> = await res.json();
-        if (cancelled) return;
-
-        setLiveHTTP((prev) => {
-          const next = { ...prev };
-          for (const row of arr) {
-            const p = Number(row.price);
-            if (Number.isFinite(p)) next[row.symbol.toUpperCase()] = p;
-          }
-          return next;
-        });
-      } catch {
-        // ignore network hiccups
-      }
-    }
-
-    fetchPrices();
-    const id = setInterval(fetchPrices, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [positionsKey]);
-
-  // unified getter for a symbol’s latest price
-  function currentPriceFor(sym: string, fallback: number) {
-    const S = sym.toUpperCase();
-    if (Number.isFinite(liveWS[S])) return liveWS[S];
-    if (Number.isFinite(liveHTTP[S])) return liveHTTP[S];
-    return fallback;
-  }
-
-  const { totalValue, totalPnL, totalPnLPercent } = useMemo(() => {
-    if (positions.length === 0) {
-      return {
-        totalValue: serverTotalValue,
-        totalPnL: serverTotalPnL,
-        totalPnLPercent: serverTotalPnLPercent,
-      };
-    }
-
-    let invested = 0;
-    let currentWorth = 0;
-    for (const pos of positions) {
-      const symbol = pos.symbol.toUpperCase();
-      const latestPrice = currentPriceFor(symbol, pos.livePrice ?? pos.avgPrice);
-      invested += pos.avgPrice * pos.qty;
-      currentWorth += latestPrice * pos.qty;
-    }
-
-    const pnlValue = currentWorth - invested;
-    const pnlPercent = invested > 0 ? (pnlValue / invested) * 100 : 0;
-
-    return {
-      totalValue: currentWorth,
-      totalPnL: pnlValue,
-      totalPnLPercent: pnlPercent,
-    };
-  }, [
-    positions,
-    liveHTTP,
-    liveWS,
-    serverTotalPnL,
-    serverTotalPnLPercent,
-    serverTotalValue,
-  ]);
 
   // ---------- Add / Delete ----------
   const [open, setOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ symbol: "", qty: "", avgPrice: "" });
   const [formError, setFormError] = useState<string | null>(null);
   const formValid = useMemo(() => {
@@ -273,6 +181,10 @@ export default function Portfolio() {
     const a = Number(form.avgPrice);
     return s.length >= 2 && Number.isFinite(q) && q > 0 && Number.isFinite(a) && a > 0;
   }, [form]);
+
+  const upsertPositionMutation = useUpsertPosition();
+  const deletePositionMutation = useDeletePosition();
+  const saving = upsertPositionMutation.isPending;
 
   // open modal with cleared fields each time
   const openAdd = () => {
@@ -295,71 +207,36 @@ export default function Portfolio() {
   }, [open]);
 
   async function handleCreate() {
-    if (!formValid || saving || !user) return;
-    setSaving(true);
+    if (!formValid || saving) return;
+    if (!user) {
+      setFormError("Please sign in to add a position.");
+      return;
+    }
+
     setFormError(null);
 
     const symbol = form.symbol.trim().toUpperCase();
     const quantity = Number(form.qty);
     const entryPrice = Number(form.avgPrice);
-    const nowIso = new Date().toISOString();
-    const optimistic: StoredPosition = {
-      id: `temp-${Date.now()}`,
-      symbol,
-      quantity,
-      entryPrice,
-      notes: null,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    };
-
-    const previous = qc.getQueryData<StoredPosition[]>(portfolioQueryKey);
-    qc.setQueryData<StoredPosition[]>(portfolioQueryKey, (old) => {
-      const base = old ?? [];
-      const filtered = base.filter((pos) => pos.symbol !== optimistic.symbol);
-      return [optimistic, ...filtered];
-    });
 
     try {
-      const saved = await saveRemotePosition(user.uid, { symbol, quantity, entryPrice });
-      qc.setQueryData<StoredPosition[]>(portfolioQueryKey, (old) => {
-        const base = old ?? [];
-        const filtered = base.filter((pos) => pos.id !== saved.id && pos.symbol !== saved.symbol);
-        return [saved, ...filtered];
-      });
-      const latest = qc.getQueryData<StoredPosition[]>(portfolioQueryKey) ?? [];
-      writeCachedPositions(resolvedUserId, latest);
+      await upsertPositionMutation.mutateAsync({ symbol, quantity, entryPrice });
       setOpen(false);
-      setFormError(null);
       setForm({ symbol: "", qty: "", avgPrice: "" });
     } catch (err) {
       console.error("Add position failed:", err);
-      qc.setQueryData(portfolioQueryKey, previous);
-      writeCachedPositions(resolvedUserId, previous ?? null);
       const message = err instanceof Error ? err.message : "Failed to add position";
       setFormError(message);
-    } finally {
-      setSaving(false);
     }
   }
 
   async function handleDelete(position: Position) {
     if (!user) return;
-    const previous = qc.getQueryData<StoredPosition[]>(portfolioQueryKey);
-
-    qc.setQueryData<StoredPosition[]>(portfolioQueryKey, (old) =>
-      (old ?? []).filter((entry) => entry.id !== position.id),
-    );
-
     try {
-      await deleteRemotePosition(position.id, user.uid);
-      const latest = qc.getQueryData<StoredPosition[]>(portfolioQueryKey) ?? [];
-      writeCachedPositions(resolvedUserId, latest);
-    } catch (e) {
-      console.error("Delete failed:", e);
-      qc.setQueryData(portfolioQueryKey, previous);
-      writeCachedPositions(resolvedUserId, previous ?? null);
-      const message = e instanceof Error ? e.message : "Failed to delete position";
+      await deletePositionMutation.mutateAsync(position.id);
+    } catch (error) {
+      console.error("Delete failed:", error);
+      const message = error instanceof Error ? error.message : "Failed to delete position";
       alert(message);
     }
   }
