@@ -352,7 +352,7 @@ export default function Portfolio() {
     );
 
     try {
-      await deleteRemotePosition(user.uid, position.id);
+      await deleteRemotePosition(position.id, user.uid);
       const latest = qc.getQueryData<StoredPosition[]>(portfolioQueryKey) ?? [];
       writeCachedPositions(resolvedUserId, latest);
     } catch (e) {

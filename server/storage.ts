@@ -254,13 +254,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePortfolioPosition(id: string, userId: string): Promise<boolean> {
-    const result = await db
+    const existing = await db
+      .select({ id: portfolioPositions.id })
+      .from(portfolioPositions)
+      .where(and(
+        eq(portfolioPositions.id, id),
+        eq(portfolioPositions.userId, userId)
+      ))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return false;
+    }
+
+    await db
       .delete(portfolioPositions)
       .where(and(
         eq(portfolioPositions.id, id),
         eq(portfolioPositions.userId, userId)
       ));
-    return (result.changes ?? 0) > 0;
+
+    return true;
   }
 
   // Scan history operations

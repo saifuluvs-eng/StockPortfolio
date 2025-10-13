@@ -5,7 +5,12 @@ import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
 import { portfolioService } from "./services/portfolioService";
-import { insertPortfolioPositionSchema, insertWatchlistItemSchema, insertTradeTransactionSchema } from "@shared/schema";
+import {
+  insertPortfolioPositionSchema,
+  insertWatchlistItemSchema,
+  insertTradeTransactionSchema,
+  type InsertPortfolioPosition,
+} from "@shared/schema";
 import { z } from "zod";
 import { registerMetricsRoute } from "./routes/metrics";
 import { registerOhlcvRoute } from "./routes/ohlcv";
@@ -134,65 +139,157 @@ export function registerRoutes(app: Express): void {
     }
   });
 
-  app.post('/api/portfolio', isAuthenticated, async (req: Request, res: Response) => {
+  async function upsertPortfolioPosition(req: Request) {
+    const userId = (req as any).user.id;
+    const validatedData = insertPortfolioPositionSchema.parse({
+      ...req.body,
+      userId,
+    });
+
+    const { symbol, quantity, entryPrice, notes } = validatedData;
+    return storage.upsertPortfolioPosition(userId, {
+      symbol,
+      quantity,
+      entryPrice,
+      notes: notes ?? null,
+    });
+  }
+
+  async function updatePortfolioPosition(req: Request, updates: Partial<InsertPortfolioPosition>) {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+
+    const payload: Partial<InsertPortfolioPosition> = { ...updates };
+    if (payload.notes !== undefined) {
+      payload.notes = payload.notes ?? null;
+    }
+
+    const updated = await storage.updatePortfolioPosition(id, userId, payload);
+    if (!updated) {
+      return null;
+    }
+    return updated;
+  }
+
+  async function deletePortfolioPositionById(req: Request) {
+    const userId = (req as any).user.id;
+    const { id } = req.params;
+    if (!id?.trim()) {
+      return { deleted: false, reason: 'missing-id' as const };
+    }
+
+    const deleted = await storage.deletePortfolioPosition(id, userId);
+    return { deleted, reason: deleted ? null : 'not-found' as const };
+  }
+
+  app.get('/api/portfolio/positions', isAuthenticated, async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.id;
-      const validatedData = insertPortfolioPositionSchema.parse({
-        ...req.body,
-        userId,
-      });
-      
-      const position = await storage.createPortfolioPosition(validatedData);
+      const positions = await storage.getPortfolioPositions(userId);
+      res.json({ data: positions });
+    } catch (error) {
+      console.error('Error fetching portfolio positions:', error);
+      res.status(500).json({ message: 'Failed to fetch portfolio positions' });
+    }
+  });
+
+  app.post('/api/portfolio/positions', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const position = await upsertPortfolioPosition(req);
+      res.status(201).json({ data: position });
+    } catch (error) {
+      console.error('Error creating portfolio position:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid data', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to create position' });
+      }
+    }
+  });
+
+  app.post('/api/portfolio', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const position = await upsertPortfolioPosition(req);
       res.json(position);
     } catch (error) {
-      console.error("Error creating portfolio position:", error);
+      console.error('Error creating portfolio position:', error);
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid data", errors: error.errors });
+        res.status(400).json({ message: 'Invalid data', errors: error.errors });
       } else {
-        res.status(500).json({ message: "Failed to create position" });
+        res.status(500).json({ message: 'Failed to create position' });
+      }
+    }
+  });
+
+  app.patch('/api/portfolio/positions/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertPortfolioPositionSchema.partial().parse(req.body);
+      const updated = await updatePortfolioPosition(req, validatedData);
+      if (!updated) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      res.json({ data: updated });
+    } catch (error) {
+      console.error('Error updating portfolio position:', error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Invalid data', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Failed to update position' });
       }
     }
   });
 
   app.patch('/api/portfolio/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).user.id;
-      const { id } = req.params;
-      
-      // For PATCH, we should allow partial updates.
-      // .partial() makes all fields in the schema optional.
       const validatedData = insertPortfolioPositionSchema.partial().parse(req.body);
-      
-      const updated = await storage.updatePortfolioPosition(id, userId, validatedData);
+      const updated = await updatePortfolioPosition(req, validatedData);
       if (!updated) {
-        return res.status(404).json({ message: "Position not found" });
+        return res.status(404).json({ message: 'Position not found' });
       }
-      
+
       res.json(updated);
     } catch (error) {
-      console.error("Error updating portfolio position:", error);
+      console.error('Error updating portfolio position:', error);
       if (error instanceof z.ZodError) {
-        res.status(400).json({ message: "Invalid data", errors: error.errors });
+        res.status(400).json({ message: 'Invalid data', errors: error.errors });
       } else {
-        res.status(500).json({ message: "Failed to update position" });
+        res.status(500).json({ message: 'Failed to update position' });
       }
+    }
+  });
+
+  app.delete('/api/portfolio/positions/:id', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const { deleted, reason } = await deletePortfolioPositionById(req);
+      if (!deleted) {
+        if (reason === 'missing-id') {
+          return res.status(400).json({ error: 'Missing id' });
+        }
+        return res.status(404).json({ error: 'Not found' });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting portfolio position:', error);
+      res.status(500).json({ message: 'Failed to delete position' });
     }
   });
 
   app.delete('/api/portfolio/:id', isAuthenticated, async (req: Request, res: Response) => {
     try {
-      const userId = (req as any).user.id;
-      const { id } = req.params;
-      
-      const deleted = await storage.deletePortfolioPosition(id, userId);
+      const { deleted, reason } = await deletePortfolioPositionById(req);
       if (!deleted) {
-        return res.status(404).json({ message: "Position not found" });
+        if (reason === 'missing-id') {
+          return res.status(400).json({ message: 'Invalid id' });
+        }
+        return res.status(404).json({ message: 'Position not found' });
       }
-      
+
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deleting portfolio position:", error);
-      res.status(500).json({ message: "Failed to delete position" });
+      console.error('Error deleting portfolio position:', error);
+      res.status(500).json({ message: 'Failed to delete position' });
     }
   });
 

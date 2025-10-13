@@ -145,10 +145,11 @@ export async function updatePosition(
   return normalizePosition(json?.data);
 }
 
-export async function deletePosition(
-  userIdInput: string | null | undefined,
-  id: string,
-): Promise<void> {
+export async function deletePosition(id: string, userIdInput?: string | null | undefined): Promise<void> {
+  const trimmedId = typeof id === "string" ? id.trim() : "";
+  if (!trimmedId) {
+    throw new Error("Missing position id");
+  }
   const userId = normalizeUserId(userIdInput);
   await apiFetch(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
     method: "DELETE",
