@@ -25,6 +25,7 @@ import { api } from "@/lib/api";
 import { useDeletePosition, useUpsertPosition } from "@/lib/api/portfolio-mutations";
 import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 import { usePrices } from "@/lib/prices";
+import { fmt } from "@/lib/utils";
 
 type Position = {
   id: string;
@@ -402,7 +403,7 @@ export default function Portfolio() {
                     <th className="text-right py-2 pr-4">QTY</th>
                     <th className="text-right py-2 pr-4">ENTRY PRICE</th>
                     <th className="text-right py-2 pr-4">CURRENT PRICE</th>
-                    <th className="text-right py-2 pr-4">VALUE</th>
+                    <th className="text-right py-2 pr-4">Order Value</th>
                     <th className="text-right py-2 pr-4">P&amp;L (USDT)</th>
                     <th className="text-right py-2 pr-4">P&amp;L %</th>
                     <th className="text-right py-2">ACTIONS</th>
@@ -449,9 +450,13 @@ export default function Portfolio() {
                     {positions.map((p) => {
                       const sym = p.symbol.toUpperCase();
                       const current = currentPriceFor(sym, p.livePrice ?? p.avgPrice);
-                      const positionValue = p.qty * current;
-                      const pnlValue = (current - p.avgPrice) * p.qty;
-                      const pnlPct = p.avgPrice > 0 ? ((current - p.avgPrice) / p.avgPrice) * 100 : 0;
+                      const quantity = Number(p.qty) || 0;
+                      const entryPrice = Number(p.avgPrice) || 0;
+                      const currentPrice = Number.isFinite(current) ? current : entryPrice;
+                      const orderValue = quantity * entryPrice;
+                      const positionValue = quantity * currentPrice;
+                      const pnlValue = positionValue - orderValue;
+                      const pnlPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
                       const pnlColor = pnlValue >= 0 ? "text-green-500" : "text-red-500";
 
                       return (
@@ -464,9 +469,7 @@ export default function Portfolio() {
                           <td className="py-3 pr-4 text-right">
                             ${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}
                           </td>
-                          <td className="py-3 pr-4 text-right">
-                            ${positionValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                          </td>
+                          <td className="py-3 pr-4 text-right">{fmt(orderValue)}</td>
                           <td className={`py-3 pr-4 text-right ${pnlColor}`}>
                             {pnlValue >= 0 ? "+" : "-"}$
                             {Math.abs(pnlValue).toLocaleString("en-US", { maximumFractionDigits: 2 })}

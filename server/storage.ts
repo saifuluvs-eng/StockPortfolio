@@ -24,7 +24,7 @@ import {
 import { db } from "./db";
 import { firestore as adminFirestore } from "./firebaseAdmin";
 import { Timestamp, type DocumentData, type DocumentSnapshot } from "firebase-admin/firestore";
-import { eq, and, desc, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, desc, gte, lte, inArray, sql } from "drizzle-orm";
 export interface User extends Record<string, unknown> {
   id: string;
   email?: string | null;
@@ -116,6 +116,7 @@ export interface IStorage {
   
   // Portfolio operations
   getPortfolioPositions(userId: string): Promise<PortfolioPosition[]>;
+  countPortfolioPositions(userId: string): Promise<number>;
   createPortfolioPosition(position: InsertPortfolioPosition): Promise<PortfolioPosition>;
   upsertPortfolioPosition(
     userId: string,
@@ -194,6 +195,15 @@ export class DatabaseStorage implements IStorage {
       .from(portfolioPositions)
       .where(eq(portfolioPositions.userId, userId))
       .orderBy(desc(portfolioPositions.updatedAt), desc(portfolioPositions.createdAt));
+  }
+
+  async countPortfolioPositions(userId: string): Promise<number> {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(portfolioPositions)
+      .where(eq(portfolioPositions.userId, userId));
+    const value = row?.count;
+    return typeof value === "number" && Number.isFinite(value) ? value : Number(value ?? 0);
   }
 
   async createPortfolioPosition(position: InsertPortfolioPosition): Promise<PortfolioPosition> {
