@@ -1,61 +1,49 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getStorage, getUserId, readJsonBody } from "./_lib/serverless";
+import type { PortfolioPosition } from "@shared/schema";
 
-type PortfolioPosition = {
-  symbol: string;
-  qty: number;
-  avgPrice: number;
-  livePrice: number;
-  pnl: number;
-};
-
-type PortfolioUser = {
-  positions: PortfolioPosition[];
-};
-
-type PortfolioDB = {
-  users: Record<string, PortfolioUser>;
-};
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __PORTFOLIO_DB__?: PortfolioDB;
+function toLegacyPosition(position: PortfolioPosition) {
+  return {
+    symbol: position.symbol,
+    qty: Number(position.quantity),
+    avgPrice: Number(position.entryPrice),
+    livePrice: Number(position.entryPrice),
+    pnl: 0,
+  };
 }
 
-const db: PortfolioDB = globalThis.__PORTFOLIO_DB__ ?? { users: {} };
-globalThis.__PORTFOLIO_DB__ = db;
+function computeTotals(positions: PortfolioPosition[]) {
+  let invested = 0;
+  let currentValue = 0;
+
+  for (const pos of positions) {
+    const qty = Number(pos.quantity);
+    const entry = Number(pos.entryPrice);
+    invested += entry * qty;
+    currentValue += entry * qty;
+  }
+
+  const totalPnL = currentValue - invested;
+  const totalPnLPercent = invested > 0 ? (totalPnL / invested) * 100 : 0;
+
+  return { totalValue: currentValue, totalPnL, totalPnLPercent };
+}
 
 function getQueryParam(req: VercelRequest, key: string): string | null {
+  if (req.query && typeof req.query === "object") {
+    const value = (req.query as Record<string, unknown>)[key];
+    if (typeof value === "string") return value;
+    if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  }
+
   try {
     const url = new URL(req.url ?? "", "http://localhost");
-    return url.searchParams.get(key);
+    const value = url.searchParams.get(key);
+    return value;
   } catch {
     return null;
   }
 }
-
-function getUser(uid: string | null): PortfolioUser | null {
-  if (!uid) return null;
-  if (!db.users[uid]) db.users[uid] = { positions: [] };
-  return db.users[uid];
-}
-
-function computeTotals(positions: PortfolioPosition[]) {
-  const totalValue = positions.reduce((acc, p) => acc + p.livePrice * p.qty, 0);
-  const invested = positions.reduce((acc, p) => acc + p.avgPrice * p.qty, 0);
-  const totalPnL = totalValue - invested;
-  const totalPnLPercent = invested > 0 ? (totalPnL / invested) * 100 : 0;
-  return { totalValue, totalPnL, totalPnLPercent };
-}
-
-type PortfolioRequestBody = {
-  uid?: string;
-  action?: string;
-  position?: Partial<PortfolioPosition> & {
-    qty?: unknown;
-    avgPrice?: unknown;
-  };
-  symbol?: string;
-} & Record<string, unknown>;
 
 function toFiniteNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -67,80 +55,73 @@ function toFiniteNumber(value: unknown): number | null {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader("Content-Type", "application/json");
+  res.setHeader("cache-control", "no-store");
 
-  const rawBody = req.body ?? {};
-  const body: PortfolioRequestBody =
-    typeof rawBody === "string" ? safeJSON<PortfolioRequestBody>(rawBody) : (rawBody as PortfolioRequestBody);
-
-  const uid = body.uid ?? getQueryParam(req, "uid");
-
-  if (!uid) {
-    return res.status(400).json({ error: "Missing uid" });
-  }
-
-  const user = getUser(uid);
-  if (!user) {
-    return res.status(500).json({ error: "Failed to load user" });
-  }
+  const storage = await getStorage();
+  const userId = await getUserId(req);
 
   if (req.method === "GET") {
-    const totals = computeTotals(user.positions);
-    return res.status(200).json({ ...totals, positions: user.positions });
+    const positions = await storage.getPortfolioPositions(userId);
+    const totals = computeTotals(positions);
+
+    res.status(200).json({
+      ...totals,
+      positions: positions.map(toLegacyPosition),
+    });
+    return;
   }
 
   if (req.method === "POST") {
-    const action = body.action;
+    // Backwards compatibility for legacy clients still using the action-based API
+    const body = (await readJsonBody(req)) ?? {};
+    const action = typeof body?.action === "string" ? body.action.toLowerCase() : "";
 
-    if (action === "add" && body.position) {
-      const sym = String(body.position.symbol ?? "").trim().toUpperCase();
+    if (action === "add" && body?.position) {
+      const symbol = String(body.position.symbol ?? "").trim().toUpperCase();
       const qty = toFiniteNumber(body.position.qty);
-      const avg = toFiniteNumber(body.position.avgPrice);
+      const entry = toFiniteNumber(body.position.avgPrice);
 
-      if (!sym || qty === null || qty <= 0 || avg === null || avg <= 0) {
-        return res.status(400).json({ error: "Invalid position payload" });
+      if (!symbol || qty === null || qty <= 0 || entry === null || entry <= 0) {
+        res.status(400).json({ error: "Invalid position payload" });
+        return;
       }
 
-      const existing = user.positions.find((p) => p.symbol === sym);
-      if (existing) {
-        const newQty = existing.qty + qty;
-        const newAvg = (existing.avgPrice * existing.qty + avg * qty) / newQty;
-        existing.qty = newQty;
-        existing.avgPrice = newAvg;
-        existing.pnl = existing.livePrice * existing.qty - existing.avgPrice * existing.qty;
-      } else {
-        user.positions.unshift({
-          symbol: sym,
-          qty,
-          avgPrice: avg,
-          livePrice: avg,
-          pnl: 0,
-        });
-      }
+      await storage.upsertPortfolioPosition(userId, {
+        symbol,
+        quantity: qty,
+        entryPrice: entry,
+        notes: null,
+      });
 
-      const totals = computeTotals(user.positions);
-      return res.status(200).json({ ok: true, ...totals, positions: user.positions });
+      const positions = await storage.getPortfolioPositions(userId);
+      const totals = computeTotals(positions);
+      res.status(200).json({ ok: true, ...totals, positions: positions.map(toLegacyPosition) });
+      return;
     }
 
     if (action === "delete") {
-      const sym = String(body.symbol ?? getQueryParam(req, "symbol") ?? "").trim().toUpperCase();
-      const before = user.positions.length;
-      user.positions = user.positions.filter((p) => p.symbol !== sym);
-      const totals = computeTotals(user.positions);
-      return res.status(200).json({ ok: before !== user.positions.length, ...totals, positions: user.positions });
+      const symbol = String(body.symbol ?? getQueryParam(req, "symbol") ?? "").trim().toUpperCase();
+      if (!symbol) {
+        res.status(400).json({ error: "Missing symbol" });
+        return;
+      }
+
+      const positions = await storage.getPortfolioPositions(userId);
+      const target = positions.find((pos) => pos.symbol === symbol);
+      if (target) {
+        await storage.deletePortfolioPosition(target.id, userId);
+      }
+
+      const refreshed = await storage.getPortfolioPositions(userId);
+      const totals = computeTotals(refreshed);
+      res.status(200).json({ ok: true, ...totals, positions: refreshed.map(toLegacyPosition) });
+      return;
     }
 
-    return res.status(400).json({ error: "Unsupported action" });
+    res.status(400).json({ error: "Unsupported action" });
+    return;
   }
 
   res.setHeader("Allow", "GET, POST");
-  return res.status(405).json({ error: "Method Not Allowed" });
-}
-
-function safeJSON<T>(value: string): T {
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return {} as T;
-  }
+  res.status(405).json({ error: "Method Not Allowed" });
 }

@@ -5,6 +5,7 @@ import type {
   ScanHistory,
   InsertWatchlistItem,
   WatchlistItem,
+  PortfolioPosition,
 } from "@shared/schema";
 import { randomUUID } from "node:crypto";
 
@@ -12,7 +13,15 @@ const DEMO_USER_ID = "demo-user";
 
 export type StorageLike = Pick<
   IStorage,
-  "createScanHistory" | "getScanHistory" | "getWatchlist" | "addToWatchlist" | "removeFromWatchlist"
+  | "createScanHistory"
+  | "getScanHistory"
+  | "getWatchlist"
+  | "addToWatchlist"
+  | "removeFromWatchlist"
+  | "getPortfolioPositions"
+  | "upsertPortfolioPosition"
+  | "updatePortfolioPosition"
+  | "deletePortfolioPosition"
 >;
 
 type VerifyIdTokenFn = (token: string) => Promise<{ uid?: string; user_id?: string }>;
@@ -20,6 +29,7 @@ type VerifyIdTokenFn = (token: string) => Promise<{ uid?: string; user_id?: stri
 type FallbackState = {
   watchlist: Map<string, WatchlistItem[]>;
   scanHistory: Map<string, ScanHistory[]>;
+  portfolio: Map<string, PortfolioPosition[]>;
 };
 
 type GlobalWithFallback = typeof globalThis & {
@@ -41,6 +51,7 @@ function getFallbackState(): FallbackState {
     globalAny.__STOCK_PORTFOLIO_FALLBACK__ = {
       watchlist: new Map<string, WatchlistItem[]>(),
       scanHistory: new Map<string, ScanHistory[]>(),
+      portfolio: new Map<string, PortfolioPosition[]>(),
     };
   }
   return globalAny.__STOCK_PORTFOLIO_FALLBACK__;
@@ -48,6 +59,80 @@ function getFallbackState(): FallbackState {
 
 function createFallbackStorage(): StorageLike {
   return {
+    async getPortfolioPositions(userId) {
+      const state = getFallbackState();
+      const positions = state.portfolio.get(userId) ?? [];
+      return positions.map((item) => cloneValue(item));
+    },
+    async upsertPortfolioPosition(userId, position) {
+      const state = getFallbackState();
+      const symbol = position.symbol.trim().toUpperCase();
+      const notes = position.notes ?? null;
+      const list = state.portfolio.get(userId) ?? [];
+      const index = list.findIndex((item) => item.symbol === symbol);
+      const now = new Date();
+
+      if (index >= 0) {
+        const existing = { ...list[index] };
+        existing.quantity = position.quantity;
+        existing.entryPrice = position.entryPrice;
+        existing.notes = notes;
+        existing.updatedAt = now;
+        const next = [...list];
+        next[index] = existing;
+        state.portfolio.set(userId, next);
+        return cloneValue(existing);
+      }
+
+      const created: PortfolioPosition = {
+        id: randomUUID(),
+        userId,
+        symbol,
+        quantity: position.quantity,
+        entryPrice: position.entryPrice,
+        notes,
+        createdAt: now,
+        updatedAt: now,
+      };
+      state.portfolio.set(userId, [created, ...list]);
+      return cloneValue(created);
+    },
+    async updatePortfolioPosition(id, userId, position) {
+      const state = getFallbackState();
+      const list = state.portfolio.get(userId) ?? [];
+      const index = list.findIndex((item) => item.id === id);
+      if (index < 0) {
+        return null;
+      }
+
+      const existing = { ...list[index] };
+      if (position.symbol !== undefined) {
+        existing.symbol = position.symbol.trim().toUpperCase();
+      }
+      if (position.quantity !== undefined) {
+        existing.quantity = Number(position.quantity);
+      }
+      if (position.entryPrice !== undefined) {
+        existing.entryPrice = Number(position.entryPrice);
+      }
+      if (position.notes !== undefined) {
+        existing.notes = position.notes ?? null;
+      }
+      existing.updatedAt = new Date();
+
+      const next = [...list];
+      next[index] = existing;
+      state.portfolio.set(userId, next);
+      return cloneValue(existing);
+    },
+    async deletePortfolioPosition(id, userId) {
+      const state = getFallbackState();
+      const list = state.portfolio.get(userId) ?? [];
+      const next = list.filter((item) => item.id !== id);
+      const removed = next.length !== list.length;
+      state.portfolio.set(userId, next);
+      return removed;
+    },
     async createScanHistory(entry: InsertScanHistory): Promise<ScanHistory> {
       const state = getFallbackState();
       const record: ScanHistory = {
@@ -130,6 +215,38 @@ function withFallback(primary: StorageLike | undefined): StorageLike {
     return fallbackStorage;
   }
   return {
+    async getPortfolioPositions(userId) {
+      try {
+        return await primary.getPortfolioPositions(userId);
+      } catch (error) {
+        logStorageFallback(error);
+        return fallbackStorage.getPortfolioPositions(userId);
+      }
+    },
+    async upsertPortfolioPosition(userId, position) {
+      try {
+        return await primary.upsertPortfolioPosition(userId, position);
+      } catch (error) {
+        logStorageFallback(error);
+        return fallbackStorage.upsertPortfolioPosition(userId, position);
+      }
+    },
+    async updatePortfolioPosition(id, userId, position) {
+      try {
+        return await primary.updatePortfolioPosition(id, userId, position);
+      } catch (error) {
+        logStorageFallback(error);
+        return fallbackStorage.updatePortfolioPosition(id, userId, position);
+      }
+    },
+    async deletePortfolioPosition(id, userId) {
+      try {
+        return await primary.deletePortfolioPosition(id, userId);
+      } catch (error) {
+        logStorageFallback(error);
+        return fallbackStorage.deletePortfolioPosition(id, userId);
+      }
+    },
     async createScanHistory(entry) {
       try {
         return await primary.createScanHistory(entry);
@@ -199,6 +316,12 @@ export async function getStorage(): Promise<StorageLike> {
 }
 
 export async function getUserId(req: VercelRequest): Promise<string> {
+  const demoHeader = req.headers["x-demo-user-id"];
+  const demoHeaderValue = Array.isArray(demoHeader) ? demoHeader[0] : demoHeader;
+  if (typeof demoHeaderValue === "string" && demoHeaderValue.trim()) {
+    return demoHeaderValue.trim();
+  }
+
   const headerValue = req.headers.authorization;
   const authorization = Array.isArray(headerValue) ? headerValue[0] : headerValue;
 

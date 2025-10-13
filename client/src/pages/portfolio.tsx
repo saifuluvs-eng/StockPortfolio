@@ -18,20 +18,22 @@ import LiveSummary from "@/components/home/LiveSummary";
 import { useEffect, useMemo, useState } from "react";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { api } from "@/lib/api";
+import {
+  deletePosition as deleteRemotePosition,
+  getPositions as fetchPositions,
+  readCachedPositions,
+  upsertPosition as saveRemotePosition,
+  writeCachedPositions,
+  type PortfolioPosition as StoredPosition,
+} from "@/lib/api/portfolio";
 
 type Position = {
+  id: string;
   symbol: string;
   qty: number;
   avgPrice: number;
   livePrice: number; // server fallback only
   pnl: number;
-};
-
-type PortfolioAPI = {
-  totalValue: number;
-  totalPnL: number;
-  totalPnLPercent: number;
-  positions: Position[];
 };
 
 type AiOverviewData = {
@@ -45,19 +47,76 @@ export default function Portfolio() {
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
 
-  // per-user portfolio
-  const { data, isLoading } = useQuery<PortfolioAPI>({
-    queryKey: ["/api/portfolio", user?.uid],
-    enabled: !!user && networkEnabled,
-    refetchInterval: 15000,
-    queryFn: async () => {
-      const res = await api(
-        `/api/portfolio?uid=${encodeURIComponent(user!.uid)}`
-      );
-      if (!res.ok) throw new Error(await res.text().catch(() => "Failed to load portfolio"));
-      return res.json();
+  const resolvedUserId = user?.uid ?? "demo-user";
+  const portfolioQueryKey = useMemo(
+    () => ["portfolio", "positions", resolvedUserId] as const,
+    [resolvedUserId],
+  );
+
+  const initialPositions = useMemo(() => readCachedPositions(resolvedUserId) ?? undefined, [resolvedUserId]);
+
+  const {
+    data: storedPositions,
+    isLoading: loadingPositions,
+    isError: positionsError,
+    error: positionsErrorValue,
+  } = useQuery<StoredPosition[]>({
+    queryKey: portfolioQueryKey,
+    enabled: networkEnabled,
+    queryFn: () => fetchPositions(user?.uid ?? null),
+    initialData: initialPositions,
+    placeholderData: initialPositions,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    onSuccess: (positions) => {
+      writeCachedPositions(resolvedUserId, positions);
     },
   });
+
+  const portfolioPositions = storedPositions ?? initialPositions ?? [];
+  const positions = useMemo<Position[]>(
+    () =>
+      portfolioPositions.map((pos) => ({
+        id: pos.id,
+        symbol: pos.symbol,
+        qty: Number(pos.quantity),
+        avgPrice: Number(pos.entryPrice),
+        livePrice: Number(pos.entryPrice),
+        pnl: 0,
+      })),
+    [portfolioPositions],
+  );
+
+  const baseTotals = useMemo(() => {
+    let invested = 0;
+    positions.forEach((pos) => {
+      invested += pos.avgPrice * pos.qty;
+    });
+    return {
+      totalValue: invested,
+      totalPnL: 0,
+      totalPnLPercent: 0,
+    };
+  }, [positions]);
+
+  const serverTotalValue = baseTotals.totalValue;
+  const serverTotalPnL = baseTotals.totalPnL;
+  const serverTotalPnLPercent = baseTotals.totalPnLPercent;
+  const isLoading = loadingPositions && positions.length === 0;
+  const loadError = positionsError && positions.length === 0;
+  const loadErrorMessage =
+    positionsErrorValue instanceof Error
+      ? positionsErrorValue.message
+      : "Failed to load portfolio positions";
+  const showCachedWarning = positions.length > 0 && (!networkEnabled || positionsError);
+
+  useEffect(() => {
+    if (positionsError && positionsErrorValue) {
+      console.error("Failed to load portfolio positions", positionsErrorValue);
+    }
+  }, [positionsError, positionsErrorValue]);
 
   const { data: aiOverview } = useQuery<AiOverviewData>({
     queryKey: ["/api/ai/market-overview"],
@@ -70,11 +129,6 @@ export default function Portfolio() {
     enabled: networkEnabled,
   });
 
-  const serverTotalValue = data?.totalValue ?? 0;
-  const serverTotalPnL = data?.totalPnL ?? 0;
-  const serverTotalPnLPercent = data?.totalPnLPercent ?? 0;
-  const positions = Array.isArray(data?.positions) ? data!.positions : [];
-
   // ---------- LIVE PRICES ----------
   // Source A: your /ws (if it emits these symbols)
   const [liveWS, setLiveWS] = useState<Record<string, number>>({});
@@ -84,7 +138,7 @@ export default function Portfolio() {
   );
 
   useEffect(() => {
-    if (!user || positions.length === 0) return;
+    if (positions.length === 0) return;
     if (!networkEnabled) return;
     if (typeof window === "undefined") return;
 
@@ -121,7 +175,7 @@ export default function Portfolio() {
     return () => {
       try { ws.close(); } catch {}
     };
-  }, [user, networkEnabled, positionsKey]);
+  }, [networkEnabled, positionsKey]);
 
   // Source B: Binance REST polling (covers all symbols reliably)
   const [liveHTTP, setLiveHTTP] = useState<Record<string, number>>({});
@@ -236,80 +290,65 @@ export default function Portfolio() {
     if (!formValid || saving || !user) return;
     setSaving(true);
 
-    const newPos: Position = {
-      symbol: form.symbol.trim().toUpperCase(),
-      qty: Number(form.qty),
-      avgPrice: Number(form.avgPrice),
-      livePrice: Number(form.avgPrice), // temporary; table uses live sources above
-      pnl: 0,
+    const symbol = form.symbol.trim().toUpperCase();
+    const quantity = Number(form.qty);
+    const entryPrice = Number(form.avgPrice);
+    const nowIso = new Date().toISOString();
+    const optimistic: StoredPosition = {
+      id: `temp-${Date.now()}`,
+      symbol,
+      quantity,
+      entryPrice,
+      notes: null,
+      createdAt: nowIso,
+      updatedAt: nowIso,
     };
 
-    const key = ["/api/portfolio", user.uid];
-    const prev = qc.getQueryData<PortfolioAPI>(key);
-    qc.setQueryData<PortfolioAPI>(key, (old) => {
-      const base = old ?? { totalValue: 0, totalPnL: 0, totalPnLPercent: 0, positions: [] };
-      return { ...base, positions: [newPos, ...(base.positions || [])] };
+    const previous = qc.getQueryData<StoredPosition[]>(portfolioQueryKey);
+    qc.setQueryData<StoredPosition[]>(portfolioQueryKey, (old) => {
+      const base = old ?? [];
+      const filtered = base.filter((pos) => pos.symbol !== optimistic.symbol);
+      return [optimistic, ...filtered];
     });
 
     try {
-      const res = await api(`/api/portfolio?uid=${encodeURIComponent(user.uid)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "add",
-          uid: user.uid,
-          position: { symbol: newPos.symbol, qty: newPos.qty, avgPrice: newPos.avgPrice },
-        }),
+      const saved = await saveRemotePosition(user.uid, { symbol, quantity, entryPrice });
+      qc.setQueryData<StoredPosition[]>(portfolioQueryKey, (old) => {
+        const base = old ?? [];
+        const filtered = base.filter((pos) => pos.id !== saved.id && pos.symbol !== saved.symbol);
+        return [saved, ...filtered];
       });
-
-      if (!res.ok) {
-        qc.setQueryData(key, prev);
-        const msg = await res.text().catch(() => "");
-        if (msg) alert(msg);
-        throw new Error(msg || `HTTP ${res.status}`);
-      }
-
-      await qc.invalidateQueries({ queryKey: key });
+      const latest = qc.getQueryData<StoredPosition[]>(portfolioQueryKey) ?? [];
+      writeCachedPositions(resolvedUserId, latest);
       setOpen(false);
       setForm({ symbol: "", qty: "", avgPrice: "" });
     } catch (err) {
       console.error("Add position failed:", err);
+      qc.setQueryData(portfolioQueryKey, previous);
+      writeCachedPositions(resolvedUserId, previous ?? null);
+      const message = err instanceof Error ? err.message : "Failed to add position";
+      alert(message);
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDelete(symbol: string) {
+  async function handleDelete(position: Position) {
     if (!user) return;
-    const key = ["/api/portfolio", user.uid];
-    const prev = qc.getQueryData<PortfolioAPI>(key);
+    const previous = qc.getQueryData<StoredPosition[]>(portfolioQueryKey);
 
-    // optimistic remove
-    qc.setQueryData<PortfolioAPI>(key, (old) =>
-      old ? { ...old, positions: old.positions.filter((p) => p.symbol !== symbol) } : old
+    qc.setQueryData<StoredPosition[]>(portfolioQueryKey, (old) =>
+      (old ?? []).filter((entry) => entry.id !== position.id),
     );
 
     try {
-      const res = await api(
-        `/api/portfolio?uid=${encodeURIComponent(user.uid)}&symbol=${encodeURIComponent(symbol)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "delete", uid: user.uid, symbol }),
-        }
-      );
-
-      if (!res.ok) {
-        qc.setQueryData(key, prev);
-        const msg = await res.text().catch(() => "");
-        if (msg) alert(msg);
-        throw new Error(msg || `HTTP ${res.status}`);
-      }
-
-      await qc.invalidateQueries({ queryKey: key });
+      await deleteRemotePosition(user.uid, position.id);
+      const latest = qc.getQueryData<StoredPosition[]>(portfolioQueryKey) ?? [];
+      writeCachedPositions(resolvedUserId, latest);
     } catch (e) {
       console.error("Delete failed:", e);
-      qc.setQueryData(key, prev);
+      qc.setQueryData(portfolioQueryKey, previous);
+      writeCachedPositions(resolvedUserId, previous ?? null);
     }
   }
 
@@ -345,6 +384,12 @@ export default function Portfolio() {
             )}
           </div>
         </div>
+
+        {showCachedWarning && (
+          <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            You&apos;re viewing cached positions. Changes will sync once the connection is restored.
+          </div>
+        )}
 
         {/* Live market strip */}
         <div className="mb-6">
@@ -450,6 +495,14 @@ export default function Portfolio() {
                       </td>
                     </tr>
                   </tbody>
+                ) : loadError ? (
+                  <tbody>
+                    <tr>
+                      <td colSpan={7} className="py-6 text-center text-red-400">
+                        {loadErrorMessage}
+                      </td>
+                    </tr>
+                  </tbody>
                 ) : positions.length === 0 ? (
                   <tbody>
                     <tr>
@@ -479,7 +532,7 @@ export default function Portfolio() {
                       const pnlColor = pnlValue >= 0 ? "text-green-500" : "text-red-500";
 
                       return (
-                        <tr key={sym} className="border-b border-border/50">
+                        <tr key={p.id} className="border-b border-border/50">
                           <td className="py-3 pr-4 font-medium text-foreground">{sym}</td>
                           <td className="py-3 pr-4 text-right">{p.qty}</td>
                           <td className="py-3 pr-4 text-right">
@@ -505,7 +558,7 @@ export default function Portfolio() {
                                 <Button
                                   size="sm"
                                   variant="destructive"
-                                  onClick={() => handleDelete(sym)}
+                                  onClick={() => handleDelete(p)}
                                   title="Delete"
                                 >
                                   <Trash2 className="w-4 h-4" />
