@@ -142,6 +142,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio/allocation"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio", "positions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio/performance"] });
 
       toast({

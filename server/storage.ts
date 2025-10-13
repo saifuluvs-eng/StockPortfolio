@@ -117,6 +117,15 @@ export interface IStorage {
   // Portfolio operations
   getPortfolioPositions(userId: string): Promise<PortfolioPosition[]>;
   createPortfolioPosition(position: InsertPortfolioPosition): Promise<PortfolioPosition>;
+  upsertPortfolioPosition(
+    userId: string,
+    position: {
+      symbol: string;
+      quantity: number;
+      entryPrice: number;
+      notes?: string | null;
+    },
+  ): Promise<PortfolioPosition>;
   updatePortfolioPosition(id: string, userId: string, position: Partial<InsertPortfolioPosition>): Promise<PortfolioPosition | null>;
   deletePortfolioPosition(id: string, userId: string): Promise<boolean>;
   
@@ -184,7 +193,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(portfolioPositions)
       .where(eq(portfolioPositions.userId, userId))
-      .orderBy(desc(portfolioPositions.createdAt));
+      .orderBy(desc(portfolioPositions.updatedAt), desc(portfolioPositions.createdAt));
   }
 
   async createPortfolioPosition(position: InsertPortfolioPosition): Promise<PortfolioPosition> {
@@ -195,10 +204,47 @@ export class DatabaseStorage implements IStorage {
     return newPosition;
   }
 
+  async upsertPortfolioPosition(
+    userId: string,
+    position: { symbol: string; quantity: number; entryPrice: number; notes?: string | null },
+  ): Promise<PortfolioPosition> {
+    const normalizedSymbol = position.symbol.trim().toUpperCase();
+    const normalizedNotes = position.notes === undefined ? undefined : position.notes ?? null;
+
+    const [record] = await db
+      .insert(portfolioPositions)
+      .values({
+        userId,
+        symbol: normalizedSymbol,
+        quantity: position.quantity,
+        entryPrice: position.entryPrice,
+        notes: normalizedNotes,
+      })
+      .onConflictDoUpdate({
+        target: [portfolioPositions.userId, portfolioPositions.symbol],
+        set: {
+          quantity: position.quantity,
+          entryPrice: position.entryPrice,
+          notes: normalizedNotes,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return record;
+  }
+
   async updatePortfolioPosition(id: string, userId: string, position: Partial<InsertPortfolioPosition>): Promise<PortfolioPosition | null> {
+    const payload: Partial<InsertPortfolioPosition> & { updatedAt?: Date | null } = { ...position };
+    if (payload.notes === undefined) {
+      // do nothing; keep existing value
+    } else {
+      payload.notes = payload.notes ?? null;
+    }
+
     const [updatedPosition] = await db
       .update(portfolioPositions)
-      .set({ ...position, updatedAt: new Date() })
+      .set({ ...payload, updatedAt: new Date() })
       .where(and(
         eq(portfolioPositions.id, id),
         eq(portfolioPositions.userId, userId)

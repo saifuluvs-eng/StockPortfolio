@@ -18,10 +18,12 @@ export const portfolioPositions = sqliteTable("portfolio_positions", {
   symbol: text("symbol").notNull(), // e.g., "BTCUSDT"
   quantity: real("quantity").notNull(),
   entryPrice: real("entry_price").notNull(),
+  notes: text("notes"),
   createdAt: integer("created_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
   updatedAt: integer("updated_at", { mode: 'timestamp' }).default(sql`(strftime('%s', 'now'))`),
 }, (table) => [
   index("IDX_portfolio_user").on(table.userId),
+  unique("UQ_portfolio_user_symbol").on(table.userId, table.symbol),
 ]);
 
 // Scan history

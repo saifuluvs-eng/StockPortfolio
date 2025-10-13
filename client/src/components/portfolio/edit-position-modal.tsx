@@ -154,12 +154,13 @@ export function EditPositionModal({ open, onOpenChange, position }: EditPosition
         quantity: data.quantity.replace(/,/g, ""),
         entryPrice: data.entryPrice.replace(/,/g, ""),
       };
-      await apiRequest("PATCH", `/api/portfolio/${position.id}`, cleaned);
+      await apiRequest("PATCH", `/api/portfolio/positions/${position.id}`, cleaned);
     },
     // Optimistic cache update for /api/portfolio so UI updates instantly
     onMutate: async (data) => {
       if (!position) return;
       await queryClient.cancelQueries({ queryKey: ["/api/portfolio"] });
+      await queryClient.cancelQueries({ queryKey: ["portfolio", "positions"] });
       const prev = queryClient.getQueryData<PortfolioSummary>(["/api/portfolio"]);
 
       if (prev) {
@@ -221,6 +222,7 @@ export function EditPositionModal({ open, onOpenChange, position }: EditPosition
     onSuccess: () => {
       // Revalidate to get server truth
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio", "positions"] });
       toast({ title: "Success", description: "Position updated successfully" });
       onOpenChange(false);
     },
