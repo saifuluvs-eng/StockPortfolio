@@ -266,6 +266,7 @@ export default function Portfolio() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ symbol: "", qty: "", avgPrice: "" });
+  const [formError, setFormError] = useState<string | null>(null);
   const formValid = useMemo(() => {
     const s = form.symbol.trim().toUpperCase();
     const q = Number(form.qty);
@@ -276,7 +277,14 @@ export default function Portfolio() {
   // open modal with cleared fields each time
   const openAdd = () => {
     setForm({ symbol: "", qty: "", avgPrice: "" });
+    setFormError(null);
     setOpen(true);
+  };
+
+  const closeAddModal = () => {
+    if (saving) return;
+    setOpen(false);
+    setFormError(null);
   };
 
   useEffect(() => {
@@ -289,6 +297,7 @@ export default function Portfolio() {
   async function handleCreate() {
     if (!formValid || saving || !user) return;
     setSaving(true);
+    setFormError(null);
 
     const symbol = form.symbol.trim().toUpperCase();
     const quantity = Number(form.qty);
@@ -321,13 +330,14 @@ export default function Portfolio() {
       const latest = qc.getQueryData<StoredPosition[]>(portfolioQueryKey) ?? [];
       writeCachedPositions(resolvedUserId, latest);
       setOpen(false);
+      setFormError(null);
       setForm({ symbol: "", qty: "", avgPrice: "" });
     } catch (err) {
       console.error("Add position failed:", err);
       qc.setQueryData(portfolioQueryKey, previous);
       writeCachedPositions(resolvedUserId, previous ?? null);
       const message = err instanceof Error ? err.message : "Failed to add position";
-      alert(message);
+      setFormError(message);
     } finally {
       setSaving(false);
     }
@@ -349,6 +359,8 @@ export default function Portfolio() {
       console.error("Delete failed:", e);
       qc.setQueryData(portfolioQueryKey, previous);
       writeCachedPositions(resolvedUserId, previous ?? null);
+      const message = e instanceof Error ? e.message : "Failed to delete position";
+      alert(message);
     }
   }
 
@@ -580,11 +592,11 @@ export default function Portfolio() {
       {/* ---- Add Position Modal ---- */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/80" onClick={() => (!saving ? setOpen(false) : null)} />
+          <div className="absolute inset-0 bg-black/80" onClick={closeAddModal} />
           <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl">
             <div className="p-5 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground">Add Position</h3>
-              <button className="p-1 rounded-md hover:bg-white/5" onClick={() => (!saving ? setOpen(false) : null)} aria-label="Close">
+              <button className="p-1 rounded-md hover:bg-white/5" onClick={closeAddModal} aria-label="Close">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -623,8 +635,14 @@ export default function Portfolio() {
                 autoComplete="off"
               />
 
+              {formError && (
+                <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                  {formError}
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 mt-6">
-                <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
+                <Button variant="outline" onClick={closeAddModal} disabled={saving}>
                   Cancel
                 </Button>
                 <Button onClick={handleCreate} disabled={!formValid || saving}>

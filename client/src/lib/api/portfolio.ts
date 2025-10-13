@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { getFirebaseIdToken } from "@/lib/firebase";
 import { readJSON, writeJSON } from "@/lib/storage";
 
@@ -31,19 +31,41 @@ function normalizeUserId(userId: string | undefined | null): string {
   return userId && userId.trim() ? userId : "demo-user";
 }
 
-async function buildHeaders(userId: string, hasBody: boolean): Promise<HeadersInit> {
-  const headers: Record<string, string> = {};
-  if (hasBody) {
-    headers["Content-Type"] = "application/json";
-  }
-
+async function buildHeaders(userId: string): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { "x-demo-user-id": userId };
   const token = await getFirebaseIdToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-
-  headers["x-demo-user-id"] = userId;
   return headers;
+}
+
+function normalizePosition(input: any): PortfolioPosition {
+  if (!input || typeof input !== "object") {
+    throw new Error("Invalid position payload");
+  }
+  const id = typeof input.id === "string" && input.id.trim() ? input.id.trim() : "";
+  if (!id) {
+    throw new Error("Position is missing an id");
+  }
+  const symbol = typeof input.symbol === "string" ? input.symbol.trim().toUpperCase() : "";
+  const quantity = Number(input.quantity ?? input.qty ?? 0);
+  const entryPrice = Number(input.entryPrice ?? input.avgPrice ?? 0);
+  if (!Number.isFinite(quantity) || !Number.isFinite(entryPrice)) {
+    throw new Error("Invalid position data");
+  }
+  const notes = typeof input.notes === "string" && input.notes.trim().length > 0 ? input.notes.trim() : null;
+  const createdAt = typeof input.createdAt === "string" ? input.createdAt : new Date().toISOString();
+  const updatedAt = typeof input.updatedAt === "string" ? input.updatedAt : createdAt;
+  return {
+    id,
+    symbol,
+    quantity,
+    entryPrice,
+    notes,
+    createdAt,
+    updatedAt,
+  };
 }
 
 export function readCachedPositions(userId: string): PortfolioPosition[] | null {
@@ -54,24 +76,15 @@ export function writeCachedPositions(userId: string, data: PortfolioPosition[] |
   writeJSON(cacheKey(userId), data);
 }
 
-async function parseResponse(res: Response) {
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  const json = await res.json();
-  return json as { data?: any };
-}
-
 export async function getPositions(userIdInput?: string | null): Promise<PortfolioPosition[]> {
   const userId = normalizeUserId(userIdInput);
-  const res = await api("/api/portfolio/positions", {
+  const json = await apiFetch("/api/portfolio/positions", {
     method: "GET",
-    headers: await buildHeaders(userId, false),
+    headers: await buildHeaders(userId),
   });
 
-  const json = await parseResponse(res);
-  const positions = Array.isArray(json.data) ? (json.data as PortfolioPosition[]) : [];
+  const raw = Array.isArray(json?.data) ? json.data : [];
+  const positions = raw.map((pos) => normalizePosition(pos));
   writeCachedPositions(userId, positions);
   return positions;
 }
@@ -81,21 +94,25 @@ export async function upsertPosition(
   payload: UpsertPayload,
 ): Promise<PortfolioPosition> {
   const userId = normalizeUserId(userIdInput);
+  const symbol = typeof payload.symbol === "string" ? payload.symbol.toUpperCase().trim() : "";
   const body = {
-    symbol: payload.symbol.trim().toUpperCase(),
-    quantity: payload.quantity,
-    entryPrice: payload.entryPrice,
+    symbol,
+    quantity: Number(payload.quantity),
+    entryPrice: Number(payload.entryPrice),
     notes: payload.notes ?? null,
   };
 
-  const res = await api("/api/portfolio/positions", {
+  if (!body.symbol || Number.isNaN(body.quantity) || Number.isNaN(body.entryPrice)) {
+    throw new Error("Invalid form values.");
+  }
+
+  const json = await apiFetch("/api/portfolio/positions", {
     method: "POST",
-    headers: await buildHeaders(userId, true),
+    headers: await buildHeaders(userId),
     body: JSON.stringify(body),
   });
 
-  const json = await parseResponse(res);
-  return json.data as PortfolioPosition;
+  return normalizePosition(json?.data);
 }
 
 export async function updatePosition(
@@ -119,14 +136,13 @@ export async function updatePosition(
     body.notes = payload.notes ?? null;
   }
 
-  const res = await api(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
+  const json = await apiFetch(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: await buildHeaders(userId, true),
+    headers: await buildHeaders(userId),
     body: JSON.stringify(body),
   });
 
-  const json = await parseResponse(res);
-  return json.data as PortfolioPosition;
+  return normalizePosition(json?.data);
 }
 
 export async function deletePosition(
@@ -134,10 +150,8 @@ export async function deletePosition(
   id: string,
 ): Promise<void> {
   const userId = normalizeUserId(userIdInput);
-  const res = await api(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
+  await apiFetch(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: await buildHeaders(userId, false),
+    headers: await buildHeaders(userId),
   });
-
-  await parseResponse(res);
 }
