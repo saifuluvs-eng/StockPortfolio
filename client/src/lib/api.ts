@@ -1,3 +1,6 @@
+import { auth } from "@/lib/firebase";
+import { readDemoUserId } from "@/lib/demo-user";
+
 const envBase =
   (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
   (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_BASE) ||
@@ -12,33 +15,59 @@ function resolveUrl(path: string): string {
   return `${API_BASE}${cleanPath}`;
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const user = auth?.currentUser;
+    const token = await user?.getIdToken?.();
+    if (typeof token === "string" && token.trim()) {
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch (error) {
+    console.warn("Failed to resolve Firebase ID token", error);
+  }
+
+  const demoUserId = readDemoUserId();
+  if (demoUserId) {
+    return { "x-demo-user-id": demoUserId };
+  }
+
+  return {};
+}
+
+function toHeaderRecord(init?: HeadersInit): Record<string, string> {
+  if (!init) return {};
+  if (init instanceof Headers) {
+    const record: Record<string, string> = {};
+    init.forEach((value, key) => {
+      record[key] = value;
+    });
+    return record;
+  }
+  if (Array.isArray(init)) {
+    return init.reduce<Record<string, string>>((acc, [key, value]) => {
+      acc[String(key)] = String(value);
+      return acc;
+    }, {});
+  }
+  return { ...(init as Record<string, string>) };
+}
+
 export function api(path: string, init: RequestInit = {}) {
   const url = resolveUrl(path);
   return fetch(url, { mode: "cors", credentials: "include", ...init });
 }
 
 export async function apiFetch(path: string, init: RequestInit = {}) {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(init.headers as Record<string, string> | undefined),
-  };
-
-  const hasAuthHeader = typeof headers.Authorization === "string" && headers.Authorization.trim().length > 0;
-
-  if (!hasAuthHeader && !headers["x-demo-user-id"]) {
-    let fallback = "demo-saif";
-    try {
-      if (typeof window !== "undefined") {
-        const stored = window.localStorage.getItem("demo.userId");
-        if (stored && stored.trim()) {
-          fallback = stored.trim();
-        }
-      }
-    } catch {
-      // ignore storage errors
-    }
-    headers["x-demo-user-id"] = fallback;
+  const baseHeaders = toHeaderRecord(init.headers);
+  const hasContentType = Object.keys(baseHeaders).some(
+    (key) => key.toLowerCase() === "content-type",
+  );
+  if (!hasContentType) {
+    baseHeaders["Content-Type"] = "application/json";
   }
+
+  const authHeaders = await getAuthHeaders();
+  const headers = { ...baseHeaders, ...authHeaders };
 
   const response = await api(path, { ...init, headers });
   if (!response.ok) {

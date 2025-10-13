@@ -1,5 +1,4 @@
 import { apiFetch } from "@/lib/api";
-import { getFirebaseIdToken } from "@/lib/firebase";
 import { readJSON, writeJSON } from "@/lib/storage";
 
 export type PortfolioPosition = {
@@ -25,21 +24,6 @@ const CACHE_PREFIX = "portfolio.positions";
 
 function cacheKey(userId: string) {
   return `${CACHE_PREFIX}.${userId}`;
-}
-
-function resolveDemoUserId(userId: string | undefined | null): string {
-  return userId && userId.trim() ? userId.trim() : "demo-user";
-}
-
-async function buildHeaders(userId: string | null | undefined): Promise<Record<string, string>> {
-  const headers: Record<string, string> = {};
-  const token = await getFirebaseIdToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  } else {
-    headers["x-demo-user-id"] = resolveDemoUserId(userId);
-  }
-  return headers;
 }
 
 function normalizePosition(input: any): PortfolioPosition {
@@ -83,10 +67,9 @@ export type PortfolioPositionsResponse = {
   userId?: string | null;
 };
 
-export async function getPositions(userIdInput?: string | null): Promise<PortfolioPositionsResponse> {
+export async function getPositions(_userIdInput?: string | null): Promise<PortfolioPositionsResponse> {
   const json = await apiFetch("/api/portfolio/positions", {
     method: "GET",
-    headers: await buildHeaders(userIdInput ?? null),
   });
 
   const raw = Array.isArray(json?.data) ? json.data : [];
@@ -98,7 +81,7 @@ export async function getPositions(userIdInput?: string | null): Promise<Portfol
 }
 
 export async function upsertPosition(
-  userIdInput: string | null | undefined,
+  _userIdInput: string | null | undefined,
   payload: UpsertPayload,
 ): Promise<PortfolioPosition> {
   const symbol = typeof payload.symbol === "string" ? payload.symbol.toUpperCase().trim() : "";
@@ -115,7 +98,6 @@ export async function upsertPosition(
 
   const json = await apiFetch("/api/portfolio/positions", {
     method: "POST",
-    headers: await buildHeaders(userIdInput ?? null),
     body: JSON.stringify(body),
   });
 
@@ -123,7 +105,7 @@ export async function upsertPosition(
 }
 
 export async function updatePosition(
-  userIdInput: string | null | undefined,
+  _userIdInput: string | null | undefined,
   id: string,
   payload: UpdatePayload,
 ): Promise<PortfolioPosition> {
@@ -144,20 +126,18 @@ export async function updatePosition(
 
   const json = await apiFetch(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: await buildHeaders(userIdInput ?? null),
     body: JSON.stringify(body),
   });
 
   return normalizePosition(json?.data);
 }
 
-export async function deletePosition(id: string, userIdInput?: string | null | undefined): Promise<void> {
+export async function deletePosition(id: string, _userIdInput?: string | null | undefined): Promise<void> {
   const trimmedId = typeof id === "string" ? id.trim() : "";
   if (!trimmedId) {
     throw new Error("Missing position id");
   }
   await apiFetch(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: await buildHeaders(userIdInput ?? null),
   });
 }

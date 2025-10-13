@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import http from 'http';
 import { WebSocketServer } from 'ws';
+import portfolioAuth from './middleware/auth.js';
 import {
   MACD,
   RSI,
@@ -316,9 +317,7 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin(origin, cb) {
-    cb(null, !origin || allowedOrigins.includes(origin));
-  },
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-demo-user-id'],
   credentials: true,
@@ -328,6 +327,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
+
+app.use('/api/portfolio', portfolioAuth);
 
 // ensure memory store exists once
 const memory =
@@ -345,30 +346,15 @@ function ensurePortfolioStore() {
   return store;
 }
 
-function resolveUid(value) {
-  if (Array.isArray(value)) {
-    return resolveUid(value[0]);
-  }
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function getUid(req, body) {
-  return resolveUid(body?.uid) ?? resolveUid(req.query?.uid) ?? "demo-user";
-}
-
 function resolveRequestUserId(req) {
   const authUser = req?.user?.id;
-  if (typeof authUser === "string" && authUser.trim()) {
-    return authUser.trim();
+  if (typeof authUser === "string") {
+    const trimmed = authUser.trim();
+    if (trimmed) {
+      return trimmed;
+    }
   }
-  const header = req.get?.("x-demo-user-id");
-  if (typeof header === "string" && header.trim()) {
-    return header.trim();
-  }
-  const fallback = resolveUid(req.body?.uid) ?? resolveUid(req.query?.uid);
-  return fallback;
+  return null;
 }
 
 function getUserPortfolio(uid) {
@@ -575,14 +561,14 @@ app.get("/api/ohlcv", async (req, res) => {
 });
 
 app.get("/api/portfolio", (req, res) => {
-  const uid = getUid(req, req.body ?? {});
-  if (!uid) {
-    res.status(400).json({ error: "missing_uid" });
+  const userId = resolveRequestUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthenticated" });
     return;
   }
-  const user = getUserPortfolio(uid);
+  const user = getUserPortfolio(userId);
   const totals = computeTotals(user.positions);
-  res.json({ ...totals, positions: serializePositions(user.positions) });
+  res.json({ ...totals, positions: serializePositions(user.positions), userId });
 });
 
 app.get("/api/portfolio/positions", (req, res) => {
@@ -607,9 +593,7 @@ app.get("/api/portfolio/debug", (req, res) => {
       res.status(401).json({ error: "Unauthenticated" });
       return;
     }
-    const user = getUserPortfolio(userId);
-    const count = Array.isArray(user.positions) ? user.positions.length : 0;
-    res.json({ userId, count });
+    res.json({ userId });
   } catch (error) {
     console.error("GET /api/portfolio/debug error", error);
     res.status(500).json({ error: "Internal error" });
@@ -781,14 +765,14 @@ app.delete("/api/portfolio/positions/:id", (req, res) => {
 });
 
 app.post("/api/portfolio", (req, res) => {
-  const body = req.body ?? {};
-  const uid = getUid(req, body);
-  if (!uid) {
-    res.status(400).json({ error: "missing_uid" });
+  const userId = resolveRequestUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthenticated" });
     return;
   }
 
-  const user = getUserPortfolio(uid);
+  const body = req.body ?? {};
+  const user = getUserPortfolio(userId);
   const action = typeof body.action === "string" ? body.action.toLowerCase() : "add";
 
   if (action === "delete") {
@@ -865,13 +849,13 @@ app.post("/api/portfolio", (req, res) => {
 });
 
 app.delete("/api/portfolio/:id", (req, res) => {
-  const uid = getUid(req, req.body ?? {});
-  if (!uid) {
-    res.status(400).json({ error: "missing_uid" });
+  const userId = resolveRequestUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Unauthenticated" });
     return;
   }
 
-  const user = getUserPortfolio(uid);
+  const user = getUserPortfolio(userId);
   const rawParam = typeof req.params?.id === "string" ? req.params.id.trim() : "";
   const targetId = rawParam || (typeof req.query?.id === "string" ? req.query.id.trim() : "");
   const symbol = resolveSymbol(req.query?.symbol, rawParam);
