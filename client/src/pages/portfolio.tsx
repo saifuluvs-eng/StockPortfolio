@@ -2,7 +2,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { usePositions } from "@/hooks/usePositions";
 import { usePortfolioStats } from "@/hooks/usePortfolioStats";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,12 +15,15 @@ import {
   Brain,
   Search,
   Trash2,
+  RefreshCw,
+  Coins,
 } from "lucide-react";
 import LiveSummary from "@/components/home/LiveSummary";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { api } from "@/lib/api";
 import { useDeletePosition, useUpsertPosition } from "@/lib/api/portfolio-mutations";
+import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 import { usePrices } from "@/lib/prices";
 
 type Position = {
@@ -42,6 +45,9 @@ export default function Portfolio() {
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
 
+  const queryClient = useQueryClient();
+  const userId = user?.uid ?? null;
+
   const {
     data: storedPositions = [],
     isLoading: loadingPositions,
@@ -50,8 +56,13 @@ export default function Portfolio() {
     error: positionsErrorValue,
   } = usePositions({ enabled: networkEnabled && !!user });
 
-  const { prices, setPrices, getPrice } = usePrices();
-  const { market: totalValue, pnl: totalPnL, pnlPct: totalPnLPercent } = usePortfolioStats();
+  const { prices, setPrices, getPrice, reset: resetPrices } = usePrices();
+  const {
+    market: totalValue,
+    pnl: totalPnL,
+    pnlPct: totalPnLPercent,
+    cost: totalCost,
+  } = usePortfolioStats();
 
   const positions = useMemo<Position[]>(
     () =>
@@ -79,6 +90,14 @@ export default function Portfolio() {
       console.error("Failed to load portfolio positions", positionsErrorValue);
     }
   }, [positionsError, positionsErrorValue]);
+
+  const handleRefresh = useCallback(async () => {
+    resetPrices();
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: portfolioPositionsQueryKey(userId) }),
+      queryClient.invalidateQueries({ queryKey: ["prices"] }),
+    ]);
+  }, [queryClient, resetPrices, userId]);
 
   const symbols = useMemo(
     () => Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase()).filter(Boolean))),
@@ -261,11 +280,10 @@ export default function Portfolio() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Link href="/analyse/BTCUSDT">
-              <Button variant="outline" size="sm">
-                <Eye className="w-4 h-4 mr-2" /> Open Scanner
-              </Button>
-            </Link>
+            <Button variant="secondary" size="sm" onClick={handleRefresh}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${fetchingPositions ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
             {user && (
               <Button size="sm" onClick={openAdd}>
                 <PlusCircle className="w-4 h-4 mr-2" /> Add Position
@@ -286,15 +304,29 @@ export default function Portfolio() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-5 gap-4 mb-6">
           <Card className={`${cardClampClass} bg-gradient-to-br from-primary/5 to-primary/10`} style={cardClampStyle}>
             <CardContent className={rowContentClass}>
               <div className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-primary" />
                 <div className="leading-tight">
-                  <div className="text-sm font-semibold text-foreground">Total Value</div>
+                  <div className="text-sm font-semibold text-foreground">Current Value</div>
                   <div className="text-base font-bold text-foreground">
                     ${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={`${cardClampClass} bg-gradient-to-br from-blue-500/5 to-blue-500/10`} style={cardClampStyle}>
+            <CardContent className={rowContentClass}>
+              <div className="flex items-center gap-2">
+                <Coins className="w-5 h-5 text-blue-500" />
+                <div className="leading-tight">
+                  <div className="text-sm font-semibold text-foreground">Position Value</div>
+                  <div className="text-base font-bold text-foreground">
+                    ${totalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
                 </div>
               </div>
@@ -370,6 +402,7 @@ export default function Portfolio() {
                     <th className="text-right py-2 pr-4">QTY</th>
                     <th className="text-right py-2 pr-4">ENTRY PRICE</th>
                     <th className="text-right py-2 pr-4">CURRENT PRICE</th>
+                    <th className="text-right py-2 pr-4">VALUE</th>
                     <th className="text-right py-2 pr-4">P&amp;L (USDT)</th>
                     <th className="text-right py-2 pr-4">P&amp;L %</th>
                     <th className="text-right py-2">ACTIONS</th>
@@ -379,7 +412,7 @@ export default function Portfolio() {
                 {isLoading ? (
                   <tbody>
                     <tr>
-                      <td colSpan={7} className="py-6 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-6 text-center text-muted-foreground">
                         Loading your portfolio…
                       </td>
                     </tr>
@@ -387,7 +420,7 @@ export default function Portfolio() {
                 ) : loadError ? (
                   <tbody>
                     <tr>
-                      <td colSpan={7} className="py-6 text-center text-red-400">
+                      <td colSpan={8} className="py-6 text-center text-red-400">
                         {loadErrorMessage}
                       </td>
                     </tr>
@@ -395,7 +428,7 @@ export default function Portfolio() {
                 ) : positions.length === 0 ? (
                   <tbody>
                     <tr>
-                      <td colSpan={7} className="py-6 text-center">
+                      <td colSpan={8} className="py-6 text-center">
                         <div className="inline-flex flex-col items-center">
                           <p className="text-foreground font-medium">No positions yet</p>
                           <p className="text-sm text-muted-foreground mt-1">
@@ -416,6 +449,7 @@ export default function Portfolio() {
                     {positions.map((p) => {
                       const sym = p.symbol.toUpperCase();
                       const current = currentPriceFor(sym, p.livePrice ?? p.avgPrice);
+                      const positionValue = p.qty * current;
                       const pnlValue = (current - p.avgPrice) * p.qty;
                       const pnlPct = p.avgPrice > 0 ? ((current - p.avgPrice) / p.avgPrice) * 100 : 0;
                       const pnlColor = pnlValue >= 0 ? "text-green-500" : "text-red-500";
@@ -429,6 +463,9 @@ export default function Portfolio() {
                           </td>
                           <td className="py-3 pr-4 text-right">
                             ${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}
+                          </td>
+                          <td className="py-3 pr-4 text-right">
+                            ${positionValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}
                           </td>
                           <td className={`py-3 pr-4 text-right ${pnlColor}`}>
                             {pnlValue >= 0 ? "+" : "-"}$
