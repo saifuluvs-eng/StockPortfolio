@@ -593,9 +593,25 @@ app.get("/api/portfolio/positions", (req, res) => {
       return;
     }
     const user = getUserPortfolio(userId);
-    res.json({ data: serializePositions(user.positions) });
+    res.json({ data: serializePositions(user.positions), userId });
   } catch (error) {
     console.error("GET /api/portfolio/positions error", error);
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+app.get("/api/portfolio/debug", (req, res) => {
+  try {
+    const userId = resolveRequestUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthenticated" });
+      return;
+    }
+    const user = getUserPortfolio(userId);
+    const count = Array.isArray(user.positions) ? user.positions.length : 0;
+    res.json({ userId, count });
+  } catch (error) {
+    console.error("GET /api/portfolio/debug error", error);
     res.status(500).json({ error: "Internal error" });
   }
 });

@@ -27,15 +27,17 @@ function cacheKey(userId: string) {
   return `${CACHE_PREFIX}.${userId}`;
 }
 
-function normalizeUserId(userId: string | undefined | null): string {
-  return userId && userId.trim() ? userId : "demo-user";
+function resolveDemoUserId(userId: string | undefined | null): string {
+  return userId && userId.trim() ? userId.trim() : "demo-user";
 }
 
-async function buildHeaders(userId: string): Promise<Record<string, string>> {
-  const headers: Record<string, string> = { "x-demo-user-id": userId };
+async function buildHeaders(userId: string | null | undefined): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {};
   const token = await getFirebaseIdToken();
   if (token) {
     headers.Authorization = `Bearer ${token}`;
+  } else {
+    headers["x-demo-user-id"] = resolveDemoUserId(userId);
   }
   return headers;
 }
@@ -76,24 +78,29 @@ export function writeCachedPositions(userId: string, data: PortfolioPosition[] |
   writeJSON(cacheKey(userId), data);
 }
 
-export async function getPositions(userIdInput?: string | null): Promise<PortfolioPosition[]> {
-  const userId = normalizeUserId(userIdInput);
+export type PortfolioPositionsResponse = {
+  data: PortfolioPosition[];
+  userId?: string | null;
+};
+
+export async function getPositions(userIdInput?: string | null): Promise<PortfolioPositionsResponse> {
   const json = await apiFetch("/api/portfolio/positions", {
     method: "GET",
-    headers: await buildHeaders(userId),
+    headers: await buildHeaders(userIdInput ?? null),
   });
 
   const raw = Array.isArray(json?.data) ? json.data : [];
   const positions = raw.map((pos) => normalizePosition(pos));
-  writeCachedPositions(userId, positions);
-  return positions;
+  const responseUserId =
+    typeof json?.userId === "string" && json.userId.trim() ? json.userId.trim() : null;
+
+  return { data: positions, userId: responseUserId };
 }
 
 export async function upsertPosition(
   userIdInput: string | null | undefined,
   payload: UpsertPayload,
 ): Promise<PortfolioPosition> {
-  const userId = normalizeUserId(userIdInput);
   const symbol = typeof payload.symbol === "string" ? payload.symbol.toUpperCase().trim() : "";
   const body = {
     symbol,
@@ -108,7 +115,7 @@ export async function upsertPosition(
 
   const json = await apiFetch("/api/portfolio/positions", {
     method: "POST",
-    headers: await buildHeaders(userId),
+    headers: await buildHeaders(userIdInput ?? null),
     body: JSON.stringify(body),
   });
 
@@ -120,7 +127,6 @@ export async function updatePosition(
   id: string,
   payload: UpdatePayload,
 ): Promise<PortfolioPosition> {
-  const userId = normalizeUserId(userIdInput);
   const body: Record<string, unknown> = {};
 
   if (payload.symbol !== undefined) {
@@ -138,7 +144,7 @@ export async function updatePosition(
 
   const json = await apiFetch(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: await buildHeaders(userId),
+    headers: await buildHeaders(userIdInput ?? null),
     body: JSON.stringify(body),
   });
 
@@ -150,9 +156,8 @@ export async function deletePosition(id: string, userIdInput?: string | null | u
   if (!trimmedId) {
     throw new Error("Missing position id");
   }
-  const userId = normalizeUserId(userIdInput);
   await apiFetch(`/api/portfolio/positions/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: await buildHeaders(userId),
+    headers: await buildHeaders(userIdInput ?? null),
   });
 }

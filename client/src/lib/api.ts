@@ -23,7 +23,9 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
     ...(init.headers as Record<string, string> | undefined),
   };
 
-  if (!headers["x-demo-user-id"]) {
+  const hasAuthHeader = typeof headers.Authorization === "string" && headers.Authorization.trim().length > 0;
+
+  if (!hasAuthHeader && !headers["x-demo-user-id"]) {
     let fallback = "demo-saif";
     try {
       if (typeof window !== "undefined") {

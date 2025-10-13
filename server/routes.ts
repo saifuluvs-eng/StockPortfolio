@@ -186,10 +186,21 @@ export function registerRoutes(app: Express): void {
     try {
       const userId = (req as any).user.id;
       const positions = await storage.getPortfolioPositions(userId);
-      res.json({ data: positions });
+      res.json({ data: positions, userId });
     } catch (error) {
       console.error('Error fetching portfolio positions:', error);
       res.status(500).json({ message: 'Failed to fetch portfolio positions' });
+    }
+  });
+
+  app.get('/api/portfolio/debug', isAuthenticated, async (req: Request, res: Response) => {
+    try {
+      const userId = (req.user as { id: string }).id;
+      const count = await storage.countPortfolioPositions(userId);
+      res.json({ userId, count });
+    } catch (error) {
+      console.error('Error fetching portfolio debug info:', error);
+      res.status(500).json({ message: 'Failed to fetch portfolio debug info' });
     }
   });
 

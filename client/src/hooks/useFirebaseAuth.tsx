@@ -85,7 +85,9 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
     const previousUserId = previousUserIdRef.current;
 
     if (currentUserId && currentUserId !== previousUserId) {
-      queryClient.invalidateQueries({ queryKey: portfolioPositionsQueryKey(currentUserId) });
+      const key = portfolioPositionsQueryKey(currentUserId);
+      queryClient.invalidateQueries({ queryKey: key });
+      queryClient.refetchQueries({ queryKey: key });
     }
 
     if (previousUserId && previousUserId !== currentUserId) {
