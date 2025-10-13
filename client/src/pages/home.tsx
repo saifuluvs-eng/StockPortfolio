@@ -8,6 +8,7 @@ import { usePortfolioStats } from "@/hooks/usePortfolioStats";
 import { usePositions } from "@/hooks/usePositions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
 import { getQueryFn } from "@/lib/queryClient";
 import { usePrices } from "@/lib/prices";
 import {
@@ -410,6 +411,8 @@ export default function Home() {
             </CardContent>
           </Card>
         </Link>
+
+        <BtcDominanceCard />
 
         {/* 8) News & Insights */}
         <Link href="/news" className="block h-full xl:col-span-2">
