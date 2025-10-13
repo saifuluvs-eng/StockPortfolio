@@ -21,6 +21,7 @@ import { queryClient } from "@/lib/queryClient";
 import { writeCachedPositions } from "@/lib/api/portfolio";
 import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 import { usePriceStore } from "@/lib/prices";
+import { clearDemoUserId, ensureDemoUserId } from "@/lib/demo-user";
 
 interface FirebaseAuthContextValue {
   user: User | null;
@@ -77,6 +78,11 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await firebaseSignOut(auth);
+    queryClient.clear();
+    usePriceStore.getState().reset();
+    if (import.meta.env.DEV) {
+      ensureDemoUserId("demo-saif");
+    }
     setIdToken(null);
   }, []);
 
@@ -86,6 +92,7 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
 
     if (currentUserId && currentUserId !== previousUserId) {
       const key = portfolioPositionsQueryKey(currentUserId);
+      clearDemoUserId();
       queryClient.invalidateQueries({ queryKey: key });
       queryClient.refetchQueries({ queryKey: key });
     }
@@ -94,9 +101,20 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
       writeCachedPositions(previousUserId, null);
       queryClient.clear();
       usePriceStore.getState().reset();
+      if (import.meta.env.DEV) {
+        ensureDemoUserId("demo-saif");
+      }
     }
 
     previousUserIdRef.current = currentUserId;
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      clearDemoUserId();
+    } else if (import.meta.env.DEV) {
+      ensureDemoUserId("demo-saif");
+    }
   }, [user]);
 
   const value = useMemo(

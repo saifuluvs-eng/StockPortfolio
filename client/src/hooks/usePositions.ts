@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 import {
   getPositions,
   readCachedPositions,
@@ -9,6 +10,7 @@ import {
   type PortfolioPosition,
 } from "@/lib/api/portfolio";
 import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
+import { readDemoUserId } from "@/lib/demo-user";
 
 export type UsePositionsOptions = {
   enabled?: boolean;
@@ -52,29 +54,31 @@ export function usePositions(options: UsePositionsOptions = {}) {
   const { enabled = true } = options;
   const { user } = useAuth();
   const userId = user?.uid ?? null;
+  const demoUserId = readDemoUserId();
+  const effectiveUserId = userId ?? demoUserId;
   const queryClient = useQueryClient();
 
-  const queryKey = useMemo(() => portfolioPositionsQueryKey(userId), [userId]);
+  const queryKey = useMemo(() => portfolioPositionsQueryKey(effectiveUserId), [effectiveUserId]);
   const cachedSnapshot = useMemo(
-    () => (userId ? readCachedPositions(userId) : null),
-    [userId],
+    () => (effectiveUserId ? readCachedPositions(effectiveUserId) : null),
+    [effectiveUserId],
   );
   const initialData = cachedSnapshot ?? undefined;
 
   const queryResult = useQuery({
     queryKey,
     queryFn: async () => {
-      if (!userId) return [];
-      const res = await getPositions(userId);
+      if (!effectiveUserId) return [];
+      const res = await getPositions(effectiveUserId);
       const arr = Array.isArray(res?.data) ? res.data : [];
       const responseUserId =
         typeof res?.userId === "string" && res.userId.trim() ? res.userId.trim() : null;
-      if (responseUserId && responseUserId !== userId) {
+      if (responseUserId && responseUserId !== effectiveUserId) {
         const previous = queryClient.getQueryData<PortfolioPosition[]>(queryKey);
         if (Array.isArray(previous) && previous.length > 0) {
           return previous;
         }
-        const cached = readCachedPositions(userId);
+        const cached = readCachedPositions(effectiveUserId);
         if (Array.isArray(cached) && cached.length > 0) {
           return cached;
         }
@@ -82,18 +86,33 @@ export function usePositions(options: UsePositionsOptions = {}) {
       return arr;
     },
     initialData,
-    placeholderData: (previousData) => previousData ?? initialData,
+    placeholderData: (previousData) => previousData ?? initialData ?? [],
     staleTime: 5 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
-    enabled: enabled && !!userId,
+    enabled: enabled && !!effectiveUserId,
     refetchOnWindowFocus: false,
     keepPreviousData: true,
-    retry: 2,
+    retry: (failureCount, error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("API 401")) {
+        return false;
+      }
+      return failureCount < 2;
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("API 401")) {
+        toast.error("Authentication required", {
+          id: "portfolio-auth-error",
+          description: "Sign in to manage your portfolio positions.",
+        });
+      }
+    },
     onSuccess: (positions) => {
-      if (!userId) return;
-      const previous = readCachedPositions(userId);
+      if (!effectiveUserId) return;
+      const previous = readCachedPositions(effectiveUserId);
       if (shouldPersistPositions(positions, previous)) {
-        writeCachedPositions(userId, positions);
+        writeCachedPositions(effectiveUserId, positions);
       }
     },
   });
@@ -110,7 +129,7 @@ export function usePositions(options: UsePositionsOptions = {}) {
     return () => window.removeEventListener("storage", handleRefresh);
   }, [queryClient, queryKey]);
 
-  const data = queryResult.data ?? (userId ? cachedSnapshot ?? [] : []);
+  const data = queryResult.data ?? (effectiveUserId ? cachedSnapshot ?? [] : []);
 
   return {
     ...queryResult,

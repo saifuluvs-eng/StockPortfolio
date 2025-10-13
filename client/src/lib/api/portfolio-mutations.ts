@@ -6,6 +6,7 @@ import {
   upsertPosition as upsertRemotePosition,
 } from "@/lib/api/portfolio";
 import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
+import { readDemoUserId } from "@/lib/demo-user";
 import { useAuth } from "@/hooks/useAuth";
 
 function dispatchPortfolioRefreshEvent() {
@@ -20,15 +21,17 @@ function dispatchPortfolioRefreshEvent() {
 export function useUpsertPosition() {
   const { user } = useAuth();
   const userId = user?.uid ?? null;
+  const demoUserId = readDemoUserId();
+  const effectiveUserId = userId ?? demoUserId;
   const qc = useQueryClient();
-  const queryKey = portfolioPositionsQueryKey(userId);
+  const queryKey = portfolioPositionsQueryKey(effectiveUserId);
 
   return useMutation({
     mutationFn: async (payload: UpsertPayload) => {
-      if (!userId) {
+      if (!effectiveUserId) {
         throw new Error("You need to be signed in to manage portfolio positions.");
       }
-      return await upsertRemotePosition(userId, payload);
+      return await upsertRemotePosition(effectiveUserId, payload);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
@@ -40,15 +43,17 @@ export function useUpsertPosition() {
 export function useDeletePosition() {
   const { user } = useAuth();
   const userId = user?.uid ?? null;
+  const demoUserId = readDemoUserId();
+  const effectiveUserId = userId ?? demoUserId;
   const qc = useQueryClient();
-  const queryKey = portfolioPositionsQueryKey(userId);
+  const queryKey = portfolioPositionsQueryKey(effectiveUserId);
 
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!userId) {
+      if (!effectiveUserId) {
         throw new Error("You need to be signed in to manage portfolio positions.");
       }
-      await deleteRemotePosition(id, userId);
+      await deleteRemotePosition(id, effectiveUserId);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey });
