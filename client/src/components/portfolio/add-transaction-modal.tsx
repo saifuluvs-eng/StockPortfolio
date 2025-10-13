@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 
 const addTransactionSchema = z.object({
   symbol: z
@@ -63,7 +64,9 @@ function normalizeSymbolMaybeAppendUSDT(s: string) {
 export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, user } = useAuth();
+  const userId = user?.uid ?? null;
+  const positionsKey = portfolioPositionsQueryKey(userId);
 
   const form = useForm<AddTransactionFormData>({
     resolver: zodResolver(addTransactionSchema),
@@ -142,7 +145,7 @@ export function AddTransactionModal({ open, onOpenChange }: AddTransactionModalP
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio/allocation"] });
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio", "positions"] });
+      queryClient.invalidateQueries({ queryKey: positionsKey });
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio/performance"] });
 
       toast({

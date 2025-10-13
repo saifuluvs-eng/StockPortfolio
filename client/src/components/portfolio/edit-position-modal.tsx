@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
+import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 
 /* ----------------------------- types ----------------------------- */
 
@@ -123,7 +124,9 @@ function recomputeSummary(positions: PortfolioPosition[]): PortfolioSummary {
 export function EditPositionModal({ open, onOpenChange, position }: EditPositionModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, user } = useAuth();
+  const userId = user?.uid ?? null;
+  const positionsKey = portfolioPositionsQueryKey(userId);
 
   const form = useForm<EditForm>({
     resolver: zodResolver(editPositionSchema),
@@ -160,7 +163,7 @@ export function EditPositionModal({ open, onOpenChange, position }: EditPosition
     onMutate: async (data) => {
       if (!position) return;
       await queryClient.cancelQueries({ queryKey: ["/api/portfolio"] });
-      await queryClient.cancelQueries({ queryKey: ["portfolio", "positions"] });
+      await queryClient.cancelQueries({ queryKey: positionsKey });
       const prev = queryClient.getQueryData<PortfolioSummary>(["/api/portfolio"]);
 
       if (prev) {
@@ -222,7 +225,7 @@ export function EditPositionModal({ open, onOpenChange, position }: EditPosition
     onSuccess: () => {
       // Revalidate to get server truth
       queryClient.invalidateQueries({ queryKey: ["/api/portfolio"] });
-      queryClient.invalidateQueries({ queryKey: ["portfolio", "positions"] });
+      queryClient.invalidateQueries({ queryKey: positionsKey });
       toast({ title: "Success", description: "Position updated successfully" });
       onOpenChange(false);
     },

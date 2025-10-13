@@ -2,6 +2,7 @@
 import React from "react";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { Button } from "@/components/ui/button";
+import { postAuthSuccessMessage } from "@/lib/auth/popup";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ export default function SignInDialog({ open, onOpenChange, onSignedIn }: Props) 
     const auth = getAuth();
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
+    postAuthSuccessMessage();
     onOpenChange(false);
     onSignedIn?.();
   };

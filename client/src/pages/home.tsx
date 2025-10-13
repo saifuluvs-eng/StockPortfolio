@@ -4,9 +4,12 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
+import { usePortfolioStats } from "@/hooks/usePortfolioStats";
+import { usePositions } from "@/hooks/usePositions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getQueryFn } from "@/lib/queryClient";
+import { usePrices } from "@/lib/prices";
 import {
   TrendingUp,
   BarChart3,
@@ -30,14 +33,6 @@ import {
  */
 
 // ---------- Types (defensive) ----------
-type PortfolioSummary = {
-  totalValue?: number | string;
-  totalPnL?: number | string;
-  totalPnLPercent?: number | string;
-  dayChange?: number | string;
-  dayChangePercent?: number | string;
-  positions?: unknown;
-};
 type GainerItem = {
   symbol?: string; pair?: string; ticker?: string;
   change24h?: number | string; priceChangePercent?: number | string;
@@ -52,18 +47,6 @@ type TickerResponse = {
   price?: string | number;
   priceChangePercent?: string | number;
 } & Record<string, unknown>;
-type Position = {
-  symbol: string;
-  qty: number;
-  avgPrice: number;
-  livePrice?: number;
-};
-type SanitizedPortfolio = {
-  totalValue: number | null;
-  totalPnl: number | null;
-  totalPnlPercent: number | null;
-  positions: Position[];
-};
 
 // ---------- Utils ----------
 const nf2 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -139,183 +122,76 @@ export default function Home() {
   }, [networkEnabled]);
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
-  const { data: port } = useQuery<SanitizedPortfolio | null>({
-    queryKey: ["/api/portfolio", user?.uid],
-    queryFn: getQueryFn<PortfolioSummary | null>({ on401: "returnNull" }),
-    select: (summary) => {
-      const totalValue = toNum(summary?.totalValue ?? null);
-      const totalPnl = toNum(summary?.totalPnL ?? null);
-      const totalPnlPercent = toNum(summary?.totalPnLPercent ?? null);
-      const rawPositions = Array.isArray(summary?.positions) ? summary?.positions : [];
+  const { data: positionsData = [] } = usePositions({ enabled: networkEnabled && !!user });
+  const { setPrices: updatePortfolioPrices } = usePrices();
+  const { market: totalMarketValue, pnlPct: totalPnlPercent } = usePortfolioStats();
 
-      const positions = rawPositions
-        .map((raw) => {
-          const symbol =
-            typeof (raw as any)?.symbol === "string"
-              ? ((raw as any).symbol as string).trim().toUpperCase()
-              : null;
-          const qty = toNum((raw as any)?.qty);
-          const avgPrice = toNum((raw as any)?.avgPrice);
-          const livePrice = toNum((raw as any)?.livePrice);
-          if (!symbol || qty === null || avgPrice === null) return null;
-          return {
-            symbol,
-            qty,
-            avgPrice,
-            livePrice: livePrice ?? undefined,
-          };
-        })
-        .filter(Boolean) as Position[];
-
-      return {
-        totalValue: totalValue ?? null,
-        totalPnl: totalPnl ?? null,
-        totalPnlPercent: totalPnlPercent ?? null,
-        positions,
-      };
-    },
-    refetchInterval: 120_000,
-    enabled: networkEnabled && !!user, // compute only when network is allowed and user is signed in
-  });
-
-  const positions = port?.positions ?? [];
-  const serverTotalValue = port?.totalValue ?? 0;
-  const serverTotalPnl = port?.totalPnl ?? 0;
-  const serverTotalPnlPercent = port?.totalPnlPercent ?? 0;
-
-  const [liveWS, setLiveWS] = useState<Record<string, number>>({});
-  const [liveHTTP, setLiveHTTP] = useState<Record<string, number>>({});
-  const positionsKey = useMemo(
-    () => positions.map((p) => p.symbol).sort().join(","),
-    [positions],
+  const symbols = useMemo(
+    () => Array.from(new Set(positionsData.map((p) => p.symbol.trim().toUpperCase()).filter(Boolean))),
+    [positionsData],
   );
+  const symbolsKey = symbols.join("|");
 
   useEffect(() => {
-    if (!positions.length) return;
+    if (!symbols.length) return;
     if (!networkEnabled) return;
     if (typeof window === "undefined") return;
 
-    const symbols = Array.from(new Set(positions.map((p) => p.symbol)));
-    if (!symbols.length) return;
-
     const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
     const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
-    const ws = new WebSocket(wsUrl);
+    let ws: WebSocket | null = null;
+
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch {
+      return;
+    }
 
     ws.onopen = () => {
-      symbols.forEach((s) => ws.send(JSON.stringify({ type: "subscribe", symbol: s })));
+      symbols.forEach((symbol) => {
+        try {
+          ws?.send(JSON.stringify({ type: "subscribe", symbol }));
+        } catch {
+          // ignore send failures
+        }
+      });
     };
 
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg?.type === "price_update" && msg?.data && typeof msg.data === "object") {
-          setLiveWS((prev) => {
-            let changed = false;
-            const next = { ...prev };
-            for (const [sym, price] of Object.entries(msg.data)) {
-              const symbol = sym.toUpperCase();
-              const parsed = Number(price as any);
-              if (Number.isFinite(parsed) && next[symbol] !== parsed) {
-                next[symbol] = parsed;
-                changed = true;
-              }
+          const updates: Record<string, number> = {};
+          for (const [rawSymbol, rawPrice] of Object.entries(msg.data)) {
+            const numeric = Number(rawPrice);
+            if (Number.isFinite(numeric)) {
+              updates[String(rawSymbol).toUpperCase()] = numeric;
             }
-            return changed ? next : prev;
-          });
-        }
-      } catch {}
-    };
-
-    return () => {
-      try {
-        ws.close();
-      } catch {}
-    };
-  }, [networkEnabled, positionsKey]);
-
-  useEffect(() => {
-    if (!positions.length) return;
-
-    const symbols = Array.from(new Set(positions.map((p) => p.symbol)));
-    if (!symbols.length) return;
-
-    let cancelled = false;
-
-    async function fetchPrices() {
-      try {
-        const url =
-          "https://api.binance.com/api/v3/ticker/price?symbols=" +
-          encodeURIComponent(JSON.stringify(symbols));
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const arr: Array<{ symbol: string; price: string }> = await res.json();
-        if (cancelled) return;
-
-        setLiveHTTP((prev) => {
-          const next = { ...prev };
-          for (const row of arr) {
-            const price = Number(row.price);
-            if (Number.isFinite(price)) next[row.symbol.toUpperCase()] = price;
           }
-          return next;
-        });
+          if (Object.keys(updates).length > 0) {
+            updatePortfolioPrices(updates);
+          }
+        }
       } catch {
-        // ignore polling errors
+        // ignore malformed messages
       }
-    }
+    };
 
-    fetchPrices();
-    const id = setInterval(fetchPrices, 5000);
     return () => {
-      cancelled = true;
-      clearInterval(id);
+      if (ws) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        try {
+          ws.close();
+        } catch {
+          // ignore close errors
+        }
+      }
     };
-  }, [positionsKey]);
+  }, [networkEnabled, updatePortfolioPrices, symbols, symbolsKey]);
 
-  const currentPriceFor = (sym: string, fallback: number) => {
-    const S = sym.toUpperCase();
-    if (Number.isFinite(liveWS[S])) return liveWS[S];
-    if (Number.isFinite(liveHTTP[S])) return liveHTTP[S];
-    return fallback;
-  };
-
-  const totals = useMemo(() => {
-    if (!positions.length) {
-      return {
-        totalValue: serverTotalValue,
-        totalPnl: serverTotalPnl,
-        totalPnlPercent: serverTotalPnlPercent,
-      };
-    }
-
-    let invested = 0;
-    let currentWorth = 0;
-    for (const pos of positions) {
-      const latest = currentPriceFor(pos.symbol, pos.livePrice ?? pos.avgPrice);
-      invested += pos.avgPrice * pos.qty;
-      currentWorth += latest * pos.qty;
-    }
-
-    const pnlValue = currentWorth - invested;
-    const pnlPercent = invested > 0 ? (pnlValue / invested) * 100 : 0;
-
-    return {
-      totalValue: currentWorth,
-      totalPnl: pnlValue,
-      totalPnlPercent: pnlPercent,
-    };
-  }, [
-    positions,
-    liveHTTP,
-    liveWS,
-    serverTotalPnl,
-    serverTotalPnlPercent,
-    serverTotalValue,
-  ]);
-
-  const safeTotalValue = Number.isFinite(totals.totalValue) ? totals.totalValue : 0;
-  const safeTotalPnlPercent = Number.isFinite(totals.totalPnlPercent) ? totals.totalPnlPercent : 0;
+  const safeTotalValue = Number.isFinite(totalMarketValue) ? totalMarketValue : 0;
+  const safeTotalPnlPercent = Number.isFinite(totalPnlPercent) ? totalPnlPercent : 0;
 
   const { data: gain } = useQuery({
     queryKey: ["/api/market/gainers"],
