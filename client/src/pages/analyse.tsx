@@ -24,7 +24,7 @@ import {
   BreakdownSection,
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
-import AiSummaryCard from "@/features/analyse/AiSummaryCard";
+import AiSummaryPanel from "@/components/analyse/AiSummaryPanel";
 import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
@@ -493,6 +493,7 @@ export default function Analyse() {
         const resolved = asString(item.symbol || apiSymbol).toUpperCase();
         toast.success(`${resolved} analysed`, { id: ANALYSE_TOAST_ID });
         setScanResult(item);
+        queryClient.invalidateQueries({ queryKey: ["aiSummary", normalizedSymbol, tfValue] });
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
 
         window.__tvSet?.(normalizedSymbol, tfValue);
@@ -1103,7 +1104,7 @@ export default function Analyse() {
           </section>
 
           <section className="min-w-0 overflow-hidden">
-            <AiSummaryCard />
+            <AiSummaryPanel symbol={selectedSymbol} tf={timeframe} />
           </section>
         </div>
       </div>

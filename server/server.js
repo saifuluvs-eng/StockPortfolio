@@ -4,6 +4,7 @@ import cors from 'cors';
 import http from 'http';
 import { WebSocketServer } from 'ws';
 import portfolioAuth from './middleware/auth.js';
+import { ai } from './ai.js';
 import {
   MACD,
   RSI,
@@ -329,6 +330,7 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 
 app.use('/api/portfolio', portfolioAuth);
+app.use('/api/ai', ai);
 
 // ensure memory store exists once
 const memory =
