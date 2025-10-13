@@ -308,108 +308,25 @@ function push(arr, title, value, signal = 'neutral', reason = '') {
 }
 
 const PORT = Number(process.env.PORT) || 8080;
-const normalizeOrigin = (origin) => origin?.replace(/\/+$/, '') ?? null;
-
-const ALLOW_ORIGINS = [
-  normalizeOrigin(process.env.DASH_ORIGIN),
-  normalizeOrigin("http://localhost:3000"),
-  normalizeOrigin("http://localhost:5173"),
-].filter((value) => value);
-
-const allowedOriginSet = new Set(ALLOW_ORIGINS);
-const vercelPreviewOrigin = (origin) =>
-  typeof origin === "string" && origin.toLowerCase().endsWith(".vercel.app");
-
-const ALLOWED_METHODS = ["GET", "POST", "OPTIONS"];
-const ALLOWED_HEADERS = [
-  "Authorization",
-  "Content-Type",
-  "X-Requested-With",
-  "Accept",
-  "Origin",
-  "authorization",
-  "content-type",
-  "x-requested-with",
-  "accept",
-  "origin",
-];
-
-const appendVaryHeader = (res, value) => {
-  const current = res.get('Vary');
-  if (!current) {
-    res.header('Vary', value);
-    return;
-  }
-  const values = current.split(/,\s*/);
-  if (!values.includes(value)) {
-    res.header('Vary', `${current}, ${value}`);
-  }
-};
-
-const resolveAllowedOrigin = (originHeader) => {
-  if (!originHeader) return null;
-  const normalizedOrigin = normalizeOrigin(originHeader);
-  if (normalizedOrigin && allowedOriginSet.has(normalizedOrigin)) {
-    return originHeader;
-  }
-  if (vercelPreviewOrigin(originHeader)) {
-    return originHeader;
-  }
-  return null;
-};
-
-const applyCorsHeaders = (req, res) => {
-  const allowedOrigin = resolveAllowedOrigin(req.get('Origin'));
-  if (allowedOrigin) {
-    res.header('Access-Control-Allow-Origin', allowedOrigin);
-  }
-  appendVaryHeader(res, 'Origin');
-  appendVaryHeader(res, 'Access-Control-Request-Method');
-  appendVaryHeader(res, 'Access-Control-Request-Headers');
-  res.header('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
-  const requestedHeaders = req.get('Access-Control-Request-Headers');
-  if (requestedHeaders) {
-    res.header('Access-Control-Allow-Headers', requestedHeaders);
-  } else if (!res.get('Access-Control-Allow-Headers')) {
-    res.header('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
-  }
-};
-
 const app = express();
+const allowedOrigins = [
+  'https://stock-portfolio-khaki-nine.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
 
 const corsOptions = {
   origin(origin, cb) {
-    if (!origin) {
-      return cb(null, false);
-    }
-    const allowedOrigin = resolveAllowedOrigin(origin);
-    if (allowedOrigin) {
-      return cb(null, allowedOrigin);
-    }
-    return cb(null, false);
+    cb(null, !origin || allowedOrigins.includes(origin));
   },
-  methods: ALLOWED_METHODS,
-  allowedHeaders: ALLOWED_HEADERS,
-  credentials: false,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-demo-user-id'],
+  credentials: true,
   optionsSuccessStatus: 204,
 };
 
-const corsMiddleware = cors(corsOptions);
-
-app.use((req, res, next) => {
-  corsMiddleware(req, res, (err) => {
-    if (err) {
-      next(err);
-      return;
-    }
-    applyCorsHeaders(req, res);
-    next();
-  });
-});
-app.options('*', cors(corsOptions), (req, res) => {
-  applyCorsHeaders(req, res);
-  res.sendStatus(204);
-});
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // ensure memory store exists once
@@ -439,6 +356,19 @@ function resolveUid(value) {
 
 function getUid(req, body) {
   return resolveUid(body?.uid) ?? resolveUid(req.query?.uid) ?? "demo-user";
+}
+
+function resolveRequestUserId(req) {
+  const authUser = req?.user?.id;
+  if (typeof authUser === "string" && authUser.trim()) {
+    return authUser.trim();
+  }
+  const header = req.get?.("x-demo-user-id");
+  if (typeof header === "string" && header.trim()) {
+    return header.trim();
+  }
+  const fallback = resolveUid(req.body?.uid) ?? resolveUid(req.query?.uid);
+  return fallback;
 }
 
 function getUserPortfolio(uid) {
@@ -472,23 +402,54 @@ function toFiniteNumber(value) {
 }
 
 function refreshPositionMetrics(position) {
-  const qty = toFiniteNumber(position.qty) ?? 0;
-  const avg = toFiniteNumber(position.avgPrice) ?? 0;
+  if (!position || typeof position !== "object") {
+    return { quantity: 0, entryPrice: 0, livePrice: 0 };
+  }
+  if (!position.id || typeof position.id !== "string" || position.id.length < 8) {
+    position.id = randomUUID();
+  }
+  const quantity = toFiniteNumber(position.quantity ?? position.qty) ?? 0;
+  const entryPrice = toFiniteNumber(position.entryPrice ?? position.avgPrice) ?? 0;
   const liveCandidate = toFiniteNumber(position.livePrice);
-  const live =
-    liveCandidate != null && liveCandidate > 0 ? liveCandidate : avg > 0 ? avg : 0;
-  position.qty = qty;
-  position.avgPrice = avg;
-  position.livePrice = live;
-  position.pnl = live * qty - avg * qty;
+  const livePrice =
+    liveCandidate != null && liveCandidate > 0 ? liveCandidate : entryPrice > 0 ? entryPrice : 0;
+
+  position.quantity = quantity;
+  position.qty = quantity;
+  position.entryPrice = entryPrice;
+  position.avgPrice = entryPrice;
+  position.livePrice = livePrice;
+  position.pnl = livePrice * quantity - entryPrice * quantity;
+
+  if (typeof position.createdAt !== "string") {
+    position.createdAt = new Date().toISOString();
+  }
+  if (typeof position.updatedAt !== "string") {
+    position.updatedAt = position.createdAt;
+  }
+  if (position.notes != null && typeof position.notes !== "string") {
+    position.notes = String(position.notes);
+  }
+
+  return { quantity, entryPrice, livePrice };
+}
+
+function serializePortfolioPosition(position) {
+  const { quantity, entryPrice } = refreshPositionMetrics(position);
+  const rawNotes = typeof position.notes === "string" ? position.notes.trim() : "";
+  return {
+    id: position.id,
+    symbol: typeof position.symbol === "string" ? position.symbol.toUpperCase() : "",
+    quantity,
+    entryPrice,
+    notes: rawNotes || null,
+    createdAt: position.createdAt,
+    updatedAt: position.updatedAt,
+  };
 }
 
 function serializePositions(positions) {
-  return positions.map((position) => {
-    refreshPositionMetrics(position);
-    const { id, ...rest } = position;
-    return rest;
-  });
+  return positions.map((position) => serializePortfolioPosition(position));
 }
 
 function computeTotals(positions) {
@@ -622,6 +583,185 @@ app.get("/api/portfolio", (req, res) => {
   const user = getUserPortfolio(uid);
   const totals = computeTotals(user.positions);
   res.json({ ...totals, positions: serializePositions(user.positions) });
+});
+
+app.get("/api/portfolio/positions", (req, res) => {
+  try {
+    const userId = resolveRequestUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthenticated" });
+      return;
+    }
+    const user = getUserPortfolio(userId);
+    res.json({ data: serializePositions(user.positions) });
+  } catch (error) {
+    console.error("GET /api/portfolio/positions error", error);
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+app.post("/api/portfolio/positions", (req, res) => {
+  try {
+    const userId = resolveRequestUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthenticated" });
+      return;
+    }
+
+    const body = req.body ?? {};
+    const rawSymbol = typeof body.symbol === "string" ? body.symbol.trim().toUpperCase() : "";
+    if (!rawSymbol || !/^[A-Z0-9]{3,20}$/.test(rawSymbol)) {
+      res.status(400).json({ error: "Invalid symbol" });
+      return;
+    }
+    const symbol = normalizeSymbol(rawSymbol);
+
+    const quantity = toFiniteNumber(body.quantity);
+    if (quantity == null || quantity <= 0) {
+      res.status(400).json({ error: "Invalid quantity" });
+      return;
+    }
+
+    const entryPrice = toFiniteNumber(body.entryPrice);
+    if (entryPrice == null || entryPrice <= 0) {
+      res.status(400).json({ error: "Invalid entryPrice" });
+      return;
+    }
+
+    const notes = typeof body.notes === "string" ? body.notes.trim() : null;
+
+    const user = getUserPortfolio(userId);
+    const existing = user.positions.find((position) => {
+      if (!position || typeof position.symbol !== "string") return false;
+      return normalizeSymbol(position.symbol) === symbol;
+    });
+    const nowIso = new Date().toISOString();
+
+    if (existing) {
+      existing.symbol = symbol;
+      existing.quantity = quantity;
+      existing.qty = quantity;
+      existing.entryPrice = entryPrice;
+      existing.avgPrice = entryPrice;
+      existing.notes = notes;
+      existing.updatedAt = nowIso;
+      refreshPositionMetrics(existing);
+      res.json({ data: serializePortfolioPosition(existing) });
+      return;
+    }
+
+    const position = {
+      id: randomUUID(),
+      symbol,
+      quantity,
+      qty: quantity,
+      entryPrice,
+      avgPrice: entryPrice,
+      notes,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      livePrice: entryPrice,
+      pnl: 0,
+    };
+    refreshPositionMetrics(position);
+    user.positions.unshift(position);
+
+    res.json({ data: serializePortfolioPosition(position) });
+  } catch (error) {
+    console.error("POST /api/portfolio/positions error", error);
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+app.patch("/api/portfolio/positions/:id", (req, res) => {
+  try {
+    const userId = resolveRequestUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthenticated" });
+      return;
+    }
+
+    const id = typeof req.params?.id === "string" ? req.params.id.trim() : "";
+    if (!id) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+
+    const user = getUserPortfolio(userId);
+    const target = user.positions.find((position) => position.id === id);
+    if (!target) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    const updates = req.body ?? {};
+    if (updates.symbol !== undefined) {
+      const rawSymbol = typeof updates.symbol === "string" ? updates.symbol.trim().toUpperCase() : "";
+      if (!rawSymbol || !/^[A-Z0-9]{3,20}$/.test(rawSymbol)) {
+        res.status(400).json({ error: "Invalid symbol" });
+        return;
+      }
+      target.symbol = normalizeSymbol(rawSymbol);
+    }
+    if (updates.quantity !== undefined) {
+      const quantity = toFiniteNumber(updates.quantity);
+      if (quantity == null || quantity <= 0) {
+        res.status(400).json({ error: "Invalid quantity" });
+        return;
+      }
+      target.quantity = quantity;
+      target.qty = quantity;
+    }
+    if (updates.entryPrice !== undefined) {
+      const entryPrice = toFiniteNumber(updates.entryPrice);
+      if (entryPrice == null || entryPrice <= 0) {
+        res.status(400).json({ error: "Invalid entryPrice" });
+        return;
+      }
+      target.entryPrice = entryPrice;
+      target.avgPrice = entryPrice;
+    }
+    if (updates.notes !== undefined) {
+      target.notes = typeof updates.notes === "string" ? updates.notes.trim() : null;
+    }
+
+    target.updatedAt = new Date().toISOString();
+    refreshPositionMetrics(target);
+
+    res.json({ data: serializePortfolioPosition(target) });
+  } catch (error) {
+    console.error("PATCH /api/portfolio/positions/:id error", error);
+    res.status(500).json({ error: "Internal error" });
+  }
+});
+
+app.delete("/api/portfolio/positions/:id", (req, res) => {
+  try {
+    const userId = resolveRequestUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: "Unauthenticated" });
+      return;
+    }
+
+    const id = typeof req.params?.id === "string" ? req.params.id.trim() : "";
+    if (!id) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+
+    const user = getUserPortfolio(userId);
+    const before = user.positions.length;
+    user.positions = user.positions.filter((position) => position.id !== id);
+    if (before === user.positions.length) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("DELETE /api/portfolio/positions/:id error", error);
+    res.status(500).json({ error: "Internal error" });
+  }
 });
 
 app.post("/api/portfolio", (req, res) => {
