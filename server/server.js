@@ -20,6 +20,8 @@ import {
 } from 'technicalindicators';
 import { randomUUID } from 'node:crypto';
 
+if (!process.env.CRYPTOPANIC_TOKEN) console.warn('[news] CRYPTOPANIC_TOKEN missing');
+
 const BINANCE_API_BASE = "https://api.binance.com";
 const BINANCE_USER_AGENT =
   process.env.BINANCE_USER_AGENT ?? "StockPortfolio/1.0 (+https://stockportfolio.app)";
