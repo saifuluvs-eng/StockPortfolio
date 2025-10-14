@@ -62,7 +62,17 @@ export interface NewsResponseBody {
   paging?: { next?: string; page?: number };
 }
 
-type CacheRecord = { at: number; payload: NewsResponseBody };
+export interface NewsErrorResponse {
+  error: string;
+  status: number;
+  detail?: string;
+}
+
+type CacheRecord = {
+  at: number;
+  status: number;
+  payload: NewsResponseBody | NewsErrorResponse;
+};
 
 declare global {
   // eslint-disable-next-line no-var
@@ -85,8 +95,11 @@ function ensureToken(): string | null {
 }
 
 function normalizeKind(input: unknown): NewsKind {
-  if (typeof input === "string" && ALLOWED_KINDS.has(input as NewsKind)) {
-    return input as NewsKind;
+  if (typeof input === "string") {
+    const normalized = input.trim().toLowerCase();
+    if (ALLOWED_KINDS.has(normalized as NewsKind)) {
+      return normalized as NewsKind;
+    }
   }
   return "news";
 }
@@ -106,6 +119,22 @@ function normalizePage(input: unknown): number {
     return num;
   }
   return 1;
+}
+
+function normalizeCurrenciesParam(input: unknown): string | null {
+  if (typeof input !== "string") return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (trimmed.toUpperCase() === "ALL") return null;
+
+  const parts = trimmed
+    .split(",")
+    .map((part) => part.trim().toUpperCase())
+    .filter(Boolean)
+    .filter((part) => /^[A-Z]+$/.test(part));
+
+  if (parts.length === 0) return null;
+  return parts.join(",");
 }
 
 function normalizeUrl(article: CryptoPanicArticle): string {
@@ -168,18 +197,39 @@ function normalizeArticle(article: CryptoPanicArticle): NewsArticle {
 }
 
 async function fetchFromCryptoPanic(params: URLSearchParams) {
-  const response = await fetch(`https://cryptopanic.com/api/v1/posts/?${params.toString()}`);
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    const error = new Error(`CryptoPanic responded with ${response.status}`);
-    (error as any).status = response.status;
-    (error as any).detail = detail.slice(0, 300);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
+  try {
+    const response = await fetch(
+      `https://cryptopanic.com/api/v1/posts/?${params.toString()}`,
+      {
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      const error = new Error(`CryptoPanic responded with ${response.status}`);
+      (error as any).status = response.status;
+      (error as any).detail = detail.slice(0, 300);
+      throw error;
+    }
+    return response.json() as Promise<{ results?: CryptoPanicArticle[]; next?: string | null }>;
+  } catch (error) {
+    if ((error as Error).name === "AbortError") {
+      const timeoutError = new Error("CryptoPanic request timed out");
+      (timeoutError as any).status = 504;
+      (timeoutError as any).detail = "Request to CryptoPanic timed out";
+      throw timeoutError;
+    }
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return response.json() as Promise<{ results?: CryptoPanicArticle[]; next?: string | null }>;
 }
 
 async function handleNewsRequest(req: Request, res: Response) {
+  let cacheKey: string | null = null;
   try {
     const token = ensureToken();
     if (!token) {
@@ -189,22 +239,22 @@ async function handleNewsRequest(req: Request, res: Response) {
 
     const kind = normalizeKind(req.query.kind);
     const filter = normalizeFilter(req.query.filter);
-    const currenciesParam = typeof req.query.currencies === "string" ? req.query.currencies : "";
-    const currencies = currenciesParam
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .map((part) => part.toUpperCase())
-      .join(",");
+    const currencies = normalizeCurrenciesParam(req.query.currencies);
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
     const page = normalizePage(req.query.page);
 
-    const cacheKey = JSON.stringify({ kind, filter, currencies, q, page });
+    cacheKey = JSON.stringify({
+      kind,
+      filter,
+      currencies: currencies ?? null,
+      q: q || null,
+      page,
+    });
     const now = Date.now();
     const cache = getCache();
     const hit = cache.get(cacheKey);
     if (hit && now - hit.at < CACHE_TTL_MS) {
-      res.json(hit.payload);
+      res.status(hit.status).json(hit.payload);
       return;
     }
 
@@ -238,16 +288,21 @@ async function handleNewsRequest(req: Request, res: Response) {
       paging,
     };
 
-    cache.set(cacheKey, { at: now, payload });
+    cache.set(cacheKey, { at: now, status: 200, payload });
     res.json(payload);
   } catch (error) {
-    console.error("GET /api/news failed", error);
+    console.error("GET /api/news", error);
     if ((error as any)?.status) {
-      res.status(502).json({
+      const payload: NewsErrorResponse = {
         error: "CryptoPanic error",
         status: (error as any).status,
         detail: (error as any).detail,
-      });
+      };
+      if (cacheKey) {
+        const cache = getCache();
+        cache.set(cacheKey, { at: Date.now(), status: 502, payload });
+      }
+      res.status(502).json(payload);
       return;
     }
     res.status(500).json({ error: "Internal error" });
