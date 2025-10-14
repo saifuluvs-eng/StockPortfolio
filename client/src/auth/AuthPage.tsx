@@ -1,7 +1,18 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { supabase } from "../lib/supabaseClient";
 import { useSession } from "./AuthProvider";
+
+let useNavigateHook:
+  | (() => (path: string, options?: { replace?: boolean }) => void)
+  | null = null;
+try {
+  // @ts-ignore - require may not be defined in ESM environments during type check, but Vite handles it
+  const mod = require("react-router-dom");
+  useNavigateHook = typeof mod.useNavigate === "function" ? mod.useNavigate : null;
+} catch {
+  useNavigateHook = null;
+}
 
 export default function AuthPage() {
   const { user } = useSession();
@@ -9,6 +20,24 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const navigate = typeof useNavigateHook === "function" ? useNavigateHook() : null;
+
+  const goAnalyse = useCallback(() => {
+    const target = "/analyse/BTCUSDT";
+    if (navigate) {
+      navigate(target, { replace: true });
+    } else {
+      if (typeof window !== "undefined") {
+        window.location.assign(target);
+      }
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (user && typeof window !== "undefined" && window.location.pathname === "/account") {
+      goAnalyse();
+    }
+  }, [goAnalyse, user]);
 
   async function signUp(e: React.FormEvent) {
     e.preventDefault();
@@ -25,6 +54,7 @@ export default function AuthPage() {
     setInfo(null);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) setErr(error.message);
+    else goAnalyse();
   }
 
   async function signOut() {
