@@ -1,4 +1,4 @@
-import { Home, LineChart, TrendingUp, Wallet, Bot } from "lucide-react";
+import { Home, LineChart, TrendingUp, Wallet, Bot, Newspaper } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -17,6 +17,7 @@ export const NAV: NavItem[] = [
     match: [/^\/(analyse|charts)(\/|$)/],
   },
   { label: "Gainers", to: "/gainers", icon: TrendingUp },
+  { label: "News", to: "/news", icon: Newspaper },
   { label: "Portfolio", to: "/portfolio", icon: Wallet },
   { label: "AI Insights", to: "/ai-insights", icon: Bot },
 ];

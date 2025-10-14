@@ -13,6 +13,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { registerMetricsRoute } from "./routes/metrics";
+import { registerNewsRoute } from "./routes/news";
 import { registerOhlcvRoute } from "./routes/ohlcv";
 
 function parseBooleanQuery(value: unknown): boolean {
@@ -44,6 +45,7 @@ export function registerRoutes(app: Express): void {
   //await setupAuth(app);
 
   registerMetricsRoute(app);
+  registerNewsRoute(app);
   registerOhlcvRoute(app);
 
   // Auth routes

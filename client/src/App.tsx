@@ -21,6 +21,7 @@ import Charts from "@/pages/charts";
 import Analyse from "@/pages/analyse";
 import Watchlist from "@/pages/watchlist";
 import Alerts from "@/pages/alerts";
+import News from "@/pages/news";
 import { useCredits } from "@/stores/creditStore";
 
 // (keep for later) Protected HOC
@@ -77,6 +78,7 @@ function AppRouter() {
       <Route path="/ai-insights" component={withLayout(AIInsights)} />
       <Route path="/watchlist" component={withLayout(Watchlist)} />
       <Route path="/alerts" component={withLayout(Alerts)} />
+      <Route path="/news" component={withLayout(News)} />
 
       {/* ANALYSE */}
       <Route path="/analyse/:symbol?" component={withLayout(Analyse)} />
