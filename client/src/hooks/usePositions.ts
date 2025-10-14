@@ -13,8 +13,9 @@ import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 import { readDemoUserId } from "@/lib/demo-user";
 import {
   listPositions as listSupabasePositions,
-  type Position as SupabasePosition,
+  type PositionRow as SupabasePosition,
 } from "@/services/positionsService";
+import { useSession } from "@/auth/AuthProvider";
 
 export type UsePositionsOptions = {
   enabled?: boolean;
@@ -65,16 +66,19 @@ function supabasePositionToPortfolioPosition(row: SupabasePosition): PortfolioPo
     entryPrice: Number.isFinite(entryPrice) ? entryPrice : 0,
     notes: row.note ?? null,
     createdAt: row.created_at,
-    updatedAt: (row as { updated_at?: string }).updated_at ?? row.created_at,
+    updatedAt: row.updated_at ?? row.created_at,
   };
 }
 
 export function usePositions(options: UsePositionsOptions = {}) {
   const { enabled = true } = options;
   const { user } = useAuth();
+  const { user: sessionUser } = useSession();
   const userId = user?.uid ?? null;
+  const supabaseUserId = sessionUser?.id ?? null;
   const demoUserId = readDemoUserId();
-  const effectiveUserId = userId ?? demoUserId;
+  const effectiveUserId = supabaseUserId ?? userId ?? demoUserId;
+  const legacyUserId = supabaseUserId ? null : effectiveUserId;
   const queryClient = useQueryClient();
 
   const queryKey = useMemo(() => portfolioPositionsQueryKey(effectiveUserId), [effectiveUserId]);
@@ -84,27 +88,26 @@ export function usePositions(options: UsePositionsOptions = {}) {
   );
   const initialData = cachedSnapshot ?? undefined;
 
-  const queryResult = useQuery({
+  const queryResult = useQuery<PortfolioPosition[]>({
     queryKey,
-    queryFn: async () => {
-      if (!effectiveUserId) return [];
-      try {
+    queryFn: async (): Promise<PortfolioPosition[]> => {
+      if (supabaseUserId) {
         const rows = await listSupabasePositions();
         return rows.map(supabasePositionToPortfolioPosition);
-      } catch (error) {
-        console.error("Supabase positions fetch failed", error);
       }
 
-      const res = await getPositions(effectiveUserId);
+      if (!legacyUserId) return [];
+
+      const res = await getPositions(legacyUserId);
       const arr = Array.isArray(res?.data) ? res.data : [];
       const responseUserId =
         typeof res?.userId === "string" && res.userId.trim() ? res.userId.trim() : null;
-      if (responseUserId && responseUserId !== effectiveUserId) {
+      if (responseUserId && responseUserId !== legacyUserId) {
         const previous = queryClient.getQueryData<PortfolioPosition[]>(queryKey);
         if (Array.isArray(previous) && previous.length > 0) {
           return previous;
         }
-        const cached = readCachedPositions(effectiveUserId);
+        const cached = readCachedPositions(legacyUserId);
         if (Array.isArray(cached) && cached.length > 0) {
           return cached;
         }
@@ -116,17 +119,17 @@ export function usePositions(options: UsePositionsOptions = {}) {
     placeholderData: (previousData) => previousData ?? initialData ?? [],
     staleTime: 5 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
-    enabled: enabled && !!effectiveUserId,
+    enabled: enabled && (!!supabaseUserId || !!effectiveUserId),
     refetchOnWindowFocus: false,
     keepPreviousData: true,
-    retry: (failureCount, error) => {
+    retry: (failureCount, error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes("API 401")) {
         return false;
       }
       return failureCount < 2;
     },
-    onError: (error) => {
+    onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       if (message.includes("API 401")) {
         toast.error("Authentication required", {
@@ -135,7 +138,7 @@ export function usePositions(options: UsePositionsOptions = {}) {
         });
       }
     },
-    onSuccess: (positions) => {
+    onSuccess: (positions: PortfolioPosition[]) => {
       if (!effectiveUserId) return;
       const previous = readCachedPositions(effectiveUserId);
       if (shouldPersistPositions(positions, previous)) {

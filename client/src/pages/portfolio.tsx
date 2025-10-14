@@ -27,9 +27,13 @@ import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 import { usePrices } from "@/lib/prices";
 import { fmt } from "@/lib/utils";
 import {
-  addPosition as addSupabasePosition,
+  addOrReplacePosition as addSupabasePosition,
   deletePosition as deleteSupabasePosition,
+  listPositions as listSupabasePositions,
+  type PositionRow,
 } from "@/services/positionsService";
+import { useSession } from "@/auth/AuthProvider";
+import type { PortfolioPosition } from "@/lib/api/portfolio";
 
 type Position = {
   id: string;
@@ -46,13 +50,19 @@ type AiOverviewData = {
 
 export default function Portfolio() {
   const { user } = useAuth();
+  const { user: sessionUser, loading: sessionLoading } = useSession();
   const [, setLocation] = useLocation();
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
 
   const queryClient = useQueryClient();
   const userId = user?.uid ?? null;
-  const positionsQueryKey = useMemo(() => portfolioPositionsQueryKey(userId), [userId]);
+  const supabaseUserId = sessionUser?.id ?? null;
+  const queryKeyUserId = supabaseUserId ?? userId;
+  const positionsQueryKey = useMemo(
+    () => portfolioPositionsQueryKey(queryKeyUserId ?? null),
+    [queryKeyUserId],
+  );
 
   const {
     data: storedPositions = [],
@@ -60,7 +70,7 @@ export default function Portfolio() {
     isFetching: fetchingPositions,
     isError: positionsError,
     error: positionsErrorValue,
-  } = usePositions({ enabled: networkEnabled && !!user });
+  } = usePositions({ enabled: networkEnabled && (!!sessionUser || !!user) });
 
   const { prices, setPrices, getPrice, reset: resetPrices } = usePrices();
   const {
@@ -100,6 +110,36 @@ export default function Portfolio() {
   const refreshPositions = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: positionsQueryKey });
   }, [positionsQueryKey, queryClient]);
+
+  const supabaseRowToPortfolioPosition = useCallback(
+    (row: PositionRow): PortfolioPosition => {
+      const quantity = Number(row.qty);
+      const entryPrice = Number(row.entry_price);
+
+      return {
+        id: row.id,
+        symbol: row.symbol?.toUpperCase?.() ?? "",
+        quantity: Number.isFinite(quantity) ? quantity : 0,
+        entryPrice: Number.isFinite(entryPrice) ? entryPrice : 0,
+        notes: row.note ?? null,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at ?? row.created_at,
+      };
+    },
+    [],
+  );
+
+  const syncSupabasePositions = useCallback(async () => {
+    if (!supabaseUserId) return;
+    try {
+      const rows = await listSupabasePositions();
+      const mapped = rows.map(supabaseRowToPortfolioPosition);
+      queryClient.setQueryData(positionsQueryKey, mapped);
+    } catch (error) {
+      console.error("Failed to reload Supabase positions", error);
+      await refreshPositions();
+    }
+  }, [supabaseRowToPortfolioPosition, supabaseUserId, queryClient, positionsQueryKey, refreshPositions]);
 
   const handleRefresh = useCallback(async () => {
     resetPrices();
@@ -237,7 +277,7 @@ export default function Portfolio() {
 
   async function handleCreate() {
     if (!formValid || saving) return;
-    if (!user) {
+    if (!sessionUser) {
       setFormError("Please sign in to add a position.");
       return;
     }
@@ -254,7 +294,8 @@ export default function Portfolio() {
     let lastError: unknown = null;
 
     try {
-      await addSupabasePosition({ symbol, qty: quantity, entry_price: entryPrice, note: null });
+      await addSupabasePosition(sessionUser.id, symbol, quantity, entryPrice);
+      await syncSupabasePositions();
       successSource = "supabase";
     } catch (err) {
       lastError = err;
@@ -282,12 +323,12 @@ export default function Portfolio() {
   }
 
   async function handleDelete(position: Position) {
-    if (!user) return;
+    if (!sessionUser) return;
 
     let lastError: unknown = null;
     try {
       await deleteSupabasePosition(position.id);
-      await refreshPositions();
+      await syncSupabasePositions();
       return;
     } catch (error) {
       lastError = error;
@@ -332,13 +373,17 @@ export default function Portfolio() {
               <RefreshCw className={`mr-2 h-4 w-4 ${fetchingPositions ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            {user && (
+            {sessionUser && (
               <Button size="sm" onClick={openAdd}>
                 <PlusCircle className="w-4 h-4 mr-2" /> Add Position
               </Button>
             )}
           </div>
         </div>
+
+        {!sessionLoading && !sessionUser && (
+          <div className="mb-4 text-sm text-muted-foreground">Please sign in at /account</div>
+        )}
 
         {showCachedWarning && (
           <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
@@ -433,7 +478,7 @@ export default function Portfolio() {
                   <Eye className="w-4 h-4 mr-2" /> Scan Market
                 </Button>
               </Link>
-              {user && (
+              {sessionUser && (
                 <Button size="sm" onClick={openAdd}>
                   <PlusCircle className="w-4 h-4 mr-2" /> Add Position
                 </Button>
@@ -482,7 +527,7 @@ export default function Portfolio() {
                           <p className="text-sm text-muted-foreground mt-1">
                             Add your first position to start tracking P&amp;L.
                           </p>
-                          {user && (
+                          {sessionUser && (
                             <Button size="sm" className="mt-3" onClick={openAdd}>
                               <PlusCircle className="w-4 h-4 mr-2" />
                               Add Position
@@ -530,7 +575,7 @@ export default function Portfolio() {
                               <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan">
                                 <Search className="w-4 h-4 mr-1" /> Scan
                               </Button>
-                              {user && (
+                              {sessionUser && (
                                 <Button
                                   size="sm"
                                   variant="destructive"

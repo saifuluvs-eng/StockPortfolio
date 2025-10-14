@@ -24,6 +24,7 @@ import Alerts from "@/pages/alerts";
 import News from "@/pages/news";
 import WatchlistTest from "@/pages/WatchlistTest";
 import { useCredits } from "@/stores/creditStore";
+import AuthPage from "@/auth/AuthPage";
 
 // (keep for later) Protected HOC
 function Protected<T extends React.ComponentType<any>>(Component: T) {
@@ -75,6 +76,7 @@ function AppRouter() {
       {/* PUBLIC routes */}
       <Route path="/dashboard" component={withLayout(Home)} />
       <Route path="/portfolio" component={withLayout(Portfolio)} />
+      <Route path="/account" component={AuthPage} />
       <Route path="/gainers" component={withLayout(Gainers)} />
       <Route path="/ai-insights" component={withLayout(AIInsights)} />
       <Route path="/watchlist" component={withLayout(Watchlist)} />
