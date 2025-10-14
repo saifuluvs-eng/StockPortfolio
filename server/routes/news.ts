@@ -10,16 +10,16 @@ news.get("/", async (req, res) => {
     }
 
     const allowedFilters = new Set([
-      "latest",
       "hot",
       "rising",
       "bullish",
       "bearish",
       "important",
     ]);
-    const kind = String(req.query.kind || "").toLowerCase() === "media" ? "media" : "news";
+    const kindValue = String(req.query.kind || "").toLowerCase();
+    const kind = ["news", "media", "all"].includes(kindValue) ? kindValue : "all";
     const filterValue = String(req.query.filter || "").toLowerCase();
-    const filter = allowedFilters.has(filterValue) ? filterValue : "latest";
+    const filter = filterValue === "latest" ? "latest" : allowedFilters.has(filterValue) ? filterValue : "latest";
     const page = Math.max(1, parseInt(String(req.query.page || "1"), 10) || 1);
 
     let currencies = String(req.query.currencies || "").trim().toUpperCase();
@@ -29,9 +29,9 @@ news.get("/", async (req, res) => {
       currencies = currencies.replace(/[^A-Z,]/g, "");
     }
 
-    const q = String(req.query.q || "").trim();
+    const search = String(req.query.search || "").trim();
 
-    const key = JSON.stringify({ kind, filter, currencies, q, page });
+    const key = JSON.stringify({ kind, filter, currencies, search, page });
     const now = Date.now();
     (globalThis as any).__NEWS_CACHE ??= new Map();
     const cache = (globalThis as any).__NEWS_CACHE as Map<string, { at: number; data: any }>;
@@ -43,14 +43,16 @@ news.get("/", async (req, res) => {
 
     const params = new URLSearchParams({
       auth_token: process.env.CRYPTOPANIC_TOKEN!,
+      public: "true",
       kind,
       page: String(page),
     });
     if (filter !== "latest") params.set("filter", filter);
     if (currencies) params.set("currencies", currencies);
-    if (q) params.set("q", q);
+    if (search) params.set("search", search);
+    params.set("regions", "en");
 
-    const url = `https://cryptopanic.com/api/v1/posts/?${params.toString()}`;
+    const url = `https://cryptopanic.com/api/developer/v2/posts/?${params.toString()}`;
     const r = await fetch(url, { method: "GET" });
     if (!r.ok) {
       const txt = await r.text().catch(() => "");
@@ -60,27 +62,33 @@ news.get("/", async (req, res) => {
         detail: txt.slice(0, 300),
       };
       cache.set(key, { at: now, data: out });
-      return res.status(502).json(out);
+      return res.status(r.status >= 400 ? r.status : 502).json(out);
     }
     const j = await r.json();
 
     const articles = (j?.results || []).map((it: any) => ({
       id: String(it?.id ?? ""),
       title: String(it?.title ?? ""),
-      url: String(it?.url ?? it?.domain ?? "#"),
+      url: String(it?.original_url || it?.url || "#"),
       source: {
-        name: it?.source?.title ?? it?.source?.name ?? it?.domain ?? "Source",
-        domain: it?.domain ?? it?.source?.domain ?? "",
+        name: it?.source?.title ?? "",
+        domain: it?.source?.domain ?? "",
       },
       publishedAt: it?.published_at ?? it?.created_at ?? new Date().toISOString(),
-      kind: it?.kind === "media" ? "media" : "news",
-      currencies: Array.isArray(it?.currencies)
-        ? it.currencies.map((c: any) => String(c?.code || "").toUpperCase()).filter(Boolean)
+      kind: typeof it?.kind === "string" ? it.kind : "news",
+      currencies: Array.isArray(it?.instruments)
+        ? it.instruments
+            .map((c: any) => String(c?.code || "").toUpperCase())
+            .filter(Boolean)
         : [],
+      image: it?.image || null,
       votes: it?.votes || undefined,
     }));
 
-    const out = { data: articles, paging: { next: j?.next || null, page } };
+    const out = {
+      data: articles,
+      paging: { next: j?.next || null, previous: j?.previous || null, page },
+    };
     cache.set(key, { at: now, data: out });
     return res.json(out);
   } catch (err: any) {
