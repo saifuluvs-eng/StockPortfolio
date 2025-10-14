@@ -26,6 +26,10 @@ import { useDeletePosition, useUpsertPosition } from "@/lib/api/portfolio-mutati
 import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 import { usePrices } from "@/lib/prices";
 import { fmt } from "@/lib/utils";
+import {
+  addPosition as addSupabasePosition,
+  deletePosition as deleteSupabasePosition,
+} from "@/services/positionsService";
 
 type Position = {
   id: string;
@@ -48,6 +52,7 @@ export default function Portfolio() {
 
   const queryClient = useQueryClient();
   const userId = user?.uid ?? null;
+  const positionsQueryKey = useMemo(() => portfolioPositionsQueryKey(userId), [userId]);
 
   const {
     data: storedPositions = [],
@@ -92,13 +97,17 @@ export default function Portfolio() {
     }
   }, [positionsError, positionsErrorValue]);
 
+  const refreshPositions = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: positionsQueryKey });
+  }, [positionsQueryKey, queryClient]);
+
   const handleRefresh = useCallback(async () => {
     resetPrices();
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: portfolioPositionsQueryKey(userId) }),
+      refreshPositions(),
       queryClient.invalidateQueries({ queryKey: ["prices"] }),
     ]);
-  }, [queryClient, resetPrices, userId]);
+  }, [queryClient, refreshPositions, resetPrices]);
 
   const symbols = useMemo(
     () => Array.from(new Set(positions.map((p) => p.symbol.trim().toUpperCase()).filter(Boolean))),
@@ -204,7 +213,7 @@ export default function Portfolio() {
 
   const upsertPositionMutation = useUpsertPosition();
   const deletePositionMutation = useDeletePosition();
-  const saving = upsertPositionMutation.isPending;
+  const [saving, setSaving] = useState(false);
 
   // open modal with cleared fields each time
   const openAdd = () => {
@@ -239,24 +248,62 @@ export default function Portfolio() {
     const quantity = Number(form.qty);
     const entryPrice = Number(form.avgPrice);
 
+    setSaving(true);
+
+    let successSource: "supabase" | "fallback" | null = null;
+    let lastError: unknown = null;
+
     try {
-      await upsertPositionMutation.mutateAsync({ symbol, quantity, entryPrice });
+      await addSupabasePosition({ symbol, qty: quantity, entry_price: entryPrice, note: null });
+      successSource = "supabase";
+    } catch (err) {
+      lastError = err;
+      console.error("Add position via Supabase failed:", err);
+      try {
+        await upsertPositionMutation.mutateAsync({ symbol, quantity, entryPrice });
+        successSource = "fallback";
+      } catch (fallbackError) {
+        lastError = fallbackError;
+        console.error("Fallback add position failed:", fallbackError);
+      }
+    }
+
+    if (successSource) {
+      await refreshPositions();
       setOpen(false);
       setForm({ symbol: "", qty: "", avgPrice: "" });
-    } catch (err) {
-      console.error("Add position failed:", err);
-      const message = err instanceof Error ? err.message : "Failed to add position";
+      setFormError(null);
+    } else {
+      const message = lastError instanceof Error ? lastError.message : "Failed to add position";
       setFormError(message);
     }
+
+    setSaving(false);
   }
 
   async function handleDelete(position: Position) {
     if (!user) return;
+
+    let lastError: unknown = null;
+    try {
+      await deleteSupabasePosition(position.id);
+      await refreshPositions();
+      return;
+    } catch (error) {
+      lastError = error;
+      console.error("Delete via Supabase failed:", error);
+    }
+
     try {
       await deletePositionMutation.mutateAsync(position.id);
     } catch (error) {
-      console.error("Delete failed:", error);
-      const message = error instanceof Error ? error.message : "Failed to delete position";
+      console.error("Fallback delete failed:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : lastError instanceof Error
+          ? lastError.message
+          : "Failed to delete position";
       alert(message);
     }
   }

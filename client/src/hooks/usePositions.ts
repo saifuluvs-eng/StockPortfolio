@@ -11,6 +11,10 @@ import {
 } from "@/lib/api/portfolio";
 import { portfolioPositionsQueryKey } from "@/lib/api/portfolio-keys";
 import { readDemoUserId } from "@/lib/demo-user";
+import {
+  listPositions as listSupabasePositions,
+  type Position as SupabasePosition,
+} from "@/services/positionsService";
 
 export type UsePositionsOptions = {
   enabled?: boolean;
@@ -50,6 +54,21 @@ function shouldPersistPositions(next: PortfolioPosition[], previous: PortfolioPo
   return hasUpdatedRows(next, previous);
 }
 
+function supabasePositionToPortfolioPosition(row: SupabasePosition): PortfolioPosition {
+  const quantity = Number(row.qty);
+  const entryPrice = Number(row.entry_price);
+
+  return {
+    id: row.id,
+    symbol: row.symbol?.toUpperCase?.() ?? "",
+    quantity: Number.isFinite(quantity) ? quantity : 0,
+    entryPrice: Number.isFinite(entryPrice) ? entryPrice : 0,
+    notes: row.note ?? null,
+    createdAt: row.created_at,
+    updatedAt: (row as { updated_at?: string }).updated_at ?? row.created_at,
+  };
+}
+
 export function usePositions(options: UsePositionsOptions = {}) {
   const { enabled = true } = options;
   const { user } = useAuth();
@@ -69,6 +88,13 @@ export function usePositions(options: UsePositionsOptions = {}) {
     queryKey,
     queryFn: async () => {
       if (!effectiveUserId) return [];
+      try {
+        const rows = await listSupabasePositions();
+        return rows.map(supabasePositionToPortfolioPosition);
+      } catch (error) {
+        console.error("Supabase positions fetch failed", error);
+      }
+
       const res = await getPositions(effectiveUserId);
       const arr = Array.isArray(res?.data) ? res.data : [];
       const responseUserId =
@@ -83,6 +109,7 @@ export function usePositions(options: UsePositionsOptions = {}) {
           return cached;
         }
       }
+
       return arr;
     },
     initialData,
