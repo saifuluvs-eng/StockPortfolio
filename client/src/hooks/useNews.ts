@@ -8,8 +8,9 @@ export interface NewsArticle {
   url: string;
   source: { name: string; domain: string };
   publishedAt: string;
-  kind: "news" | "media";
+  kind: "news" | "media" | "blog" | "twitter" | "reddit";
   currencies: string[];
+  image: string | null;
   votes?: {
     positive?: number;
     negative?: number;
@@ -22,13 +23,14 @@ export interface NewsArticle {
 
 export interface NewsResponse {
   data: NewsArticle[];
-  paging?: { next?: string; page?: number };
+  paging?: { next?: string | null; previous?: string | null; page?: number };
 }
 
 interface UseNewsOptions {
   filter?: NewsFilter;
-  kind?: "news" | "media";
+  kind?: "all" | "news" | "media";
   currencies?: string;
+  search?: string;
   q?: string;
   page?: number;
 }
@@ -43,29 +45,35 @@ function resolveApiBase(): string {
 
 export function useNews({
   filter = "latest",
-  kind = "news",
+  kind = "all",
   currencies = "",
+  search = "",
   q = "",
   page = 1,
 }: UseNewsOptions = {}): UseQueryResult<NewsResponse, Error> {
   const upperCurrencies = currencies.trim().toUpperCase();
   const base = resolveApiBase();
-  const qs = new URLSearchParams({ filter, kind, page: String(page) });
+  const qs = new URLSearchParams({ kind, page: String(page) });
+
+  if (filter !== "latest") {
+    qs.set("filter", filter);
+  }
 
   if (upperCurrencies) {
     qs.set("currencies", upperCurrencies);
   }
 
-  const trimmedQuery = q.trim();
-  if (trimmedQuery) {
-    qs.set("q", trimmedQuery);
+  const rawSearch = search !== "" ? search : q;
+  const trimmedSearch = rawSearch.trim();
+  if (trimmedSearch) {
+    qs.set("search", trimmedSearch);
   }
 
   const prefix = base ? `${base}` : "";
   const url = `${prefix}/api/news?${qs.toString()}`;
 
   return useQuery<NewsResponse, Error>({
-    queryKey: ["news", { filter, kind, currencies: upperCurrencies, q: trimmedQuery, page }],
+    queryKey: ["news", { filter, kind, currencies: upperCurrencies, search: trimmedSearch, page }],
     queryFn: async () => {
       const response = await fetch(url);
       if (!response.ok) {
