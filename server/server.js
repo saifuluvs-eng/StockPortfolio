@@ -324,11 +324,10 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-demo-user-id'],
   credentials: true,
-  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options('*', cors());
 app.use(express.json());
 
 app.use('/api/portfolio', portfolioAuth);
@@ -1151,13 +1150,11 @@ app.get("/api/ai/market-overview", (_req, res) => {
 });
 
 app.use((req, res) => {
-  applyCorsHeaders(req, res);
   res.status(404).json({ message: "Not Found" });
 });
 
 app.use((err, req, res, _next) => {
   console.error('Unhandled error', err);
-  applyCorsHeaders(req, res);
   const status = err?.status || err?.statusCode || 500;
   const message = err?.message || 'Internal Server Error';
   res.status(status).json({ error: message });
