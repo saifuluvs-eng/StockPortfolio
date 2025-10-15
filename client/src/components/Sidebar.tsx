@@ -1,41 +1,57 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSidebarMode, setSidebarMode, SidebarMode } from '../lib/sidebarState';
+import { IcHome, IcPortfolio, IcTrending, IcChart, IcRadar, IcSidebar } from './icons';
 
-type Item = { label: string; path: string; icon?: JSX.Element; };
+type Item = { label: string; path: string; icon: JSX.Element; };
 
 const NAV: Item[] = [
-  { label: 'Dashboard', path: '#/' },
-  { label: 'Portfolio', path: '#/portfolio' },
-  { label: 'Gainers', path: '#/gainers' },
-  { label: 'Analyse', path: '#/analyse/BTCUSDT' },
-  { label: 'Scan', path: '#/scan' },
+  { label: 'Dashboard', path: '#/',              icon: <IcHome/> },
+  { label: 'Portfolio', path: '#/portfolio',     icon: <IcPortfolio/> },
+  { label: 'Gainers',   path: '#/gainers',       icon: <IcTrending/> },
+  { label: 'Analyse',   path: '#/analyse/BTCUSDT', icon: <IcChart/> },
+  { label: 'Scan',      path: '#/scan',          icon: <IcRadar/> },
 ];
 
-function widthFor(mode: SidebarMode) {
+function baseWidth(mode: SidebarMode) {
   return mode === 'expanded' ? 240 : 64; // collapsed + hover rail width
 }
 
 export default function Sidebar() {
   const [mode, setMode] = useState<SidebarMode>(() => getSidebarMode());
-  const w = widthFor(mode);
-
-  // When "hover", expand while mouse is over the sidebar
   const [hovering, setHovering] = useState(false);
-  const effectiveW = mode === 'hover' && hovering ? 240 : w;
-  const showLabels = mode === 'expanded' || (mode === 'hover' && hovering);
+  const [controlOpen, setControlOpen] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
-  // Push a CSS var so the content container can offset
+  // Effective width: in "hover" mode expand to 240 when hovering
+  const wBase = baseWidth(mode);
+  const effectiveW = (mode === 'hover' && hovering) ? 240 : wBase;
+
+  // Visibility of labels (fade after width transition)
+  const labelsVisible = mode === 'expanded' || (mode === 'hover' && hovering);
+
+  // Close popover when clicking outside
   useEffect(() => {
-    const px = `${effectiveW}px`;
-    document.body.style.setProperty('--sidebar-offset', px);
+    function onDoc(e: MouseEvent) {
+      if (!controlOpen) return;
+      const el = sidebarRef.current;
+      if (el && !el.contains(e.target as Node)) setControlOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [controlOpen]);
+
+  // Push CSS var for content offset
+  useEffect(() => {
+    document.body.style.setProperty('--sidebar-offset', `${effectiveW}px`);
   }, [effectiveW]);
 
   function choose(m: SidebarMode) {
     setMode(m);
     setSidebarMode(m);
+    setControlOpen(false);
   }
 
-  const classes = useMemo(() => ({
+  const css = useMemo(() => ({
     wrap: {
       position: 'fixed' as const,
       inset: '0 auto 0 0',
@@ -47,6 +63,7 @@ export default function Sidebar() {
       display: 'flex',
       flexDirection: 'column' as const,
       zIndex: 40,
+      overflow: 'hidden', // prevents label showing before expansion
     },
     header: {
       padding: '14px 12px',
@@ -66,75 +83,94 @@ export default function Sidebar() {
       margin: '4px 8px',
       whiteSpace: 'nowrap' as const,
     },
+    iconBox: { width: 22, textAlign: 'center' as const, opacity: 0.9 },
+    label: {
+      opacity: labelsVisible ? 1 : 0,
+      transform: labelsVisible ? 'translateX(0)' : 'translateX(-6px)',
+      transition: 'opacity 120ms ease 120ms, transform 120ms ease 120ms', // delay after width
+      pointerEvents: labelsVisible ? 'auto' : 'none',
+    },
     bottom: {
       marginTop: 'auto',
       padding: 8,
+      position: 'relative' as const,
     },
-    pill: {
+    controlBtn: {
+      width: 36, height: 28,
       display: 'inline-flex',
-      gap: 8,
+      alignItems: 'center', justifyContent: 'center',
       background: 'rgba(255,255,255,0.06)',
       border: '1px solid rgba(255,255,255,0.1)',
-      borderRadius: 10,
-      padding: '6px 8px',
-    }
-  }), [effectiveW]);
+      borderRadius: 8,
+      cursor: 'pointer',
+    },
+    popover: {
+      position: 'absolute' as const,
+      left: 8,
+      right: 8,
+      bottom: 44,
+      background: 'rgba(18,18,18,0.98)',
+      border: '1px solid rgba(255,255,255,0.1)',
+      borderRadius: 12,
+      padding: 10,
+      boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+    },
+    popTitle: {
+      fontSize: 12, opacity: 0.8, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 8
+    },
+    popRow: {
+      display: 'flex', alignItems: 'center', gap: 8, padding: '6px 2px', cursor: 'pointer',
+    },
+    checkDot: (ok: boolean) => ({
+      width: 8, height: 8, borderRadius: 9999,
+      background: ok ? 'white' : 'transparent',
+      outline: '1px solid rgba(255,255,255,0.5)',
+    }),
+  }), [effectiveW, labelsVisible]);
 
   return (
     <aside
-      style={classes.wrap}
+      ref={sidebarRef}
+      style={css.wrap}
       onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseLeave={() => { setHovering(false); setControlOpen(false); }}
     >
-      <div style={classes.header}>
-        {showLabels ? 'CryptoTrader Pro' : '☰'}
+      <div style={css.header}>
+        {labelsVisible ? 'CryptoTrader Pro' : '☰'}
       </div>
 
       <nav>
         {NAV.map((it) => (
-          <a
-            key={it.path}
-            href={it.path}
-            title={it.label}
-            style={classes.navItem}
-          >
-            <span style={{ width: 22, textAlign: 'center' }}>•</span>
-            {showLabels && <span>{it.label}</span>}
+          <a key={it.path} href={it.path} title={it.label} style={css.navItem}>
+            <span style={css.iconBox}>{it.icon}</span>
+            <span style={css.label}>{it.label}</span>
           </a>
         ))}
       </nav>
 
-      <div style={classes.bottom}>
-        {/* Sidebar control */}
-        <div style={classes.pill}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input
-              type="radio"
-              name="sb-mode"
-              checked={mode === 'expanded'}
-              onChange={() => choose('expanded')}
-            />
-            {showLabels && <span>Expanded</span>}
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input
-              type="radio"
-              name="sb-mode"
-              checked={mode === 'collapsed'}
-              onChange={() => choose('collapsed')}
-            />
-            {showLabels && <span>Collapsed</span>}
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <input
-              type="radio"
-              name="sb-mode"
-              checked={mode === 'hover'}
-              onChange={() => choose('hover')}
-            />
-            {showLabels && <span>Expand on hover</span>}
-          </label>
-        </div>
+      <div style={css.bottom}>
+        {/* Bottom icon button that toggles the popover */}
+        <button type="button" aria-label="Sidebar control" style={css.controlBtn} onClick={() => setControlOpen(v => !v)}>
+          <IcSidebar />
+        </button>
+
+        {controlOpen && (
+          <div style={css.popover}>
+            <div style={css.popTitle}>Sidebar control</div>
+            <div style={css.popRow} onClick={() => choose('expanded')}>
+              <div style={css.checkDot(mode === 'expanded')} />
+              <span>Expanded</span>
+            </div>
+            <div style={css.popRow} onClick={() => choose('collapsed')}>
+              <div style={css.checkDot(mode === 'collapsed')} />
+              <span>Collapsed</span>
+            </div>
+            <div style={css.popRow} onClick={() => choose('hover')}>
+              <div style={css.checkDot(mode === 'hover')} />
+              <span>Expand on hover</span>
+            </div>
+          </div>
+        )}
       </div>
     </aside>
   );
