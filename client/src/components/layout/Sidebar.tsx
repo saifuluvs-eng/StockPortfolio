@@ -35,6 +35,7 @@ export default function Sidebar() {
   const [hoverLabel, setHoverLabel] = useState<string>("");
   const [sbOpen, setSbOpen] = useState(false);
   const sbBtnRef = useRef<HTMLButtonElement | null>(null);
+  const sbCardRef = useRef<HTMLDivElement | null>(null);
   const [sbPos, setSbPos] = useState<{ left: number; top: number } | null>(null);
   const showStrictCollapsed = isCollapsed && !expandOnHover;
   const labelClass = !isCollapsed
@@ -43,37 +44,50 @@ export default function Sidebar() {
     ? "whitespace-nowrap transition-all opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto"
     : "whitespace-nowrap transition-all opacity-0 w-0";
 
-  function sbComputeAbove(btn: HTMLButtonElement) {
+  function positionAboveClamped() {
+    const btn = sbBtnRef.current;
+    const card = sbCardRef.current;
+    if (!btn || !card) return;
+
     const r = btn.getBoundingClientRect();
-    const left = Math.min(Math.max(r.left + r.width / 2, 16), window.innerWidth - 16);
-    const top = r.top - 12;
+    const w = card.offsetWidth || 320;
+    const margin = 12;
+    const half = w / 2;
+
+    const left = Math.min(
+      Math.max(r.left + r.width / 2, margin + half),
+      window.innerWidth - margin - half
+    );
+
+    const top = Math.max(r.top - 12, margin + 8);
     setSbPos({ left, top });
   }
 
   useEffect(() => {
     if (!sbOpen) return;
-    const btn = sbBtnRef.current;
-    if (btn) sbComputeAbove(btn);
 
-    const sync = () => {
-      const b = sbBtnRef.current;
-      if (b) sbComputeAbove(b);
-    };
-    const outside = (e: MouseEvent) => {
+    requestAnimationFrame(() => {
+      positionAboveClamped();
+      requestAnimationFrame(positionAboveClamped);
+    });
+
+    const onReflow = () => positionAboveClamped();
+    const onOutside = (e: MouseEvent) => {
       if (sbBtnRef.current?.contains(e.target as Node)) return;
       setSbOpen(false);
     };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setSbOpen(false);
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setSbOpen(false);
 
-    window.addEventListener("resize", sync);
-    window.addEventListener("scroll", sync, { passive: true });
-    document.addEventListener("click", outside);
-    document.addEventListener("keydown", esc);
+    window.addEventListener("resize", onReflow);
+    window.addEventListener("scroll", onReflow, { passive: true });
+    document.addEventListener("click", onOutside);
+    document.addEventListener("keydown", onEsc);
+
     return () => {
-      window.removeEventListener("resize", sync);
-      window.removeEventListener("scroll", sync);
-      document.removeEventListener("click", outside);
-      document.removeEventListener("keydown", esc);
+      window.removeEventListener("resize", onReflow);
+      window.removeEventListener("scroll", onReflow);
+      document.removeEventListener("click", onOutside);
+      document.removeEventListener("keydown", onEsc);
     };
   }, [sbOpen]);
 
@@ -133,7 +147,6 @@ export default function Sidebar() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            if (!sbOpen && sbBtnRef.current) sbComputeAbove(sbBtnRef.current);
             setSbOpen((v) => !v);
           }}
           aria-label="Sidebar control"
@@ -143,26 +156,26 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Top-layer card via portal */}
-      {sbOpen && sbPos &&
+      {sbOpen &&
         createPortal(
           <div
-            className="sb-toplayer sb-card"
+            ref={sbCardRef}
+            className="fixed z-[2147483647] w-80 rounded-2xl border border-white/10 bg-[#1a1a1a] text-white/90 shadow-2xl overflow-hidden"
             style={{
-              left: sbPos.left,
-              top: sbPos.top,
+              left: sbPos?.left ?? 0,
+              top: sbPos?.top ?? -9999,
               transform: "translate(-50%, -100%)",
+              visibility: sbPos ? "visible" : "hidden",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sb-card__header">Sidebar control</div>
-
-            <div className="sb-card__body">
-              <label className="sb-row">
+            <div className="px-4 py-3 border-b border-white/10 text-[15px]">Sidebar control</div>
+            <div className="p-4 text-[15px] space-y-3">
+              <label className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="sb"
-                  className="sb-radio"
+                  className="accent-[#7ea1ff]"
                   checked={!isCollapsed && !expandOnHover}
                   onChange={() => {
                     setIsCollapsed(false);
@@ -172,12 +185,11 @@ export default function Sidebar() {
                 />
                 <span>Expanded</span>
               </label>
-
-              <label className="sb-row">
+              <label className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="sb"
-                  className="sb-radio"
+                  className="accent-[#7ea1ff]"
                   checked={isCollapsed && !expandOnHover}
                   onChange={() => {
                     setIsCollapsed(true);
@@ -187,12 +199,11 @@ export default function Sidebar() {
                 />
                 <span>Collapsed</span>
               </label>
-
-              <label className="sb-row">
+              <label className="flex items-center gap-3">
                 <input
                   type="radio"
                   name="sb"
-                  className="sb-radio"
+                  className="accent-[#7ea1ff]"
                   checked={isCollapsed && expandOnHover}
                   onChange={() => {
                     setIsCollapsed(true);
