@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { NavLink, Link } from "react-router-dom";
 import {
   Home,
@@ -34,7 +35,7 @@ export default function Sidebar() {
   const [hoverLabel, setHoverLabel] = useState<string>("");
   const [open, setOpen] = useState(false);
   const gearRef = useRef<HTMLButtonElement | null>(null);
-  const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const showStrictCollapsed = isCollapsed && !expandOnHover;
   const labelClass = !isCollapsed
     ? "whitespace-nowrap transition-all opacity-100 w-auto"
@@ -42,34 +43,40 @@ export default function Sidebar() {
     ? "whitespace-nowrap transition-all opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto"
     : "whitespace-nowrap transition-all opacity-0 w-0";
 
+  function computeAbovePosition(btn: HTMLButtonElement) {
+    const r = btn.getBoundingClientRect();
+    const left = Math.min(Math.max(r.left + r.width / 2, 16), window.innerWidth - 16);
+    const top = r.top - 10;
+    setPos({ left, top });
+  }
+
   useEffect(() => {
-    function onDocClick(e: MouseEvent) {
-      if (!open) return;
+    if (!open) return;
+    const btn = gearRef.current;
+    if (btn) computeAbovePosition(btn);
+
+    const onReflow = () => {
+      if (gearRef.current) computeAbovePosition(gearRef.current);
+    };
+    const onOutside = (e: MouseEvent) => {
       const t = e.target as Node;
       if (gearRef.current?.contains(t)) return;
       setOpen(false);
-    }
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDocClick);
+    };
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+
+    window.addEventListener("resize", onReflow);
+    window.addEventListener("scroll", onReflow, { passive: true });
+    document.addEventListener("click", onOutside);
     document.addEventListener("keydown", onEsc);
+
     return () => {
-      document.removeEventListener("mousedown", onDocClick);
+      window.removeEventListener("resize", onReflow);
+      window.removeEventListener("scroll", onReflow);
+      document.removeEventListener("click", onOutside);
       document.removeEventListener("keydown", onEsc);
     };
   }, [open]);
-
-  const openCardAboveButton = () => {
-    const btn = gearRef.current;
-    if (!btn) return;
-    const r = btn.getBoundingClientRect();
-    setCardPos({
-      left: Math.round(r.left + r.width / 2),
-      top: Math.round(r.top - 10),
-    });
-    setOpen(true);
-  };
 
   return (
     <aside
@@ -125,7 +132,11 @@ export default function Sidebar() {
         <button
           ref={gearRef}
           type="button"
-          onClick={() => (open ? setOpen(false) : openCardAboveButton())}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!open && gearRef.current) computeAbovePosition(gearRef.current);
+            setOpen((v) => !v);
+          }}
           aria-label="Sidebar control"
           className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 shadow-md flex items-center justify-center"
         >
@@ -133,61 +144,70 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Fixed-position popover card (renders above the icon, never off-screen) */}
-      {open && cardPos && (
-        <div
-          className="fixed z-[9998] w-80 rounded-2xl border border-white/10 bg-[#1a1a1a] text-white/90 shadow-2xl overflow-hidden"
-          style={{
-            left: cardPos.left,
-            top: cardPos.top,
-            transform: "translate(-50%, -100%)",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="px-4 py-3 border-b border-white/10 text-[15px]">Sidebar control</div>
-          <div className="p-4 text-[15px] space-y-3">
-            <label className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="sb"
-                checked={!isCollapsed && !expandOnHover}
-                onChange={() => {
-                  setIsCollapsed(false);
-                  setExpandOnHover(false);
-                  setOpen(false);
-                }}
-              />
-              <span>Expanded</span>
-            </label>
-            <label className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="sb"
-                checked={isCollapsed && !expandOnHover}
-                onChange={() => {
-                  setIsCollapsed(true);
-                  setExpandOnHover(false);
-                  setOpen(false);
-                }}
-              />
-              <span>Collapsed</span>
-            </label>
-            <label className="flex items-center gap-3">
-              <input
-                type="radio"
-                name="sb"
-                checked={isCollapsed && expandOnHover}
-                onChange={() => {
-                  setIsCollapsed(true);
-                  setExpandOnHover(true);
-                  setOpen(false);
-                }}
-              />
-              <span>Expand on hover</span>
-            </label>
-          </div>
-        </div>
-      )}
+      {open && pos &&
+        createPortal(
+          <div
+            className="fixed z-[9999] w-80 rounded-2xl border border-white/10 bg-[#1a1a1a] text-white/90 shadow-2xl overflow-hidden animate-[sbPop_120ms_ease-out]"
+            style={{
+              left: pos.left,
+              top: pos.top,
+              transform: "translate(-50%, -100%)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              className="fixed w-3 h-3 bg-[#1a1a1a] border-l border-t border-white/10 rotate-45"
+              style={{
+                left: pos.left,
+                top: pos.top,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+            <div className="px-4 py-3 border-b border-white/10 text-[15px]">Sidebar control</div>
+            <div className="p-4 text-[15px] space-y-3">
+              <label className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="sb"
+                  checked={!isCollapsed && !expandOnHover}
+                  onChange={() => {
+                    setIsCollapsed(false);
+                    setExpandOnHover(false);
+                    setOpen(false);
+                  }}
+                />
+                <span>Expanded</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="sb"
+                  checked={isCollapsed && !expandOnHover}
+                  onChange={() => {
+                    setIsCollapsed(true);
+                    setExpandOnHover(false);
+                    setOpen(false);
+                  }}
+                />
+                <span>Collapsed</span>
+              </label>
+              <label className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="sb"
+                  checked={isCollapsed && expandOnHover}
+                  onChange={() => {
+                    setIsCollapsed(true);
+                    setExpandOnHover(true);
+                    setOpen(false);
+                  }}
+                />
+                <span>Expand on hover</span>
+              </label>
+            </div>
+          </div>,
+          document.body
+        )}
 
       <HoverTooltip anchor={hoverRef} label={hoverLabel} show={!!hoverRef && showStrictCollapsed} />
     </aside>
