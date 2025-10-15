@@ -7,7 +7,6 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import "./index.css";
 
 import { FirebaseAuthProvider } from "./hooks/useFirebaseAuth";
-import { AuthProvider } from "./auth/AuthProvider";
 import { Router } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -29,11 +28,9 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <Router hook={useHashLocation}>
         <FirebaseAuthProvider>
-          <AuthProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
-          </AuthProvider>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
         </FirebaseAuthProvider>
       </Router>
       <ReactQueryDevtools initialIsOpen={false} />
