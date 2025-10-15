@@ -4,6 +4,11 @@ import Dashboard from "@/pages/home";
 import Portfolio from "@/pages/portfolio";
 import Gainers from "@/pages/gainers";
 import Analyse from "@/pages/analyse";
+import Watchlist from "@/pages/watchlist";
+import Alerts from "@/pages/alerts";
+import Account from "@/pages/account";
+import AIInsights from "@/pages/ai-insights";
+import News from "@/pages/news";
 
 function ShellLayout() {
   return (
@@ -26,6 +31,11 @@ export default function App() {
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/gainers" element={<Gainers />} />
           <Route path="/analyse" element={<Analyse />} />
+          <Route path="/watchlist" element={<Watchlist />} />
+          <Route path="/alerts" element={<Alerts />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/ai-insights" element={<AIInsights />} />
+          <Route path="/news" element={<News />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
