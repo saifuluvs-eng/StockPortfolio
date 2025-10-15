@@ -372,3 +372,11 @@ nav a.relative:hover .tooltip {
 @media (max-width: 768px) {
   #app-content { padding-left: 64px; } /* always rail width on small screens */
 }
+
+dialog::backdrop {
+  background: transparent;
+}
+
+dialog {
+  transform-style: flat !important;
+}
