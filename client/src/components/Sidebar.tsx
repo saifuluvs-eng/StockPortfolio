@@ -13,7 +13,7 @@ const NAV: Item[] = [
 ];
 
 function baseWidth(mode: SidebarMode) {
-  return mode === 'expanded' ? 240 : 64; // collapsed + hover rail width
+  return mode === 'expanded' ? 208 : 64; // collapsed + hover rail width
 }
 
 export default function Sidebar() {
@@ -22,9 +22,9 @@ export default function Sidebar() {
   const [controlOpen, setControlOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  // Effective width: in "hover" mode expand to 240 when hovering
+  // Effective width: in "hover" mode expand to full width when hovering
   const wBase = baseWidth(mode);
-  const effectiveW = (mode === 'hover' && hovering) ? 240 : wBase;
+  const effectiveW = (mode === 'hover' && hovering) ? 208 : wBase;
 
   // Visibility of labels (fade after width transition)
   const labelsVisible = mode === 'expanded' || (mode === 'hover' && hovering);
@@ -66,9 +66,9 @@ export default function Sidebar() {
       overflow: 'hidden', // prevents label showing before expansion
     },
     header: {
-      padding: '14px 12px',
+      padding: '14px 16px',
       fontWeight: 700,
-      fontSize: 16,
+      fontSize: 18,
       whiteSpace: 'nowrap' as const,
       overflow: 'hidden' as const,
       textOverflow: 'ellipsis' as const,
@@ -89,6 +89,7 @@ export default function Sidebar() {
       transform: labelsVisible ? 'translateX(0)' : 'translateX(-6px)',
       transition: 'opacity 120ms ease 120ms, transform 120ms ease 120ms', // delay after width
       pointerEvents: labelsVisible ? 'auto' : 'none',
+      fontSize: 15,
     },
     bottom: {
       marginTop: 'auto',
@@ -112,14 +113,16 @@ export default function Sidebar() {
       background: 'rgba(18,18,18,0.98)',
       border: '1px solid rgba(255,255,255,0.1)',
       borderRadius: 12,
-      padding: 10,
+      padding: 12,
       boxShadow: '0 6px 24px rgba(0,0,0,0.35)',
+      maxWidth: '100%',
+      fontSize: 14,
     },
     popTitle: {
       fontSize: 12, opacity: 0.8, paddingBottom: 8, borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 8
     },
     popRow: {
-      display: 'flex', alignItems: 'center', gap: 8, padding: '6px 2px', cursor: 'pointer',
+      display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0', cursor: 'pointer',
     },
     checkDot: (ok: boolean) => ({
       width: 8, height: 8, borderRadius: 9999,
