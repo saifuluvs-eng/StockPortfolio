@@ -29,8 +29,8 @@ import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { toBinance } from "@/lib/symbols";
-import { getFirebaseIdToken } from "@/lib/firebase";
 import { useRoute, useLocation } from "wouter";
+import { useSession } from "@/auth/AuthProvider";
 import {
   BarChart3,
   Clock3,
@@ -264,7 +264,10 @@ const MiniStat: React.FC<MiniStatProps> = ({ label, value, hint, tone = "default
 export default function Analyse() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isAuthenticated, signInWithGoogle } = useAuth();
+  const { signInWithGoogle } = useAuth();
+  const { user, loading } = useSession();
+  const isAuthenticated = Boolean(user);
+  const userId = user?.id ?? null;
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
   const backendOffline = backendStatus === false;
@@ -461,16 +464,14 @@ export default function Analyse() {
           }),
         );
 
-        const token = await getFirebaseIdToken();
-        const headers: Record<string, string> = { "Content-Type": "application/json" };
-        if (token) {
-          headers.Authorization = `Bearer ${token}`;
-        }
-
         const res = await api("/api/scanner/scan", {
           method: "POST",
-          headers,
-          body: JSON.stringify({ symbol: apiSymbol, timeframe: backendTimeframe }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            symbol: apiSymbol,
+            timeframe: backendTimeframe,
+            userId,
+          }),
           signal: ac.signal,
         });
 
@@ -529,6 +530,7 @@ export default function Analyse() {
       symbolInput,
       timeframe,
       toast,
+      userId,
     ],
   );
 
@@ -878,6 +880,32 @@ export default function Analyse() {
 
     </div>
   );
+
+  if (loading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto w-full max-w-3xl px-4 py-12">
+        <Card className="border-destructive/30 bg-destructive/5 text-center">
+          <CardHeader className="space-y-2">
+            <CardTitle className="text-2xl font-semibold text-destructive">
+              Feature locked
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Please sign in to run scans.
+            </p>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button type="button" onClick={() => setLocation("/account")}> 
+              Go to sign in
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-screen-2xl 2xl:max-w-[1800px] mx-auto px-4 lg:px-6">
