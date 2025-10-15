@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {
   Settings,
@@ -32,12 +32,33 @@ export default function Sidebar() {
   const [expandOnHover, setExpandOnHover] = useState(true);
   const [hoverRef, setHoverRef] = useState<HTMLElement | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string>("");
+  const [open, setOpen] = useState(false);
+  const gearRef = useRef<HTMLButtonElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const showStrictCollapsed = isCollapsed && !expandOnHover;
   const labelClass = !isCollapsed
     ? "whitespace-nowrap transition-all opacity-100 w-auto"
     : expandOnHover
     ? "whitespace-nowrap transition-all opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto"
     : "whitespace-nowrap transition-all opacity-0 w-0";
+
+  useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      const t = e.target as Node;
+      if (!open) return;
+      if (cardRef.current?.contains(t) || gearRef.current?.contains(t)) return;
+      setOpen(false);
+    }
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [open]);
 
   return (
     <aside
@@ -90,63 +111,67 @@ export default function Sidebar() {
 
       {/* Floating gear + popover */}
       <div className="absolute bottom-3 left-2">
-        <details className="group">
-          <summary
-            className="list-none w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 shadow-md flex items-center justify-center cursor-pointer"
-            title="Sidebar control"
-          >
-            <Settings size={18} className="text-white/90" />
-          </summary>
+        <button
+          ref={gearRef}
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Sidebar control"
+          className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 shadow-md flex items-center justify-center"
+        >
+          <Settings size={18} className="text-white/90" />
+        </button>
 
+        {open && (
           <div
-            className={[
-              "absolute z-[9998] rounded-2xl border border-white/10 bg-[#1a1a1a] text-white/90 shadow-2xl backdrop-blur",
-              "w-80 overflow-hidden",
-              showStrictCollapsed ? "left-full ml-2" : "left-0 ml-0 translate-x-2",
-              "-top-[2px]",
-            ].join(" ")}
+            ref={cardRef}
+            className="absolute z-[9998] left-1/2 -translate-x-1/2 bottom-full mb-2 w-80 rounded-2xl border border-white/10 bg-[#1a1a1a] text-white/90 shadow-2xl overflow-hidden"
           >
             <div className="px-4 py-3 border-b border-white/10 text-[15px]">Sidebar control</div>
             <div className="p-4 text-[15px] space-y-3">
               <label className="flex items-center gap-3">
                 <input
                   type="radio"
-                  name="sidebar-mode"
+                  name="sb"
                   checked={!isCollapsed && !expandOnHover}
                   onChange={() => {
                     setIsCollapsed(false);
                     setExpandOnHover(false);
+                    setOpen(false);
                   }}
                 />
                 <span>Expanded</span>
               </label>
+
               <label className="flex items-center gap-3">
                 <input
                   type="radio"
-                  name="sidebar-mode"
+                  name="sb"
                   checked={isCollapsed && !expandOnHover}
                   onChange={() => {
                     setIsCollapsed(true);
                     setExpandOnHover(false);
+                    setOpen(false);
                   }}
                 />
                 <span>Collapsed</span>
               </label>
+
               <label className="flex items-center gap-3">
                 <input
                   type="radio"
-                  name="sidebar-mode"
+                  name="sb"
                   checked={isCollapsed && expandOnHover}
                   onChange={() => {
                     setIsCollapsed(true);
                     setExpandOnHover(true);
+                    setOpen(false);
                   }}
                 />
                 <span>Expand on hover</span>
               </label>
             </div>
           </div>
-        </details>
+        )}
       </div>
 
       <HoverTooltip anchor={hoverRef} label={hoverLabel} show={!!hoverRef && showStrictCollapsed} />
