@@ -380,3 +380,59 @@ dialog::backdrop {
 dialog {
   transform-style: flat !important;
 }
+
+/* Top-layer container: cannot be hidden by any app z-index/overflow */
+.sb-toplayer {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  width: 20rem;
+  pointer-events: auto;
+}
+
+/* Reset ALL inherited styles inside the card to avoid invisible text/opacity from globals */
+.sb-card {
+  all: revert;
+  box-sizing: border-box;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #1a1a1a;
+  color: #fff;
+  overflow: hidden;
+  font-family: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  isolation: isolate;
+}
+
+/* basic sections */
+.sb-card__header {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+}
+.sb-card__body {
+  padding: 16px;
+  font-size: 15px;
+}
+
+/* rows + inputs */
+.sb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.92);
+}
+.sb-row:last-child {
+  margin-bottom: 0;
+}
+
+.sb-radio {
+  accent-color: #7ea1ff;
+}
+
+/* Belt-and-suspenders: if any child gets overridden, force readable color */
+.sb-card * {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
