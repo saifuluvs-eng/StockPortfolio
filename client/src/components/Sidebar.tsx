@@ -1,15 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSidebarMode, setSidebarMode, SidebarMode } from '../lib/sidebarState';
-import { IcHome, IcPortfolio, IcTrending, IcChart, IcRadar, IcSidebar } from './icons';
+import {
+  IcHome,
+  IcPortfolio,
+  IcTrending,
+  IcChart,
+  IcWatchlist,
+  IcNews,
+  IcAi,
+  IcAccount,
+  IcAlerts,
+  IcSidebar,
+} from './icons';
 
 type Item = { label: string; path: string; icon: JSX.Element; };
 
 const NAV: Item[] = [
-  { label: 'Dashboard', path: '#/',              icon: <IcHome/> },
-  { label: 'Portfolio', path: '#/portfolio',     icon: <IcPortfolio/> },
-  { label: 'Gainers',   path: '#/gainers',       icon: <IcTrending/> },
-  { label: 'Analyse',   path: '#/analyse/BTCUSDT', icon: <IcChart/> },
-  { label: 'Scan',      path: '#/scan',          icon: <IcRadar/> },
+  { label: 'Dashboard', path: '#/dashboard',   icon: <IcHome /> },
+  { label: 'Portfolio', path: '#/portfolio',   icon: <IcPortfolio /> },
+  { label: 'Gainers',   path: '#/gainers',     icon: <IcTrending /> },
+  { label: 'Analyse',   path: '#/analyse',     icon: <IcChart /> },
+  { label: 'Watchlist', path: '#/watchlist',   icon: <IcWatchlist /> },
+  { label: 'News',      path: '#/news',        icon: <IcNews /> },
+  { label: 'AI Insights', path: '#/ai-insights', icon: <IcAi /> },
+  { label: 'Account',   path: '#/account',     icon: <IcAccount /> },
+  { label: 'Alerts',    path: '#/alerts',      icon: <IcAlerts /> },
 ];
 
 function baseWidth(mode: SidebarMode) {
