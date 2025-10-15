@@ -1,116 +1,167 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { ChevronLeft, ChevronRight, Menu } from "lucide-react";
-import styles from "./Sidebar.module.css";
-import { NAV, type NavItem } from "./navConfig";
-import { useUI } from "@/stores/uiStore";
+import { useState, type ReactNode } from "react";
+import { Link, NavLink } from "react-router-dom";
+import { Settings, Home, Briefcase, BarChart2, Activity } from "lucide-react";
 
-function isMatch(location: string, item: NavItem) {
-  const candidates = item.match ?? [item.to];
-  return candidates.some((candidate) => {
-    if (typeof candidate === "string") {
-      if (candidate === "/") return location === "/";
-      return location === candidate || location.startsWith(`${candidate}/`);
-    }
-    try {
-      return candidate.test(location);
-    } catch (error) {
-      console.warn("Invalid sidebar nav match", error);
-      return false;
-    }
-  });
-}
+type NavItem = {
+  label: string;
+  to: string;
+  icon: ReactNode;
+};
+
+const navItems: NavItem[] = [
+  { label: "Dashboard", to: "/dashboard", icon: <Home size={20} /> },
+  { label: "Portfolio", to: "/portfolio", icon: <Briefcase size={20} /> },
+  { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
+  { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
+];
 
 export default function Sidebar() {
-  const { sidebarCollapsed, toggleSidebar } = useUI();
-  const [mobileOpen, setMobileOpen] = useState(true);
-  const [location] = useLocation();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [expandOnHover, setExpandOnHover] = useState(true);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 900px)");
-    const handler = () => {
-      setMobileOpen(false);
-    };
-    mq.addEventListener?.("change", handler);
-    return () => mq.removeEventListener?.("change", handler);
-  }, []);
+  const baseAsideClasses = [
+    "relative h-screen bg-[#121212] border-r border-white/5 transition-all duration-200 group",
+    isCollapsed ? "w-14" : "w-60",
+    expandOnHover && isCollapsed ? "hover:w-60" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 900px)");
-    if (mq.matches) {
-      setMobileOpen(false);
+  const labelClasses = (collapsedState: boolean, hoverState: boolean) => {
+    if (!collapsedState) return "opacity-100 w-auto";
+    if (hoverState) {
+      return "opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto";
     }
-  }, [location]);
-
-  const collapsedClass = sidebarCollapsed ? styles.collapsed : "";
-  const iconOnlyClass = sidebarCollapsed ? styles.iconOnly : "";
-
-  const asideClassName = useMemo(() => {
-    const classes = [styles.root, collapsedClass];
-    if (!mobileOpen) classes.push(styles.hiddenMobile);
-    return classes.filter(Boolean).join(" ");
-  }, [collapsedClass, mobileOpen]);
-
-  const navClassName = useMemo(() => {
-    const classes = [styles.nav, iconOnlyClass];
-    return classes.filter(Boolean).join(" ");
-  }, [iconOnlyClass]);
+    return "opacity-0 w-0";
+  };
 
   return (
-    <aside className={asideClassName} aria-label="Primary" aria-expanded={!sidebarCollapsed}>
-      <div className={styles.header}>
-        {!sidebarCollapsed && <div className={styles.brand}>Crypto Dashboard</div>}
-        <div style={{ display: "flex", gap: 6 }}>
-          <button
-            className={styles.toggle}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            onClick={() => toggleSidebar()}
-            title={sidebarCollapsed ? "Expand" : "Collapse"}
-            type="button"
-          >
-            {sidebarCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-          </button>
-          <button
-            className={styles.toggle}
-            aria-label={mobileOpen ? "Close menu" : "Open menu"}
-            onClick={() => setMobileOpen((v) => !v)}
-            title="Menu"
-            type="button"
-          >
-            <Menu size={18} />
-          </button>
-        </div>
+    <aside className={baseAsideClasses}>
+      <div className="h-14 flex items-center px-3">
+        <Link
+          to="/dashboard"
+          className={[
+            "text-white/90 font-semibold tracking-wide whitespace-nowrap overflow-hidden transition-all",
+            isCollapsed && !expandOnHover ? "opacity-0" : "opacity-100",
+          ].join(" ")}
+        >
+          {isCollapsed && !expandOnHover ? "" : "CryptoTrader Pro"}
+        </Link>
       </div>
 
-      <nav className={navClassName}>
-        {NAV.map((item) => {
-          const Icon = item.icon;
-          const active = isMatch(location, item);
-          const className = [styles.item, active ? styles.active : ""].filter(Boolean).join(" ");
-          const handleClick = () => {
-            if (typeof window !== "undefined") {
-              const mq = window.matchMedia("(max-width: 900px)");
-              if (mq.matches) {
-                setMobileOpen(false);
-              }
+      <nav className="mt-2 space-y-1 px-2">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              [
+                "group group/nav relative flex items-center gap-3 rounded-xl px-3 py-2 text-[15px]",
+                "text-white/80 hover:text-white hover:bg-white/5",
+                isActive ? "bg-white/[0.07] text-white" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")
             }
-          };
-          return (
-            <Link key={item.to} to={item.to} className={className} title={item.label} onClick={handleClick}>
-              <span className={styles.iconWrap}>
-                <Icon size={18} />
-              </span>
-              <span className={styles.label}>{item.label}</span>
-            </Link>
-          );
-        })}
+          >
+            <div className="shrink-0">{item.icon}</div>
+            <span
+              className={[
+                "whitespace-nowrap overflow-hidden text-ellipsis transition-all duration-200",
+                labelClasses(isCollapsed, expandOnHover),
+              ].join(" ")}
+            >
+              {item.label}
+            </span>
+            {isCollapsed && !expandOnHover && (
+              <div
+                className="tooltip"
+                style={{
+                  left: "100%",
+                  marginLeft: 8,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  position: "absolute",
+                }}
+              >
+                {item.label}
+              </div>
+            )}
+          </NavLink>
+        ))}
       </nav>
 
-      {!sidebarCollapsed && (
-        <div className={styles.footer}>v2 beta • {new Date().getFullYear()}</div>
-      )}
+      <div className="absolute bottom-3 left-0 right-0 px-2">
+        <div className="relative">
+          <details className="group">
+            <summary
+              className={[
+                "list-none flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer select-none",
+                "text-white/80 hover:text-white hover:bg-white/5",
+              ].join(" ")}
+            >
+              <Settings size={20} className="shrink-0" />
+              <span
+                className={[
+                  "transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
+                  labelClasses(isCollapsed, expandOnHover),
+                ].join(" ")}
+              >
+                Project Settings
+              </span>
+            </summary>
+
+            <div
+              className={[
+                "absolute z-50 rounded-2xl border border-white/10 bg-[#1a1a1a] shadow-xl text-sm w-64",
+                isCollapsed && !expandOnHover ? "left-full ml-2" : "left-2 right-2",
+              ].join(" ")}
+            >
+              <div className="px-4 py-3 border-b border-white/10 text-white/80">
+                Sidebar control
+              </div>
+              <div className="p-3 space-y-2 text-white/80">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="sidebar-mode"
+                    checked={!isCollapsed && !expandOnHover}
+                    onChange={() => {
+                      setIsCollapsed(false);
+                      setExpandOnHover(false);
+                    }}
+                  />
+                  <span>Expanded</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="sidebar-mode"
+                    checked={isCollapsed && !expandOnHover}
+                    onChange={() => {
+                      setIsCollapsed(true);
+                      setExpandOnHover(false);
+                    }}
+                  />
+                  <span>Collapsed</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="sidebar-mode"
+                    checked={isCollapsed && expandOnHover}
+                    onChange={() => {
+                      setIsCollapsed(true);
+                      setExpandOnHover(true);
+                    }}
+                  />
+                  <span>Expand on hover</span>
+                </label>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
     </aside>
   );
 }
