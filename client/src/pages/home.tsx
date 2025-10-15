@@ -6,11 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { usePortfolioStats } from "@/hooks/usePortfolioStats";
 import { usePositions } from "@/hooks/usePositions";
+import AuthButton from "@/components/auth/AuthButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
 import { getQueryFn } from "@/lib/queryClient";
-import { go } from "@/lib/nav";
 import { usePrices } from "@/lib/prices";
 import {
   TrendingUp,
@@ -65,7 +65,7 @@ function toNum(v: unknown): number | null {
 
 export default function Home() {
   // SINGLE useAuth() — no duplicate signOut
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
   const displayName = (user?.displayName?.trim() ?? user?.email ?? "Trader");
@@ -265,11 +265,6 @@ export default function Home() {
   const watchDisplay = watchCount == null || Number.isNaN(watchCount) ? "—" : nf0.format(watchCount);
   const aiDisplay = aiCount == null || Number.isNaN(aiCount) ? "—" : nf0.format(aiCount);
 
-  const handleLogin = () => {
-    go("#/account");
-  };
-  const handleLogout = async () => { try { await signOut(); } catch (e) { console.error("Failed to sign out", e); } };
-
   return (
     <div className="flex-1 overflow-hidden">
       <div className="p-6">
@@ -281,11 +276,7 @@ export default function Home() {
             </h1>
             <p className="text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
           </div>
-          {user ? (
-            <Button variant="outline" onClick={handleLogout} data-testid="button-logout">Sign Out</Button>
-          ) : (
-            <Button variant="outline" onClick={handleLogin} data-testid="button-login">Sign In</Button>
-          )}
+          <AuthButton size="sm" />
         </div>
 
         {/* 8 Tiles */}

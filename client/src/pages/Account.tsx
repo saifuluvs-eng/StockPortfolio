@@ -30,8 +30,12 @@ export default function Account() {
       .from("profiles")
       .upsert({ id: user.id, username: profile.username, avatar_url: profile.avatar_url });
     setSaving(false);
-    if (error) alert(error.message);
-    else alert("Saved");
+    if (error) {
+      console.error(error);
+      return alert("Couldn’t save profile. " + error.message);
+    }
+    // small success hint (keep it quiet if you already use a toast lib)
+    console.log("Profile saved");
   }
 
   return (
@@ -41,10 +45,7 @@ export default function Account() {
           <div className="h-12 w-12 rounded-full bg-white/10 flex items-center justify-center">
             <span className="text-lg">{user?.email?.[0]?.toUpperCase() || "U"}</span>
           </div>
-          <div>
-            <div className="text-white/90 font-medium">{user?.email}</div>
-            <div className="text-white/50 text-sm">User ID: {user?.id}</div>
-          </div>
+          <div className="text-white/90 font-medium">{user?.email}</div>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#151515]">
