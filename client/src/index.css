@@ -330,6 +330,29 @@
     }
   }
 }
+
+/* Collapsed sidebar icon tooltip */
+.tooltip {
+  background: #000;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Show tooltip when hovering the nav item while collapsed */
+nav a.relative:hover .tooltip {
+  opacity: 1 !important;
+}
+
+.tooltip::after {
+  content: attr(data-label);
+}
 /* Sidebar offset applied by Sidebar component */
 #app-content {
   padding-left: var(--sidebar-offset, 64px);
