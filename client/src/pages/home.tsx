@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
 import { getQueryFn } from "@/lib/queryClient";
+import { go } from "@/lib/nav";
 import { usePrices } from "@/lib/prices";
 import {
   TrendingUp,
@@ -64,7 +65,7 @@ function toNum(v: unknown): number | null {
 
 export default function Home() {
   // SINGLE useAuth() — no duplicate signOut
-  const { user, signInWithGoogle, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
   const displayName = (user?.displayName?.trim() ?? user?.email ?? "Trader");
@@ -264,7 +265,9 @@ export default function Home() {
   const watchDisplay = watchCount == null || Number.isNaN(watchCount) ? "—" : nf0.format(watchCount);
   const aiDisplay = aiCount == null || Number.isNaN(aiCount) ? "—" : nf0.format(aiCount);
 
-  const handleLogin = async () => { try { await signInWithGoogle(); } catch (e) { console.error("Failed to sign in", e); } };
+  const handleLogin = () => {
+    go("#/account");
+  };
   const handleLogout = async () => { try { await signOut(); } catch (e) { console.error("Failed to sign out", e); } };
 
   return (

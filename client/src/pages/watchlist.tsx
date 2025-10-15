@@ -8,6 +8,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { go } from "@/lib/nav";
 import { apiRequest } from "@/lib/queryClient";
 import { asArray } from "@/lib/utils";
 import type { WatchlistItem } from "@shared/schema";
@@ -26,7 +27,7 @@ function formatRelativeTime(input?: number | string | Date | null) {
 }
 
 export default function WatchlistPage() {
-  const { isAuthenticated, isLoading, signInWithGoogle } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   const watchlistQuery = useQuery<WatchlistItem[]>({
     queryKey: ["watchlist-page", isAuthenticated],
@@ -43,12 +44,8 @@ export default function WatchlistPage() {
     [watchlistQuery.data],
   );
 
-  const handleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      console.error("Failed to sign in", error);
-    }
+  const handleSignIn = () => {
+    go("#/account");
   };
 
   const emptyState = (
