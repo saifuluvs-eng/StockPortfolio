@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { NavLink, Link } from "react-router-dom";
 import {
   Home,
@@ -32,8 +33,9 @@ export default function Sidebar() {
   const [expandOnHover, setExpandOnHover] = useState(true);
   const [hoverRef, setHoverRef] = useState<HTMLElement | null>(null);
   const [hoverLabel, setHoverLabel] = useState<string>("");
-  const btnRef = useRef<HTMLButtonElement | null>(null);
-  const dlgRef = useRef<HTMLDialogElement | null>(null);
+  const [sbOpen, setSbOpen] = useState(false);
+  const sbBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [sbPos, setSbPos] = useState<{ left: number; top: number } | null>(null);
   const showStrictCollapsed = isCollapsed && !expandOnHover;
   const labelClass = !isCollapsed
     ? "whitespace-nowrap transition-all opacity-100 w-auto"
@@ -41,40 +43,39 @@ export default function Sidebar() {
     ? "whitespace-nowrap transition-all opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto"
     : "whitespace-nowrap transition-all opacity-0 w-0";
 
-  function openSidebarDialog() {
-    const btn = btnRef.current;
-    const dlg = dlgRef.current;
-    if (!btn || !dlg) return;
-
-    if (!dlg.open) dlg.showModal();
-
+  function sbComputeAbove(btn: HTMLButtonElement) {
     const r = btn.getBoundingClientRect();
     const left = Math.min(Math.max(r.left + r.width / 2, 16), window.innerWidth - 16);
     const top = r.top - 12;
-
-    dlg.style.position = "fixed";
-    dlg.style.left = `${left}px`;
-    dlg.style.top = `${top}px`;
-    dlg.style.transform = "translate(-50%, -100%)";
-  }
-
-  function closeSidebarDialog() {
-    const dlg = dlgRef.current;
-    if (dlg?.open) dlg.close();
+    setSbPos({ left, top });
   }
 
   useEffect(() => {
-    function sync() {
-      if (dlgRef.current?.open) openSidebarDialog();
-    }
+    if (!sbOpen) return;
+    const btn = sbBtnRef.current;
+    if (btn) sbComputeAbove(btn);
+
+    const sync = () => {
+      const b = sbBtnRef.current;
+      if (b) sbComputeAbove(b);
+    };
+    const outside = (e: MouseEvent) => {
+      if (sbBtnRef.current?.contains(e.target as Node)) return;
+      setSbOpen(false);
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setSbOpen(false);
 
     window.addEventListener("resize", sync);
     window.addEventListener("scroll", sync, { passive: true });
+    document.addEventListener("click", outside);
+    document.addEventListener("keydown", esc);
     return () => {
       window.removeEventListener("resize", sync);
       window.removeEventListener("scroll", sync);
+      document.removeEventListener("click", outside);
+      document.removeEventListener("keydown", esc);
     };
-  }, []);
+  }, [sbOpen]);
 
   return (
     <aside
@@ -128,15 +129,12 @@ export default function Sidebar() {
       {/* Bottom-left floating control button */}
       <div className="absolute bottom-3 left-2">
         <button
-          ref={btnRef}
+          ref={sbBtnRef}
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            if (dlgRef.current?.open) {
-              closeSidebarDialog();
-            } else {
-              openSidebarDialog();
-            }
+            if (!sbOpen && sbBtnRef.current) sbComputeAbove(sbBtnRef.current);
+            setSbOpen((v) => !v);
           }}
           aria-label="Sidebar control"
           className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 shadow-md flex items-center justify-center"
@@ -145,88 +143,69 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Top-layer dialog */}
-      <dialog
-        ref={dlgRef}
-        style={{
-          zIndex: 2147483647,
-          margin: 0,
-          padding: 0,
-          width: "20rem",
-          borderRadius: "1rem",
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "#1a1a1a",
-          color: "white",
-          overflow: "hidden",
-          isolation: "isolate",
-        }}
-        onCancel={(e) => {
-          e.preventDefault();
-          closeSidebarDialog();
-        }}
-        onClick={(e) => {
-          const dlg = dlgRef.current;
-          if (!dlg) return;
-          const rect = dlg.getBoundingClientRect();
-          const within =
-            e.clientX >= rect.left &&
-            e.clientX <= rect.right &&
-            e.clientY >= rect.top &&
-            e.clientY <= rect.bottom;
-          if (!within) closeSidebarDialog();
-        }}
-      >
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.10)", color: "rgba(255,255,255,0.8)", fontSize: 15 }}>
-          Sidebar control
-        </div>
+      {/* Top-layer card via portal */}
+      {sbOpen && sbPos &&
+        createPortal(
+          <div
+            className="sb-toplayer sb-card"
+            style={{
+              left: sbPos.left,
+              top: sbPos.top,
+              transform: "translate(-50%, -100%)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sb-card__header">Sidebar control</div>
 
-        <div style={{ padding: 16, fontSize: 15 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, color: "rgba(255,255,255,0.9)" }}>
-            <input
-              type="radio"
-              name="sb"
-              className="accent-[#7ea1ff]"
-              checked={!isCollapsed && !expandOnHover}
-              onChange={() => {
-                setIsCollapsed(false);
-                setExpandOnHover(false);
-                closeSidebarDialog();
-              }}
-            />
-            <span>Expanded</span>
-          </label>
+            <div className="sb-card__body">
+              <label className="sb-row">
+                <input
+                  type="radio"
+                  name="sb"
+                  className="sb-radio"
+                  checked={!isCollapsed && !expandOnHover}
+                  onChange={() => {
+                    setIsCollapsed(false);
+                    setExpandOnHover(false);
+                    setSbOpen(false);
+                  }}
+                />
+                <span>Expanded</span>
+              </label>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, color: "rgba(255,255,255,0.9)" }}>
-            <input
-              type="radio"
-              name="sb"
-              className="accent-[#7ea1ff]"
-              checked={isCollapsed && !expandOnHover}
-              onChange={() => {
-                setIsCollapsed(true);
-                setExpandOnHover(false);
-                closeSidebarDialog();
-              }}
-            />
-            <span>Collapsed</span>
-          </label>
+              <label className="sb-row">
+                <input
+                  type="radio"
+                  name="sb"
+                  className="sb-radio"
+                  checked={isCollapsed && !expandOnHover}
+                  onChange={() => {
+                    setIsCollapsed(true);
+                    setExpandOnHover(false);
+                    setSbOpen(false);
+                  }}
+                />
+                <span>Collapsed</span>
+              </label>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 12, color: "rgba(255,255,255,0.9)" }}>
-            <input
-              type="radio"
-              name="sb"
-              className="accent-[#7ea1ff]"
-              checked={isCollapsed && expandOnHover}
-              onChange={() => {
-                setIsCollapsed(true);
-                setExpandOnHover(true);
-                closeSidebarDialog();
-              }}
-            />
-            <span>Expand on hover</span>
-          </label>
-        </div>
-      </dialog>
+              <label className="sb-row">
+                <input
+                  type="radio"
+                  name="sb"
+                  className="sb-radio"
+                  checked={isCollapsed && expandOnHover}
+                  onChange={() => {
+                    setIsCollapsed(true);
+                    setExpandOnHover(true);
+                    setSbOpen(false);
+                  }}
+                />
+                <span>Expand on hover</span>
+              </label>
+            </div>
+          </div>,
+          document.body
+        )}
 
       <HoverTooltip anchor={hoverRef} label={hoverLabel} show={!!hoverRef && showStrictCollapsed} />
     </aside>
