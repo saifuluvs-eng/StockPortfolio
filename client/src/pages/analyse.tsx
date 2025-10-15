@@ -30,7 +30,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
-import { useSession } from "@/auth/AuthProvider";
+import { useAuth as useSupabaseAuth } from "@/auth/AuthContext";
 import {
   BarChart3,
   Clock3,
@@ -265,7 +265,7 @@ export default function Analyse() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { signInWithGoogle } = useAuth();
-  const { user, loading } = useSession();
+  const { user, loading } = useSupabaseAuth();
   const isAuthenticated = Boolean(user);
   const userId = user?.id ?? null;
   const backendStatus = useBackendHealth();

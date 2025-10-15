@@ -15,7 +15,7 @@ import {
   listPositions as listSupabasePositions,
   type PositionRow as SupabasePosition,
 } from "@/services/positionsService";
-import { useSession } from "@/auth/AuthProvider";
+import { useAuth as useSupabaseAuth } from "@/auth/AuthContext";
 
 export type UsePositionsOptions = {
   enabled?: boolean;
@@ -73,7 +73,7 @@ function supabasePositionToPortfolioPosition(row: SupabasePosition): PortfolioPo
 export function usePositions(options: UsePositionsOptions = {}) {
   const { enabled = true } = options;
   const { user } = useAuth();
-  const { user: sessionUser } = useSession();
+  const { user: sessionUser } = useSupabaseAuth();
   const userId = user?.uid ?? null;
   const supabaseUserId = sessionUser?.id ?? null;
   const demoUserId = readDemoUserId();

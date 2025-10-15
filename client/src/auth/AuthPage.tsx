@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { supabase } from "../lib/supabaseClient";
-import { useSession } from "./AuthProvider";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "./AuthContext";
 
 let useNavigateHook:
   | (() => (path: string, options?: { replace?: boolean }) => void)
@@ -15,7 +15,7 @@ try {
 }
 
 export default function AuthPage() {
-  const { user } = useSession();
+  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);

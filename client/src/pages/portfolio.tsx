@@ -32,7 +32,7 @@ import {
   listPositions as listSupabasePositions,
   type PositionRow,
 } from "@/services/positionsService";
-import { useSession } from "@/auth/AuthProvider";
+import { useAuth as useSupabaseAuth } from "@/auth/AuthContext";
 import type { PortfolioPosition } from "@/lib/api/portfolio";
 
 type Position = {
@@ -50,7 +50,7 @@ type AiOverviewData = {
 
 export default function Portfolio() {
   const { user } = useAuth();
-  const { user: sessionUser, loading: sessionLoading } = useSession();
+  const { user: sessionUser, loading: sessionLoading } = useSupabaseAuth();
   const [, setLocation] = useLocation();
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
