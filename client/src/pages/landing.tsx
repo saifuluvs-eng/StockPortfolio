@@ -1,10 +1,10 @@
 // client/src/pages/landing.tsx
+import AuthButton from "@/components/auth/AuthButton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Shield, BarChart3, Users } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { go } from "@/lib/nav";
 
 export default function Landing() {
   const { isAuthenticated } = useAuth();
@@ -38,15 +38,16 @@ export default function Landing() {
             </Link>
           </nav>
 
-          {isAuthenticated ? (
-            <Link href="/dashboard">
-              <Button data-testid="button-go-dashboard">Go to Dashboard</Button>
-            </Link>
-          ) : (
-            <Button onClick={() => go("#/account")} data-testid="button-login">
-              Sign In with Google
-            </Button>
-          )}
+          <div className="flex items-center gap-3">
+            {isAuthenticated ? (
+              <Link href="/dashboard">
+                <Button data-testid="button-go-dashboard">Go to Dashboard</Button>
+              </Link>
+            ) : null}
+            <div data-testid={isAuthenticated ? "button-logout" : "button-login"}>
+              <AuthButton size="sm" />
+            </div>
+          </div>
         </div>
       </header>
 
@@ -68,14 +69,9 @@ export default function Landing() {
                 </Button>
               </Link>
             ) : (
-              <Button
-                size="lg"
-                onClick={() => go("#/account")}
-                className="gradient-primary"
-                data-testid="button-get-started"
-              >
-                Sign In with Google
-              </Button>
+              <div data-testid="button-get-started">
+                <AuthButton size="md" className="gradient-primary !border-none !px-6 !py-3 text-base" />
+              </div>
             )}
             <Link href="/analyse/BTCUSDT">
               <Button size="lg" variant="outline" data-testid="button-learn-more">
@@ -159,14 +155,9 @@ export default function Landing() {
                 </Button>
               </Link>
             ) : (
-              <Button
-                size="lg"
-                onClick={() => go("#/account")}
-                className="gradient-primary"
-                data-testid="button-start-trading"
-              >
-                Sign In with Google
-              </Button>
+              <div data-testid="button-start-trading">
+                <AuthButton size="md" className="gradient-primary !border-none !px-6 !py-3 text-base" />
+              </div>
             )}
           </CardContent>
         </Card>

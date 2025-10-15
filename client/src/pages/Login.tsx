@@ -75,7 +75,7 @@ export default function Login() {
           <Link className="text-blue-300/90 hover:underline" to="/reset-password">
             Forgot password?
           </Link>
-          <Link className="text-blue-300/90 hover:underline" to="/signup">
+          <Link className="text-blue-300/90 hover:underline" to="/account">
             Create account
           </Link>
         </div>

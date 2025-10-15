@@ -1,8 +1,9 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
+import AuthButton from "@/components/auth/AuthButton";
 import AuthCard from "@/components/auth/AuthCard";
 import { supabase } from "@/lib/supabase";
 
@@ -41,12 +42,12 @@ export default function Signup() {
       email: values.email,
       password: values.password,
       options: {
-        emailRedirectTo: `${location.origin}/#/login?redirect=${encodeURIComponent(redirectTo)}`,
+        emailRedirectTo: `${location.origin}/#/account?redirect=${encodeURIComponent(redirectTo)}`,
       },
     });
     if (error) return alert(error.message);
     alert("Check your email to verify your account.");
-    nav("/login", { replace: true });
+    nav("/account", { replace: true });
   }
 
   return (
@@ -90,9 +91,10 @@ export default function Signup() {
 
         <div className="text-sm">
           Already have an account? {" "}
-          <Link className="text-blue-300/90 hover:underline" to="/login">
-            Sign in
-          </Link>
+          <AuthButton
+            size="sm"
+            className="inline-flex !bg-transparent !border-none !px-0 !py-0 text-blue-300/90 hover:underline"
+          />
         </div>
       </form>
     </AuthCard>

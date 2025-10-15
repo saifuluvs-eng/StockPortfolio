@@ -12,8 +12,6 @@ import Alerts from "@/pages/alerts";
 import Account from "@/pages/Account";
 import AIInsights from "@/pages/ai-insights";
 import News from "@/pages/news";
-import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
 import ResetPassword from "@/pages/ResetPassword";
 
 function ShellLayout() {
@@ -34,8 +32,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
+          <Route path="/login" element={<Navigate to="/account" replace />} />
+          <Route path="/signup" element={<Navigate to="/account" replace />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route element={<ShellLayout />}>

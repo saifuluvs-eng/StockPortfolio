@@ -19,7 +19,7 @@ export default function ResetPassword() {
 
   async function onSubmit(values: FormValues) {
     const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-      redirectTo: `${location.origin}/#/login`,
+      redirectTo: `${location.origin}/#/account`,
     });
     if (error) return alert(error.message);
     alert("If that email exists, we sent a reset link.");
@@ -46,8 +46,8 @@ export default function ResetPassword() {
         </button>
 
         <div className="text-sm">
-          <Link className="text-blue-300/90 hover:underline" to="/login">
-            Back to login
+          <Link className="text-blue-300/90 hover:underline" to="/account">
+            Back to account
           </Link>
         </div>
       </form>
