@@ -7,6 +7,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/useAuth";
+import { go } from "@/lib/nav";
 import { apiRequest } from "@/lib/queryClient";
 import { asArray } from "@/lib/utils";
 import type { WatchlistItem } from "@shared/schema";
@@ -39,7 +40,7 @@ const PRESET_RULES = [
 ] as const;
 
 export default function AlertsPage() {
-  const { isAuthenticated, isLoading, signInWithGoogle } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   const watchlistQuery = useQuery<WatchlistItem[]>({
     queryKey: ["alerts-watchlist", isAuthenticated],
@@ -56,12 +57,8 @@ export default function AlertsPage() {
     [watchlistQuery.data],
   );
 
-  const handleSignIn = async () => {
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      console.error("Failed to sign in", error);
-    }
+  const handleSignIn = () => {
+    go("#/account");
   };
 
   return (

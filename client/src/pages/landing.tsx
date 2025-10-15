@@ -4,17 +4,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Shield, BarChart3, Users } from "lucide-react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { go } from "@/lib/nav";
 
 export default function Landing() {
-  const { signInWithGoogle, isAuthenticated } = useAuth();
-
-  const handleLogin = async () => {
-    try {
-      await signInWithGoogle();
-    } catch (error) {
-      console.error("Failed to initiate Google sign-in", error);
-    }
-  };
+  const { isAuthenticated } = useAuth();
 
   const year = new Date().getFullYear();
 
@@ -50,7 +43,7 @@ export default function Landing() {
               <Button data-testid="button-go-dashboard">Go to Dashboard</Button>
             </Link>
           ) : (
-            <Button onClick={handleLogin} data-testid="button-login">
+            <Button onClick={() => go("#/account")} data-testid="button-login">
               Sign In with Google
             </Button>
           )}
@@ -75,7 +68,12 @@ export default function Landing() {
                 </Button>
               </Link>
             ) : (
-              <Button size="lg" onClick={handleLogin} className="gradient-primary" data-testid="button-get-started">
+              <Button
+                size="lg"
+                onClick={() => go("#/account")}
+                className="gradient-primary"
+                data-testid="button-get-started"
+              >
                 Sign In with Google
               </Button>
             )}
@@ -161,7 +159,12 @@ export default function Landing() {
                 </Button>
               </Link>
             ) : (
-              <Button size="lg" onClick={handleLogin} className="gradient-primary" data-testid="button-start-trading">
+              <Button
+                size="lg"
+                onClick={() => go("#/account")}
+                className="gradient-primary"
+                data-testid="button-start-trading"
+              >
                 Sign In with Google
               </Button>
             )}

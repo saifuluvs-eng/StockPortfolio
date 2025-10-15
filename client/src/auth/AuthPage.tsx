@@ -63,6 +63,10 @@ export default function AuthPage() {
 
   return (
     <div style={{ padding: 16, maxWidth: 420, margin: "0 auto" }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
+        <a href="#/">← Back to Home</a>
+        <a href="#/analyse/BTCUSDT">Go to Analyse</a>
+      </div>
       <h2>Account</h2>
       {user ? (
         <>
