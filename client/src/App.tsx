@@ -69,10 +69,10 @@ function AppRouter() {
   return (
     <Switch>
       {/* Root: landing when logged out, dashboard(Home) when logged in */}
-      <Route
-        path="/"
-        component={isAuthenticated ? withLayout(Home) : Landing}
-      />
+      <Route path="/">
+        {() =>
+          isAuthenticated ? <Redirect to="/dashboard" /> : <Landing />}
+      </Route>
 
       {/* PUBLIC routes */}
       <Route path="/dashboard" component={withLayout(Home)} />
