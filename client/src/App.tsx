@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/ui/theme-provider";
 import { useAuth } from "@/hooks/useAuth";
 
 import { AppLayout } from "@/components/layout/app-layout";
+import Sidebar from "./components/Sidebar";
 
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
@@ -111,7 +112,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
     return <div style={{ padding: 16 }}>Loading…</div>;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <Sidebar />
+      <div id="app-content">{children}</div>
+    </>
+  );
 }
 
 function App() {

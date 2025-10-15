@@ -330,3 +330,11 @@
     }
   }
 }
+/* Sidebar offset applied by Sidebar component */
+#app-content {
+  padding-left: var(--sidebar-offset, 64px);
+  transition: padding-left 160ms ease;
+}
+@media (max-width: 768px) {
+  #app-content { padding-left: 64px; } /* always rail width on small screens */
+}
