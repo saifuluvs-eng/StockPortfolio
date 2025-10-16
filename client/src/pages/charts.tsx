@@ -28,6 +28,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
 import type { ScanResult } from "@shared/types/scanner";
+import { useLoginGate } from "@/auth/useLoginGate";
 import {
   Activity,
   BarChart3,
@@ -135,6 +136,7 @@ export default function Charts() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isAuthenticated, signInWithGoogle } = useAuth();
+  const { requireLogin } = useLoginGate();
 
   const [matchWithParam, params] = useRoute("/charts/:symbol?");
   const [location, setLocation] = useLocation();
@@ -156,6 +158,11 @@ export default function Charts() {
       search: mergeSearchParams(hashSearch),
     };
   }, [location]);
+
+  const redirectPath = useMemo(() => {
+    const search = locationInfo.search;
+    return search ? `${locationInfo.path}?${search}` : locationInfo.path;
+  }, [locationInfo.path, locationInfo.search]);
 
   const urlParams = useMemo(
     () => new URLSearchParams(locationInfo.search),
@@ -446,14 +453,7 @@ export default function Charts() {
   };
 
   const handleToggleWatchlist = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Sign in required",
-        description: "Log in to manage your watchlist and save scans.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (requireLogin(redirectPath)) return;
     if (symbolInWatchlist) {
       removeFromWatchlist.mutate(selectedSymbol);
     } else {
@@ -462,14 +462,7 @@ export default function Charts() {
   };
 
   const handleSearch = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Feature locked",
-        description: "Please log in to search for other coins.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (requireLogin(redirectPath)) return;
     const raw = (searchInput || "").trim().toUpperCase();
     if (!raw) {
       toast({
@@ -489,14 +482,7 @@ export default function Charts() {
   };
 
   const handleScan = () => {
-    if (!isAuthenticated) {
-      toast({
-        title: "Feature locked",
-        description: "Please sign in to run scans.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (requireLogin(redirectPath)) return;
     const raw = (searchInput || "").trim().toUpperCase();
     if (
       raw &&

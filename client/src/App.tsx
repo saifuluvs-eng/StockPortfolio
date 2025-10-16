@@ -41,16 +41,23 @@ export default function App() {
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/gainers" element={<Gainers />} />
             <Route path="/analyse" element={<Analyse />} />
-            <Route path="/watchlist" element={<Watchlist />} />
-            <Route path="/alerts" element={<Alerts />} />
             <Route
-              path="/account"
+              path="/watchlist"
               element={
                 <RequireAuth>
-                  <Account />
+                  <Watchlist />
                 </RequireAuth>
               }
             />
+            <Route
+              path="/alerts"
+              element={
+                <RequireAuth>
+                  <Alerts />
+                </RequireAuth>
+              }
+            />
+            <Route path="/account" element={<Account />} />
             <Route path="/ai-insights" element={<AIInsights />} />
             <Route path="/news" element={<News />} />
           </Route>

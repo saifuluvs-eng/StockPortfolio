@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLoginGate } from "@/auth/useLoginGate";
+import { go } from "@/lib/nav";
 
 const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
 
@@ -41,9 +43,10 @@ interface GainerRowProps {
   change24h: number;
   price: number | null;
   volume: number | null;
+  onAnalyse: (symbol: string) => void;
 }
 
-function GainerRow({ index, symbol, name, change24h, price, volume }: GainerRowProps) {
+function GainerRow({ index, symbol, name, change24h, price, volume, onAnalyse }: GainerRowProps) {
   const changeDisplay = Number.isFinite(change24h) ? change24h : 0;
   const isUp = changeDisplay >= 0;
   const formattedVolume = volume === null ? "—" : `$${numberFormatter.format(volume)}`;
@@ -66,12 +69,13 @@ function GainerRow({ index, symbol, name, change24h, price, volume }: GainerRowP
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-right">{formattedVolume}</td>
       <td className="whitespace-nowrap px-4 py-3 text-right">
-        <a
-          href={`/#/analyse/${symbol}`}
+        <button
+          type="button"
+          onClick={() => onAnalyse(symbol)}
           className="inline-block rounded-lg border border-zinc-700 px-3 py-1 hover:bg-zinc-900"
         >
           Analyse
-        </a>
+        </button>
       </td>
     </tr>
   );
@@ -89,6 +93,12 @@ export default function Gainers() {
   const [rows, setRows] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { requireLogin } = useLoginGate();
+
+  const handleAnalyseTicker = (ticker: string) => {
+    if (requireLogin("/gainers")) return;
+    go(`#/analyse/${ticker}`);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -215,6 +225,7 @@ export default function Gainers() {
                   change24h={row.change24h}
                   price={row.price}
                   volume={row.volume}
+                  onAnalyse={handleAnalyseTicker}
                 />
               ))}
             </tbody>

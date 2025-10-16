@@ -33,6 +33,7 @@ import {
   type PositionRow,
 } from "@/services/positionsService";
 import { useAuth as useSupabaseAuth } from "@/auth/AuthContext";
+import { useLoginGate } from "@/auth/useLoginGate";
 import type { PortfolioPosition } from "@/lib/api/portfolio";
 
 type Position = {
@@ -51,6 +52,7 @@ type AiOverviewData = {
 export default function Portfolio() {
   const { user } = useAuth();
   const { user: sessionUser, loading: sessionLoading } = useSupabaseAuth();
+  const { requireLogin } = useLoginGate();
   const [, setLocation] = useLocation();
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
@@ -257,6 +259,7 @@ export default function Portfolio() {
 
   // open modal with cleared fields each time
   const openAdd = () => {
+    if (requireLogin("/portfolio")) return;
     setForm({ symbol: "", qty: "", avgPrice: "" });
     setFormError(null);
     setOpen(true);
@@ -373,11 +376,9 @@ export default function Portfolio() {
               <RefreshCw className={`mr-2 h-4 w-4 ${fetchingPositions ? "animate-spin" : ""}`} />
               Refresh
             </Button>
-            {sessionUser && (
-              <Button size="sm" onClick={openAdd}>
-                <PlusCircle className="w-4 h-4 mr-2" /> Add Position
-              </Button>
-            )}
+            <Button size="sm" onClick={openAdd}>
+              <PlusCircle className="w-4 h-4 mr-2" /> Add Position
+            </Button>
           </div>
         </div>
 
@@ -478,11 +479,9 @@ export default function Portfolio() {
                   <Eye className="w-4 h-4 mr-2" /> Scan Market
                 </Button>
               </Link>
-              {sessionUser && (
-                <Button size="sm" onClick={openAdd}>
-                  <PlusCircle className="w-4 h-4 mr-2" /> Add Position
-                </Button>
-              )}
+              <Button size="sm" onClick={openAdd}>
+                <PlusCircle className="w-4 h-4 mr-2" /> Add Position
+              </Button>
             </div>
           </CardHeader>
 
@@ -527,12 +526,10 @@ export default function Portfolio() {
                           <p className="text-sm text-muted-foreground mt-1">
                             Add your first position to start tracking P&amp;L.
                           </p>
-                          {sessionUser && (
-                            <Button size="sm" className="mt-3" onClick={openAdd}>
-                              <PlusCircle className="w-4 h-4 mr-2" />
-                              Add Position
-                            </Button>
-                          )}
+                          <Button size="sm" className="mt-3" onClick={openAdd}>
+                            <PlusCircle className="w-4 h-4 mr-2" />
+                            Add Position
+                          </Button>
                         </div>
                       </td>
                     </tr>

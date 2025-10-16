@@ -31,6 +31,7 @@ import { useBackendHealth } from "@/hooks/use-backend-health";
 import { toBinance } from "@/lib/symbols";
 import { useRoute, useLocation } from "wouter";
 import { useAuth as useSupabaseAuth } from "@/auth/AuthContext";
+import { useLoginGate } from "@/auth/useLoginGate";
 import {
   BarChart3,
   Clock3,
@@ -265,7 +266,8 @@ export default function Analyse() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { signInWithGoogle } = useAuth();
-  const { user, loading } = useSupabaseAuth();
+  const { loading } = useSupabaseAuth();
+  const { requireLogin, user } = useLoginGate();
   const isAuthenticated = Boolean(user);
   const userId = user?.id ?? null;
   const backendStatus = useBackendHealth();
@@ -737,6 +739,8 @@ export default function Analyse() {
   };
 
   const handleScan = () => {
+    if (requireLogin("/analyse")) return;
+
     const raw = (symbolInput || "").trim().toUpperCase();
     let targetSymbol = selectedSymbol;
 
