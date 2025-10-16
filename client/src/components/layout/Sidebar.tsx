@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, Link } from "react-router-dom";
 import {
@@ -18,9 +18,8 @@ import { useAuth } from "@/auth/AuthContext";
 type NavItem = {
   label: string;
   to: string;
-  icon: ReactNode;
-  /** if provided, only render when function returns true */
-  visible?: (auth: { user: any }) => boolean;
+  icon: JSX.Element;
+  visible?: (user: any) => boolean;
 };
 
 const items: NavItem[] = [
@@ -28,17 +27,15 @@ const items: NavItem[] = [
   { label: "Portfolio", to: "/portfolio", icon: <Briefcase size={20} /> },
   { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
-  // PRO (hide when logged out):
-  { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: ({ user }) => !!user },
-  { label: "Alerts", to: "/alerts", icon: <Bell size={20} />, visible: ({ user }) => !!user },
-  // always public:
+  { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: (user) => !!user },
+  { label: "Alerts", to: "/alerts", icon: <Bell size={20} />, visible: (user) => !!user },
   { label: "AI Insights", to: "/ai-insights", icon: <BarChart2 size={20} /> },
   { label: "News", to: "/news", icon: <Newspaper size={20} /> },
   { label: "Account", to: "/account", icon: <User2 size={20} /> },
 ];
 
 export default function Sidebar() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandOnHover, setExpandOnHover] = useState(true);
   const [hoverRef, setHoverRef] = useState<HTMLElement | null>(null);
@@ -122,7 +119,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="mt-2 space-y-1 px-2">
         {items
-          .filter((item) => (item.visible ? item.visible({ user }) : true))
+          .filter((item) => (loading ? true : item.visible ? item.visible(user) : true))
           .map((item) => (
             <NavLink
               key={item.to}
