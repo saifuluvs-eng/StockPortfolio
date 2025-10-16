@@ -10,6 +10,7 @@ import { FirebaseAuthProvider } from "./hooks/useFirebaseAuth";
 import { Router } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ToastProvider } from "@/components/toast";
 
 import App from "./App";
 
@@ -26,13 +27,15 @@ export const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <Router hook={useHashLocation}>
-        <FirebaseAuthProvider>
-          <ErrorBoundary>
-            <App />
-          </ErrorBoundary>
-        </FirebaseAuthProvider>
-      </Router>
+      <ToastProvider>
+        <Router hook={useHashLocation}>
+          <FirebaseAuthProvider>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </FirebaseAuthProvider>
+        </Router>
+      </ToastProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   </React.StrictMode>,
