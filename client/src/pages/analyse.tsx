@@ -900,18 +900,6 @@ export default function Analyse() {
     <div className="w-full max-w-screen-2xl 2xl:max-w-[1800px] mx-auto px-4 lg:px-6">
       <div className="flex flex-col gap-5 py-6">
         <BackendWarningBanner status={backendStatus} />
-        {!user && (
-          <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 p-6 text-center">
-            <div className="mb-2 text-xl text-red-400">Feature locked</div>
-            <div className="mb-4 text-white/70">Please sign in to run scans.</div>
-            <button
-              onClick={onRunAnalysis}
-              className="inline-block rounded-xl bg-sky-500/90 px-4 py-2 text-black hover:bg-sky-500"
-            >
-              Go to sign in
-            </button>
-          </div>
-        )}
         <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
