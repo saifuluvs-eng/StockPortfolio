@@ -537,13 +537,14 @@ export default function Analyse() {
   );
 
   useEffect(() => {
+    if (!user) return;
+
     if (isFirstRenderRef.current) {
       isFirstRenderRef.current = false;
       previousSymbolRef.current = selectedSymbol;
       if (
         initialExplicitSymbolRef.current &&
         selectedSymbol &&
-        isAuthenticated &&
         networkEnabled
       ) {
         void runAnalysis(selectedSymbol, timeframe);
@@ -557,12 +558,18 @@ export default function Analyse() {
 
     previousSymbolRef.current = selectedSymbol;
 
-    if (!isAuthenticated || !networkEnabled) {
+    if (!networkEnabled) {
       return;
     }
 
     void runAnalysis(selectedSymbol, timeframe);
-  }, [selectedSymbol, timeframe, isAuthenticated, networkEnabled, runAnalysis]);
+  }, [
+    user,
+    selectedSymbol,
+    timeframe,
+    networkEnabled,
+    runAnalysis,
+  ]);
 
   const watchlistQuery = useQuery<WatchlistItem[]>({
     queryKey: ["watchlist"],
@@ -738,9 +745,7 @@ export default function Analyse() {
     });
   };
 
-  const handleScan = () => {
-    if (requireLogin("/analyse")) return;
-
+  const handleScan = useCallback(() => {
     const raw = (symbolInput || "").trim().toUpperCase();
     let targetSymbol = selectedSymbol;
 
@@ -785,18 +790,6 @@ export default function Analyse() {
       return;
     }
 
-    if (!isAuthenticated) {
-      setChartSymbol(normalizedTarget);
-      setChartTf(timeframe);
-      setChartKey(`tv-${normalizedTarget}-${timeframe}-${Date.now()}`);
-      toast({
-        title: "Feature locked",
-        description: "Please sign in to run scans.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const displayTarget = displayPair(targetSymbol);
     toast({
       title: "Symbol updated",
@@ -805,7 +798,21 @@ export default function Analyse() {
 
     setScanResult(null);
     void runAnalysis(targetSymbol, timeframe);
-  };
+  }, [
+    backendOffline,
+    backendPending,
+    networkEnabled,
+    runAnalysis,
+    selectedSymbol,
+    symbolInput,
+    timeframe,
+    toast,
+  ]);
+
+  const onRunAnalysis = useCallback(() => {
+    if (requireLogin("/analyse")) return;
+    handleScan();
+  }, [handleScan, requireLogin]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleSearch();
@@ -889,32 +896,22 @@ export default function Analyse() {
     return null;
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-12">
-        <Card className="border-destructive/30 bg-destructive/5 text-center">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-2xl font-semibold text-destructive">
-              Feature locked
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Please sign in to run scans.
-            </p>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <Button type="button" onClick={() => setLocation("/account")}> 
-              Go to sign in
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full max-w-screen-2xl 2xl:max-w-[1800px] mx-auto px-4 lg:px-6">
       <div className="flex flex-col gap-5 py-6">
         <BackendWarningBanner status={backendStatus} />
+        {!user && (
+          <div className="mx-auto max-w-4xl rounded-2xl border border-white/10 p-6 text-center">
+            <div className="mb-2 text-xl text-red-400">Feature locked</div>
+            <div className="mb-4 text-white/70">Please sign in to run scans.</div>
+            <button
+              onClick={onRunAnalysis}
+              className="inline-block rounded-xl bg-sky-500/90 px-4 py-2 text-black hover:bg-sky-500"
+            >
+              Go to sign in
+            </button>
+          </div>
+        )}
         <header className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <div>
@@ -981,7 +978,7 @@ export default function Analyse() {
 
           <button
             type="button"
-            onClick={handleScan}
+            onClick={onRunAnalysis}
             disabled={isScanning}
             className="ml-auto rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium hover:bg-sky-400 disabled:opacity-60"
             data-testid="button-scan"
