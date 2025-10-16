@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, Link } from "react-router-dom";
 import {
@@ -13,22 +13,32 @@ import {
   PanelLeft,
 } from "lucide-react";
 import HoverTooltip from "../ui/HoverTooltip";
+import { useAuth } from "@/auth/AuthContext";
 
-type Item = { label: string; to: string; icon: JSX.Element };
+type NavItem = {
+  label: string;
+  to: string;
+  icon: ReactNode;
+  /** if provided, only render when function returns true */
+  visible?: (auth: { user: any }) => boolean;
+};
 
-const items: Item[] = [
+const items: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: <Home size={20} /> },
   { label: "Portfolio", to: "/portfolio", icon: <Briefcase size={20} /> },
   { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
-  { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} /> },
-  { label: "Alerts", to: "/alerts", icon: <Bell size={20} /> },
+  // PRO (hide when logged out):
+  { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: ({ user }) => !!user },
+  { label: "Alerts", to: "/alerts", icon: <Bell size={20} />, visible: ({ user }) => !!user },
+  // always public:
   { label: "AI Insights", to: "/ai-insights", icon: <BarChart2 size={20} /> },
   { label: "News", to: "/news", icon: <Newspaper size={20} /> },
   { label: "Account", to: "/account", icon: <User2 size={20} /> },
 ];
 
 export default function Sidebar() {
+  const { user } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandOnHover, setExpandOnHover] = useState(true);
   const [hoverRef, setHoverRef] = useState<HTMLElement | null>(null);
@@ -111,10 +121,12 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="mt-2 space-y-1 px-2">
-        {items.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
+        {items
+          .filter((item) => (item.visible ? item.visible({ user }) : true))
+          .map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
             className={({ isActive }) =>
               [
                 "relative group/item flex items-center gap-3 rounded-xl px-3 py-2 text-[15px]",
