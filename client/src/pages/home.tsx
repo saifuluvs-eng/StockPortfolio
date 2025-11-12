@@ -267,20 +267,22 @@ export default function Home() {
 
   return (
     <div className="flex-1 overflow-hidden">
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="break-keep whitespace-normal text-3xl font-bold text-foreground">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">
               Welcome back, {firstName}!
             </h1>
-            <p className="text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
           </div>
-          <AuthButton size="sm" />
+          <div className="flex-shrink-0">
+            <AuthButton size="sm" />
+          </div>
         </div>
 
         {/* 8 Tiles */}
-        <div className="grid items-stretch grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+        <div className="grid items-stretch grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {/* 1) Portfolio */}
           <Link to="/portfolio" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
@@ -435,7 +437,7 @@ export default function Home() {
         </div>
 
         {/* The 3 big boxes below */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex min-w-0 items-center space-x-2">
@@ -475,11 +477,11 @@ export default function Home() {
                   <p className="text-sm text-muted-foreground">Index</p>
                 </div>
               </div>
-              <div className="mt-4 flex space-x-2">
-                <Button asChild size="sm" data-testid="button-view-portfolio">
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                <Button asChild size="sm" className="min-h-[44px]" data-testid="button-view-portfolio">
                   <Link to="/portfolio">View Portfolio</Link>
                 </Button>
-                <Button asChild size="sm" variant="outline" data-testid="button-start-scanning">
+                <Button asChild size="sm" variant="outline" className="min-h-[44px]" data-testid="button-start-scanning">
                   <Link to="/analyse/BTCUSDT">Start Scanning</Link>
                 </Button>
               </div>
