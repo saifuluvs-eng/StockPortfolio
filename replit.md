@@ -18,6 +18,11 @@ Preferred communication style: Simple, everyday language.
   - Resolved variable shadowing issue (`location` → `currentPath`, `setLocation` → `navigate`)
   - Fixed Supabase `emailRedirectTo` URL construction to use `window.location.origin`
   - All internal navigation now uses Wouter's Link and useLocation hook
+- **Completed Priority 1 & 2 Mobile Optimizations** (architect-verified):
+  - **Landing page**: Sheet-based hamburger nav, responsive hero (`text-3xl→6xl`), features grid (`1→2→4 cols`), 48px touch targets
+  - **Auth pages**: Input font ≥16px to prevent iOS zoom, 48px inputs, 44-48px touch targets, mobile-stacked layouts
+  - **Dashboard**: Responsive 8-tile grid (`1→2→3→4→5 cols`), fluid typography, 44px buttons, `p-4→p-6` spacing
+  - **Portfolio**: Horizontal-scroll table (`min-w-800px`), responsive stat cards (`1→2→3→5 cols`), 44px touch targets, mobile-optimized modal
 - **Reverted from CoinGecko back to Binance API** per user request (app will be deployed outside Replit where Binance is accessible)
 - Fixed infinite loop in analyse.tsx (removed runAnalysis from useEffect dependencies)
 - Added `/api/ai/summary` endpoint for AI Summary panel with resilient error handling
