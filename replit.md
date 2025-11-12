@@ -11,6 +11,7 @@ Preferred communication style: Simple, everyday language.
 **November 12, 2025**:
 - Migrated from Vercel to Replit's persistent server architecture
 - Fixed React hook violation in Account.tsx (moved useEffect before conditional returns)
+- Fixed critical nested link bug in home.tsx that was freezing the page (removed Button with Link inside Link-wrapped News card)
 - Added `/api/ai/summary` endpoint for AI Summary panel with resilient error handling
 - Server configured to bind to `0.0.0.0:5000` for Replit environment
 - Made Firebase authentication optional - app now uses Supabase as primary auth

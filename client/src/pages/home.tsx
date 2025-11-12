@@ -427,9 +427,7 @@ export default function Home() {
                   <span className="text-xs text-muted-foreground">Updated 10 min ago</span>
                 </p>
                 <p>US equities rally as inflation cools; crypto follows with strong altcoin bids.</p>
-                <Button asChild size="sm" variant="outline" className="mt-2 self-start">
-                  <Link to="/news">Read latest</Link>
-                </Button>
+                <p className="text-xs text-primary mt-2 font-medium">Click to read latest →</p>
               </div>
             </CardContent>
           </Card>
