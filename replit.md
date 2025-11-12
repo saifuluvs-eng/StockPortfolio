@@ -12,6 +12,11 @@ Preferred communication style: Simple, everyday language.
 - Migrated from Vercel to Replit's persistent server architecture
 - Fixed React hook violation in Account.tsx (moved useEffect before conditional returns)
 - Fixed critical nested link bug in home.tsx that was freezing the page (removed Button with Link inside Link-wrapped News card)
+- **Replaced Binance API with CoinGecko API** due to geo-blocking (Binance returns HTTP 451 on Replit)
+  - Implemented symbol mapping for 40+ popular coins
+  - Added null-checking to prevent Bitcoin price substitution for unmapped symbols
+  - Fixed OHLC days validation to use only CoinGecko-supported values
+  - Top gainers now filtered to mapped symbols only
 - Added `/api/ai/summary` endpoint for AI Summary panel with resilient error handling
 - Server configured to bind to `0.0.0.0:5000` for Replit environment
 - Made Firebase authentication optional - app now uses Supabase as primary auth
@@ -108,12 +113,14 @@ Preferred communication style: Simple, everyday language.
 
 ## External Dependencies
 
-**Market Data**: Binance REST API (`api.binance.com`)
-- Rate limiting with 120ms minimum interval between requests
-- User-Agent header for API compliance
-- Exponential backoff on errors (60-second base)
-- Klines (candlestick) endpoint for OHLCV data
-- 24hr ticker endpoint for price/volume statistics
+**Market Data**: CoinGecko REST API (`api.coingecko.com/api/v3`)
+- Free tier with no authentication required
+- Symbol mapping from Binance tickers to CoinGecko IDs (BTCUSDT → bitcoin)
+- Endpoints: `/simple/price`, `/coins/markets`, `/coins/{id}/ohlc`
+- Fallback to mock data when symbol is unmapped or API fails
+- OHLC days parameter clamped to supported values (1,7,14,30,90,180,365)
+- Top gainers filtered to only mapped symbols for data consistency
+- Note: Previous Binance API geo-blocked on Replit (HTTP 451 error)
 
 **AI Services**: OpenAI API with GPT-5 model for market analysis and insights
 
