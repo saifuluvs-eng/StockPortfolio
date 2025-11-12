@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 
 import { AuthProvider } from "@/auth/AuthContext";
 import RequireAuth from "@/auth/RequireAuth";
@@ -14,12 +14,12 @@ import AIInsights from "@/pages/ai-insights";
 import News from "@/pages/news";
 import ResetPassword from "@/pages/ResetPassword";
 
-function ShellLayout() {
+function ShellLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-[#0f0f0f] text-white">
       <Sidebar />
       <main className="flex-1 overflow-y-auto bg-background text-foreground">
-        <Outlet />
+        {children}
       </main>
     </div>
   );
@@ -27,44 +27,74 @@ function ShellLayout() {
 
 export default function App() {
   return (
-    <HashRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    <AuthProvider>
+      <Switch>
+        <Route path="/">
+          <Redirect to="/dashboard" />
+        </Route>
 
-          <Route path="/login" element={<Navigate to="/account" replace />} />
-          <Route path="/signup" element={<Navigate to="/account" replace />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/login">
+          <Redirect to="/account" />
+        </Route>
+        <Route path="/signup">
+          <Redirect to="/account" />
+        </Route>
+        <Route path="/reset-password" component={ResetPassword} />
 
-          <Route element={<ShellLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/gainers" element={<Gainers />} />
-            <Route path="/analyse" element={<Analyse />} />
-            <Route
-              path="/watchlist"
-              element={
-                <RequireAuth>
-                  <Watchlist />
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/alerts"
-              element={
-                <RequireAuth>
-                  <Alerts />
-                </RequireAuth>
-              }
-            />
-            <Route path="/account" element={<Account />} />
-            <Route path="/ai-insights" element={<AIInsights />} />
-            <Route path="/news" element={<News />} />
-          </Route>
+        <Route path="/dashboard">
+          <ShellLayout>
+            <Dashboard />
+          </ShellLayout>
+        </Route>
+        <Route path="/portfolio">
+          <ShellLayout>
+            <Portfolio />
+          </ShellLayout>
+        </Route>
+        <Route path="/gainers">
+          <ShellLayout>
+            <Gainers />
+          </ShellLayout>
+        </Route>
+        <Route path="/analyse/:symbol?">
+          <ShellLayout>
+            <Analyse />
+          </ShellLayout>
+        </Route>
+        <Route path="/watchlist">
+          <ShellLayout>
+            <RequireAuth>
+              <Watchlist />
+            </RequireAuth>
+          </ShellLayout>
+        </Route>
+        <Route path="/alerts">
+          <ShellLayout>
+            <RequireAuth>
+              <Alerts />
+            </RequireAuth>
+          </ShellLayout>
+        </Route>
+        <Route path="/account">
+          <ShellLayout>
+            <Account />
+          </ShellLayout>
+        </Route>
+        <Route path="/ai-insights">
+          <ShellLayout>
+            <AIInsights />
+          </ShellLayout>
+        </Route>
+        <Route path="/news">
+          <ShellLayout>
+            <News />
+          </ShellLayout>
+        </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AuthProvider>
-    </HashRouter>
+        <Route>
+          <Redirect to="/dashboard" />
+        </Route>
+      </Switch>
+    </AuthProvider>
   );
 }

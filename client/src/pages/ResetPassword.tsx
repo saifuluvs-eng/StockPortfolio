@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "react-router-dom";
+import { Link } from "wouter";
 
 import AuthCard from "@/components/auth/AuthCard";
 import { supabase } from "@/lib/supabase";

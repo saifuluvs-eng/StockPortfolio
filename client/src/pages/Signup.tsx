@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 
 import AuthButton from "@/components/auth/AuthButton";
 import AuthCard from "@/components/auth/AuthCard";
@@ -25,9 +25,9 @@ const Schema = z
 type FormValues = z.infer<typeof Schema>;
 
 export default function Signup() {
-  const nav = useNavigate();
-  const loc = useLocation();
-  const redirectTo = new URLSearchParams(loc.search).get("redirect") || "/dashboard";
+  const [currentPath, navigate] = useLocation();
+  const searchParams = currentPath.includes("?") ? new URLSearchParams(currentPath.split("?")[1]) : new URLSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
   const {
     register,
@@ -42,12 +42,12 @@ export default function Signup() {
       email: values.email,
       password: values.password,
       options: {
-        emailRedirectTo: `${location.origin}/#/account?redirect=${encodeURIComponent(redirectTo)}`,
+        emailRedirectTo: `${window.location.origin}/#/account?redirect=${encodeURIComponent(redirectTo)}`,
       },
     });
     if (error) return alert(error.message);
     alert("Check your email to verify your account.");
-    nav("/account", { replace: true });
+    navigate("/account");
   }
 
   return (
