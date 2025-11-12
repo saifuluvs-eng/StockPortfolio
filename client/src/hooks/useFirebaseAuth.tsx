@@ -41,6 +41,13 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
   const previousUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!auth) {
+      setUser(null);
+      setIdToken(null);
+      setLoading(false);
+      return;
+    }
+    
     const unsubscribe = onIdTokenChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
@@ -71,12 +78,20 @@ export function FirebaseAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signInWithGoogle = useCallback(async () => {
+    if (!auth) {
+      console.warn('[Firebase] Auth not initialized');
+      return;
+    }
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     await signInWithPopup(auth, provider);
   }, []);
 
   const signOut = useCallback(async () => {
+    if (!auth) {
+      console.warn('[Firebase] Auth not initialized');
+      return;
+    }
     await firebaseSignOut(auth);
     queryClient.clear();
     usePriceStore.getState().reset();
