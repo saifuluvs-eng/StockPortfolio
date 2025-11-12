@@ -46,36 +46,39 @@ export default function Login() {
     <AuthCard title="Welcome back">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="text-sm text-white/70">Email</label>
+          <label className="text-sm font-medium text-white/70">Email</label>
           <input
             {...register("email")}
             type="email"
-            className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 outline-none focus:border-white/20"
+            autoComplete="email"
+            inputMode="email"
+            className="mt-1 w-full text-base rounded-xl bg-black/40 border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
           />
           {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
         </div>
         <div>
-          <label className="text-sm text-white/70">Password</label>
+          <label className="text-sm font-medium text-white/70">Password</label>
           <input
             {...register("password")}
             type="password"
-            className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 outline-none focus:border-white/20"
+            autoComplete="current-password"
+            className="mt-1 w-full text-base rounded-xl bg-black/40 border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
           />
           {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
         </div>
 
         <button
           disabled={isSubmitting}
-          className="w-full rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 py-2"
+          className="w-full rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-50 border border-white/15 py-3 min-h-[48px] text-base font-medium"
         >
           {isSubmitting ? "Signing in…" : "Sign in"}
         </button>
 
-        <div className="flex items-center justify-between text-sm mt-1">
-          <Link className="text-blue-300/90 hover:underline" to="/reset-password">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm mt-2">
+          <Link className="text-blue-300/90 hover:underline min-h-[44px] flex items-center" to="/reset-password">
             Forgot password?
           </Link>
-          <Link className="text-blue-300/90 hover:underline" to="/account">
+          <Link className="text-blue-300/90 hover:underline min-h-[44px] flex items-center" to="/account">
             Create account
           </Link>
         </div>

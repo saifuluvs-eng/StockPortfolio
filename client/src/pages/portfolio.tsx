@@ -363,21 +363,22 @@ export default function Portfolio() {
 
   return (
     <div className="flex-1 overflow-hidden">
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Your Portfolio</h1>
-            <p className="text-muted-foreground mt-1">Positions, P&amp;L, and live performance.</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">Your Portfolio</h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">Positions, P&amp;L, and live performance.</p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={handleRefresh}>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button variant="secondary" size="sm" onClick={handleRefresh} className="min-h-[44px]">
               <RefreshCw className={`mr-2 h-4 w-4 ${fetchingPositions ? "animate-spin" : ""}`} />
-              Refresh
+              <span className="hidden sm:inline">Refresh</span>
             </Button>
-            <Button size="sm" onClick={openAdd}>
-              <PlusCircle className="w-4 h-4 mr-2" /> Add Position
+            <Button size="sm" onClick={openAdd} className="min-h-[44px]">
+              <PlusCircle className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Position</span>
             </Button>
           </div>
         </div>
@@ -398,7 +399,7 @@ export default function Portfolio() {
         </div>
 
         {/* Stat cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6">
           <Card className={`${cardClampClass} bg-gradient-to-br from-primary/5 to-primary/10`} style={cardClampStyle}>
             <CardContent className={rowContentClass}>
               <div className="flex items-center gap-2">
@@ -471,23 +472,26 @@ export default function Portfolio() {
 
         {/* Holdings table */}
         <Card className="border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <CardTitle>Holdings</CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Link href="/analyse/BTCUSDT">
-                <Button variant="outline" size="sm">
-                  <Eye className="w-4 h-4 mr-2" /> Scan Market
+                <Button variant="outline" size="sm" className="min-h-[44px]">
+                  <Eye className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Scan Market</span>
                 </Button>
               </Link>
-              <Button size="sm" onClick={openAdd}>
-                <PlusCircle className="w-4 h-4 mr-2" /> Add Position
+              <Button size="sm" onClick={openAdd} className="min-h-[44px]">
+                <PlusCircle className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Add Position</span>
               </Button>
             </div>
           </CardHeader>
 
           <CardContent>
-            <div className="w-full overflow-auto">
-              <table className="w-full text-sm">
+            <div className="w-full overflow-x-auto -mx-2 sm:mx-0">
+              <div className="inline-block min-w-full align-middle px-2 sm:px-0">
+              <table className="w-full text-sm min-w-[800px]">
                 <thead>
                   <tr className="text-muted-foreground border-b border-border">
                     <th className="text-left py-2 pr-4">COIN</th>
@@ -590,6 +594,7 @@ export default function Portfolio() {
                   </tbody>
                 )}
               </table>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -597,9 +602,9 @@ export default function Portfolio() {
 
       {/* ---- Add Position Modal ---- */}
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/80" onClick={closeAddModal} />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl">
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-5 border-b border-white/10 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground">Add Position</h3>
               <button className="p-1 rounded-md hover:bg-white/5" onClick={closeAddModal} aria-label="Close">
