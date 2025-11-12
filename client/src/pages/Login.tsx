@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "wouter";
 
 import { useAuth } from "@/auth/AuthContext";
 import AuthCard from "@/components/auth/AuthCard";
@@ -17,13 +17,13 @@ type FormValues = z.infer<typeof Schema>;
 
 export default function Login() {
   const { user, loading } = useAuth();
-  const nav = useNavigate();
-  const loc = useLocation();
-  const redirectTo = new URLSearchParams(loc.search).get("redirect") || "/dashboard";
+  const [currentPath, navigate] = useLocation();
+  const searchParams = currentPath.includes("?") ? new URLSearchParams(currentPath.split("?")[1]) : new URLSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
   useEffect(() => {
-    if (!loading && user) nav("/account", { replace: true });
-  }, [user, loading, nav]);
+    if (!loading && user) navigate("/account");
+  }, [user, loading, navigate]);
 
   const {
     register,
@@ -39,7 +39,7 @@ export default function Login() {
       alert(error.message);
       return;
     }
-    nav(redirectTo, { replace: true });
+    navigate(redirectTo);
   }
 
   return (
