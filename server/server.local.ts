@@ -70,7 +70,7 @@ export async function createApp(
     next();
   });
 
-  const httpServer = await registerRoutes(app, { enableWebSockets });
+  registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -82,6 +82,7 @@ export async function createApp(
 
   const shouldSetupVite = enableVite ?? app.get("env") === "development";
   const shouldServeStatic = serveStaticOption ?? app.get("env") !== "development";
+  const httpServer = app.get("httpServer");
 
   if (shouldSetupVite) {
     if (!httpServer) {
@@ -90,10 +91,6 @@ export async function createApp(
     await setupVite(app, httpServer);
   } else if (shouldServeStatic) {
     serveStatic(app);
-  }
-
-  if (httpServer) {
-    app.set("httpServer", httpServer);
   }
 
   return app;
