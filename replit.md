@@ -1,6 +1,6 @@
 # Overview
 
-This is a cryptocurrency trading analysis dashboard that provides real-time market scanning, technical analysis, and portfolio management. The application uses Firebase Authentication for user management and supports both local SQLite (via Drizzle ORM) and Firebase Firestore for data persistence. It integrates with Binance's API for live market data and uses OpenAI for AI-powered trading insights.
+This is a cryptocurrency trading analysis dashboard that provides real-time market scanning, technical analysis, and portfolio management. The application uses Supabase for authentication and PostgreSQL for persistent data storage via Drizzle ORM. It integrates with Binance's API for live market data and uses OpenAI for AI-powered trading insights. The app is fully optimized for both desktop and mobile devices and can be deployed on Vercel or run locally on Replit.
 
 # User Preferences
 
@@ -9,26 +9,29 @@ Preferred communication style: Simple, everyday language.
 # Recent Changes
 
 **November 12, 2025**:
-- Migrated from Vercel to Replit's persistent server architecture
-- Fixed React hook violation in Account.tsx (moved useEffect before conditional returns)
-- Fixed critical nested link bug in home.tsx that was freezing the page (removed Button with Link inside Link-wrapped News card)
-- **Completed migration from React Router to Wouter** for hash-based routing consistency
-  - Replaced all React Router components (HashRouter, Routes, Route, Navigate, useNavigate) with Wouter equivalents
-  - Fixed Login.tsx and Signup.tsx to parse redirect params from hash-aware location string
-  - Resolved variable shadowing issue (`location` → `currentPath`, `setLocation` → `navigate`)
-  - Fixed Supabase `emailRedirectTo` URL construction to use `window.location.origin`
-  - All internal navigation now uses Wouter's Link and useLocation hook
-- **Completed Priority 1 & 2 Mobile Optimizations** (architect-verified):
-  - **Landing page**: Sheet-based hamburger nav, responsive hero (`text-3xl→6xl`), features grid (`1→2→4 cols`), 48px touch targets
-  - **Auth pages**: Input font ≥16px to prevent iOS zoom, 48px inputs, 44-48px touch targets, mobile-stacked layouts
-  - **Dashboard**: Responsive 8-tile grid (`1→2→3→4→5 cols`), fluid typography, 44px buttons, `p-4→p-6` spacing
-  - **Portfolio**: Horizontal-scroll table (`min-w-800px`), responsive stat cards (`1→2→3→5 cols`), 44px touch targets, mobile-optimized modal
-- **Reverted from CoinGecko back to Binance API** per user request (app will be deployed outside Replit where Binance is accessible)
-- Fixed infinite loop in analyse.tsx (removed runAnalysis from useEffect dependencies)
-- Added `/api/ai/summary` endpoint for AI Summary panel with resilient error handling
+- **Completed database migration from SQLite to PostgreSQL (Supabase)**
+  - Migrated all table schemas from SQLite to Postgres-compatible types
+  - Updated Drizzle ORM configuration to use Neon HTTP driver for Supabase
+  - Changed column types: `real` → `doublePrecision`, `integer timestamps` → `timestamp`, `text{mode:json}` → `jsonb`
+  - Successfully pushed schema to Supabase database using `drizzle-kit push`
+  - App now uses persistent PostgreSQL storage that works on both local development and Vercel deployment
+- **Created comprehensive Vercel deployment documentation**
+  - Added `.env.example` with all required environment variables
+  - Created `DEPLOYMENT.md` with step-by-step Vercel deployment guide
+  - Documented database setup, environment variables, and troubleshooting
+- **Verified Vercel serverless function compatibility**
+  - All `/api` functions properly structured for Vercel deployment
+  - Storage layer uses database with fallback support
+  - Hash-based routing works on serverless platforms
+- Migrated from React Router to Wouter for hash-based routing consistency
+- Completed Priority 1 & 2 Mobile Optimizations (architect-verified):
+  - Landing page: Sheet-based hamburger nav, responsive hero, 48px touch targets
+  - Auth pages: Input font ≥16px to prevent iOS zoom, 44-48px touch targets
+  - Dashboard: Responsive 8-tile grid (1→2→3→4→5 cols), 44px buttons
+  - Portfolio: Horizontal-scroll table, responsive stat cards
+- Reverted from CoinGecko back to Binance API (works when deployed outside Replit)
+- Made Supabase primary authentication method (Firebase optional)
 - Server configured to bind to `0.0.0.0:5000` for Replit environment
-- Made Firebase authentication optional - app now uses Supabase as primary auth
-- Created database tables via Drizzle migrations
 
 # System Architecture
 
@@ -54,16 +57,16 @@ Preferred communication style: Simple, everyday language.
 
 **Runtime Environment**: Dual-mode execution supporting both local development and serverless deployment
 
-**Local Development**:
+**Local Development (Replit)**:
 - Express.js server with Vite middleware for HMR
-- Better-SQLite3 for local database (`local.db`)
-- WebSocket support for real-time features
+- PostgreSQL database via Supabase (DATABASE_URL)
+- Server binds to `0.0.0.0:5000` for Replit webview access
 
-**Production (Serverless)**:
+**Production (Vercel)**:
 - Vercel serverless functions in `/api` directory
 - Each API route is a standalone serverless function
-- Firebase Firestore for production data storage
-- Fallback in-memory storage when database unavailable
+- PostgreSQL database via Supabase (same DATABASE_URL)
+- No in-memory fallback needed - persistent database storage
 
 **API Structure**:
 - `/api/portfolio/*` - Portfolio position management
@@ -81,32 +84,35 @@ Preferred communication style: Simple, everyday language.
 
 ## Authentication & Authorization
 
-**Primary Auth**: Firebase Authentication with token-based verification
+**Primary Auth**: Supabase Authentication with JWT token-based verification
 
 **Token Flow**:
-1. Client obtains Firebase ID token via Firebase Auth SDK
+1. Client obtains Supabase session token via Supabase Auth SDK
 2. Token sent in `Authorization: Bearer <token>` header
-3. Server verifies token using Firebase Admin SDK
+3. Server verifies token using Supabase client
 4. User ID extracted from verified token claims
 
-**User Profile Storage**: Firestore `users` collection keyed by Firebase UID, merged with token claims
+**User Profile Storage**: PostgreSQL `users` table via Drizzle ORM
 
 **Demo Mode**: `X-Demo-User-Id` header support for development/testing without full auth
 
-**Service Account Configuration**: Supports three methods:
-- Path to service account JSON (`FIREBASE_SERVICE_ACCOUNT_PATH`)
-- Raw JSON string (`FIREBASE_SERVICE_ACCOUNT_JSON`)
-- Individual environment variables (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`)
+**Firebase (Optional)**: Legacy Firebase authentication is still supported for backwards compatibility
+- Firebase Admin SDK can verify Firebase tokens if configured
+- User profiles stored in Firestore when using Firebase auth
 
 ## Data Storage
 
-**Schema Definition**: Centralized in `shared/schema.ts` using Drizzle ORM
+**Schema Definition**: Centralized in `shared/schema.ts` using Drizzle ORM with PostgreSQL
 
-**Dual Storage Strategy**:
-- **Local/Development**: SQLite via Drizzle + Better-SQLite3
-- **Production**: Firebase Firestore with document-based models
+**Database**: PostgreSQL via Supabase (both development and production)
+- Connection via Neon HTTP driver (`@neondatabase/serverless`)
+- Schema managed by Drizzle Kit migrations
+- Connection string in `DATABASE_URL` environment variable
 
-**Storage Abstraction**: `IStorage` interface in `server/storage.ts` provides unified API regardless of backend
+**Storage Implementation**: `DatabaseStorage` class in `server/storage.ts` provides data access layer
+- Uses Drizzle ORM for type-safe queries
+- Supports complex queries with filters, sorting, and pagination
+- Fallback in-memory storage in serverless functions when database unavailable (backward compatibility)
 
 **Key Tables/Collections**:
 - `portfolio_positions` - User cryptocurrency holdings with entry price and quantity
