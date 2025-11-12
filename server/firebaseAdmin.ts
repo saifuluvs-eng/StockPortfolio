@@ -23,7 +23,7 @@ function normalizeServiceAccount(raw: Record<string, any>): ServiceAccountLike {
   };
 }
 
-function loadServiceAccount(): ServiceAccountLike {
+function loadServiceAccount(): ServiceAccountLike | null {
   const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
   const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
 
@@ -45,18 +45,21 @@ function loadServiceAccount(): ServiceAccountLike {
     return { projectId, clientEmail, privateKey };
   }
 
-  throw new Error(
-    'Firebase Admin credentials are not configured. Provide FIREBASE_SERVICE_ACCOUNT_PATH, FIREBASE_SERVICE_ACCOUNT_JSON, or FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY.'
-  );
+  console.warn('[Firebase] Firebase Admin credentials not configured. Firebase auth will be disabled.');
+  return null;
 }
 
-function initializeFirebaseAdmin(): App {
+function initializeFirebaseAdmin(): App | null {
   const existingApp = getApps()[0];
   if (existingApp) {
     return existingApp;
   }
 
   const serviceAccount = loadServiceAccount();
+  if (!serviceAccount) {
+    return null;
+  }
+
   const projectId = process.env.FIREBASE_PROJECT_ID ?? serviceAccount.projectId;
 
   const credentials: ServiceAccount = {
@@ -66,13 +69,13 @@ function initializeFirebaseAdmin(): App {
   };
 
   if (!credentials.clientEmail || !credentials.privateKey) {
-    throw new Error(
-      'Firebase Admin credentials are missing a client email or private key. Check your environment variables.'
-    );
+    console.warn('[Firebase] Missing client email or private key. Firebase auth disabled.');
+    return null;
   }
 
   if (!projectId) {
-    throw new Error('FIREBASE_PROJECT_ID must be provided for Firebase Admin initialization.');
+    console.warn('[Firebase] Missing project ID. Firebase auth disabled.');
+    return null;
   }
 
   return initializeApp({
@@ -82,7 +85,12 @@ function initializeFirebaseAdmin(): App {
 }
 
 export const firebaseApp = initializeFirebaseAdmin();
-export const firebaseAuth = getAuth(firebaseApp);
-export const firestore = getFirestore(firebaseApp);
+export const firebaseAuth = firebaseApp ? getAuth(firebaseApp) : null;
+export const firestore = firebaseApp ? getFirestore(firebaseApp) : null;
 
-export const verifyIdToken = (token: string) => firebaseAuth.verifyIdToken(token);
+export const verifyIdToken = (token: string) => {
+  if (!firebaseAuth) {
+    throw new Error('Firebase auth is not initialized');
+  }
+  return firebaseAuth.verifyIdToken(token);
+};

@@ -45,7 +45,7 @@ export interface UpsertUser extends Record<string, unknown> {
   profileImageUrl?: string | null;
 }
 
-const usersCollection = adminFirestore.collection("users");
+const usersCollection = adminFirestore ? adminFirestore.collection("users") : null;
 
 function mapTimestamp(value: unknown): Date | null | undefined {
   if (value instanceof Timestamp) {
@@ -161,11 +161,28 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // User operations
   async getUser(id: string): Promise<User | undefined> {
+    if (!usersCollection) {
+      console.warn('[Storage] Firebase not initialized, user operations disabled');
+      return undefined;
+    }
     const snapshot = await usersCollection.doc(id).get();
     return mapUserSnapshot(snapshot);
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    if (!usersCollection) {
+      console.warn('[Storage] Firebase not initialized, returning mock user');
+      return {
+        id: userData.id,
+        email: userData.email || null,
+        displayName: userData.displayName || null,
+        firstName: userData.firstName || null,
+        lastName: userData.lastName || null,
+        profileImageUrl: userData.profileImageUrl || null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
     const docRef = usersCollection.doc(userData.id);
     const existing = await docRef.get();
     const payload = buildUserPayload(userData);
