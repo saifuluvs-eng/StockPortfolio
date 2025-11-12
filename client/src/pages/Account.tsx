@@ -22,6 +22,21 @@ export default function Account() {
     if (m === "signup") setMode("signup");
   }, []);
 
+  // -------- LOGGED IN: load profile --------
+  // IMPORTANT: This must be before any conditional returns to follow Rules of Hooks
+  useEffect(() => {
+    async function load() {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!error && data) setProfile(data as Profile);
+    }
+    load();
+  }, [user]);
+
   if (loading) {
     return <div className="p-6 text-white/70">Loading…</div>;
   }
@@ -50,20 +65,6 @@ export default function Account() {
       </div>
     );
   }
-
-  // -------- LOGGED IN: existing profile/settings MVP --------
-  useEffect(() => {
-    async function load() {
-      if (!user) return;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("username, avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (!error && data) setProfile(data as Profile);
-    }
-    load();
-  }, [user]);
 
   async function save() {
     if (!user) return;

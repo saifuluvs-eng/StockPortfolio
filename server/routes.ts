@@ -429,6 +429,56 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  app.post('/api/ai/summary', async (req: Request, res: Response) => {
+    try {
+      const { symbol, tf } = req.body;
+      const timeframe = tf || '4h';
+      
+      let technicalAnalysis: any;
+      let marketData: any;
+      
+      // Get technical analysis for the symbol with error handling
+      try {
+        technicalAnalysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
+      } catch (error) {
+        console.warn(`Could not fetch technical analysis for ${symbol}:`, error);
+        // Provide minimal technical data
+        technicalAnalysis = {
+          symbol,
+          totalScore: 0,
+          recommendation: 'hold',
+          indicators: {}
+        };
+      }
+      
+      // Get market data with error handling
+      try {
+        marketData = await binanceService.getTickerData(symbol);
+      } catch (error) {
+        console.warn(`Could not fetch market data for ${symbol}:`, error);
+        // Provide minimal market data
+        marketData = {
+          symbol,
+          lastPrice: '0',
+          priceChangePercent: '0',
+          volume: '0'
+        };
+      }
+      
+      // Generate AI summary
+      const aiInsight = await aiService.generateCryptoInsight(
+        symbol,
+        technicalAnalysis,
+        marketData
+      );
+      
+      res.json({ data: aiInsight });
+    } catch (error) {
+      console.error("Error generating AI summary:", error);
+      res.status(500).json({ message: "Failed to generate AI summary" });
+    }
+  });
+
   // Scanner routes
   app.post('/api/scanner/scan', isAuthenticated, async (req: Request, res: Response) => {
     try {

@@ -6,6 +6,16 @@ This is a cryptocurrency trading analysis dashboard that provides real-time mark
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes
+
+**November 12, 2025**:
+- Migrated from Vercel to Replit's persistent server architecture
+- Fixed React hook violation in Account.tsx (moved useEffect before conditional returns)
+- Added `/api/ai/summary` endpoint for AI Summary panel with resilient error handling
+- Server configured to bind to `0.0.0.0:5000` for Replit environment
+- Made Firebase authentication optional - app now uses Supabase as primary auth
+- Created database tables via Drizzle migrations
+
 # System Architecture
 
 ## Frontend Architecture
