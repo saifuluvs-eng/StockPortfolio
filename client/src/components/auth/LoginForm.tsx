@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useLocation, Link } from "wouter";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/auth/AuthContext";
 
@@ -13,14 +13,14 @@ const Schema = z.object({
 type FormValues = z.infer<typeof Schema>;
 
 export default function LoginForm({ onSwitchToSignup }: { onSwitchToSignup: () => void }) {
-  const nav = useNavigate();
-  const loc = useLocation();
-  const redirectTo = new URLSearchParams(loc.search).get("redirect") || "/dashboard";
+  const [currentPath, navigate] = useLocation();
+  const hashPart = currentPath.includes('?') ? currentPath.split('?')[1] : '';
+  const redirectTo = new URLSearchParams(hashPart).get("redirect") || "/dashboard";
   const { user, loading } = useAuth();
 
   useEffect(() => {
-    if (!loading && user) nav("/account", { replace: true });
-  }, [user, loading, nav]);
+    if (!loading && user) navigate("/account");
+  }, [user, loading, navigate]);
 
   const {
     register,
@@ -33,7 +33,7 @@ export default function LoginForm({ onSwitchToSignup }: { onSwitchToSignup: () =
   async function onSubmit(values: FormValues) {
     const { error } = await supabase.auth.signInWithPassword(values);
     if (error) return alert(error.message);
-    nav(redirectTo, { replace: true });
+    navigate(redirectTo);
   }
 
   return (

@@ -1,18 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLocation } from "wouter";
 
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "./AuthContext";
-
-let useNavigateHook:
-  | (() => (path: string, options?: { replace?: boolean }) => void)
-  | null = null;
-try {
-  // @ts-ignore - require may not be defined in ESM environments during type check, but Vite handles it
-  const mod = require("react-router-dom");
-  useNavigateHook = typeof mod.useNavigate === "function" ? mod.useNavigate : null;
-} catch {
-  useNavigateHook = null;
-}
 
 export default function AuthPage() {
   const { user } = useAuth();
@@ -20,17 +10,11 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const navigate = typeof useNavigateHook === "function" ? useNavigateHook() : null;
+  const [, navigate] = useLocation();
 
   const goAnalyse = useCallback(() => {
     const target = "/analyse/BTCUSDT";
-    if (navigate) {
-      navigate(target, { replace: true });
-    } else {
-      if (typeof window !== "undefined") {
-        window.location.assign(target);
-      }
-    }
+    navigate(target);
   }, [navigate]);
 
   useEffect(() => {

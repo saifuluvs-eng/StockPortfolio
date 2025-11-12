@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "wouter";
 import { useAuth } from "./AuthContext";
 import { useToast } from "@/components/toast";
 
@@ -8,17 +8,16 @@ import { useToast } from "@/components/toast";
  */
 export function useLoginGate() {
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [currentPath, navigate] = useLocation();
   const toast = useToast();
 
   function requireLogin(redirectTo?: string) {
     if (!user) {
       toast.error("Sign in to unlock this feature", 2200);
-      const back = redirectTo || `${location.pathname}${location.search}`;
+      const back = redirectTo || currentPath;
       const q = back ? `?redirect=${encodeURIComponent(back)}` : "";
       // instant client nav
-      navigate(`/account${q}`, { replace: false });
+      navigate(`/account${q}`);
       return true;
     }
     return false;
