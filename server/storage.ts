@@ -351,7 +351,7 @@ export class DatabaseStorage implements IStorage {
         eq(watchlist.userId, userId),
         eq(watchlist.symbol, symbol)
       ));
-    return (result.changes ?? 0) > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Trade transaction operations
@@ -460,7 +460,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAiAnalysis(userId?: string, symbol?: string, analysisType?: string): Promise<AiAnalysis[]> {
-    const conditions = [];
+    const conditions: (typeof eq<any, any> | undefined)[] = [];
     
     if (userId) {
       conditions.push(eq(aiAnalysis.userId, userId));
@@ -472,12 +472,17 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(aiAnalysis.analysisType, analysisType));
     }
     
-    return await db
+    const query = db
       .select()
       .from(aiAnalysis)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(aiAnalysis.createdAt))
       .limit(50);
+      
+    if (conditions.length > 0) {
+      return await query.where(and(...conditions.filter(Boolean)));
+    }
+    
+    return await query;
   }
 }
 
