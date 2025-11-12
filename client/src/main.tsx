@@ -24,19 +24,39 @@ export const queryClient = new QueryClient({
   },
 });
 
-createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <Router hook={useHashLocation}>
-          <FirebaseAuthProvider>
-            <ErrorBoundary>
-              <App />
-            </ErrorBoundary>
-          </FirebaseAuthProvider>
-        </Router>
-      </ToastProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  </React.StrictMode>,
-);
+const rootElement = document.getElementById("root");
+if (!rootElement) throw new Error("Root element not found");
+
+let root: ReturnType<typeof createRoot> | null = null;
+
+function render() {
+  const app = (
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <Router hook={useHashLocation}>
+            <FirebaseAuthProvider>
+              <ErrorBoundary>
+                <App />
+              </ErrorBoundary>
+            </FirebaseAuthProvider>
+          </Router>
+        </ToastProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+
+  if (!root) {
+    root = createRoot(rootElement);
+  }
+  root.render(app);
+}
+
+render();
+
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    render();
+  });
+}
