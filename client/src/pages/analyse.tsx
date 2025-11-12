@@ -563,12 +563,12 @@ export default function Analyse() {
     }
 
     void runAnalysis(selectedSymbol, timeframe);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     user,
     selectedSymbol,
     timeframe,
     networkEnabled,
-    runAnalysis,
   ]);
 
   const watchlistQuery = useQuery<WatchlistItem[]>({
