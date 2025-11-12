@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { NavLink, Link } from "react-router-dom";
+import { Link, useLocation } from "wouter";
 import {
   Home,
   Briefcase,
@@ -36,6 +36,7 @@ const items: NavItem[] = [
 
 export default function Sidebar() {
   const { user, loading } = useAuth();
+  const [currentPath] = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandOnHover, setExpandOnHover] = useState(true);
   const [hoverRef, setHoverRef] = useState<HTMLElement | null>(null);
@@ -120,33 +121,34 @@ export default function Sidebar() {
       <nav className="mt-2 space-y-1 px-2">
         {items
           .filter((item) => (loading ? true : item.visible ? item.visible(user) : true))
-          .map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-            className={({ isActive }) =>
-              [
-                "relative group/item flex items-center gap-3 rounded-xl px-3 py-2 text-[15px]",
-                "text-white/80 hover:text-white hover:bg-white/5",
-                isActive ? "bg-white/[0.07] text-white" : "",
-              ].join(" ")
-            }
-            onMouseEnter={(event) => {
-              if (showStrictCollapsed) {
-                setHoverLabel(item.label);
-                setHoverRef(event.currentTarget as HTMLElement);
-              }
-            }}
-            onMouseLeave={() => {
-              setHoverRef(null);
-            }}
-          >
-            <div className="shrink-0">{item.icon}</div>
-            <span className={labelClass}>
-              {item.label}
-            </span>
-          </NavLink>
-        ))}
+          .map((item) => {
+            const isActive = currentPath === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={[
+                  "relative group/item flex items-center gap-3 rounded-xl px-3 py-2 text-[15px]",
+                  "text-white/80 hover:text-white hover:bg-white/5",
+                  isActive ? "bg-white/[0.07] text-white" : "",
+                ].join(" ")}
+                onMouseEnter={(event) => {
+                  if (showStrictCollapsed) {
+                    setHoverLabel(item.label);
+                    setHoverRef(event.currentTarget as HTMLElement);
+                  }
+                }}
+                onMouseLeave={() => {
+                  setHoverRef(null);
+                }}
+              >
+                <div className="shrink-0">{item.icon}</div>
+                <span className={labelClass}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
       </nav>
 
       {/* Bottom-left floating control button */}

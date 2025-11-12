@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { useAuth } from "@/auth/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { queryClient } from "@/main";
@@ -8,7 +8,7 @@ export default function AuthButton({
   className = "",
 }: { size?: "sm" | "md"; className?: string }) {
   const { user, loading } = useAuth();
-  const nav = useNavigate();
+  const [, navigate] = useLocation();
   const base =
     size === "sm"
       ? "px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-white/90"
@@ -25,7 +25,7 @@ export default function AuthButton({
 
   if (!user) {
     return (
-      <button className={`${base} ${className} hover:bg-white/10`} onClick={() => nav("/account")}>
+      <button className={`${base} ${className} hover:bg-white/10`} onClick={() => navigate("/account")}>
         Sign in
       </button>
     );

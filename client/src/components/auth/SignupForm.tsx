@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabase";
 
 const Schema = z
@@ -19,8 +19,9 @@ const Schema = z
 type FormValues = z.infer<typeof Schema>;
 
 export default function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
-  const loc = useLocation();
-  const redirectTo = new URLSearchParams(loc.search).get("redirect") || "/dashboard";
+  const [currentPath] = useLocation();
+  const hashPart = currentPath.includes('?') ? currentPath.split('?')[1] : '';
+  const redirectTo = new URLSearchParams(hashPart).get("redirect") || "/dashboard";
 
   const {
     register,
