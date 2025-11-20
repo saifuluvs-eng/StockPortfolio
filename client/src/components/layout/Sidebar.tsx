@@ -262,6 +262,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         )}
 
       <HoverTooltip anchor={hoverRef} label={hoverLabel} show={!!hoverRef && showStrictCollapsed} />
-    </aside>
+      </aside>
+    </>
   );
 }
