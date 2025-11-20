@@ -71,6 +71,8 @@ export default function Home() {
   const displayName = (user?.displayName?.trim() ?? user?.email ?? "Trader");
   const firstName = displayName.split(" ")[0] || displayName;
 
+  const containerClass = "w-full max-w-full overflow-hidden px-3 sm:px-4 md:px-6 py-4";
+
   // ---------- Lower “Market Overview” (REST polling; WS disabled on Vercel) ----------
   const [prices, setPrices] = useState<{ BTCUSDT?: number; ETHUSDT?: number }>({});
   const [btcChange, setBtcChange] = useState<{ priceChangePercent?: string | number }>({});

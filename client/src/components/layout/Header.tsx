@@ -1,6 +1,5 @@
 import { useAuth } from "@/auth/AuthContext";
 import { useLocation } from "wouter";
-import { Menu } from "lucide-react";
 
 export default function Header() {
   const { user } = useAuth();
@@ -11,32 +10,27 @@ export default function Header() {
       "/dashboard": "Dashboard",
       "/portfolio": "Portfolio",
       "/gainers": "Top Gainers",
-      "/analyse": "Market Analysis",
+      "/analyse": "Analysis",
       "/watchlist": "Watchlist",
-      "/alerts": "Smart Alerts",
+      "/alerts": "Alerts",
       "/account": "Account",
-      "/ai-insights": "AI Insights",
-      "/news": "News & Insights",
+      "/ai-insights": "AI",
+      "/news": "News",
     };
 
     for (const [route, title] of Object.entries(titles)) {
       if (pathname.startsWith(route)) return title;
     }
-    return "Trading Dashboard";
+    return "Dashboard";
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
-            {getPageTitle(pathname)}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {user && <span className="hidden text-sm text-muted-foreground sm:inline">{user.email}</span>}
-        </div>
+    <header className="sticky top-0 z-40 border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-14 md:h-16">
+      <div className="flex h-full items-center justify-between px-3 sm:px-4 md:px-6 gap-2">
+        <h1 className="text-base font-semibold tracking-tight text-foreground truncate md:text-lg">
+          {getPageTitle(pathname)}
+        </h1>
+        {user && <span className="hidden text-xs text-muted-foreground md:inline truncate">{user.email}</span>}
       </div>
     </header>
   );
