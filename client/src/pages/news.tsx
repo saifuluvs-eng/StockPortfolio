@@ -97,19 +97,19 @@ export default function NewsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">News &amp; Insights</h1>
+          <h1 className="text-xl font-semibold text-foreground sm:text-2xl">News &amp; Insights</h1>
           <p className="text-sm text-muted-foreground">
             Stay ahead with curated headlines and sentiment straight from CryptoPanic.
           </p>
         </div>
-        <Button variant="secondary" onClick={refresh} disabled={isFetching}>
+        <Button variant="secondary" onClick={refresh} disabled={isFetching} className="w-full sm:w-auto">
           <RefreshCw className="mr-2 h-4 w-4" /> Refresh
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="space-y-3">
         <Tabs
           value={filter}
           onValueChange={(value) => {
@@ -117,16 +117,16 @@ export default function NewsPage() {
             setPage(1);
           }}
         >
-          <TabsList className="bg-muted/60">
+          <TabsList className="w-full justify-start overflow-x-auto bg-muted/60">
             {FILTERS.map((item) => (
-              <TabsTrigger key={item.value} value={item.value} className="capitalize">
+              <TabsTrigger key={item.value} value={item.value} className="capitalize text-xs sm:text-sm">
                 {item.label}
               </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant={kind === "news" ? "default" : "outline"}
@@ -134,6 +134,7 @@ export default function NewsPage() {
               setKind("news");
               setPage(1);
             }}
+            className="text-xs"
           >
             News
           </Button>
@@ -144,13 +145,14 @@ export default function NewsPage() {
               setKind("media");
               setPage(1);
             }}
+            className="text-xs"
           >
             Media
           </Button>
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {SYMBOLS.map((value) => {
+          {SYMBOLS.slice(0, 5).map((value) => {
             const isActive = symbol === value || (!value && symbol === "");
             const label = value || "All";
             return (
@@ -162,21 +164,30 @@ export default function NewsPage() {
                   setSymbol(value);
                   setPage(1);
                 }}
+                className="text-xs"
               >
                 {label}
               </Button>
             );
           })}
+          {SYMBOLS.length > 5 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSymbol("")}
+              className="text-xs"
+            >
+              +{SYMBOLS.length - 5}
+            </Button>
+          )}
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search headlines…"
-            className="w-64 min-w-[200px]"
-          />
-        </div>
+        <Input
+          value={searchInput}
+          onChange={(event) => setSearchInput(event.target.value)}
+          placeholder="Search headlines…"
+          className="w-full text-sm"
+        />
       </div>
 
       <div className="grid gap-3">

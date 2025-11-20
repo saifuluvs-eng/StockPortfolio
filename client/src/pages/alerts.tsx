@@ -168,14 +168,14 @@ mary/60 hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between"
             <Zap className="h-5 w-5 text-primary" /> Suggested triggers
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
+        <CardContent className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
           {PRESET_RULES.map((rule) => (
             <div key={rule.id} className="rounded-xl border border-border/60 bg-card/80 p-4">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold text-foreground">{rule.title}</p>
-                <Badge variant="outline" className="text-xs">{rule.badge}</Badge>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="font-semibold text-foreground text-sm">{rule.title}</p>
+                <Badge variant="outline" className="text-xs w-fit">{rule.badge}</Badge>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">{rule.description}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{rule.description}</p>
             </div>
           ))}
         </CardContent>
