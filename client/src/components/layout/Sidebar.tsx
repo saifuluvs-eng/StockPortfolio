@@ -116,11 +116,13 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       )}
       <aside
         className={[
-          "group relative h-screen bg-[#121212] border-r border-white/5 transition-all duration-200",
-          "hidden md:flex md:flex-col",
-          isCollapsed ? "w-14" : "w-60",
-          expandOnHover && isCollapsed ? "hover:w-60" : "",
-          isMobile && isOpen ? "fixed left-0 top-0 z-40 flex flex-col" : "",
+          "group relative h-screen bg-[#121212] border-r border-white/5 transition-all duration-200 flex flex-col",
+          isMobile && !isOpen ? "hidden" : "",
+          isMobile && isOpen ? "fixed left-0 top-0 z-40 w-60" : "",
+          !isMobile ? "block" : "",
+          !isMobile && isCollapsed ? "w-14" : "",
+          !isMobile && !isCollapsed ? "w-60" : "",
+          !isMobile && expandOnHover && isCollapsed ? "hover:w-60" : "",
         ].join(" ")}
       >
       {/* Brand */}
