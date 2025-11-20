@@ -269,14 +269,14 @@ export default function Home() {
 
   return (
     <div className="flex-1 overflow-hidden">
-      <div className="p-4 sm:p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground break-words">
               Welcome back, {firstName}!
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
+            <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
           </div>
           <div className="flex-shrink-0">
             <AuthButton size="sm" />
@@ -284,11 +284,11 @@ export default function Home() {
         </div>
 
         {/* 8 Tiles */}
-        <div className="grid items-stretch grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="grid items-stretch grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 md:mb-8">
           {/* 1) Portfolio */}
           <Link to="/portfolio" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+              <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Portfolio</h3>
@@ -309,7 +309,7 @@ export default function Home() {
           {/* 2) Scanner */}
           <Link to="/analyse/BTCUSDT" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-accent/5 to-accent/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+              <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Scanner</h3>
@@ -326,7 +326,7 @@ export default function Home() {
           {/* 3) Gainers */}
           <Link to="/gainers" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-green-500/5 to-green-500/10" style={{ "--neon-glow": "hsl(142, 70%, 50%)" } as React.CSSProperties}>
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+              <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Top Gainers</h3>
@@ -344,7 +344,7 @@ export default function Home() {
           {/* 4) Total P&L */}
           <Link to="/portfolio" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+              <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Total P&L</h3>
@@ -362,7 +362,7 @@ export default function Home() {
           {/* 5) Watchlist */}
           <Link to="/watchlist" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}>
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+              <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Watchlist</h3>
@@ -379,7 +379,7 @@ export default function Home() {
           {/* 6) Smart Alerts */}
           <Link to="/alerts" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10" data-testid="card-alerts" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
-              <CardContent className="p-6 h-full flex flex-col justify-between">
+              <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-foreground mb-1">Smart Alerts</h3>
@@ -396,7 +396,7 @@ export default function Home() {
         {/* 7) AI Signals */}
         <Link to="/ai-insights" className="block h-full">
           <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
-            <CardContent className="p-6 h-full flex flex-col justify-between">
+            <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
@@ -415,7 +415,7 @@ export default function Home() {
         {/* 8) News & Insights */}
         <Link to="/news" className="block h-full xl:col-span-2">
           <Card className="dashboard-card neon-hover" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
-            <CardContent className="p-6 h-full flex flex-col justify-between space-y-4">
+            <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between space-y-2 sm:space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
@@ -439,7 +439,7 @@ export default function Home() {
         </div>
 
         {/* The 3 big boxes below */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
           <Card className="border-border">
             <CardHeader>
               <CardTitle className="flex min-w-0 items-center space-x-2">
