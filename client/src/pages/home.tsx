@@ -289,18 +289,18 @@ export default function Home() {
           <Link to="/portfolio" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Portfolio</h3>
-                    <p className="text-2xl font-bold text-foreground" data-testid="text-portfolio-value">{portfolioValueDisplay}</p>
-                    <div className="flex items-center space-x-1 mt-1">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Portfolio</h3>
+                    <p className="text-base sm:text-lg md:text-2xl font-bold text-foreground truncate" data-testid="text-portfolio-value">{portfolioValueDisplay}</p>
+                    <div className="flex items-center space-x-1 mt-0.5">
                       <TrendingUp className={`w-3 h-3 ${pctColorClass}`} />
                       <span className={`text-xs ${pctColorClass}`} data-testid="text-portfolio-change">
                         {portfolioPctDisplay}
                       </span>
                     </div>
                   </div>
-                  <BarChart3 className="w-8 h-8 text-primary" />
+                  <BarChart3 className="w-6 sm:w-8 h-6 sm:h-8 text-primary flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -310,14 +310,14 @@ export default function Home() {
           <Link to="/analyse/BTCUSDT" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-accent/5 to-accent/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Scanner</h3>
-                    <p className="text-sm text-muted-foreground">Technical analysis</p>
-                    <p className="text-lg font-bold text-foreground mt-2">15+</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Scanner</h3>
+                    <p className="text-xs text-muted-foreground truncate">Technical analysis</p>
+                    <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">15+</p>
                     <p className="text-xs text-muted-foreground">Indicators</p>
                   </div>
-                  <Search className="w-8 h-8 text-accent" />
+                  <Search className="w-6 sm:w-8 h-6 sm:h-8 text-accent flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -327,15 +327,15 @@ export default function Home() {
           <Link to="/gainers" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-green-500/5 to-green-500/10" style={{ "--neon-glow": "hsl(142, 70%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Top Gainers</h3>
-                    <p className="text-sm text-muted-foreground">Market leaders</p>
-                    <p className="text-sm font-semibold text-foreground mt-2">{gainersDisplay}</p>
-                    <p className="text-xs text-muted-foreground mt-1">24h change</p>
-                    <p className="text-[10px] text-muted-foreground mt-1">Last updated {gainRefreshed}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Top Gainers</h3>
+                    <p className="text-xs text-muted-foreground truncate">Market leaders</p>
+                    <p className="text-xs font-semibold text-foreground mt-0.5 truncate">{gainersDisplay}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">24h change</p>
+                    <p className="text-[8px] text-muted-foreground mt-0.5 truncate">Last updated {gainRefreshed}</p>
                   </div>
-                  <Award className="w-8 h-8 text-green-500" />
+                  <Award className="w-6 sm:w-8 h-6 sm:h-8 text-green-500 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -345,15 +345,15 @@ export default function Home() {
           <Link to="/portfolio" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Total P&L</h3>
-                    <p className={`text-2xl font-bold ${pctColorClass}`} data-testid="text-total-pnl-percent">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Total P&L</h3>
+                    <p className={`text-base sm:text-lg md:text-2xl font-bold ${pctColorClass} truncate`} data-testid="text-total-pnl-percent">
                       {portfolioPctDisplay}
                     </p>
-                    <p className="text-xs text-muted-foreground mt-1">Overall performance</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Overall performance</p>
                   </div>
-                  <Activity className="w-8 h-8 text-emerald-600" />
+                  <Activity className="w-6 sm:w-8 h-6 sm:h-8 text-emerald-600 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -363,14 +363,14 @@ export default function Home() {
           <Link to="/watchlist" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/5 to-blue-500/10" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Watchlist</h3>
-                    <p className="text-sm text-muted-foreground">Track favorites</p>
-                    <p className="text-lg font-bold text-foreground mt-2">{watchDisplay}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Watchlist</h3>
+                    <p className="text-xs text-muted-foreground truncate">Track favorites</p>
+                    <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">{watchDisplay}</p>
                     <p className="text-xs text-muted-foreground">Coins tracked</p>
                   </div>
-                  <Eye className="w-8 h-8 text-blue-500" />
+                  <Eye className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -380,14 +380,14 @@ export default function Home() {
           <Link to="/alerts" className="block h-full">
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10" data-testid="card-alerts" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
               <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">Smart Alerts</h3>
-                    <p className="text-sm text-muted-foreground">Price notifications</p>
-                    <p className="text-lg font-bold text-foreground mt-2">{watchCount ? Math.min(watchCount, 3) : 0}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Smart Alerts</h3>
+                    <p className="text-xs text-muted-foreground truncate">Price notifications</p>
+                    <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">{watchCount ? Math.min(watchCount, 3) : 0}</p>
                     <p className="text-xs text-muted-foreground">Active alerts</p>
                   </div>
-                  <Bell className="w-8 h-8 text-orange-500" />
+                  <Bell className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -397,14 +397,14 @@ export default function Home() {
         <Link to="/ai-insights" className="block h-full">
           <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
             <CardContent className="p-3 sm:p-4 md:p-6 h-full flex flex-col justify-between">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground mb-1">AI Signals</h3>
-                  <p className="text-sm text-muted-foreground">Market analysis</p>
-                  <p className="text-lg font-bold text-foreground mt-2" data-testid="text-ai-signals">{aiDisplay}</p>
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">AI Signals</h3>
+                  <p className="text-xs text-muted-foreground truncate">Market analysis</p>
+                  <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5" data-testid="text-ai-signals">{aiDisplay}</p>
                   <p className="text-xs text-green-500">Active insights</p>
                 </div>
-                <Brain className="w-8 h-8 text-indigo-500" />
+                <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-indigo-500 flex-shrink-0" />
               </div>
             </CardContent>
           </Card>
