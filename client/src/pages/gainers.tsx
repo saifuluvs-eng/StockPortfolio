@@ -52,7 +52,7 @@ function GainerRow({ index, symbol, name, change24h, price, volume, onAnalyse }:
   const formattedVolume = volume === null ? "—" : `$${numberFormatter.format(volume)}`;
 
   return (
-    <tr className="border-t border-zinc-900">
+    <tr className="hidden border-t border-zinc-900 md:table-row">
       <td className="whitespace-nowrap px-4 py-3">{index + 1}</td>
       <td className="whitespace-nowrap px-4 py-3">
         <div className="flex flex-col">
@@ -72,12 +72,57 @@ function GainerRow({ index, symbol, name, change24h, price, volume, onAnalyse }:
         <button
           type="button"
           onClick={() => onAnalyse(symbol)}
-          className="inline-block rounded-lg border border-zinc-700 px-3 py-1 hover:bg-zinc-900"
+          className="inline-block rounded-lg border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-900"
         >
           Analyse
         </button>
       </td>
     </tr>
+  );
+}
+
+function GainerRowMobile({ index, symbol, name, change24h, price, volume, onAnalyse }: GainerRowProps) {
+  const changeDisplay = Number.isFinite(change24h) ? change24h : 0;
+  const isUp = changeDisplay >= 0;
+  const formattedVolume = volume === null ? "—" : `$${numberFormatter.format(volume)}`;
+
+  return (
+    <div className="md:hidden flex flex-col gap-3 rounded-lg border border-zinc-800 bg-black/40 p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col">
+          <span className="font-semibold">{symbol}</span>
+          {name && name !== symbol ? (
+            <span className="text-xs text-zinc-500">{name}</span>
+          ) : null}
+        </div>
+        <span className="text-xs text-zinc-400">#{index + 1}</span>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <p className="text-xs text-zinc-500">Price</p>
+          <p className="font-semibold">{formatPrice(price)}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-zinc-500">24h Change</p>
+          <p className={`font-semibold ${isUp ? "text-green-500" : "text-red-500"}`}>
+            {isUp ? "+" : ""}{changeDisplay.toFixed(2)}%
+          </p>
+        </div>
+        <div className="col-span-2">
+          <p className="text-xs text-zinc-500">Volume</p>
+          <p className="font-semibold">{formattedVolume}</p>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onAnalyse(symbol)}
+        className="w-full rounded-lg border border-zinc-700 px-4 py-3 font-medium hover:bg-zinc-900 active:bg-zinc-800"
+      >
+        Analyse
+      </button>
+    </div>
   );
 }
 
@@ -200,9 +245,9 @@ export default function Gainers() {
 
   return (
     <main className="p-4 text-zinc-200">
-      <h1 className="mb-4 text-xl font-semibold">All Top Gainers</h1>
+      <h1 className="mb-4 text-lg font-semibold md:text-xl">All Top Gainers</h1>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-800">
+      <div className="hidden md:block overflow-hidden rounded-xl border border-zinc-800">
         <div className="h-[78vh] overflow-auto">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-black/85 text-zinc-300 backdrop-blur">
@@ -231,6 +276,21 @@ export default function Gainers() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="md:hidden space-y-3">
+        {displayRows.map((row, index) => (
+          <GainerRowMobile
+            key={`${row.symbol}-${index}`}
+            index={index}
+            symbol={row.symbol}
+            name={row.name}
+            change24h={row.change24h}
+            price={row.price}
+            volume={row.volume}
+            onAnalyse={handleAnalyseTicker}
+          />
+        ))}
       </div>
     </main>
   );
