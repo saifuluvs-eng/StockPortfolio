@@ -57,6 +57,8 @@ export default function Portfolio() {
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
 
+  const pageClass = "w-full max-w-full overflow-x-hidden space-y-4 px-3 sm:px-4 md:px-6 py-4";
+
   const queryClient = useQueryClient();
   const userId = user?.uid ?? null;
   const supabaseUserId = sessionUser?.id ?? null;

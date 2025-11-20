@@ -244,8 +244,8 @@ export default function Gainers() {
   }
 
   return (
-    <main className="p-4 text-zinc-200">
-      <h1 className="mb-4 text-lg font-semibold md:text-xl">All Top Gainers</h1>
+    <main className="w-full max-w-full overflow-x-hidden text-zinc-200 px-3 sm:px-4 md:px-6 py-4">
+      <h1 className="mb-4 text-base font-semibold md:text-lg">Top Gainers</h1>
 
       <div className="hidden md:block overflow-hidden rounded-xl border border-zinc-800">
         <div className="h-[78vh] overflow-auto">
