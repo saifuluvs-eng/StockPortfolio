@@ -1,4 +1,5 @@
 import { Route, Switch, Redirect, useLocation } from "wouter";
+import { useState } from "react";
 
 import { AuthProvider } from "@/auth/AuthContext";
 import RequireAuth from "@/auth/RequireAuth";
@@ -16,11 +17,13 @@ import News from "@/pages/news";
 import ResetPassword from "@/pages/ResetPassword";
 
 function ShellLayout({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="flex h-screen bg-[#0f0f0f] text-white">
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header />
+        <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <main className="flex-1 overflow-y-auto bg-background text-foreground">
           {children}
         </main>
