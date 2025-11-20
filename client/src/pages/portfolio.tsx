@@ -395,8 +395,8 @@ export default function Portfolio() {
           </div>
         )}
 
-        {/* Live market strip */}
-        <div className="mb-6">
+        {/* Live market strip - hidden on mobile */}
+        <div className="mb-6 hidden sm:block">
           <LiveSummary symbols={["BTCUSDT", "ETHUSDT"]} />
         </div>
 
@@ -474,7 +474,7 @@ export default function Portfolio() {
 
         {/* Holdings table */}
         <Card className="border-border">
-          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-6">
             <CardTitle>Holdings</CardTitle>
             <div className="flex items-center gap-2 flex-wrap">
               <Link href="/analyse/BTCUSDT">
@@ -490,20 +490,19 @@ export default function Portfolio() {
             </div>
           </CardHeader>
 
-          <CardContent>
-            <div className="w-full overflow-x-auto -mx-2 sm:mx-0">
-              <div className="inline-block min-w-full align-middle px-2 sm:px-0">
-              <table className="w-full text-sm min-w-[800px]">
+          <CardContent className="p-0 sm:p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-full sm:min-w-[800px]">
                 <thead>
                   <tr className="text-muted-foreground border-b border-border">
-                    <th className="text-left py-2 pr-4">COIN</th>
-                    <th className="text-right py-2 pr-4">QTY</th>
-                    <th className="text-right py-2 pr-4">ENTRY PRICE</th>
-                    <th className="text-right py-2 pr-4">CURRENT PRICE</th>
-                    <th className="text-right py-2 pr-4">Order Value</th>
-                    <th className="text-right py-2 pr-4">P&amp;L (USDT)</th>
-                    <th className="text-right py-2 pr-4">P&amp;L %</th>
-                    <th className="text-right py-2">ACTIONS</th>
+                    <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">COIN</th>
+                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">QTY</th>
+                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ENTRY</th>
+                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">CURRENT</th>
+                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ORDER</th>
+                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">P&amp;L</th>
+                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">%</th>
+                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ACTIONS</th>
                   </tr>
                 </thead>
 
@@ -556,27 +555,30 @@ export default function Portfolio() {
 
                       return (
                         <tr key={p.id} className="border-b border-border/50">
-                          <td className="py-3 pr-4 font-medium text-foreground">{sym}</td>
-                          <td className="py-3 pr-4 text-right">{p.qty}</td>
-                          <td className="py-3 pr-4 text-right">
+                          <td className="py-3 px-2 sm:px-4 font-medium text-foreground whitespace-nowrap">{sym}</td>
+                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">{p.qty}</td>
+                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">
                             ${p.avgPrice.toLocaleString("en-US", { maximumFractionDigits: 6 })}
                           </td>
-                          <td className="py-3 pr-4 text-right">
+                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">
                             ${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}
                           </td>
-                          <td className="py-3 pr-4 text-right">{fmt(orderValue)}</td>
-                          <td className={`py-3 pr-4 text-right ${pnlColor}`}>
+                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">{fmt(orderValue)}</td>
+                          <td className={`py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm ${pnlColor}`}>
                             {pnlValue >= 0 ? "+" : "-"}$
                             {Math.abs(pnlValue).toLocaleString("en-US", { maximumFractionDigits: 2 })}
                           </td>
-                          <td className={`py-3 pr-4 text-right ${pnlColor}`}>
+                          <td className={`py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm ${pnlColor}`}>
                             {pnlPct >= 0 ? "+" : "-"}
                             {Math.abs(pnlPct).toFixed(2)}%
                           </td>
-                          <td className="py-3 text-right">
-                            <div className="inline-flex items-center gap-2">
-                              <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan">
+                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1 sm:gap-2">
+                              <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan" className="hidden sm:inline-flex">
                                 <Search className="w-4 h-4 mr-1" /> Scan
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan" className="inline-flex sm:hidden min-h-[36px]">
+                                <Search className="w-4 h-4" />
                               </Button>
                               {sessionUser && (
                                 <Button
@@ -584,6 +586,7 @@ export default function Portfolio() {
                                   variant="destructive"
                                   onClick={() => handleDelete(p)}
                                   title="Delete"
+                                  className="min-h-[36px]"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </Button>
@@ -596,7 +599,6 @@ export default function Portfolio() {
                   </tbody>
                 )}
               </table>
-              </div>
             </div>
           </CardContent>
         </Card>
