@@ -1,13 +1,13 @@
 import { useAuth } from "@/auth/AuthContext";
 import { useLocation } from "wouter";
 import { Menu } from "lucide-react";
+import AccountDropdown from "@/components/auth/AccountDropdown";
 
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
-  const { user } = useAuth();
   const [pathname] = useLocation();
 
   const getPageTitle = (path: string) => {
@@ -43,7 +43,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         <h1 className="text-base font-semibold tracking-tight text-foreground truncate flex-1 md:flex-none md:text-lg">
           {getPageTitle(pathname)}
         </h1>
-        {user && <span className="hidden text-xs text-muted-foreground md:inline truncate">{user.email}</span>}
+        <AccountDropdown />
       </div>
     </header>
   );

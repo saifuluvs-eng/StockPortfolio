@@ -6,7 +6,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { usePortfolioStats } from "@/hooks/usePortfolioStats";
 import { usePositions } from "@/hooks/usePositions";
-import AccountDropdown from "@/components/auth/AccountDropdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
@@ -299,9 +298,6 @@ export default function Home() {
               Welcome back, {welcomeName}!
             </h1>
             <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
-          </div>
-          <div className="flex-shrink-0">
-            <AccountDropdown />
           </div>
         </div>
 
