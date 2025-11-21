@@ -115,7 +115,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       )}
       <aside
         className={[
-          "group relative h-screen bg-sidebar border-r border-sidebar-border transition-all duration-200 flex flex-col",
+          "group relative h-screen bg-sidebar border-r border-sidebar-border transition-all duration-200 flex flex-col overflow-hidden",
           isMobile && !isOpen ? "hidden" : "",
           isMobile && isOpen ? "fixed left-0 top-0 z-40 w-60" : "",
           !isMobile ? "block" : "",
@@ -206,7 +206,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         createPortal(
           <div
             ref={sbCardRef}
-            className="fixed z-[2147483647] w-80 rounded-2xl border border-white/10 bg-[#1a1a1a] text-white/90 shadow-2xl overflow-hidden"
+            className="fixed z-[2147483647] w-80 rounded-2xl border border-primary/40 bg-background/95 backdrop-blur text-foreground shadow-2xl overflow-hidden"
             style={{
               left: sbPos?.left ?? 0,
               top: sbPos?.top ?? -9999,
@@ -215,13 +215,13 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 py-3 border-b border-white/10 text-[15px]">Sidebar control</div>
+            <div className="px-4 py-3 border-b border-primary/20 text-[15px] font-semibold text-primary">Sidebar control</div>
             <div className="p-4 text-[15px] space-y-3">
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
                 <input
                   type="radio"
                   name="sb"
-                  className="accent-[#7ea1ff]"
+                  className="accent-primary"
                   checked={!isCollapsed && !expandOnHover}
                   onChange={() => {
                     setIsCollapsed(false);
@@ -231,11 +231,11 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 />
                 <span>Expanded</span>
               </label>
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
                 <input
                   type="radio"
                   name="sb"
-                  className="accent-[#7ea1ff]"
+                  className="accent-primary"
                   checked={isCollapsed && !expandOnHover}
                   onChange={() => {
                     setIsCollapsed(true);
@@ -245,11 +245,11 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 />
                 <span>Collapsed</span>
               </label>
-              <label className="flex items-center gap-3">
+              <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
                 <input
                   type="radio"
                   name="sb"
-                  className="accent-[#7ea1ff]"
+                  className="accent-primary"
                   checked={isCollapsed && expandOnHover}
                   onChange={() => {
                     setIsCollapsed(true);
