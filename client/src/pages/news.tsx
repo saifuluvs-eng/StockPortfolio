@@ -104,8 +104,9 @@ export default function NewsPage() {
             Stay ahead with curated headlines and sentiment straight from CryptoPanic.
           </p>
         </div>
-        <Button onClick={refresh} disabled={isFetching} className="w-full sm:w-auto">
-          <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+        <Button variant="outline" size="sm" onClick={refresh} disabled={isFetching} className="min-h-[44px]">
+          <RefreshCw className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Refresh</span>
         </Button>
       </div>
 

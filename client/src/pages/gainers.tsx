@@ -291,10 +291,10 @@ export default function Gainers() {
         <button
           onClick={() => fetchData(true)}
           disabled={isRefreshing}
-          className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 rounded-lg px-4 py-2 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 border-2 border-primary text-primary bg-transparent hover:bg-primary/10 active:bg-primary/20 rounded-lg px-3 py-1.5 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
         >
           <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-          {isRefreshing ? "Refreshing…" : "Refresh"}
+          <span className="hidden sm:inline">{isRefreshing ? "Refreshing…" : "Refresh"}</span>
         </button>
       </div>
 

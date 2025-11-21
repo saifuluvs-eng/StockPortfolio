@@ -375,13 +375,15 @@ export default function AIInsights() {
               <Link href="/gainers">View full gainers table</Link>
             </Button>
             <Button
+              variant="outline"
+              size="sm"
               onClick={() => void query.refetch()}
               disabled={!isAuthenticated || query.isFetching}
-              className="bg-primary text-primary-foreground"
+              className="min-h-[44px]"
               data-testid="button-refresh-insights"
             >
-              <RefreshCw className={`w-4 h-4 ${query.isFetching ? "animate-spin" : ""}`} />
-              <span className="ml-2">{query.isFetching ? "Refreshing..." : "Refresh"}</span>
+              <RefreshCw className={`w-4 h-4 sm:mr-2 ${query.isFetching ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{query.isFetching ? "Refreshing..." : "Refresh"}</span>
             </Button>
           </div>
         </div>
