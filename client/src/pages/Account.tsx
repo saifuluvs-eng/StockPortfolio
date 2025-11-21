@@ -81,7 +81,7 @@ export default function Account() {
       console.error(error);
       return alert("Couldn’t save profile. " + error.message);
     }
-    // small success hint (keep it quiet if you already use a toast lib)
+    setSaved(true);
     console.log("Profile saved");
   }
 
@@ -99,20 +99,26 @@ export default function Account() {
           <div className="px-4 py-3 border-b border-border text-muted-foreground">Profile</div>
           <div className="p-4 space-y-4">
             <div>
-              <label className="text-sm text-muted-foreground">Username</label>
+              <label className="text-sm text-muted-foreground">Username {saved && <span className="text-xs text-accent">(locked)</span>}</label>
               <input
                 value={profile.username ?? ""}
-                onChange={(e) => setProfile((p) => ({ ...p, username: e.target.value }))}
-                className="mt-1 w-full rounded-xl bg-input border border-border px-3 py-2 outline-none focus:border-ring text-foreground"
+                onChange={(e) => !saved && setProfile((p) => ({ ...p, username: e.target.value }))}
+                disabled={saved}
+                className={`mt-1 w-full rounded-xl bg-input border border-border px-3 py-2 outline-none focus:border-ring text-foreground ${saved ? "opacity-60 cursor-not-allowed" : ""}`}
               />
             </div>
-            <button
-              onClick={save}
-              disabled={saving}
-              className="rounded-xl border border-primary px-3 py-2 text-primary hover:bg-primary hover:text-primary-foreground border border-border px-4 py-2 text-foreground"
-            >
-              {saving ? "Saving…" : "Save changes"}
-            </button>
+            {!saved && (
+              <button
+                onClick={save}
+                disabled={saving}
+                className="rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 px-3 py-2 font-medium transition-all disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            )}
+            {saved && (
+              <p className="text-xs text-accent">Username saved and locked. Cannot be changed.</p>
+            )}
           </div>
         </div>
 
