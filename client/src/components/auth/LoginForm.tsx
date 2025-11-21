@@ -40,29 +40,29 @@ export default function LoginForm({ onSwitchToSignup }: { onSwitchToSignup: () =
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* Email */}
       <div>
-        <label className="text-sm text-white/70">Email</label>
+        <label className="text-sm text-muted-foreground">Email</label>
         <input
           {...register("email")}
           type="email"
-          className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 outline-none focus:border-white/20"
+          className="mt-1 w-full rounded-xl bg-input border border-border px-3 py-2 outline-none focus:border-ring text-foreground"
         />
         {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
       </div>
 
       {/* Password */}
       <div>
-        <label className="text-sm text-white/70">Password</label>
+        <label className="text-sm text-muted-foreground">Password</label>
         <input
           {...register("password")}
           type="password"
-          className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 outline-none focus:border-white/20"
+          className="mt-1 w-full rounded-xl bg-input border border-border px-3 py-2 outline-none focus:border-ring text-foreground"
         />
         {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
       </div>
 
       {/* Forgot password ABOVE the button */}
       <div className="text-sm -mt-1">
-        <Link className="text-blue-300/90 hover:underline" to="/reset-password">
+        <Link className="text-primary hover:underline" to="/reset-password">
           Forgot password?
         </Link>
       </div>
@@ -70,7 +70,7 @@ export default function LoginForm({ onSwitchToSignup }: { onSwitchToSignup: () =
       {/* Sign in button */}
       <button
         disabled={isSubmitting}
-        className="w-full rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 py-2"
+        className="w-full rounded-xl bg-muted hover:bg-muted/80 border border-border py-2 text-foreground"
       >
         {isSubmitting ? "Signing in…" : "Sign in"}
       </button>
