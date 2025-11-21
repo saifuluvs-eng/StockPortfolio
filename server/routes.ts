@@ -432,6 +432,9 @@ export function registerRoutes(app: Express): void {
   app.post('/api/ai/summary', async (req: Request, res: Response) => {
     try {
       const { symbol, tf } = req.body;
+      if (!symbol) {
+        return res.status(400).json({ error: "symbol is required" });
+      }
       const timeframe = tf || '4h';
       
       let technicalAnalysis: any;
@@ -442,10 +445,9 @@ export function registerRoutes(app: Express): void {
         technicalAnalysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
       } catch (error) {
         console.warn(`Could not fetch technical analysis for ${symbol}:`, error);
-        // Provide minimal technical data
         technicalAnalysis = {
           symbol,
-          totalScore: 0,
+          totalScore: 50,
           recommendation: 'hold',
           indicators: {}
         };
@@ -456,7 +458,6 @@ export function registerRoutes(app: Express): void {
         marketData = await binanceService.getTickerData(symbol);
       } catch (error) {
         console.warn(`Could not fetch market data for ${symbol}:`, error);
-        // Provide minimal market data
         marketData = {
           symbol,
           lastPrice: '0',
@@ -465,17 +466,38 @@ export function registerRoutes(app: Express): void {
         };
       }
       
-      // Generate AI summary
-      const aiInsight = await aiService.generateCryptoInsight(
-        symbol,
-        technicalAnalysis,
-        marketData
-      );
+      // Generate AI summary with robust error handling
+      let aiInsight: any;
+      try {
+        aiInsight = await aiService.generateCryptoInsight(
+          symbol,
+          technicalAnalysis,
+          marketData
+        );
+      } catch (aiError) {
+        console.error("AI service error, using fallback:", aiError);
+        // Return fallback response instead of 500
+        aiInsight = {
+          symbol,
+          analysisType: "technical",
+          signal: technicalAnalysis.recommendation === "BUY" ? "bullish" : technicalAnalysis.recommendation === "SELL" ? "bearish" : "neutral",
+          confidence: 0.5,
+          reasoning: "Technical analysis only - AI service temporarily unavailable",
+          recommendation: `Technical signal: ${technicalAnalysis.recommendation || "HOLD"}`,
+          timeframe: timeframe,
+          metadata: {
+            technicalScore: technicalAnalysis.totalScore || 50,
+            volumeAnalysis: "standard",
+            marketCondition: "analyzing",
+            riskLevel: "medium"
+          }
+        };
+      }
       
       res.json({ data: aiInsight });
     } catch (error) {
-      console.error("Error generating AI summary:", error);
-      res.status(500).json({ message: "Failed to generate AI summary" });
+      console.error("Error in /api/ai/summary:", error);
+      res.status(500).json({ error: "Failed to generate AI summary", message: error instanceof Error ? error.message : String(error) });
     }
   });
 
