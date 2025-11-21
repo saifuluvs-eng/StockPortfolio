@@ -52,7 +52,7 @@ export default function Login() {
             type="email"
             autoComplete="email"
             inputMode="email"
-            className="mt-1 w-full text-base rounded-xl bg-black/40 border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
+            className="mt-1 w-full text-base rounded-xl bg-card border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
           />
           {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
         </div>
@@ -62,7 +62,7 @@ export default function Login() {
             {...register("password")}
             type="password"
             autoComplete="current-password"
-            className="mt-1 w-full text-base rounded-xl bg-black/40 border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
+            className="mt-1 w-full text-base rounded-xl bg-card border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
           />
           {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
         </div>
@@ -75,10 +75,10 @@ export default function Login() {
         </button>
 
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm mt-2">
-          <Link className="text-blue-300/90 hover:underline min-h-[44px] flex items-center" to="/reset-password">
+          <Link className="text-primary/90 hover:underline min-h-[44px] flex items-center" to="/reset-password">
             Forgot password?
           </Link>
-          <Link className="text-blue-300/90 hover:underline min-h-[44px] flex items-center" to="/account">
+          <Link className="text-primary/90 hover:underline min-h-[44px] flex items-center" to="/account">
             Create account
           </Link>
         </div>

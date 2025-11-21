@@ -66,129 +66,127 @@
 }
 
 :root {
-  /* Elegant Deep Background - Premium Dark Theme */
-  --background: hsl(217, 32%, 5%);
-  --foreground: hsl(210, 40%, 95%);
+  /* Modern Premium Dark Theme */
+  --background: hsl(222, 47%, 7%);
+  --foreground: hsl(210, 40%, 98%);
   
-  /* Refined Cards with Depth */
-  --card: hsl(217, 28%, 11%);
-  --card-foreground: hsl(210, 35%, 92%);
-  --card-border: hsl(195, 45%, 22%);
+  /* Sophisticated Cards with Gradient Awareness */
+  --card: hsl(222, 40%, 13%);
+  --card-foreground: hsl(210, 40%, 98%);
+  --card-border: hsl(214, 35%, 25%);
   
-  /* Cybernetic Surfaces */
-  --popover: hsl(217, 28%, 11%);
-  --popover-foreground: hsl(210, 35%, 92%);
+  /* Elevated Surfaces */
+  --popover: hsl(222, 40%, 15%);
+  --popover-foreground: hsl(210, 40%, 98%);
   
-  /* Neon Cyan Primary */
-  --primary: hsl(195, 100%, 65%);
-  --primary-foreground: hsl(217, 32%, 5%);
+  /* Vibrant Cyan Primary */
+  --primary: hsl(190, 100%, 50%);
+  --primary-foreground: hsl(222, 47%, 7%);
   
-  /* Electric Purple Secondary */
-  --secondary: hsl(265, 45%, 15%);
-  --secondary-foreground: hsl(210, 35%, 92%);
+  /* Electric Violet Secondary */
+  --secondary: hsl(270, 100%, 55%);
+  --secondary-foreground: hsl(210, 40%, 98%);
   
-  /* Subtle Highlights */
-  --muted: hsl(217, 20%, 16%);
-  --muted-foreground: hsl(210, 20%, 65%);
+  /* Refined Muted Tones */
+  --muted: hsl(222, 20%, 24%);
+  --muted-foreground: hsl(210, 14%, 66%);
   
-  /* Neon Green Accent */
-  --accent: hsl(158, 100%, 50%);
-  --accent-foreground: hsl(217, 32%, 5%);
+  /* Vivid Green Accent */
+  --accent: hsl(140, 100%, 46%);
+  --accent-foreground: hsl(222, 47%, 7%);
   
-  /* Critical Red */
-  --destructive: hsl(0, 80%, 60%);
-  --destructive-foreground: hsl(0, 0%, 98%);
+  /* Warm Red */
+  --destructive: hsl(3, 92%, 54%);
+  --destructive-foreground: hsl(210, 40%, 98%);
   
-  /* Glowing Borders */
-  --border: hsl(195, 40%, 18%);
-  --input: hsl(217, 28%, 13%);
-  --ring: hsl(195, 100%, 65%);
+  /* Smart Borders & Inputs */
+  --border: hsl(214, 32%, 22%);
+  --input: hsl(222, 35%, 16%);
+  --ring: hsl(190, 100%, 50%);
   
   /* Trading Chart Colors */
-  --chart-1: hsl(195, 100%, 65%); /* Cyan */
-  --chart-2: hsl(158, 100%, 50%); /* Green */
-  --chart-3: hsl(45, 100%, 60%);  /* Gold */
-  --chart-4: hsl(280, 80%, 60%);  /* Purple */
-  --chart-5: hsl(0, 80%, 60%);    /* Red */
+  --chart-1: hsl(190, 100%, 50%);  /* Cyan */
+  --chart-2: hsl(140, 100%, 46%);  /* Green */
+  --chart-3: hsl(45, 100%, 55%);   /* Gold */
+  --chart-4: hsl(270, 100%, 55%);  /* Violet */
+  --chart-5: hsl(3, 92%, 54%);     /* Red */
   
-  /* Sidebar Cybernetic Theme - Unified */
-  --sidebar: hsl(217, 32%, 7%);
-  --sidebar-foreground: hsl(210, 35%, 92%);
-  --sidebar-primary: hsl(195, 100%, 65%);
-  --sidebar-primary-foreground: hsl(217, 32%, 5%);
-  --sidebar-accent: hsl(217, 20%, 16%);
-  --sidebar-accent-foreground: hsl(195, 100%, 65%);
-  --sidebar-border: hsl(195, 40%, 18%);
-  --sidebar-ring: hsl(195, 100%, 65%);
+  /* Sidebar Unified Theme */
+  --sidebar: hsl(222, 45%, 9%);
+  --sidebar-foreground: hsl(210, 40%, 98%);
+  --sidebar-primary: hsl(190, 100%, 50%);
+  --sidebar-primary-foreground: hsl(222, 47%, 7%);
+  --sidebar-accent: hsl(222, 25%, 22%);
+  --sidebar-accent-foreground: hsl(190, 100%, 50%);
+  --sidebar-border: hsl(214, 32%, 22%);
+  --sidebar-ring: hsl(190, 100%, 50%);
   
   /* Typography */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
   
-  /* Enhanced Radius for Futuristic Feel */
+  /* Refined Radius */
   --radius: 0.75rem;
   
-  /* Holographic Shadows - Refined */
-  --shadow-glow: 0 0 20px hsla(195, 100%, 65%, 0.15);
-  --shadow-card: 0 8px 32px hsla(195, 100%, 65%, 0.08);
-  --shadow-intense: 0 0 40px hsla(195, 100%, 65%, 0.2);
+  /* Modern Shadows */
+  --shadow-glow: 0 0 24px hsla(190, 100%, 50%, 0.12);
+  --shadow-card: 0 8px 32px hsla(190, 100%, 50%, 0.06);
+  --shadow-intense: 0 0 48px hsla(190, 100%, 50%, 0.16);
   
-  /* Profit/Loss Colors */
-  --profit: hsl(158, 100%, 50%);
-  --loss: hsl(0, 80%, 60%);
-  --neutral: hsl(210, 20%, 65%);
+  /* Trading Colors */
+  --profit: hsl(140, 100%, 46%);
+  --loss: hsl(3, 92%, 54%);
+  --neutral: hsl(210, 14%, 66%);
   
-  /* Special Effects */
-  --hologram-1: hsla(195, 100%, 65%, 0.08);
-  --hologram-2: hsla(280, 80%, 60%, 0.08);
-  --gradient-cyber: linear-gradient(135deg, hsl(195, 100%, 65%) 0%, hsl(280, 80%, 60%) 100%);
-  --gradient-profit: linear-gradient(135deg, hsl(158, 100%, 50%) 0%, hsl(195, 100%, 65%) 100%);
-  --gradient-loss: linear-gradient(135deg, hsl(0, 80%, 60%) 0%, hsl(280, 80%, 60%) 100%);
+  /* Subtle Effects */
+  --hologram-1: hsla(190, 100%, 50%, 0.08);
+  --hologram-2: hsla(270, 100%, 55%, 0.08);
+  --gradient-cyber: linear-gradient(135deg, hsl(190, 100%, 50%) 0%, hsl(270, 100%, 55%) 100%);
+  --gradient-profit: linear-gradient(135deg, hsl(140, 100%, 46%) 0%, hsl(190, 100%, 50%) 100%);
+  --gradient-loss: linear-gradient(135deg, hsl(3, 92%, 54%) 0%, hsl(270, 100%, 55%) 100%);
   
-  /* Neon Glow Effect */
-  --neon-glow: hsl(195, 100%, 60%);
+  /* Neon Cyan */
+  --neon-glow: hsl(190, 100%, 50%);
 }
 
 .dark {
-  /* Premium dark theme - unified and consistent */
-  --background: hsl(217, 32%, 5%);
-  --foreground: hsl(210, 40%, 95%);
-  --card: hsl(217, 28%, 11%);
-  --card-foreground: hsl(210, 35%, 92%);
-  --card-border: hsl(195, 45%, 22%);
-  --popover: hsl(217, 28%, 11%);
-  --popover-foreground: hsl(210, 35%, 92%);
-  --primary: hsl(195, 100%, 65%);
-  --primary-foreground: hsl(217, 32%, 5%);
-  --secondary: hsl(265, 45%, 15%);
-  --secondary-foreground: hsl(210, 35%, 92%);
-  --muted: hsl(217, 20%, 16%);
-  --muted-foreground: hsl(210, 20%, 65%);
-  --accent: hsl(158, 100%, 50%);
-  --accent-foreground: hsl(217, 32%, 5%);
-  --destructive: hsl(0, 80%, 60%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --border: hsl(195, 40%, 18%);
-  --input: hsl(217, 28%, 13%);
-  --ring: hsl(195, 100%, 65%);
-  --chart-1: hsl(195, 100%, 65%);
-  --chart-2: hsl(158, 100%, 50%);
-  --chart-3: hsl(45, 100%, 60%);
-  --chart-4: hsl(280, 80%, 60%);
-  --chart-5: hsl(0, 80%, 60%);
-  --sidebar: hsl(217, 32%, 7%);
-  --sidebar-foreground: hsl(210, 35%, 92%);
-  --sidebar-primary: hsl(195, 100%, 65%);
-  --sidebar-primary-foreground: hsl(217, 32%, 5%);
-  --sidebar-accent: hsl(217, 20%, 16%);
-  --sidebar-accent-foreground: hsl(195, 100%, 65%);
-  --sidebar-border: hsl(195, 40%, 18%);
-  --sidebar-ring: hsl(195, 100%, 65%);
+  /* Same as root */
+  --background: hsl(222, 47%, 7%);
+  --foreground: hsl(210, 40%, 98%);
+  --card: hsl(222, 40%, 13%);
+  --card-foreground: hsl(210, 40%, 98%);
+  --card-border: hsl(214, 35%, 25%);
+  --popover: hsl(222, 40%, 15%);
+  --popover-foreground: hsl(210, 40%, 98%);
+  --primary: hsl(190, 100%, 50%);
+  --primary-foreground: hsl(222, 47%, 7%);
+  --secondary: hsl(270, 100%, 55%);
+  --secondary-foreground: hsl(210, 40%, 98%);
+  --muted: hsl(222, 20%, 24%);
+  --muted-foreground: hsl(210, 14%, 66%);
+  --accent: hsl(140, 100%, 46%);
+  --accent-foreground: hsl(222, 47%, 7%);
+  --destructive: hsl(3, 92%, 54%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --border: hsl(214, 32%, 22%);
+  --input: hsl(222, 35%, 16%);
+  --ring: hsl(190, 100%, 50%);
+  --chart-1: hsl(190, 100%, 50%);
+  --chart-2: hsl(140, 100%, 46%);
+  --chart-3: hsl(45, 100%, 55%);
+  --chart-4: hsl(270, 100%, 55%);
+  --chart-5: hsl(3, 92%, 54%);
+  --sidebar: hsl(222, 45%, 9%);
+  --sidebar-foreground: hsl(210, 40%, 98%);
+  --sidebar-primary: hsl(190, 100%, 50%);
+  --sidebar-primary-foreground: hsl(222, 47%, 7%);
+  --sidebar-accent: hsl(222, 25%, 22%);
+  --sidebar-accent-foreground: hsl(190, 100%, 50%);
+  --sidebar-border: hsl(214, 32%, 22%);
+  --sidebar-ring: hsl(190, 100%, 50%);
   --radius: 0.75rem;
-  
-  /* Neon Glow Effect */
-  --neon-glow: hsl(195, 100%, 60%);
+  --neon-glow: hsl(190, 100%, 50%);
 }
 
 @layer base {

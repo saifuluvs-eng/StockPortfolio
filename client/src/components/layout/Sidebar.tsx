@@ -110,7 +110,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     <>
       {isMobile && isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          className="fixed inset-0 bg-muted/50 z-30 md:hidden"
           onClick={onClose}
         />
       )}

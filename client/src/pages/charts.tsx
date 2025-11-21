@@ -537,14 +537,14 @@ export default function Charts() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">24h Change</p>
-              <p className={`text-lg font-bold ${isPositive ? "text-green-500" : "text-red-500"}`}>
+              <p className={`text-lg font-bold ${isPositive ? "text-accent" : "text-destructive"}`}>
                 {showLoadingState ? loadingMessage : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`}
               </p>
             </div>
             {isPositive ? (
-              <TrendingUp className="h-5 w-5 text-green-500" />
+              <TrendingUp className="h-5 w-5 text-accent" />
             ) : (
-              <TrendingDown className="h-5 w-5 text-red-500" />
+              <TrendingDown className="h-5 w-5 text-destructive" />
             )}
           </div>
         </CardContent>
@@ -911,9 +911,9 @@ function formatVolume(volume?: string) {
 
 function getScoreColor(score: number) {
   if (score >= 10) return "text-green-600";
-  if (score >= 5) return "text-green-500";
+  if (score >= 5) return "text-accent";
   if (score <= -10) return "text-red-600";
-  if (score <= -5) return "text-red-500";
+  if (score <= -5) return "text-destructive";
   return "text-yellow-500";
 }
 
@@ -935,7 +935,7 @@ function getRecommendationColor(recommendation: string) {
     case "strong_buy":
       return "bg-green-600 text-white";
     case "buy":
-      return "bg-green-500 text-white";
+      return "text-accent text-white";
     case "strong_sell":
       return "bg-red-600 text-white";
     case "sell":

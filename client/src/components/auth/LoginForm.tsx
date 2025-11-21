@@ -81,7 +81,7 @@ export default function LoginForm({ onSwitchToSignup }: { onSwitchToSignup: () =
         <button
           type="button"
           onClick={onSwitchToSignup}
-          className="text-blue-300/90 hover:underline"
+          className="text-primary/90 hover:underline"
         >
           Sign Up Now
         </button>

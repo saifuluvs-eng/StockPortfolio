@@ -33,7 +33,7 @@ export default function ResetPassword() {
           <input
             {...register("email")}
             type="email"
-            className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 outline-none focus:border-white/20"
+            className="mt-1 w-full rounded-xl bg-card border border-white/10 px-3 py-2 outline-none focus:border-white/20"
           />
           {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
         </div>
@@ -46,7 +46,7 @@ export default function ResetPassword() {
         </button>
 
         <div className="text-sm">
-          <Link className="text-blue-300/90 hover:underline" to="/account">
+          <Link className="text-primary/90 hover:underline" to="/account">
             Back to account
           </Link>
         </div>

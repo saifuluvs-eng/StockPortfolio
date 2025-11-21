@@ -255,7 +255,7 @@ export default function Home() {
   // ---------- Displays ----------
   const portfolioValueDisplay = `$${nf2.format(safeTotalValue)}`;
   const portfolioPctDisplay = `${safeTotalPnlPercent >= 0 ? "+" : ""}${nf2.format(safeTotalPnlPercent)}%`;
-  const pctColorClass = safeTotalPnlPercent >= 0 ? "text-green-500" : "text-red-500";
+  const pctColorClass = safeTotalPnlPercent >= 0 ? "text-accent" : "text-destructive";
 
   const top3 = gain?.top ?? null;
   const gainersDisplay =
@@ -335,7 +335,7 @@ export default function Home() {
                     <p className="text-[10px] text-muted-foreground mt-0.5">24h change</p>
                     <p className="text-[8px] text-muted-foreground mt-0.5 truncate">Last updated {gainRefreshed}</p>
                   </div>
-                  <Award className="w-6 sm:w-8 h-6 sm:h-8 text-green-500 flex-shrink-0" />
+                  <Award className="w-6 sm:w-8 h-6 sm:h-8 text-accent flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -402,7 +402,7 @@ export default function Home() {
                   <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">AI Signals</h3>
                   <p className="text-xs text-muted-foreground truncate">Market analysis</p>
                   <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5" data-testid="text-ai-signals">{aiDisplay}</p>
-                  <p className="text-xs text-green-500">Active insights</p>
+                  <p className="text-xs text-accent">Active insights</p>
                 </div>
                 <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-indigo-500 flex-shrink-0" />
               </div>
@@ -454,7 +454,7 @@ export default function Home() {
                   <p className="font-semibold" data-testid="text-btc-price">
                     ${nf2.format(prices.BTCUSDT ?? parseFloat((btcTicker as any)?.price || "0"))}
                   </p>
-                  <p className={`text-sm ${parseFloat((btcChange as any)?.priceChangePercent || "0") >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="text-btc-change">
+                  <p className={`text-sm ${parseFloat((btcChange as any)?.priceChangePercent || "0") >= 0 ? "text-accent" : "text-destructive"}`} data-testid="text-btc-change">
                     {parseFloat((btcChange as any)?.priceChangePercent || "0") >= 0 ? "+" : ""}
                     {nf2.format(parseFloat((btcChange as any)?.priceChangePercent || "0"))}%
                   </p>
@@ -466,7 +466,7 @@ export default function Home() {
                   <p className="font-semibold" data-testid="text-eth-price">
                     ${nf2.format(prices.ETHUSDT ?? parseFloat((ethTicker as any)?.price || "0"))}
                   </p>
-                  <p className={`text-sm ${parseFloat((ethChange as any)?.priceChangePercent || "0") >= 0 ? "text-green-500" : "text-red-500"}`} data-testid="text-eth-change">
+                  <p className={`text-sm ${parseFloat((ethChange as any)?.priceChangePercent || "0") >= 0 ? "text-accent" : "text-destructive"}`} data-testid="text-eth-change">
                     {parseFloat((ethChange as any)?.priceChangePercent || "0") >= 0 ? "+" : ""}
                     {nf2.format(parseFloat((ethChange as any)?.priceChangePercent || "0"))}%
                   </p>
@@ -499,7 +499,7 @@ export default function Home() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="w-2 h-2 text-accent rounded-full"></div>
                 <span className="text-sm text-foreground">Market sentiment: Bullish</span>
               </div>
               <div className="flex items-center space-x-3">
@@ -525,7 +525,7 @@ export default function Home() {
               <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-accent rounded-full"></div><span className="text-sm text-foreground">Real-time market data from Binance</span></div>
               <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-primary rounded-full"></div><span className="text-sm text-foreground">15+ Technical indicators</span></div>
               <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-purple-500 rounded-full"></div><span className="text-sm text-foreground">AI-powered analysis</span></div>
-              <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-green-500 rounded-full"></div><span className="text-sm text-foreground">Smart alert system</span></div>
+              <div className="flex items-center space-x-3"><div className="w-2 h-2 text-accent rounded-full"></div><span className="text-sm text-foreground">Smart alert system</span></div>
               <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-blue-500 rounded-full"></div><span className="text-sm text-foreground">Portfolio P&L tracking</span></div>
             </CardContent>
           </Card>

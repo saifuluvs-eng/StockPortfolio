@@ -88,16 +88,16 @@ function IndicatorCard({
 
   const dot =
     signal === "bullish"
-      ? "bg-green-500"
+      ? "text-accent"
       : signal === "bearish"
       ? "bg-red-500"
       : "bg-yellow-500";
 
   const badge =
     signal === "bullish"
-      ? "text-green-500"
+      ? "text-accent"
       : signal === "bearish"
-      ? "text-red-500"
+      ? "text-destructive"
       : "text-yellow-500";
 
   const scoreText = score > 0 ? `+${score}` : `${score}`;

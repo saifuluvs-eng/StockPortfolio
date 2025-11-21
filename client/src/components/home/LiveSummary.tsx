@@ -75,10 +75,10 @@ export default function LiveSummary({ symbols = ["BTCUSDT", "ETHUSDT"] }: Props)
               <div>
                 <p className="text-sm text-muted-foreground">24h Change</p>
                 <div className="flex items-center gap-2">
-                  <span className={`text-lg font-bold ${isPos ? "text-green-500" : "text-red-500"}`}>
+                  <span className={`text-lg font-bold ${isPos ? "text-accent" : "text-destructive"}`}>
                     {`${pct > 0 ? "+" : ""}${pct.toFixed(2)}%`}
                   </span>
-                  {isPos ? <TrendingUp className="w-5 h-5 text-green-500" /> : <TrendingDown className="w-5 h-5 text-red-500" />}
+                  {isPos ? <TrendingUp className="w-5 h-5 text-accent" /> : <TrendingDown className="w-5 h-5 text-destructive" />}
                 </div>
               </div>
             </div>

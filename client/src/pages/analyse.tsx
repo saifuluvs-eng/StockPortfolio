@@ -842,14 +842,14 @@ export default function Analyse() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">24h Change</p>
-              <p className={`text-lg font-bold ${isPositive ? "text-green-500" : "text-red-500"}`}>
+              <p className={`text-lg font-bold ${isPositive ? "text-accent" : "text-destructive"}`}>
                 {showLoadingState ? loadingMessage : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`}
               </p>
             </div>
             {isPositive ? (
-              <TrendingUp className="h-5 w-5 text-green-500" />
+              <TrendingUp className="h-5 w-5 text-accent" />
             ) : (
-              <TrendingDown className="h-5 w-5 text-red-500" />
+              <TrendingDown className="h-5 w-5 text-destructive" />
             )}
           </div>
         </CardContent>

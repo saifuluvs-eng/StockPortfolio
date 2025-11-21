@@ -90,7 +90,7 @@ export default function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () =>
       {/* Switch back to login UNDER the button (nice-to-have) */}
       <div className="text-sm text-muted-foreground">
         Already have an account?{" "}
-        <button type="button" onClick={onSwitchToLogin} className="text-blue-300/90 hover:underline">
+        <button type="button" onClick={onSwitchToLogin} className="text-primary/90 hover:underline">
           Sign in
         </button>
       </div>

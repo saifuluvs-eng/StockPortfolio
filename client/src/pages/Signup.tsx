@@ -60,7 +60,7 @@ export default function Signup() {
             type="email"
             autoComplete="email"
             inputMode="email"
-            className="mt-1 w-full text-base rounded-xl bg-black/40 border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
+            className="mt-1 w-full text-base rounded-xl bg-card border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
           />
           {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
         </div>
@@ -70,7 +70,7 @@ export default function Signup() {
             {...register("password")}
             type="password"
             autoComplete="new-password"
-            className="mt-1 w-full text-base rounded-xl bg-black/40 border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
+            className="mt-1 w-full text-base rounded-xl bg-card border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
           />
           {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
           <p className="text-xs text-white/50 mt-1">Min 8 chars, include a number & a symbol.</p>
@@ -81,7 +81,7 @@ export default function Signup() {
             {...register("confirm")}
             type="password"
             autoComplete="new-password"
-            className="mt-1 w-full text-base rounded-xl bg-black/40 border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
+            className="mt-1 w-full text-base rounded-xl bg-card border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
           />
           {errors.confirm && <p className="text-xs text-red-400 mt-1">{errors.confirm.message}</p>}
         </div>
@@ -97,7 +97,7 @@ export default function Signup() {
           Already have an account? {" "}
           <AuthButton
             size="sm"
-            className="inline-flex !bg-transparent !border-none !px-2 !py-0 text-blue-300/90 hover:underline"
+            className="inline-flex !bg-transparent !border-none !px-2 !py-0 text-primary/90 hover:underline"
           />
         </div>
       </form>
