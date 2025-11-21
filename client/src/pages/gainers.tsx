@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLoginGate } from "@/auth/useLoginGate";
 import { go } from "@/lib/nav";
+import { RefreshCw } from "lucide-react";
 
 const numberFormatter = new Intl.NumberFormat("en-US", { notation: "compact" });
+const CACHE_KEY = "gainers_data_cache";
+const TIMESTAMP_KEY = "gainers_data_timestamp";
 
 const MIN_USD_VOL = 1_000_000;
 
@@ -138,6 +141,8 @@ export default function Gainers() {
   const [rows, setRows] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { requireLogin } = useLoginGate();
 
   const handleAnalyseTicker = (ticker: string) => {
@@ -145,69 +150,98 @@ export default function Gainers() {
     go(`#/analyse/${ticker}`);
   };
 
-  useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
+  const formatTimestamp = (date: Date) => {
+    return date.toLocaleTimeString("en-US", { 
+      hour: "2-digit", 
+      minute: "2-digit", 
+      second: "2-digit" 
+    });
+  };
+
+  const fetchData = async (isRefresh: boolean = false) => {
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
       setLoading(true);
-      setError(null);
-      setRows(null);
+    }
+    setError(null);
+    try {
+      const [exRes, tRes] = await Promise.all([
+        fetch("https://api.binance.com/api/v3/exchangeInfo"),
+        fetch("https://api.binance.com/api/v3/ticker/24hr"),
+      ]);
+
+      if (!exRes.ok) throw new Error(`exchangeInfo HTTP ${exRes.status}`);
+      if (!tRes.ok) throw new Error(`ticker24hr HTTP ${tRes.status}`);
+
+      const ex = await exRes.json();
+      const tickers: any[] = await tRes.json();
+
+      const allowed = new Set<string>(
+        (ex?.symbols ?? [])
+          .filter(
+            (s: any) =>
+              s?.status === "TRADING" &&
+              s?.quoteAsset === "USDT" &&
+              (s?.isSpotTradingAllowed === true || (s?.permissions ?? []).includes("SPOT")),
+          )
+          .map((s: any) => String(s?.symbol)),
+      );
+
+      const top = tickers
+        .filter((t: any) => {
+          const sym = String(t?.symbol || "");
+          if (!allowed.has(sym)) return false;
+          if (isLeveragedName(sym)) return false;
+          const volUSD = num(t?.quoteVolume);
+          return volUSD >= MIN_USD_VOL;
+        })
+        .map((t: any) => ({
+          symbol: t.symbol,
+          name: t.symbol,
+          price: num(t.lastPrice ?? t.prevClosePrice ?? t.weightedAvgPrice),
+          change24h: num(t.priceChangePercent),
+          volumeUSDT: num(t.quoteVolume),
+        }))
+        .sort((a: any, b: any) => b.change24h - a.change24h)
+        .slice(0, 20);
+
+      if (top.length === 0)
+        setError("No gainers matched the SPOT/USDT/$1M filters.");
+      
+      const now = new Date();
+      setRows(top);
+      setLastUpdated(now);
+      
+      // Cache the data and timestamp
+      localStorage.setItem(CACHE_KEY, JSON.stringify(top));
+      localStorage.setItem(TIMESTAMP_KEY, now.toISOString());
+    } catch (e: any) {
+      setError(e?.message || "Failed to load gainers.");
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    // Try to load from cache first
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    const cachedTimestamp = localStorage.getItem(TIMESTAMP_KEY);
+    
+    if (cachedData && cachedTimestamp) {
       try {
-        const [exRes, tRes] = await Promise.all([
-          fetch("https://api.binance.com/api/v3/exchangeInfo"),
-          fetch("https://api.binance.com/api/v3/ticker/24hr"),
-        ]);
-
-        if (!exRes.ok) throw new Error(`exchangeInfo HTTP ${exRes.status}`);
-        if (!tRes.ok) throw new Error(`ticker24hr HTTP ${tRes.status}`);
-
-        const ex = await exRes.json();
-        const tickers: any[] = await tRes.json();
-
-        const allowed = new Set<string>(
-          (ex?.symbols ?? [])
-            .filter(
-              (s: any) =>
-                s?.status === "TRADING" &&
-                s?.quoteAsset === "USDT" &&
-                (s?.isSpotTradingAllowed === true || (s?.permissions ?? []).includes("SPOT")),
-            )
-            .map((s: any) => String(s?.symbol)),
-        );
-
-        const top = tickers
-          .filter((t: any) => {
-            const sym = String(t?.symbol || "");
-            if (!allowed.has(sym)) return false;
-            if (isLeveragedName(sym)) return false;
-            const volUSD = num(t?.quoteVolume);
-            return volUSD >= MIN_USD_VOL;
-          })
-          .map((t: any) => ({
-            symbol: t.symbol,
-            name: t.symbol,
-            price: num(t.lastPrice ?? t.prevClosePrice ?? t.weightedAvgPrice),
-            change24h: num(t.priceChangePercent),
-            volumeUSDT: num(t.quoteVolume),
-          }))
-          .sort((a: any, b: any) => b.change24h - a.change24h)
-          .slice(0, 20);
-
-        if (!cancelled) {
-          if (top.length === 0)
-            setError("No gainers matched the SPOT/USDT/$1M filters.");
-          setRows(top);
-        }
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Failed to load gainers.");
-      } finally {
-        if (!cancelled) setLoading(false);
+        setRows(JSON.parse(cachedData));
+        setLastUpdated(new Date(cachedTimestamp));
+        setLoading(false);
+      } catch {
+        // If cache is corrupted, fetch fresh data
+        fetchData(false);
       }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
+    } else {
+      // No cache, fetch fresh data
+      fetchData(false);
+    }
   }, []);
 
   const displayRows = useMemo<DisplayRow[]>(() => {
@@ -245,7 +279,24 @@ export default function Gainers() {
 
   return (
     <main className="w-full max-w-full overflow-x-hidden text-zinc-200 px-3 sm:px-4 md:px-6 py-4">
-      <h1 className="mb-4 text-base font-semibold md:text-lg">Top Gainers</h1>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-base font-semibold md:text-lg">Top Gainers</h1>
+          {lastUpdated && (
+            <p className="text-xs text-zinc-400 mt-1">
+              Last updated: {formatTimestamp(lastUpdated)}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => fetchData(true)}
+          disabled={isRefreshing}
+          className="flex items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm hover:bg-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+          {isRefreshing ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
 
       <div className="hidden md:block overflow-hidden rounded-xl border border-zinc-800">
         <div className="h-[78vh] overflow-auto">
