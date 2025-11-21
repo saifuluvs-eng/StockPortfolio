@@ -149,7 +149,9 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         {items
           .filter((item) => (loading ? true : item.visible ? item.visible(user) : true))
           .map((item) => {
-            const isActive = currentPath === item.to;
+            const isActive = item.to === "/analyse" 
+              ? currentPath.startsWith("/analyse")
+              : currentPath === item.to;
             const handleClick = () => {
               if (isMobile && isOpen) {
                 onClose?.();

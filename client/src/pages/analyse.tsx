@@ -347,9 +347,27 @@ export default function Analyse() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.symbol, querySymbol, queryTimeframe]);
 
+  // Helper to display symbol without USDT
+  const displaySymbol = (sym: string) => {
+    const upper = (sym || "").toUpperCase();
+    return upper.endsWith("USDT") ? upper.slice(0, -4) : upper;
+  };
+
   useEffect(() => {
-    setSymbolInput(selectedSymbol || DEFAULT_SYMBOL);
+    setSymbolInput(displaySymbol(selectedSymbol) || displaySymbol(DEFAULT_SYMBOL));
   }, [selectedSymbol]);
+
+  // Auto-trigger analysis when page loads with symbol from URL/sidebar
+  useEffect(() => {
+    if (isFirstRenderRef.current && selectedSymbol) {
+      isFirstRenderRef.current = false;
+      // Delay slightly to ensure DOM is ready
+      const timer = setTimeout(() => {
+        runAnalysis(selectedSymbol, timeframe);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     if (!matchWithParam) return;
@@ -711,7 +729,7 @@ export default function Analyse() {
     const fullSymbol = toUsdtSymbol(raw);
     setSelectedSymbol(fullSymbol);
     setScanResult(null);
-    setSymbolInput(fullSymbol);
+    setSymbolInput(displaySymbol(fullSymbol));
     setChartSymbol(normalizeSymbol(fullSymbol));
     setChartTf(timeframe);
 
@@ -752,12 +770,12 @@ export default function Analyse() {
     if (
       raw &&
       raw !== selectedSymbol &&
-      raw !== asString(displayPair(selectedSymbol)).replace("/USDT", "")
+      raw !== displaySymbol(selectedSymbol)
     ) {
       const fullSymbol = toUsdtSymbol(raw);
       targetSymbol = fullSymbol;
       setSelectedSymbol(fullSymbol);
-      setSymbolInput(fullSymbol);
+      setSymbolInput(displaySymbol(fullSymbol));
     }
 
     if (!targetSymbol) {
@@ -935,7 +953,7 @@ export default function Analyse() {
               <Input
                 placeholder="Enter coin (BTC, ETH, SOL...)"
                 value={symbolInput}
-                onChange={(e) => setSymbolInput(e.target.value)}
+                onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
                 onKeyPress={handleKeyPress}
                 className="h-11 w-full min-w-0 pl-10"
                 data-testid="input-search-symbol"
