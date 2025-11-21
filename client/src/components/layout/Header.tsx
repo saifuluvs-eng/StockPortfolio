@@ -1,7 +1,9 @@
 import { useAuth } from "@/auth/AuthContext";
 import { useLocation } from "wouter";
 import { Menu } from "lucide-react";
-import AccountDropdown from "@/components/auth/AccountDropdown";
+import { Suspense, lazy } from "react";
+
+const AccountDropdown = lazy(() => import("@/components/auth/AccountDropdown"));
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -43,7 +45,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
         <h1 className="text-base font-semibold tracking-tight text-foreground truncate flex-1 md:flex-none md:text-lg">
           {getPageTitle(pathname)}
         </h1>
-        <AccountDropdown />
+        <Suspense fallback={<div className="w-10 h-10" />}>
+          <AccountDropdown />
+        </Suspense>
       </div>
     </header>
   );
