@@ -47,48 +47,48 @@ export default function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () =>
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* Email */}
       <div>
-        <label className="text-sm text-white/70">Email</label>
+        <label className="text-sm text-muted-foreground">Email</label>
         <input
           {...register("email")}
           type="email"
-          className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 outline-none focus:border-white/20"
+          className="mt-1 w-full rounded-xl bg-input border border-border px-3 py-2 outline-none focus:border-ring text-foreground"
         />
-        {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
+        {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
       </div>
 
       {/* Password */}
       <div>
-        <label className="text-sm text-white/70">Password</label>
+        <label className="text-sm text-muted-foreground">Password</label>
         <input
           {...register("password")}
           type="password"
-          className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 outline-none focus:border-white/20"
+          className="mt-1 w-full rounded-xl bg-input border border-border px-3 py-2 outline-none focus:border-ring text-foreground"
         />
-        {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
-        <p className="text-[11px] text-white/50 mt-1">Min 8 chars, include a number & a symbol.</p>
+        {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+        <p className="text-[11px] text-muted-foreground/60 mt-1">Min 8 chars, include a number & a symbol.</p>
       </div>
 
       {/* Confirm */}
       <div>
-        <label className="text-sm text-white/70">Confirm password</label>
+        <label className="text-sm text-muted-foreground">Confirm password</label>
         <input
           {...register("confirm")}
           type="password"
-          className="mt-1 w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 outline-none focus:border-white/20"
+          className="mt-1 w-full rounded-xl bg-input border border-border px-3 py-2 outline-none focus:border-ring text-foreground"
         />
-        {errors.confirm && <p className="text-xs text-red-400 mt-1">{errors.confirm.message}</p>}
+        {errors.confirm && <p className="text-xs text-destructive mt-1">{errors.confirm.message}</p>}
       </div>
 
       {/* Sign up button */}
       <button
         disabled={isSubmitting}
-        className="w-full rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 py-2"
+        className="w-full rounded-xl bg-muted hover:bg-muted/80 border border-border py-2 text-foreground"
       >
         {isSubmitting ? "Creating…" : "Sign up"}
       </button>
 
       {/* Switch back to login UNDER the button (nice-to-have) */}
-      <div className="text-sm text-white/80">
+      <div className="text-sm text-muted-foreground">
         Already have an account?{" "}
         <button type="button" onClick={onSwitchToLogin} className="text-blue-300/90 hover:underline">
           Sign in
