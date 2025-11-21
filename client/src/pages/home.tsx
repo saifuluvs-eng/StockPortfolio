@@ -6,12 +6,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
 import { usePortfolioStats } from "@/hooks/usePortfolioStats";
 import { usePositions } from "@/hooks/usePositions";
-import AuthButton from "@/components/auth/AuthButton";
+import AccountDropdown from "@/components/auth/AccountDropdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
 import { getQueryFn } from "@/lib/queryClient";
 import { usePrices } from "@/lib/prices";
+import { supabase } from "@/lib/supabase";
 import {
   TrendingUp,
   BarChart3,
@@ -81,11 +82,11 @@ export default function Home() {
     async function loadProfile() {
       if (!user) return;
       try {
-        const { data } = await import("@/lib/supabase").then(m => m.supabase
+        const { data } = await supabase
           .from("profiles")
           .select("username")
           .eq("id", user.id)
-          .maybeSingle());
+          .maybeSingle();
         if (data?.username) setProfileUsername(data.username);
       } catch (err) {
         console.log("Could not load profile username");
@@ -300,7 +301,7 @@ export default function Home() {
             <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
           </div>
           <div className="flex-shrink-0">
-            <AuthButton size="sm" />
+            <AccountDropdown />
           </div>
         </div>
 
@@ -473,11 +474,11 @@ export default function Home() {
                 <span className="text-sm text-muted-foreground">BTC/USDT</span>
                 <div className="text-right">
                   <p className="font-semibold" data-testid="text-btc-price">
-                    ${nf2.format(prices.BTCUSDT ?? parseFloat((btcTicker as any)?.price || "0"))}
+                    ${nf2.format(prices.BTCUSDT || 0)}
                   </p>
-                  <p className={`text-sm ${parseFloat((btcChange as any)?.priceChangePercent || "0") >= 0 ? "text-accent" : "text-destructive"}`} data-testid="text-btc-change">
-                    {parseFloat((btcChange as any)?.priceChangePercent || "0") >= 0 ? "+" : ""}
-                    {nf2.format(parseFloat((btcChange as any)?.priceChangePercent || "0"))}%
+                  <p className={`text-sm ${parseFloat(String(btcChange?.priceChangePercent || "0")) >= 0 ? "text-accent" : "text-destructive"}`} data-testid="text-btc-change">
+                    {parseFloat(String(btcChange?.priceChangePercent || "0")) >= 0 ? "+" : ""}
+                    {nf2.format(parseFloat(String(btcChange?.priceChangePercent || "0")))}%
                   </p>
                 </div>
               </div>
@@ -485,11 +486,11 @@ export default function Home() {
                 <span className="text-sm text-muted-foreground">ETH/USDT</span>
                 <div className="text-right">
                   <p className="font-semibold" data-testid="text-eth-price">
-                    ${nf2.format(prices.ETHUSDT ?? parseFloat((ethTicker as any)?.price || "0"))}
+                    ${nf2.format(prices.ETHUSDT || 0)}
                   </p>
-                  <p className={`text-sm ${parseFloat((ethChange as any)?.priceChangePercent || "0") >= 0 ? "text-accent" : "text-destructive"}`} data-testid="text-eth-change">
-                    {parseFloat((ethChange as any)?.priceChangePercent || "0") >= 0 ? "+" : ""}
-                    {nf2.format(parseFloat((ethChange as any)?.priceChangePercent || "0"))}%
+                  <p className={`text-sm ${parseFloat(String(ethChange?.priceChangePercent || "0")) >= 0 ? "text-accent" : "text-destructive"}`} data-testid="text-eth-change">
+                    {parseFloat(String(ethChange?.priceChangePercent || "0")) >= 0 ? "+" : ""}
+                    {nf2.format(parseFloat(String(ethChange?.priceChangePercent || "0")))}%
                   </p>
                 </div>
               </div>

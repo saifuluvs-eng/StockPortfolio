@@ -31,7 +31,6 @@ const items: NavItem[] = [
   { label: "Alerts", to: "/alerts", icon: <Bell size={20} />, visible: (user) => !!user },
   { label: "AI Insights", to: "/ai-insights", icon: <BarChart2 size={20} /> },
   { label: "News", to: "/news", icon: <Newspaper size={20} /> },
-  { label: "Account", to: "/account", icon: <User2 size={20} /> },
 ];
 
 interface SidebarProps {
