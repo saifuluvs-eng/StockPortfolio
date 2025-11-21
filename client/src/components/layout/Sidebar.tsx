@@ -116,7 +116,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       )}
       <aside
         className={[
-          "group relative h-screen bg-[#121212] border-r border-white/5 transition-all duration-200 flex flex-col",
+          "group relative h-screen bg-sidebar border-r border-sidebar-border transition-all duration-200 flex flex-col",
           isMobile && !isOpen ? "hidden" : "",
           isMobile && isOpen ? "fixed left-0 top-0 z-40 w-60" : "",
           !isMobile ? "block" : "",
