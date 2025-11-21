@@ -211,7 +211,7 @@ export function AssetAllocationChart({ data, isLoading, showTable }: AssetAlloca
                         </td>
                         <td className="p-4 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Badge variant="secondary">
+                            <Badge variant="default">
                               {item.percentage.toFixed(1)}%
                             </Badge>
                             <div className="w-16 h-2 bg-muted rounded-full">

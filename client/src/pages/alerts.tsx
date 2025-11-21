@@ -119,7 +119,7 @@ export default function AlertsPage() {
                 Star at least one pair from the watchlist or charts to begin receiving price movement alerts.
               </p>
               <Link href="/watchlist">
-                <Button variant="secondary" className="mt-4">
+                <Button variant="default" className="mt-4">
                   Manage watchlist
                 </Button>
               </Link>
@@ -136,7 +136,7 @@ export default function AlertsPage() {
 mary/60 hover:bg-primary/5 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <Badge variant="secondary" className="gap-1">
+                      <Badge variant="default" className="gap-1">
                         <Sparkles className="h-3.5 w-3.5" />
                         Priority
                       </Badge>

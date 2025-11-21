@@ -40,7 +40,7 @@ export default function AiSummaryPanel({ symbol, tf }: AiSummaryPanelProps) {
         <h3 className="text-lg font-semibold">AI Summary</h3>
         <div className="flex items-center gap-2">
           <Button
-            variant="secondary"
+            variant="default"
             size="sm"
             onClick={handleRefresh}
             disabled={isFetching || isLoading}

@@ -374,7 +374,7 @@ export default function Portfolio() {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Button variant="secondary" size="sm" onClick={handleRefresh} className="min-h-[44px]">
+            <Button variant="default" size="sm" onClick={handleRefresh} className="min-h-[44px]">
               <RefreshCw className={`mr-2 h-4 w-4 ${fetchingPositions ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Refresh</span>
             </Button>

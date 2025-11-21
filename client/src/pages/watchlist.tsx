@@ -57,7 +57,7 @@ export default function WatchlistPage() {
       </p>
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
         <Link href="/analyse/BTCUSDT">
-          <Button variant="secondary" className="w-full sm:w-auto">
+          <Button variant="default" className="w-full sm:w-auto">
             <LineChart className="mr-2 h-4 w-4" />
             Browse analysis
           </Button>
@@ -102,7 +102,7 @@ export default function WatchlistPage() {
             </p>
           </div>
           {watchlistItems.length > 0 ? (
-            <Badge variant="secondary" className="w-fit">
+            <Badge variant="default" className="w-fit">
               {watchlistItems.length} {watchlistItems.length === 1 ? "symbol" : "symbols"}
             </Badge>
           ) : null}

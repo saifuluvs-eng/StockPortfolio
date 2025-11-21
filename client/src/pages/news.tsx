@@ -37,7 +37,7 @@ function ArticleCard({ article }: { article: NewsArticle }) {
       className="block rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-card/80"
     >
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <Badge variant="secondary" className="bg-muted text-foreground">
+        <Badge variant="default" className="bg-muted text-foreground">
           {article.source.name}
         </Badge>
         {article.source.domain && <span className="truncate text-muted-foreground/80">{article.source.domain}</span>}
@@ -104,7 +104,7 @@ export default function NewsPage() {
             Stay ahead with curated headlines and sentiment straight from CryptoPanic.
           </p>
         </div>
-        <Button variant="secondary" onClick={refresh} disabled={isFetching} className="w-full sm:w-auto">
+        <Button onClick={refresh} disabled={isFetching} className="w-full sm:w-auto">
           <RefreshCw className="mr-2 h-4 w-4" /> Refresh
         </Button>
       </div>

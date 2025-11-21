@@ -500,7 +500,7 @@ export default function AIInsights() {
                                 </Badge>
                               ) : null}
                               {signal.timeframe ? (
-                                <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                                <Badge variant="default" className="bg-muted text-muted-foreground">
                                   {signal.timeframe}
                                 </Badge>
                               ) : null}
@@ -511,7 +511,7 @@ export default function AIInsights() {
                           </div>
                           <div className="flex items-center gap-2">
                             {confidencePercent !== null ? (
-                              <Badge variant="secondary" className="bg-accent/10 text-accent">
+                              <Badge variant="default" className="bg-accent/10 text-accent">
                                 Confidence {confidencePercent}%
                               </Badge>
                             ) : null}
@@ -592,7 +592,7 @@ export default function AIInsights() {
 
                         <div className="mt-3 flex flex-wrap gap-2">
                           {highlight.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
+                            <Badge key={tag} variant="default" className="text-xs">
                               {tag}
                             </Badge>
                           ))}

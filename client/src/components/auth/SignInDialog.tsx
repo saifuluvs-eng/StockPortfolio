@@ -38,7 +38,7 @@ export default function SignInDialog({ open, onOpenChange, onSignedIn }: Props) 
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2">
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+          <Button variant="default" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleGoogle}>Continue with Google</Button>
