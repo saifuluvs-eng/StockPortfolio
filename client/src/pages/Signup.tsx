@@ -54,7 +54,7 @@ export default function Signup() {
     <AuthCard title="Create your account">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="text-sm font-medium text-white/70">Email</label>
+          <label className="text-sm font-medium text-muted-foreground">Email</label>
           <input
             {...register("email")}
             type="email"
@@ -65,7 +65,7 @@ export default function Signup() {
           {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
         </div>
         <div>
-          <label className="text-sm font-medium text-white/70">Password</label>
+          <label className="text-sm font-medium text-muted-foreground">Password</label>
           <input
             {...register("password")}
             type="password"
@@ -73,10 +73,10 @@ export default function Signup() {
             className="mt-1 w-full text-base rounded-xl bg-card border border-white/10 px-4 py-3 outline-none focus:border-white/20 min-h-[48px]"
           />
           {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
-          <p className="text-xs text-white/50 mt-1">Min 8 chars, include a number & a symbol.</p>
+          <p className="text-xs text-muted-foreground mt-1">Min 8 chars, include a number & a symbol.</p>
         </div>
         <div>
-          <label className="text-sm font-medium text-white/70">Confirm password</label>
+          <label className="text-sm font-medium text-muted-foreground">Confirm password</label>
           <input
             {...register("confirm")}
             type="password"

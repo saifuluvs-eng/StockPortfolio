@@ -29,7 +29,7 @@ export default function ResetPassword() {
     <AuthCard title="Reset password">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="text-sm text-white/70">Email</label>
+          <label className="text-sm text-muted-foreground">Email</label>
           <input
             {...register("email")}
             type="email"

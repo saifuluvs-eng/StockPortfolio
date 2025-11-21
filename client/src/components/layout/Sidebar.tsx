@@ -163,7 +163,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 onClick={handleClick}
                 className={[
                   "relative group/item flex items-center gap-3 rounded-xl px-3 py-2 text-[15px]",
-                  "text-white/80 hover:text-white hover:bg-white/5",
+                  "text-foreground hover:text-white hover:bg-white/5",
                   isActive ? "bg-white/[0.07] text-white" : "",
                 ].join(" ")}
                 onMouseEnter={(event) => {
@@ -195,7 +195,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             setSbOpen((v) => !v);
           }}
           aria-label="Sidebar control"
-          className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 shadow-md flex items-center justify-center"
+          className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-primary shadow-md flex items-center justify-center"
         >
           <PanelLeft size={18} className="text-white/90" />
         </button>

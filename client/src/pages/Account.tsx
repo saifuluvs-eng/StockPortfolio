@@ -38,7 +38,7 @@ export default function Account() {
   }, [user]);
 
   if (loading) {
-    return <div className="p-6 text-white/70">Loading…</div>;
+    return <div className="p-6 text-muted-foreground">Loading…</div>;
   }
 
   if (!user) {
@@ -46,7 +46,7 @@ export default function Account() {
     return (
       <div className="px-4 pt-8">
         <h1 className="text-3xl font-semibold text-white mb-1">Access your account</h1>
-        <p className="text-white/70 mb-4">
+        <p className="text-muted-foreground mb-4">
           Sign in if you already have an account or create a new one to track your portfolio.
         </p>
 
@@ -105,7 +105,7 @@ export default function Account() {
             <button
               onClick={save}
               disabled={saving}
-              className="rounded-xl bg-muted hover:bg-muted/80 border border-border px-4 py-2 text-foreground"
+              className="rounded-xl border border-primary px-3 py-2 text-primary hover:bg-primary hover:text-primary-foreground border border-border px-4 py-2 text-foreground"
             >
               {saving ? "Saving…" : "Save changes"}
             </button>
@@ -124,7 +124,7 @@ export default function Account() {
         <div className="pt-2">
           <button
             onClick={signOut}
-            className="rounded-xl bg-muted hover:bg-muted/80 border border-border px-4 py-2 text-foreground"
+            className="rounded-xl border border-primary px-3 py-2 text-primary hover:bg-primary hover:text-primary-foreground border border-border px-4 py-2 text-foreground"
           >
             Sign out
           </button>

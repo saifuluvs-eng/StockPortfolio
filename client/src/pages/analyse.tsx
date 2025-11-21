@@ -1089,7 +1089,7 @@ export default function Analyse() {
               <BreakdownSection
                 rows={[]}
                 emptyState={
-                  <div className="py-12 text-center text-white/70">
+                  <div className="py-12 text-center text-muted-foreground">
                     <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
                     <h4 className="text-lg font-medium text-white">No analysis yet</h4>
                     <p className="mx-auto mt-1 max-w-xs text-sm">

@@ -46,7 +46,7 @@ export default function Login() {
     <AuthCard title="Welcome back">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <label className="text-sm font-medium text-white/70">Email</label>
+          <label className="text-sm font-medium text-muted-foreground">Email</label>
           <input
             {...register("email")}
             type="email"
@@ -57,7 +57,7 @@ export default function Login() {
           {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email.message}</p>}
         </div>
         <div>
-          <label className="text-sm font-medium text-white/70">Password</label>
+          <label className="text-sm font-medium text-muted-foreground">Password</label>
           <input
             {...register("password")}
             type="password"

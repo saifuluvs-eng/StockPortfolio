@@ -82,7 +82,7 @@ export default function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () =>
       {/* Sign up button */}
       <button
         disabled={isSubmitting}
-        className="w-full rounded-xl bg-muted hover:bg-muted/80 border border-border py-2 text-foreground"
+        className="w-full rounded-xl border border-primary px-3 py-2 text-primary hover:bg-primary hover:text-primary-foreground border border-border py-2 text-foreground"
       >
         {isSubmitting ? "Creating…" : "Sign up"}
       </button>
@@ -95,7 +95,7 @@ export default function SignupForm({ onSwitchToLogin }: { onSwitchToLogin: () =>
         </button>
       </div>
 
-      <p className="text-[11px] text-white/50">
+      <p className="text-[11px] text-muted-foreground">
         We’ll email a confirmation link to finish setting up your account.
       </p>
     </form>

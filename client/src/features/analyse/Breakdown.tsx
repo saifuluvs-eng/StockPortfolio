@@ -39,14 +39,14 @@ export function BreakdownSection({
   return (
     <section
       className="
-        rounded-2xl border border-white/10 bg-black/30 backdrop-blur
+        rounded-2xl border border-border bg-card backdrop-blur
         overflow-hidden flex flex-col mb-8
       "
       aria-label="Breakdown Technicals"
     >
       {/* sticky header stays visible while list scrolls */}
-      <header className="sticky top-0 z-10 bg-black/50 backdrop-blur px-4 md:px-5 py-3 border-b border-white/10">
-        <h3 className="flex items-center gap-2 text-lg font-semibold">
+      <header className="sticky top-0 z-10 bg-muted/60 backdrop-blur px-4 md:px-5 py-3 border-b border-border">
+        <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <span className="i-lucide-list-checks h-5 w-5 opacity-80" />
           Breakdown Technicals
         </h3>
@@ -77,7 +77,7 @@ export function BreakdownSection({
                     </div>
                   </div>
                   {r.reason && (
-                    <div className="mt-1 text-sm text-white/70">{r.reason}</div>
+                    <div className="mt-1 text-sm text-muted-foreground">{r.reason}</div>
                   )}
                   <div className={`mt-2 text-xs uppercase tracking-wide ${c.text}`}>
                     {r.signal}
@@ -88,7 +88,7 @@ export function BreakdownSection({
           </ul>
         ) : (
           emptyState ?? (
-            <div className="flex h-full w-full items-center justify-center py-12 text-center text-white/70">
+            <div className="flex h-full w-full items-center justify-center py-12 text-center text-muted-foreground">
               <div>No technical checks yet.</div>
             </div>
           )

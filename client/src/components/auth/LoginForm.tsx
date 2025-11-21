@@ -70,13 +70,13 @@ export default function LoginForm({ onSwitchToSignup }: { onSwitchToSignup: () =
       {/* Sign in button */}
       <button
         disabled={isSubmitting}
-        className="w-full rounded-xl bg-muted hover:bg-muted/80 border border-border py-2 text-foreground"
+        className="w-full rounded-xl border border-primary px-3 py-2 text-primary hover:bg-primary hover:text-primary-foreground border border-border py-2 text-foreground"
       >
         {isSubmitting ? "Signing in…" : "Sign in"}
       </button>
 
       {/* Switch to signup BELOW the button */}
-      <div className="text-sm text-white/80">
+      <div className="text-sm text-foreground">
         Don’t have an account?{" "}
         <button
           type="button"
