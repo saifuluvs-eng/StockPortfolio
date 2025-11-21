@@ -11,8 +11,8 @@ export default function AuthButton({
   const [, navigate] = useLocation();
   const base =
     size === "sm"
-      ? "px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-white/90"
-      : "px-4 py-2 rounded-xl border border-white/10 bg-white/5 text-white/90";
+      ? "px-3 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 active:bg-primary/80 transition-colors"
+      : "px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 active:bg-primary/80 transition-colors";
 
   // While auth is bootstrapping, don't show the wrong action
   if (loading) {
@@ -25,14 +25,14 @@ export default function AuthButton({
 
   if (!user) {
     return (
-      <button className={`${base} ${className} hover:bg-white/10`} onClick={() => navigate("/account")}>
+      <button className={`${base} ${className}`} onClick={() => navigate("/account")}>
         Sign in
       </button>
     );
   }
   return (
     <button
-      className={`${base} ${className} hover:bg-white/10`}
+      className={`${base} ${className}`}
       onClick={async () => {
         await supabase.auth.signOut();
         queryClient.clear();
