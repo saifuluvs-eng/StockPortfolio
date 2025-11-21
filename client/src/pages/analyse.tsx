@@ -968,7 +968,7 @@ export default function Analyse() {
             type="button"
             onClick={onRunAnalysis}
             disabled={isScanning}
-            className="ml-auto rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium hover:bg-sky-400 disabled:opacity-60"
+            className="ml-auto rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors"
             data-testid="button-scan"
           >
             {isScanning ? "Scanning…" : "Run Analysis"}
