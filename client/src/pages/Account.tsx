@@ -11,6 +11,7 @@ export default function Account() {
   const { user, signOut, loading } = useAuth();
   const [profile, setProfile] = useState<Profile>({ username: null, avatar_url: null });
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   // -------- LOGGED OUT: single toggle card --------
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -32,7 +33,10 @@ export default function Account() {
         .select("username, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
-      if (!error && data) setProfile(data as Profile);
+      if (!error && data) {
+        setProfile(data as Profile);
+        setSaved(!!data.username);
+      }
     }
     load();
   }, [user]);
