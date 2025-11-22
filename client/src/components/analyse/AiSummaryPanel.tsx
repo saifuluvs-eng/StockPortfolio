@@ -18,8 +18,8 @@ export default function AiSummaryPanel({ symbol, tf }: AiSummaryPanelProps) {
     await queryClient.fetchQuery({
       queryKey: ["aiSummary", symbol, tf],
       queryFn: async () => {
-        const { apiFetch } = await import("@/lib/api");
-        const response = (await apiFetch("/api/ai/summary", {
+        const { apiFetchLocal } = await import("@/lib/api");
+        const response = (await apiFetchLocal("/api/ai/summary", {
           method: "POST",
           body: JSON.stringify({ symbol, tf }),
         })) as { data?: string } | null;

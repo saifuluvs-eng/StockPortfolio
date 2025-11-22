@@ -86,6 +86,37 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   }
 }
 
+export async function apiFetchLocal(path: string, init: RequestInit = {}) {
+  const baseHeaders = toHeaderRecord(init.headers);
+  const hasContentType = Object.keys(baseHeaders).some(
+    (key) => key.toLowerCase() === "content-type",
+  );
+  if (!hasContentType) {
+    baseHeaders["Content-Type"] = "application/json";
+  }
+
+  const authHeaders = await getAuthHeaders();
+  const headers = { ...baseHeaders, ...authHeaders };
+
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const response = await fetch(cleanPath, { mode: "cors", credentials: "include", ...init, headers });
+  
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`API ${response.status}: ${text || response.statusText}`);
+  }
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function apiJSON<T = any>(path: string, init?: RequestInit): Promise<T> {
   const res = await api(path, init);
   try {
