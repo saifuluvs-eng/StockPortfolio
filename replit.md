@@ -8,7 +8,13 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 22, 2025**:
+**November 22, 2025 - RESOLVED: API Endpoints Fixed**:
+- **Fixed hanging Gemini API issue in AI Summary**
+  - Added 15-second timeout to `/api/ai/summary` endpoint
+  - Used AbortController to prevent indefinite hangs on slow Gemini API
+  - Endpoint now gracefully falls back to technical-only analysis if AI service times out
+  - Result: AI Summary panel now loads immediately without hanging the page
+
 - **Removed external Render backend dependency**
   - Deleted `client/src/initApiBase.ts` (fetch interceptor for external backend routing)
   - Removed `VITE_API_BASE` environment variable usage
@@ -19,16 +25,14 @@ Preferred communication style: Simple, everyday language.
 - **Migrated AI Summary from OpenAI to Google Gemini**
   - Updated all AI endpoints to use `gemini-2.5-flash` model
   - Implemented custom prompt template for meaningful analysis
-  - AI Summary now: Bullish/Bearish bias, 5 key insights, what to expect, levels to watch, risk assessment
+  - AI Summary now: Bullish/Bearish bias, why, what to expect, levels to watch, risk assessment
   - Button renamed to "Generate" and changed from auto-trigger to manual-only
-  - Fixed endpoint to return plain text formatted summary instead of JSON object
+  - Fixed endpoint to return plain text formatted summary
   - Removed old compiled OpenAI code (`server/ai.js`)
 
-- **Fixed AI Summary endpoint routing**
-  - Updated `client/src/lib/api.ts` to add `apiFetchLocal` function (bypasses API_BASE)
-  - AI Summary always uses local backend, not Render
-  - `client/src/components/analyse/AiSummaryPanel.tsx` updated to use local fetch
-  - Updated `client/src/initApiBase.ts` to exempt AI routes from Render routing (before deletion)
+**Both `/api/scanner/scan` and `/api/ai/summary` endpoints now working perfectly:**
+- Scanner: Returns full technical analysis with 15+ indicators
+- AI Summary: Returns Gemini-powered market insights with structured formatting
 
 **November 12, 2025**:
 - **Completed database migration from SQLite to PostgreSQL (Supabase)**
