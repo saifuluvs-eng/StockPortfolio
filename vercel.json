@@ -5,9 +5,9 @@
   "trailingSlash": false,
   "regions": ["sin1"],
   "rewrites": [
-    { "source": "/api", "destination": "/api/index" },
-    { "source": "/api/ping", "destination": "/api/ping" },
-    { "source": "/api/all", "destination": "/api/all" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   ]
 }
