@@ -197,7 +197,7 @@ function getRawBreakdownRows(item: ScannerAnalysis | ScanResult | null | undefin
 
   const indicators = (item as { indicators?: unknown }).indicators;
   if (indicators && typeof indicators === "object" && !Array.isArray(indicators)) {
-    return Object.entries(indicators as Record<string, any>)
+    const rows = Object.entries(indicators as Record<string, any>)
       .map(([key, value]) => {
         if (!value || typeof value !== "object") {
           return {
@@ -225,6 +225,23 @@ function getRawBreakdownRows(item: ScannerAnalysis | ScanResult | null | undefin
         };
       })
       .filter((entry) => entry?.title);
+    
+    if (rows.length === 0 && Object.keys(indicators).length > 0) {
+      console.warn("[Breakdown] Indicators present but no rows extracted", {
+        indicatorCount: Object.keys(indicators).length,
+        firstKey: Object.keys(indicators)[0],
+        firstValue: Object.values(indicators)[0]
+      });
+    }
+    
+    return rows;
+  }
+
+  if (item && typeof item === "object") {
+    console.warn("[Breakdown] Item has no indicators field", {
+      itemKeys: Object.keys(item as Record<string, any>).slice(0, 5),
+      symbol: (item as any).symbol
+    });
   }
 
   return [] as any[];
