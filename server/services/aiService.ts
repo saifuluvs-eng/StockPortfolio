@@ -1,7 +1,43 @@
-import OpenAI from "openai";
+// Gemini API configuration
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
 
-// the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+/**
+ * Helper function to call Gemini API
+ */
+async function callGemini(prompt: string): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY environment variable is not set");
+  }
+
+  const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [{ text: prompt }],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Gemini API error: ${response.status} - ${error}`);
+  }
+
+  const json = await response.json();
+  const result = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  
+  if (!result) {
+    throw new Error("No response from Gemini API");
+  }
+
+  return result;
+}
 
 // Binance API types
 interface BinanceTicker {
@@ -59,49 +95,28 @@ export class AIService {
     technicalData: any
   ): Promise<MarketSentimentAnalysis> {
     try {
-      const prompt = `
-        As an expert crypto trader and market analyst, analyze the market sentiment for ${symbol} based on the following data:
-        
-        Recent Price Data: ${priceData.slice(-10).join(", ")}
-        Current Price: ${priceData[priceData.length - 1]}
-        Technical Indicators: ${JSON.stringify(technicalData, null, 2)}
-        
-        Provide a comprehensive market sentiment analysis including:
-        1. Overall sentiment (bullish/bearish/neutral)
-        2. Confidence level (0.0 to 1.0)
-        3. Detailed reasoning for your assessment
-        4. Clear trading signal
-        5. Key factors influencing the sentiment
-        6. Suggested timeframe for this analysis
-        
-        Respond with JSON in this exact format:
-        {
-          "sentiment": "bullish|bearish|neutral",
-          "confidence": 0.85,
-          "reasoning": "detailed explanation here",
-          "signal": "BUY|SELL|HOLD with specific entry/exit levels",
-          "keyFactors": ["factor1", "factor2", "factor3"],
-          "timeframe": "1h|4h|1d|1w"
-        }
-      `;
+      const prompt = `You are a professional cryptocurrency market analyst with expertise in technical analysis and market sentiment. Always respond with valid JSON format only, no other text.
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional cryptocurrency market analyst with expertise in technical analysis and market sentiment. Always respond with valid JSON format."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3
-      });
+Analyze the market sentiment for ${symbol} based on the following data:
 
-      const result = JSON.parse(response.choices[0].message.content || "{}");
+Recent Price Data: ${priceData.slice(-10).join(", ")}
+Current Price: ${priceData[priceData.length - 1]}
+Technical Indicators: ${JSON.stringify(technicalData, null, 2)}
+
+Provide a comprehensive market sentiment analysis. Do NOT repeat indicator numbers, summarize meaning only.
+
+Respond with ONLY valid JSON in this exact format:
+{
+  "sentiment": "bullish|bearish|neutral",
+  "confidence": 0.85,
+  "reasoning": "detailed explanation here",
+  "signal": "BUY|SELL|HOLD with specific entry/exit levels",
+  "keyFactors": ["factor1", "factor2", "factor3"],
+  "timeframe": "1h|4h|1d|1w"
+}`;
+
+      const responseText = await callGemini(prompt);
+      const result = JSON.parse(responseText);
       
       return {
         sentiment: result.sentiment,
@@ -125,7 +140,7 @@ export class AIService {
       const bollinger = technicalData.bollingerBands || {};
       const adx = technicalData.adx?.value || 25;
       
-      const signals = [];
+      const signals: string[] = [];
       let bullishCount = 0;
       let bearishCount = 0;
       
@@ -181,52 +196,30 @@ export class AIService {
     marketContext: any
   ): Promise<AIMarketPrediction> {
     try {
-      const prompt = `
-        As an expert cryptocurrency analyst, provide a price prediction for ${symbol} based on:
-        
-        Historical Data: ${JSON.stringify(historicalData)}
-        Market Context: ${JSON.stringify(marketContext)}
-        Current Price: ${historicalData.currentPrice}
-        
-        Analyze and predict:
-        1. Price direction (bullish/bearish/neutral)
-        2. Confidence in prediction (0.0 to 1.0)
-        3. Potential price target (if applicable)
-        4. Timeframe for prediction
-        5. Key reasoning behind prediction
-        6. Risk factors to consider
-        7. Support and resistance levels
-        
-        Respond with JSON in this exact format:
-        {
-          "prediction": "bullish|bearish|neutral",
-          "confidence": 0.75,
-          "priceTarget": 45000,
-          "timeframe": "24h|7d|30d",
-          "reasoning": "detailed prediction reasoning",
-          "riskFactors": ["risk1", "risk2"],
-          "supportLevels": [40000, 38000],
-          "resistanceLevels": [46000, 48000]
-        }
-      `;
+      const prompt = `You are a professional cryptocurrency price analyst with expertise in market predictions and risk assessment. Always respond with valid JSON format only, no other text.
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "You are a professional cryptocurrency price analyst with expertise in market predictions and risk assessment. Always respond with valid JSON."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.4
-      });
+Provide a price prediction for ${symbol} based on:
 
-      const result = JSON.parse(response.choices[0].message.content || "{}");
+Historical Data: ${JSON.stringify(historicalData)}
+Market Context: ${JSON.stringify(marketContext)}
+Current Price: ${historicalData.currentPrice}
+
+Analyze and predict the following. Do NOT repeat data values, summarize analysis only.
+
+Respond with ONLY valid JSON in this exact format:
+{
+  "prediction": "bullish|bearish|neutral",
+  "confidence": 0.75,
+  "priceTarget": 45000,
+  "timeframe": "24h|7d|30d",
+  "reasoning": "detailed prediction reasoning",
+  "riskFactors": ["risk1", "risk2"],
+  "supportLevels": [40000, 38000],
+  "resistanceLevels": [46000, 48000]
+}`;
+
+      const responseText = await callGemini(prompt);
+      const result = JSON.parse(responseText);
       
       return {
         prediction: result.prediction,
@@ -284,7 +277,7 @@ export class AIService {
         priceTarget = currentPrice * (1 + momentum * 2);
       }
       
-      const riskFactors = [];
+      const riskFactors: string[] = [];
       if (volatility > 0.1) riskFactors.push("High volatility environment");
       if (Math.abs(priceChange) > 15) riskFactors.push("Extreme price movement");
       if (volumeTrend < -0.2) riskFactors.push("Declining volume trend");
@@ -312,55 +305,33 @@ export class AIService {
     marketData: any
   ): Promise<AICryptoInsight> {
     try {
-      const prompt = `
-        Provide a comprehensive trading insight for ${symbol} cryptocurrency:
-        
-        Technical Analysis: ${JSON.stringify(technicalAnalysis)}
-        Market Data: ${JSON.stringify(marketData)}
-        
-        Generate insights covering:
-        1. Analysis type (sentiment/pattern/prediction/recommendation)
-        2. Trading signal (bullish/bearish/neutral)
-        3. Confidence level (0.0 to 1.0)
-        4. Detailed reasoning
-        5. Specific trading recommendation
-        6. Optimal timeframe
-        7. Additional metadata (risk level, market condition, etc.)
-        
-        Respond with JSON in this exact format:
-        {
-          "analysisType": "sentiment|pattern|prediction|recommendation",
-          "signal": "bullish|bearish|neutral",
-          "confidence": 0.8,
-          "reasoning": "comprehensive analysis explanation",
-          "recommendation": "specific trading advice",
-          "timeframe": "1h|4h|1d|1w",
-          "metadata": {
-            "technicalScore": 85,
-            "volumeAnalysis": "high volume breakout",
-            "marketCondition": "trending upward",
-            "riskLevel": "medium"
-          }
-        }
-      `;
+      const prompt = `You are an expert cryptocurrency trading advisor providing actionable insights for traders. Focus on practical, risk-aware recommendations. Always respond with valid JSON format only, no other text.
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert cryptocurrency trading advisor providing actionable insights for traders. Focus on practical, risk-aware recommendations. Always respond with valid JSON."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3
-      });
+Provide a comprehensive trading insight for ${symbol} cryptocurrency:
 
-      const result = JSON.parse(response.choices[0].message.content || "{}");
+Technical Analysis: ${JSON.stringify(technicalAnalysis)}
+Market Data: ${JSON.stringify(marketData)}
+
+Generate insights covering analysis type, signal, confidence, reasoning, recommendation, and timeframe. Do NOT repeat data values, summarize analysis only.
+
+Respond with ONLY valid JSON in this exact format:
+{
+  "analysisType": "sentiment|pattern|prediction|recommendation",
+  "signal": "bullish|bearish|neutral",
+  "confidence": 0.8,
+  "reasoning": "comprehensive analysis explanation",
+  "recommendation": "specific trading advice",
+  "timeframe": "1h|4h|1d|1w",
+  "metadata": {
+    "technicalScore": 85,
+    "volumeAnalysis": "high volume breakout",
+    "marketCondition": "trending upward",
+    "riskLevel": "medium"
+  }
+}`;
+
+      const responseText = await callGemini(prompt);
+      const result = JSON.parse(responseText);
       
       return {
         symbol,
@@ -441,42 +412,23 @@ export class AIService {
     riskAssessment: string;
   }> {
     try {
-      const prompt = `
-        Analyze the overall cryptocurrency market based on this summary:
-        ${JSON.stringify(marketSummary)}
-        
-        Provide a comprehensive market overview including:
-        1. Overall market sentiment
-        2. Key insights (3-5 bullet points)
-        3. General trading recommendations
-        4. Risk assessment for current market conditions
-        
-        Respond with JSON in this exact format:
-        {
-          "overallSentiment": "bullish|bearish|neutral with brief explanation",
-          "keyInsights": ["insight1", "insight2", "insight3"],
-          "tradingRecommendations": ["recommendation1", "recommendation2"],
-          "riskAssessment": "detailed risk analysis"
-        }
-      `;
+      const prompt = `You are a senior cryptocurrency market analyst providing daily market overviews for professional traders. Focus on actionable insights. Always respond with valid JSON format only, no other text.
 
-      const response = await openai.chat.completions.create({
-        model: "gpt-5",
-        messages: [
-          {
-            role: "system",
-            content: "You are a senior cryptocurrency market analyst providing daily market overviews for professional traders. Focus on actionable insights."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.4
-      });
+Analyze the overall cryptocurrency market based on this summary:
+${JSON.stringify(marketSummary)}
 
-      const result = JSON.parse(response.choices[0].message.content || "{}");
+Provide a comprehensive market overview including sentiment, key insights, trading recommendations, and risk assessment. Do NOT repeat data values, summarize analysis only.
+
+Respond with ONLY valid JSON in this exact format:
+{
+  "overallSentiment": "bullish|bearish|neutral with brief explanation",
+  "keyInsights": ["insight1", "insight2", "insight3"],
+  "tradingRecommendations": ["recommendation1", "recommendation2"],
+  "riskAssessment": "detailed risk analysis"
+}`;
+
+      const responseText = await callGemini(prompt);
+      const result = JSON.parse(responseText);
       
       return {
         overallSentiment: result.overallSentiment || "neutral - mixed signals",
@@ -539,7 +491,7 @@ export class AIService {
   // Helper methods for technical calculations
   private calculateVolatility(prices: number[]): number {
     if (prices.length < 2) return 0;
-    const returns = [];
+    const returns: number[] = [];
     for (let i = 1; i < prices.length; i++) {
       returns.push((prices[i] - prices[i-1]) / prices[i-1]);
     }
