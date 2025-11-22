@@ -1,6 +1,10 @@
-# Ignore only test files in /api
+# Only deploy critical API functions and test files
+# Keep: api/[...all].ts, api/scanner/scan.ts, api/ai/summary.ts
+# Ignore everything else in /api
 api/**/*.test.ts
 api/__tests__
+api/_lib
+api/services
 
 # Usual ignores
 node_modules
