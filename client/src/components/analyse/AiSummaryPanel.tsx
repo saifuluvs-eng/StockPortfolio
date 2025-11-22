@@ -70,7 +70,7 @@ export default function AiSummaryPanel({ symbol, tf }: AiSummaryPanelProps) {
       </div>
 
       <div className="mt-3 text-xs text-muted-foreground">
-        Powered by OpenAI • Context: {symbol} {tf}
+        Powered by Gemini • Context: {symbol} {tf}
       </div>
     </div>
   );
