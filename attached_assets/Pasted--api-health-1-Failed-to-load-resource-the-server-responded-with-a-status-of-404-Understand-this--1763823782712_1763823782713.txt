@@ -1,0 +1,64 @@
+/api/health:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/scanner/scan:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+index-BPiOiqjo.js:1747 [Analyse] scan failed Error: Scan HTTP 404
+    at index-BPiOiqjo.js:1747:19811
+(anonymous) @ index-BPiOiqjo.js:1747Understand this error
+index-BPiOiqjo.js:1701  POST https://stock-portfolio-khaki-nine.vercel.app/api/ai/summary 404 (Not Found)
+C @ index-BPiOiqjo.js:1701
+RP @ index-BPiOiqjo.js:1434
+await in RP
+queryFn @ index-BPiOiqjo.js:1747
+await in queryFn
+i @ index-BPiOiqjo.js:40
+E @ index-BPiOiqjo.js:40
+start @ index-BPiOiqjo.js:40
+fetch @ index-BPiOiqjo.js:40
+fetchQuery @ index-BPiOiqjo.js:40
+u @ index-BPiOiqjo.js:1747
+n1 @ index-BPiOiqjo.js:37
+s1 @ index-BPiOiqjo.js:37
+i1 @ index-BPiOiqjo.js:37
+Lg @ index-BPiOiqjo.js:37
+Ug @ index-BPiOiqjo.js:37
+(anonymous) @ index-BPiOiqjo.js:37
+Uf @ index-BPiOiqjo.js:40
+Wm @ index-BPiOiqjo.js:37
+Ld @ index-BPiOiqjo.js:37
+wd @ index-BPiOiqjo.js:37
+b1 @ index-BPiOiqjo.js:37Understand this error
+index-BPiOiqjo.js:1701  POST https://stock-portfolio-khaki-nine.vercel.app/api/ai/summary 404 (Not Found)
+C @ index-BPiOiqjo.js:1701
+Us @ index-BPiOiqjo.js:1434
+Sl @ index-BPiOiqjo.js:1434
+await in Sl
+queryFn @ index-BPiOiqjo.js:1747
+i @ index-BPiOiqjo.js:40
+E @ index-BPiOiqjo.js:40
+(anonymous) @ index-BPiOiqjo.js:40
+Promise.then
+(anonymous) @ index-BPiOiqjo.js:40
+Promise.catch
+E @ index-BPiOiqjo.js:40
+start @ index-BPiOiqjo.js:40
+fetch @ index-BPiOiqjo.js:40
+fetchQuery @ index-BPiOiqjo.js:40
+u @ index-BPiOiqjo.js:1747
+n1 @ index-BPiOiqjo.js:37
+s1 @ index-BPiOiqjo.js:37
+i1 @ index-BPiOiqjo.js:37
+Lg @ index-BPiOiqjo.js:37
+Ug @ index-BPiOiqjo.js:37
+(anonymous) @ index-BPiOiqjo.js:37
+Uf @ index-BPiOiqjo.js:40
+Wm @ index-BPiOiqjo.js:37
+Ld @ index-BPiOiqjo.js:37
+wd @ index-BPiOiqjo.js:37
+b1 @ index-BPiOiqjo.js:37Understand this error
+index-BPiOiqjo.js:1434 Uncaught (in promise) Error: API 404: The page could not be found
+
+NOT_FOUND
+
+bom1::hrjcb-1763823756768-7a06cfffbba7
+
+    at Sl (index-BPiOiqjo.js:1434:2130)
+    at async queryFn (index-BPiOiqjo.js:1747:936)

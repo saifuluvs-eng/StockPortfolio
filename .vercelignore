@@ -1,6 +1,6 @@
-# Ignore everything in /api except the single route we need now
-api/**
-!api/portfolio.js
+# Ignore only test files in /api
+api/**/*.test.ts
+api/__tests__
 
 # Usual ignores
 node_modules
