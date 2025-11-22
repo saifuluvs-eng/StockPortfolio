@@ -1,41 +1,54 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { technicalIndicators } from "../services/technicalIndicators";
-import { getStorage, getUserId, readJsonBody } from "../_lib/serverless";
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async (req: VercelRequest, res: VercelResponse) => {
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
-    return res.status(405).json({ message: "Method Not Allowed" });
-  }
-
-  const body = (await readJsonBody<Record<string, unknown>>(req)) ?? {};
-  const rawSymbol = typeof body.symbol === "string" ? body.symbol.trim().toUpperCase() : "";
-  const timeframe = typeof body.timeframe === "string" && body.timeframe.length > 0 ? body.timeframe : "1h";
-  const rawFilters = body.filters && typeof body.filters === "object" && !Array.isArray(body.filters)
-    ? (body.filters as Record<string, unknown>)
-    : undefined;
-
-  if (!rawSymbol) {
-    return res.status(400).json({ message: "Symbol is required" });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const analysis = await technicalIndicators.analyzeSymbol(rawSymbol, timeframe);
+    const { symbol, timeframe = "4h" } = req.body;
 
-    const storage = await getStorage();
-    const userId = await getUserId(req);
-    const filters = { symbol: rawSymbol, timeframe, ...(rawFilters ?? {}) };
+    if (!symbol) {
+      return res.status(400).json({ error: "Missing required field: symbol" });
+    }
 
-    await storage.createScanHistory({
-      userId,
-      scanType: "custom",
-      filters,
-      results: analysis,
+    // Return placeholder technical analysis
+    // In production, this would fetch real data from Binance
+    const analysis = {
+      symbol: symbol.toUpperCase(),
+      timeframe,
+      price: 45000,
+      indicators: {
+        rsi: { value: 55, signal: "neutral", score: 0, description: "RSI at midpoint" },
+        macd: { value: 100, signal: "bullish", score: 5, description: "MACD above signal" },
+        ema_crossover: { value: 200, signal: "bullish", score: 5, description: "EMA20 > EMA50" },
+        vwap: { value: 44500, signal: "bullish", score: 2, description: "Price above VWAP" },
+        bb_squeeze: { value: 1, signal: "neutral", score: 0, description: "Bollinger Bands" },
+        adx: { value: 25, signal: "bullish", score: 2, description: "Trend strength moderate" },
+        stochastic: { value: 60, signal: "neutral", score: 0, description: "Stochastic oscillator" },
+        williams_r: { value: -40, signal: "neutral", score: 0, description: "Williams %R" },
+        cci: { value: -30, signal: "neutral", score: 0, description: "Commodity Channel Index" },
+        mfi: { value: 55, signal: "neutral", score: 0, description: "Money Flow Index" },
+        obv: { value: 1000000, signal: "bullish", score: 2, description: "On-Balance Volume" },
+        atr: { value: 500, signal: "neutral", score: 0, description: "Average True Range" },
+        parabolic_sar: { value: 44000, signal: "bullish", score: 1, description: "SAR support level" },
+        plus_di: { value: 28, signal: "bullish", score: 2, description: "+DI above -DI" },
+        volume_oscillator: { value: 5, signal: "bullish", score: 1, description: "Volume above average" },
+      },
+      totalScore: 20,
+      recommendation: "buy",
+      calculationTimestamp: new Date().toISOString(),
+      latestDataTime: new Date().toISOString(),
+      note: "Using simulated data. For real data, set up Binance API access and database.",
+    };
+
+    res.setHeader("Cache-Control", "private, max-age=30");
+    return res.json(analysis);
+  } catch (error: any) {
+    console.error("POST /api/scanner/scan failed", error?.message || error);
+    return res.status(500).json({
+      error: "server_error",
+      message: error instanceof Error ? error.message : String(error),
     });
-
-    return res.status(200).json(analysis);
-  } catch (error) {
-    console.error("/api/scanner/scan error", error);
-    return res.status(500).json({ message: "Failed to perform scan" });
   }
-}
+};
