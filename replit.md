@@ -8,28 +8,35 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 22, 2025**:
+- **Removed external Render backend dependency**
+  - Deleted `client/src/initApiBase.ts` (fetch interceptor for external backend routing)
+  - Removed `VITE_API_BASE` environment variable usage
+  - Frontend now uses relative API paths → routes to local Express (dev) or Vercel functions (production)
+  - Cleaned up all Render-specific configuration and comments
+  - Result: Clean, direct architecture with no external backend proxy needed
+
+- **Migrated AI Summary from OpenAI to Google Gemini**
+  - Updated all AI endpoints to use `gemini-2.5-flash` model
+  - Implemented custom prompt template for meaningful analysis
+  - AI Summary now: Bullish/Bearish bias, 5 key insights, what to expect, levels to watch, risk assessment
+  - Button renamed to "Generate" and changed from auto-trigger to manual-only
+  - Fixed endpoint to return plain text formatted summary instead of JSON object
+  - Removed old compiled OpenAI code (`server/ai.js`)
+
+- **Fixed AI Summary endpoint routing**
+  - Updated `client/src/lib/api.ts` to add `apiFetchLocal` function (bypasses API_BASE)
+  - AI Summary always uses local backend, not Render
+  - `client/src/components/analyse/AiSummaryPanel.tsx` updated to use local fetch
+  - Updated `client/src/initApiBase.ts` to exempt AI routes from Render routing (before deletion)
+
 **November 12, 2025**:
 - **Completed database migration from SQLite to PostgreSQL (Supabase)**
-  - Migrated all table schemas from SQLite to Postgres-compatible types
-  - Updated Drizzle ORM configuration to use Neon HTTP driver for Supabase
-  - Changed column types: `real` → `doublePrecision`, `integer timestamps` → `timestamp`, `text{mode:json}` → `jsonb`
-  - Successfully pushed schema to Supabase database using `drizzle-kit push`
-  - App now uses persistent PostgreSQL storage that works on both local development and Vercel deployment
 - **Created comprehensive Vercel deployment documentation**
-  - Added `.env.example` with all required environment variables
-  - Created `DEPLOYMENT.md` with step-by-step Vercel deployment guide
-  - Documented database setup, environment variables, and troubleshooting
 - **Verified Vercel serverless function compatibility**
-  - All `/api` functions properly structured for Vercel deployment
-  - Storage layer uses database with fallback support
-  - Hash-based routing works on serverless platforms
 - Migrated from React Router to Wouter for hash-based routing consistency
-- Completed Priority 1 & 2 Mobile Optimizations (architect-verified):
-  - Landing page: Sheet-based hamburger nav, responsive hero, 48px touch targets
-  - Auth pages: Input font ≥16px to prevent iOS zoom, 44-48px touch targets
-  - Dashboard: Responsive 8-tile grid (1→2→3→4→5 cols), 44px buttons
-  - Portfolio: Horizontal-scroll table, responsive stat cards
-- Reverted from CoinGecko back to Binance API (works when deployed outside Replit)
+- Completed Priority 1 & 2 Mobile Optimizations
+- Reverted from CoinGecko back to Binance API
 - Made Supabase primary authentication method (Firebase optional)
 - Server configured to bind to `0.0.0.0:5000` for Replit environment
 
@@ -132,13 +139,16 @@ Preferred communication style: Simple, everyday language.
 - Endpoints: `/ticker/24hr`, `/ticker/price`, `/klines` (OHLC data)
 - Note: Binance API is geo-blocked on Replit (HTTP 451 error), but works when deployed outside Replit
 
-**AI Services**: OpenAI API with GPT-5 model for market analysis and insights
+**AI Services**: Google Gemini API with `gemini-2.5-flash` model for market analysis and AI Summary
+- Replaces previous OpenAI integration
+- Custom prompts for meaningful trading analysis without raw number repetition
+- API key stored in `GEMINI_API_KEY` environment variable
 
 **News**: CryptoPanic API for cryptocurrency news aggregation
 
-**Authentication**: Firebase Auth and Firebase Admin SDK
-- Token verification via `verifyIdToken`
-- Firestore for user profile persistence
+**Authentication**: Supabase Auth (primary) + Firebase Auth (optional legacy support)
+- Supabase: JWT token verification, PostgreSQL user profiles
+- Firebase: Firebase Admin SDK for token verification and Firestore profile persistence (if configured)
 
 **Build Tools**:
 - Vite for frontend bundling with React plugin
@@ -150,3 +160,4 @@ Preferred communication style: Simple, everyday language.
 - Rewrites configuration in `vercel.json` for API routing
 - SPA fallback to `/index.html` for client-side routing
 - Singapore region (`sin1`) for low-latency Asia-Pacific access
+- No external backend proxy needed (architecture simplified)

@@ -24,15 +24,6 @@ import {
   Newspaper,
 } from "lucide-react";
 
-/**
- * NOTE FOR VERCEL:
- * - This app’s frontend is deployed on Vercel, but the "/api/**" routes it tries to call
- *   are NOT present there (hence your 404s). You need a separate backend URL.
- * - Set env var VITE_API_BASE to your backend (e.g. https://api.example.com).
- * - If VITE_API_BASE is NOT set on Vercel, this page will render but skip network calls
- *   (tiles show "—/0" placeholders instead of error spam).
- * - WebSocket /ws is blocked on Vercel in your setup; we fall back to REST polling.
- */
 
 // ---------- Types (defensive) ----------
 type GainerItem = {
@@ -130,7 +121,6 @@ export default function Home() {
   useEffect(() => {
     if (!networkEnabled) return;
     if (typeof window === "undefined") return;
-    const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
     const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
@@ -162,7 +152,6 @@ export default function Home() {
     if (!networkEnabled) return;
     if (typeof window === "undefined") return;
 
-    const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
     const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
     let ws: WebSocket | null = null;
 

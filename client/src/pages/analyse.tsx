@@ -45,8 +45,6 @@ import {
 import { formatDistanceToNowStrict } from "date-fns";
 import { openSpotTickerStream } from "@/lib/binanceWs";
 
-const API_BASE =
-  asString((import.meta as any)?.env?.VITE_API_BASE).replace(/\/$/, "") || "";
 
 interface PriceData {
   symbol: string;
@@ -796,7 +794,6 @@ export default function Analyse() {
       if (backendOffline) {
         toast({
           title: "Backend required",
-          description: "Provide a backend URL (VITE_API_BASE) to run scans from Vercel.",
           variant: "destructive",
         });
       } else if (backendPending) {
