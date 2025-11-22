@@ -55,7 +55,8 @@ function calculateMACD(closes: number[]): { macd: number; signal: number; histog
 
 function calculateBollingerBands(closes: number[], period = 20): { upper: number; middle: number; lower: number } {
   if (closes.length < period) {
-    return { upper: closes[closes.length - 1], middle: closes[closes.length - 1], lower: closes[closes.length - 1] };
+    const val = closes[closes.length - 1];
+    return { upper: val, middle: val, lower: val };
   }
   
   const slice = closes.slice(-period);
@@ -72,13 +73,23 @@ function calculateBollingerBands(closes: number[], period = 20): { upper: number
 
 async function fetchKlines(symbol: string, interval: string): Promise<number[][]> {
   try {
-    const response = await fetch(
-      `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=100`,
-      { cache: "no-store" }
-    );
+    const sym = String(symbol).trim().toUpperCase();
+    if (!sym) return [];
     
-    if (!response.ok) throw new Error("Failed to fetch klines");
+    const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(sym)}&interval=${encodeURIComponent(interval)}&limit=100`;
+    const response = await fetch(url, { cache: "no-store" });
+    
+    if (!response.ok) {
+      console.error(`Binance error for ${sym}: ${response.status}`);
+      return [];
+    }
+    
     const data = await response.json();
+    if (!Array.isArray(data) || data.length < 10) {
+      console.error(`Insufficient data for ${sym}: got ${data?.length || 0} candles`);
+      return [];
+    }
+    
     return data.map((k: any[]) => [
       parseFloat(k[1]),
       parseFloat(k[2]),
@@ -93,36 +104,51 @@ async function fetchKlines(symbol: string, interval: string): Promise<number[][]
 }
 
 export default async (req: VercelRequest, res: VercelResponse) => {
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+  res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version");
+  
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
-    const { symbol, timeframe = "4h" } = req.body;
+    const body = req.body || {};
+    const symbol = String(body.symbol || "").trim().toUpperCase();
+    const timeframe = String(body.timeframe || "4h").toLowerCase();
 
     if (!symbol) {
-      return res.status(400).json({ error: "Missing required field: symbol" });
+      return res.status(400).json({ error: "Missing symbol field" });
     }
 
-    const symbol_upper = (symbol as string).toUpperCase();
-    const interval = timeframe === "4h" ? "4h" : timeframe === "1h" ? "1h" : "1d";
+    // Map timeframe to interval
+    let interval = "4h";
+    if (timeframe === "1h" || timeframe === "1") interval = "1h";
+    else if (timeframe === "15m" || timeframe === "15") interval = "15m";
+    else if (timeframe === "1d" || timeframe === "1day") interval = "1d";
     
     // Fetch real market data from Binance
-    const klines = await fetchKlines(symbol_upper + "USDT", interval);
+    const klines = await fetchKlines(symbol, interval);
     
     if (klines.length < 10) {
-      return res.status(400).json({ error: "Insufficient data for analysis" });
+      console.warn(`Not enough data for ${symbol}: got ${klines.length} candles`);
+      return res.status(400).json({ error: `Insufficient data for ${symbol}. Got ${klines.length} candles, need at least 10.` });
     }
 
-    const opens = klines.map(k => k[0]);
-    const highs = klines.map(k => k[1]);
-    const lows = klines.map(k => k[2]);
     const closes = klines.map(k => k[3]);
-    const volumes = klines.map(k => k[4]);
+    const highLow = klines.map(k => [k[1], k[2]]);
     
     const currentClose = closes[closes.length - 1];
-    const currentHigh = Math.max(...closes.slice(-10));
-    const currentLow = Math.min(...closes.slice(-10));
+    const recentHighs = highLow.slice(-10).map(h => h[0]);
+    const recentLows = highLow.slice(-10).map(h => h[1]);
+    const currentHigh = Math.max(...recentHighs);
+    const currentLow = Math.min(...recentLows);
 
     // Calculate indicators
     const rsi = calculateRSI(closes);
@@ -137,7 +163,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         : "bearish";
 
     // Calculate scores
-    let totalScore = 50; // Neutral baseline
+    let totalScore = 50; 
     
     if (rsi < 30) totalScore -= 15;
     else if (rsi > 70) totalScore -= 10;
@@ -155,7 +181,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     const recommendation = totalScore > 65 ? "strong_buy" : totalScore > 55 ? "buy" : totalScore < 35 ? "strong_sell" : totalScore < 45 ? "sell" : "hold";
 
     const analysis = {
-      symbol: symbol_upper,
+      symbol,
       price: currentClose,
       timeframe,
       indicators: {
@@ -184,16 +210,16 @@ export default async (req: VercelRequest, res: VercelResponse) => {
           description: `Price at BB: ${(((currentClose - bb.lower) / (bb.upper - bb.lower)) * 100).toFixed(1)}%`,
         },
         price_action: {
-          value: (((currentClose - currentLow) / (currentHigh - currentLow)) * 100) || 50,
+          value: currentHigh > currentLow ? (((currentClose - currentLow) / (currentHigh - currentLow)) * 100) : 50,
           signal: currentClose > (currentLow + currentHigh) / 2 ? "bullish" : "bearish",
           score: currentClose > (currentLow + currentHigh) / 2 ? 1 : -1,
           description: `Price Position: ${(((currentClose - currentLow) / (currentHigh - currentLow)) * 100).toFixed(1)}%`,
         },
         volatility: {
-          value: ((currentHigh - currentLow) / currentClose * 100),
+          value: currentClose > 0 ? ((currentHigh - currentLow) / currentClose * 100) : 0,
           signal: "neutral",
           score: 0,
-          description: `Volatility: ${((currentHigh - currentLow) / currentClose * 100).toFixed(2)}%`,
+          description: `Volatility: ${(currentClose > 0 ? ((currentHigh - currentLow) / currentClose * 100) : 0).toFixed(2)}%`,
         },
       },
       totalScore: Math.max(0, Math.min(100, totalScore)),
@@ -203,7 +229,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     };
 
     res.setHeader("Cache-Control", "private, max-age=30");
-    return res.json(analysis);
+    return res.status(200).json(analysis);
   } catch (error: any) {
     console.error("POST /api/scanner/scan failed", error?.message || error);
     return res.status(500).json({
