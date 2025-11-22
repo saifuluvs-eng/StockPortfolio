@@ -1,7 +1,7 @@
 import { useAiSummary } from "@/hooks/useAiSummary";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { CopyIcon, RefreshCw } from "lucide-react";
+import { CopyIcon, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMemo } from "react";
 
@@ -14,8 +14,18 @@ export default function AiSummaryPanel({ symbol, tf }: AiSummaryPanelProps) {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf });
 
-  const handleRefresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ["aiSummary", symbol, tf] });
+  const handleGenerate = async () => {
+    await queryClient.fetchQuery({
+      queryKey: ["aiSummary", symbol, tf],
+      queryFn: async () => {
+        const { apiFetch } = await import("@/lib/api");
+        const response = (await apiFetch("/api/ai/summary", {
+          method: "POST",
+          body: JSON.stringify({ symbol, tf }),
+        })) as { data?: string } | null;
+        return typeof response?.data === "string" ? response.data : "";
+      },
+    });
   };
 
   const handleCopy = async () => {
@@ -29,8 +39,8 @@ export default function AiSummaryPanel({ symbol, tf }: AiSummaryPanelProps) {
 
   const content = useMemo(() => {
     if (isLoading) return "Generating…";
-    if (isError) return "Unavailable. Try Refresh.";
-    if (!data) return "No summary yet.";
+    if (isError) return "Failed to generate. Try again.";
+    if (!data) return "Click Generate to start analysis.";
     return data;
   }, [data, isError, isLoading]);
 
@@ -42,16 +52,16 @@ export default function AiSummaryPanel({ symbol, tf }: AiSummaryPanelProps) {
           <Button
             variant="default"
             size="sm"
-            onClick={handleRefresh}
+            onClick={handleGenerate}
             disabled={isFetching || isLoading}
           >
-            <RefreshCw
+            <Wand2
               className={cn(
                 "mr-2 h-4 w-4",
                 (isFetching || isLoading) && "animate-spin",
               )}
             />
-            Refresh
+            Generate
           </Button>
           <Button
             variant="ghost"
