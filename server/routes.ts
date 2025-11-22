@@ -494,7 +494,7 @@ export function registerRoutes(app: Express): void {
         };
       }
       
-      res.json({ data: aiInsight });
+      res.json({ data: aiInsight.reasoning || "No summary available." });
     } catch (error) {
       console.error("Error in /api/ai/summary:", error);
       res.status(500).json({ error: "Failed to generate AI summary", message: error instanceof Error ? error.message : String(error) });

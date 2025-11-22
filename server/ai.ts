@@ -1,8 +1,9 @@
 import express from "express";
-import fetch from "node-fetch";
+import { AIService } from "./services/aiService";
 
 export const ai = express.Router();
 
+const aiService = new AIService();
 const cache = new Map<string, { at: number; text: string }>();
 const TTL_MS = 5 * 60 * 1000;
 
@@ -38,79 +39,20 @@ ai.post("/summary", express.json({ limit: "1mb" }), async (req, res) => {
       return res.json({ data: cached.text, cached: true });
     }
 
-    const baseUrl =
-      process.env.PUBLIC_API_BASE?.replace(/\/$/, "") ||
-      "https://crypto-backend-wat1.onrender.com";
-    const metricsURL = `${baseUrl}/api/metrics?symbol=${encodeURIComponent(
-      symbol,
-    )}&tf=${encodeURIComponent(tf)}&limit=200`;
-
-    const mRes = await fetch(metricsURL);
-    const mOk = mRes.ok ? await mRes.json().catch(() => null) : null;
-
-    const ctx = {
-      symbol,
-      tf,
-      lastPrice: mOk?.data?.last?.price ?? null,
-      rsi: mOk?.data?.indicators?.rsi ?? null,
-      macd: mOk?.data?.indicators?.macd ?? null,
-      ema20: mOk?.data?.indicators?.ema20 ?? null,
-      ema50: mOk?.data?.indicators?.ema50 ?? null,
-      atr: mOk?.data?.indicators?.atr ?? null,
-      swing: mOk?.data?.swing ?? null,
-    };
-
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return res.status(500).json({ error: "AI not configured" });
     }
 
-    const body = {
-      model: "gpt-4o-mini",
-      temperature: 0.2,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a concise trading assistant. Output short, actionable analysis for the given symbol & timeframe. Avoid hype. No financial advice.",
-        },
-        {
-          role: "user",
-          content: [
-            `Symbol: ${symbol}`,
-            `Timeframe: ${tf}`,
-            `Context: ${JSON.stringify(ctx)}`,
-            "",
-            "Write 5–8 short bullets covering: trend, momentum, key supports/resistances (approx), risk note, and a one-line game plan.",
-            "Strict format:",
-            "- Trend: ...",
-            "- Momentum: ...",
-            "- Levels: ...",
-            "- Volatility/Risk: ...",
-            "- Plan: ...",
-          ].join("\n"),
-        },
-      ],
-    };
-
-    const oai = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!oai.ok) {
-      const errText = await oai.text().catch(() => "");
-      return res.status(502).json({ error: "OpenAI error", detail: errText.slice(0, 500) });
+    try {
+      // Use the new Gemini-based AIService
+      const insight = await aiService.generateCryptoInsight(symbol, {}, { timeframe: tf });
+      const text = insight.reasoning || "No summary available.";
+      cache.set(key, { at: Date.now(), text });
+      return res.json({ data: text });
+    } catch (error) {
+      console.error("Error generating AI insight:", error);
+      return res.status(500).json({ error: "AI analysis unavailable" });
     }
-
-    const json = await oai.json().catch(() => null);
-    const text = json?.choices?.[0]?.message?.content?.trim() || "No summary.";
-    cache.set(key, { at: Date.now(), text });
-
-    return res.json({ data: text, cached: false });
   } catch (error) {
     console.error("AI summary error", error);
     return res.status(500).json({ error: "Internal error" });
