@@ -1,6 +1,6 @@
 // Gemini API configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 /**
  * Helper function to call Gemini API
@@ -305,47 +305,64 @@ Respond with ONLY valid JSON in this exact format:
     marketData: any
   ): Promise<AICryptoInsight> {
     try {
-      const prompt = `You are an expert cryptocurrency trading advisor providing actionable insights for traders. Focus on practical, risk-aware recommendations. Always respond with valid JSON format only, no other text.
+      const prompt = `You are an advanced crypto market analyst. 
+You will receive structured technical indicator data in JSON format.
 
-Provide a comprehensive trading insight for ${symbol} cryptocurrency:
+Your job is to produce a clean AI Summary based ONLY on the *meaning* of the indicators, not the raw values.
 
-Technical Analysis: ${JSON.stringify(technicalAnalysis)}
-Market Data: ${JSON.stringify(marketData)}
+=========================
+INSTRUCTIONS (FOLLOW STRICTLY)
+=========================
 
-Generate insights covering analysis type, signal, confidence, reasoning, recommendation, and timeframe. Do NOT repeat data values, summarize analysis only.
+1. DO NOT repeat any indicator numbers.
+2. DO NOT explain what indicators mean (e.g., don't say "RSI measures momentum").
+3. Focus ONLY on what the indicators collectively imply.
+4. Summarise in short, clear points — avoid long paragraphs.
+5. Format output EXACTLY like this (plain text, NOT JSON):
 
-Respond with ONLY valid JSON in this exact format:
-{
-  "analysisType": "sentiment|pattern|prediction|recommendation",
-  "signal": "bullish|bearish|neutral",
-  "confidence": 0.8,
-  "reasoning": "comprehensive analysis explanation",
-  "recommendation": "specific trading advice",
-  "timeframe": "1h|4h|1d|1w",
-  "metadata": {
-    "technicalScore": 85,
-    "volumeAnalysis": "high volume breakout",
-    "marketCondition": "trending upward",
-    "riskLevel": "medium"
-  }
-}`;
+### AI Summary — ${symbol} ${marketData.timeframe || '4h'}
+
+**Overall Bias:** (Bullish / Bearish / Neutral)
+
+**Why:**
+- 3–5 short bullet points combining all major signals
+- Focus on trend direction, momentum, volatility, and volume strength
+
+**What to expect next:**
+- Expected short-term move (bounce, continuation, rejection, consolidation)
+
+**Levels to watch:**
+- Support zones
+- Resistance zones
+
+**Risk:**
+- Short risk note based on trend strength, volatility, or extreme readings
+
+=========================
+HERE IS THE DATA:
+=========================
+
+${JSON.stringify(technicalAnalysis)}`;
 
       const responseText = await callGemini(prompt);
-      const result = JSON.parse(responseText);
+      
+      // Extract signal from response text
+      const signal = responseText.toLowerCase().includes("bullish") ? "bullish" :
+                    responseText.toLowerCase().includes("bearish") ? "bearish" : "neutral";
       
       return {
         symbol,
-        analysisType: result.analysisType || "recommendation",
-        signal: result.signal,
-        confidence: Math.max(0, Math.min(1, result.confidence)),
-        reasoning: result.reasoning,
-        recommendation: result.recommendation,
-        timeframe: result.timeframe || "4h",
+        analysisType: "recommendation",
+        signal: signal as "bullish" | "bearish" | "neutral",
+        confidence: 0.8,
+        reasoning: responseText,
+        recommendation: responseText,
+        timeframe: marketData.timeframe || "4h",
         metadata: {
-          technicalScore: result.metadata?.technicalScore || 50,
-          volumeAnalysis: result.metadata?.volumeAnalysis || "normal volume",
-          marketCondition: result.metadata?.marketCondition || "neutral",
-          riskLevel: result.metadata?.riskLevel || "medium"
+          technicalScore: 50,
+          volumeAnalysis: "analysis based on indicators",
+          marketCondition: signal,
+          riskLevel: responseText.toLowerCase().includes("high volatility") ? "high" : "medium"
         }
       };
     } catch (error) {
