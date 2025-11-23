@@ -141,7 +141,7 @@ function createFallbackStorage(): StorageLike {
         scanType: entry.scanType,
         filters: entry.filters ? cloneValue(entry.filters) : null,
         results: entry.results ? cloneValue(entry.results) : null,
-        createdAt: Date.now(),
+        createdAt: new Date(),
       };
       const existing = state.scanHistory.get(entry.userId) ?? [];
       state.scanHistory.set(entry.userId, [record, ...existing].slice(0, 100));
@@ -172,7 +172,7 @@ function createFallbackStorage(): StorageLike {
         id: randomUUID(),
         userId: item.userId,
         symbol,
-        createdAt: Date.now(),
+        createdAt: new Date(),
       };
       state.watchlist.set(item.userId, [record, ...existing]);
       return cloneValue(record);
