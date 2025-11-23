@@ -118,7 +118,7 @@ Preferred communication style: Simple, everyday language.
 # External Dependencies
 
 - **Market Data**: Binance REST API (`api.binance.com/api/v3`) for real-time tickers and OHLC data.
-- **AI Services**: Google Gemini API (`gemini-2.5-flash` model) for market analysis and AI Summary.
+- **AI Services**: Google Gemini API (`gemini-2.0-flash` model) for market analysis and AI Summary.
 - **News**: CryptoPanic API for cryptocurrency news aggregation.
 - **Authentication**: Supabase Auth (primary) and Firebase Auth (optional).
 - **Build Tools**: Vite, TypeScript, PostCSS, Tailwind CSS, Drizzle Kit.
