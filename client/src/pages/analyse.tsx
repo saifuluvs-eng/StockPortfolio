@@ -346,7 +346,6 @@ export default function Analyse() {
   const [timeframe, setTimeframe] = useState<string>(initialTimeframe);
   const [chartSymbol, setChartSymbol] = useState<string>(normalizeSymbol(initialSymbol));
   const [chartTf, setChartTf] = useState<string>(initialTimeframe);
-  const [chartKey, setChartKey] = useState<string>(() => `tv-${Date.now()}`);
   const syncingFromQueryRef = useRef(false);
   const [symbolInput, setSymbolInput] = useState<string>(initialSymbol || DEFAULT_SYMBOL);
   const [scanResult, setScanResult] = useState<ScannerAnalysis | ScanResult | null>(() => {
@@ -608,7 +607,6 @@ export default function Analyse() {
       setIsScanning(true);
       setChartSymbol(normalizedSymbol);
       setChartTf(tfValue);
-      setChartKey(`tv-${normalizedSymbol}-${tfValue}-${Date.now()}`);
 
       let timeoutId: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -959,7 +957,6 @@ export default function Analyse() {
     if (!networkEnabled) {
       setChartSymbol(normalizedTarget);
       setChartTf(timeframe);
-      setChartKey(`tv-${normalizedTarget}-${timeframe}-${Date.now()}`);
       if (backendOffline) {
         toast({
           title: "Backend required",
@@ -1290,7 +1287,7 @@ export default function Analyse() {
                 <div className="h-[560px] min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
                   <div className="h-full w-full">
                     <TVChart
-                      key={chartKey}
+                      key={`${chartSymbol}-${chartTf}`}
                       symbol={chartSymbol}
                       timeframe={chartTf}
                     />
