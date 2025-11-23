@@ -1,5 +1,5 @@
 // client/src/components/TVChart.tsx
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type TVChartProps = {
   // Defaults from parent are fine (BTCUSDT / 4h). Component will
@@ -128,7 +128,7 @@ export default function TVChart({
   const latestSymbolRef = useRef(normalizeSymbol(symbol));
   const latestTfRef = useRef(timeframe);
   const containerIdRef = useRef(`tv-chart-${Math.random().toString(36).slice(2)}`);
-  const [isReady, setIsReady] = React.useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   const applySymbolToChart = useCallback((resolvedSymbol: string, resolvedTf: string) => {
     const widget = widgetRef.current;
