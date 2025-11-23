@@ -12,6 +12,10 @@ const MIN_USD_VOL = 1_000_000;
 
 const isLeveragedName = (s: string) => /(UP|DOWN|BULL|BEAR|3L|3S)(USDT)?$/i.test(s);
 
+const stripUSDT = (symbol: string): string => {
+  return symbol.endsWith("USDT") ? symbol.slice(0, -4) : symbol;
+};
+
 const num = (v: any) => {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -59,9 +63,9 @@ function GainerRow({ index, symbol, name, change24h, price, volume, onAnalyse }:
       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{index + 1}</td>
       <td className="whitespace-nowrap px-4 py-3">
         <div className="flex flex-col">
-          <span className="font-medium">{symbol}</span>
+          <span className="font-medium">{stripUSDT(symbol)}</span>
           {name && name !== symbol ? (
-            <span className="text-xs text-muted-foreground">{name}</span>
+            <span className="text-xs text-muted-foreground">{stripUSDT(name)}</span>
           ) : null}
         </div>
       </td>
@@ -93,9 +97,9 @@ function GainerRowMobile({ index, symbol, name, change24h, price, volume, onAnal
     <div className="md:hidden flex flex-col gap-3 rounded-lg border border-border bg-card p-4 hover:bg-card/80 transition-colors">
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
-          <span className="font-semibold text-foreground">{symbol}</span>
+          <span className="font-semibold text-foreground">{stripUSDT(symbol)}</span>
           {name && name !== symbol ? (
-            <span className="text-xs text-muted-foreground">{name}</span>
+            <span className="text-xs text-muted-foreground">{stripUSDT(name)}</span>
           ) : null}
         </div>
         <span className="text-xs text-muted-foreground">#{index + 1}</span>

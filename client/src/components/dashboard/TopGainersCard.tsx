@@ -6,6 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 const CACHE_KEY = "gainers_data_cache";
 const TIMESTAMP_KEY = "gainers_data_timestamp";
 
+const stripUSDT = (symbol: string): string => {
+  return symbol.endsWith("USDT") ? symbol.slice(0, -4) : symbol;
+};
+
 interface GainerData {
   symbol: string;
   change24h: number;
@@ -127,7 +131,7 @@ export default function TopGainersCard() {
             {topGainers.length > 0 ? (
               topGainers.map((gainer) => (
                 <div key={gainer.symbol} className="flex items-center justify-between text-xs sm:text-sm">
-                  <span className="font-medium text-foreground">{gainer.symbol}</span>
+                  <span className="font-medium text-foreground">{stripUSDT(gainer.symbol)}</span>
                   <span className={`font-semibold ${gainer.change24h >= 0 ? "text-accent" : "text-destructive"}`}>
                     {formatPercent(gainer.change24h)}
                   </span>
