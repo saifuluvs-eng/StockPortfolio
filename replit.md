@@ -10,19 +10,25 @@ Preferred communication style: Simple, everyday language.
 
 **November 23, 2025 - FIXED: Dashboard Market Overview BTC/ETH Price Updates**:
 - **Unified BTC/ETH price display** across Dashboard and Portfolio
-  - Dashboard now reads from shared Zustand price store (`usePrices()`) instead of separate API calls
+  - Portfolio now ALWAYS subscribes to BTCUSDT/ETHUSDT prices (not just portfolio positions)
+  - Dashboard reads from shared Zustand price store (`usePrices()`) instead of separate API calls
   - Eliminates duplicate fetching and ensures prices always match Portfolio page
   - Fallback: If Portfolio not visited, Dashboard fetches BTC/ETH from API once and stores in shared store
   - Both pages now sync prices in real-time through the same state management
 
+- **Portfolio WebSocket now includes BTC/ETH subscriptions**
+  - Portfolio subscribes to BTCUSDT + ETHUSDT first, then portfolio positions
+  - Guarantees BTC/ETH prices are always in the shared store
+  - Dashboard can reliably read these prices for Market Overview section
+
 - **Removed redundant WebSocket setup** in Dashboard
   - Portfolio handles WebSocket subscriptions for BTC/ETH and updates the shared store
-  - Dashboard listens to the same store, eliminating duplicate subscriptions and API calls
-  - Result: BTC/ETH prices update together on both pages
+  - Dashboard listens to the same store, eliminating duplicate subscriptions
+  - Result: BTC/ETH prices update together on both pages in real-time
 
 - **Market Overview section** now displays live, updating prices
   - Price data flows: Portfolio WebSocket → Zustand Store → Dashboard Display
-  - Fallback queries only run if Portfolio hasn't been visited (smart caching)
+  - Fallback queries only run if Portfolio hasn't been visited
   - 15-second refetch interval for fallback (increased from 10s to reduce API load)
 
 **November 23, 2025 - FIXED: Gainers Page Auto-Refresh & Production Deployment**:

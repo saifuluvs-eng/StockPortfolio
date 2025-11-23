@@ -175,6 +175,16 @@ export default function Portfolio() {
     }
 
     ws.onopen = () => {
+      // Always subscribe to BTC/ETH for Dashboard market overview
+      ["BTCUSDT", "ETHUSDT"].forEach((symbol) => {
+        try {
+          ws?.send(JSON.stringify({ type: "subscribe", symbol }));
+        } catch {
+          // ignore send failures
+        }
+      });
+      
+      // Subscribe to portfolio positions
       symbols.forEach((symbol) => {
         try {
           ws?.send(JSON.stringify({ type: "subscribe", symbol }));
