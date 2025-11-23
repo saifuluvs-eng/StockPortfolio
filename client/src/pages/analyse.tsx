@@ -434,67 +434,89 @@ export default function Analyse() {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   useEffect(() => {
     setPriceData(null);
-    if (!networkEnabled) return;
     if (!selectedSymbol) return;
     const targetSymbol = selectedSymbol.toUpperCase();
     let active = true;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     
-    try {
-      const unsubscribe = openSpotTickerStream(selectedSymbol, {
-        onMessage: (ticker) => {
-          if (!active) return;
-          if ((ticker.symbol || "").toUpperCase() !== targetSymbol) return;
-          if (timeoutId) clearTimeout(timeoutId);
-          setPriceData({
-            symbol: ticker.symbol,
-            lastPrice: ticker.lastPrice,
-            priceChange: ticker.priceChange,
-            priceChangePercent: ticker.priceChangePercent,
-            highPrice: ticker.highPrice,
-            lowPrice: ticker.lowPrice,
-            volume: ticker.volume,
-            quoteVolume: ticker.quoteVolume,
-          });
-        },
-        onError: (error) => {
-          console.warn("[Ticker] WebSocket error:", error);
-        }
-      });
-      
-      // Fallback: if no data within 5s, try HTTP endpoint as backup
-      if (active) {
-        timeoutId = setTimeout(() => {
-          if (!active || priceData) return;
-          console.debug("[Ticker] No WebSocket data, trying HTTP fallback");
-          fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${targetSymbol}`)
-            .then(r => r.json())
-            .then(data => {
-              if (!active) return;
-              setPriceData({
-                symbol: data.symbol,
-                lastPrice: data.lastPrice,
-                priceChange: data.priceChange,
-                priceChangePercent: data.priceChangePercent,
-                highPrice: data.highPrice,
-                lowPrice: data.lowPrice,
-                volume: data.volume,
-                quoteVolume: data.quoteAssetVolume,
-              });
-            })
-            .catch(err => console.warn("[Ticker] HTTP fallback failed:", err));
-        }, 5000);
+    // Try backend endpoint first (works everywhere), then WebSocket fallback
+    const fetchFromBackend = async () => {
+      try {
+        console.debug("[Ticker] Fetching from backend:", targetSymbol);
+        const res = await fetch(`/api/market/ticker/${targetSymbol}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!active) return;
+        
+        console.debug("[Ticker] Backend data received:", targetSymbol);
+        setPriceData({
+          symbol: data.symbol,
+          lastPrice: data.lastPrice,
+          priceChange: data.priceChange,
+          priceChangePercent: data.priceChangePercent,
+          highPrice: data.highPrice,
+          lowPrice: data.lowPrice,
+          volume: data.volume,
+          quoteVolume: data.quoteAssetVolume,
+        });
+      } catch (err) {
+        console.warn("[Ticker] Backend fetch failed, trying WebSocket:", err);
+        if (!active) return;
+        // Try WebSocket as fallback
+        tryWebSocket();
       }
-      
-      return () => {
-        active = false;
-        if (timeoutId) clearTimeout(timeoutId);
-        unsubscribe?.();
-      };
-    } catch (error) {
-      console.error("[Ticker] Failed to open stream:", error);
-    }
-  }, [selectedSymbol, networkEnabled]);
+    };
+    
+    const tryWebSocket = () => {
+      try {
+        const unsubscribe = openSpotTickerStream(selectedSymbol, {
+          onMessage: (ticker) => {
+            if (!active) return;
+            if ((ticker.symbol || "").toUpperCase() !== targetSymbol) return;
+            console.debug("[Ticker] WebSocket data received:", targetSymbol);
+            if (timeoutId) clearTimeout(timeoutId);
+            setPriceData({
+              symbol: ticker.symbol,
+              lastPrice: ticker.lastPrice,
+              priceChange: ticker.priceChange,
+              priceChangePercent: ticker.priceChangePercent,
+              highPrice: ticker.highPrice,
+              lowPrice: ticker.lowPrice,
+              volume: ticker.volume,
+              quoteVolume: ticker.quoteVolume,
+            });
+          },
+          onError: (error) => {
+            console.warn("[Ticker] WebSocket error:", error);
+            if (!active) return;
+            // Last resort: retry backend after brief delay
+            if (timeoutId) clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => {
+              if (active && !priceData) {
+                console.debug("[Ticker] Retrying backend after WebSocket failure");
+                void fetchFromBackend();
+              }
+            }, 2000);
+          }
+        });
+        
+        return () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          unsubscribe?.();
+        };
+      } catch (error) {
+        console.error("[Ticker] WebSocket setup failed:", error);
+      }
+    };
+    
+    // Start with backend fetch
+    void fetchFromBackend();
+    
+    return () => {
+      active = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [selectedSymbol]);
 
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
