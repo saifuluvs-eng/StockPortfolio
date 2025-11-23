@@ -87,55 +87,44 @@ export default function Home() {
   }, [user]);
 
   // ---------- Lower “Market Overview” (REST polling; WS disabled on Vercel) ----------
-  const [prices, setPrices] = useState<{ BTCUSDT?: number; ETHUSDT?: number }>({});
   const [btcChange, setBtcChange] = useState<{ priceChangePercent?: string | number }>({});
   const [ethChange, setEthChange] = useState<{ priceChangePercent?: string | number }>({});
+  const { prices, setPrices } = usePrices();
 
+  // Fallback: If prices not in Zustand store (e.g., Portfolio not visited), fetch from API
   const { data: btcTicker } = useQuery({
     queryKey: ["/api/market/ticker/BTCUSDT"],
     queryFn: getQueryFn<TickerResponse>({ on401: "throw" }),
-    refetchInterval: 10_000,
-    enabled: networkEnabled,
+    refetchInterval: 15_000,
+    enabled: networkEnabled && !prices.BTCUSDT,
   });
 
   const { data: ethTicker } = useQuery({
     queryKey: ["/api/market/ticker/ETHUSDT"],
     queryFn: getQueryFn<TickerResponse>({ on401: "throw" }),
-    refetchInterval: 10_000,
-    enabled: networkEnabled,
+    refetchInterval: 15_000,
+    enabled: networkEnabled && !prices.ETHUSDT,
   });
 
   useEffect(() => {
+    if (btcTicker?.price != null) {
+      setPrices({ BTCUSDT: Number(btcTicker.price) });
+    }
     if (btcTicker?.priceChangePercent != null) {
       setBtcChange({ priceChangePercent: btcTicker.priceChangePercent });
     }
-    if (btcTicker?.price != null) setPrices((p) => ({ ...p, BTCUSDT: Number(btcTicker.price) || p.BTCUSDT }));
-  }, [btcTicker]);
+  }, [btcTicker, setPrices]);
 
   useEffect(() => {
+    if (ethTicker?.price != null) {
+      setPrices({ ETHUSDT: Number(ethTicker.price) });
+    }
     if (ethTicker?.priceChangePercent != null) {
       setEthChange({ priceChangePercent: ethTicker.priceChangePercent });
     }
-    if (ethTicker?.price != null) setPrices((p) => ({ ...p, ETHUSDT: Number(ethTicker.price) || p.ETHUSDT }));
-  }, [ethTicker]);
+  }, [ethTicker, setPrices]);
 
-  useEffect(() => {
-    if (!networkEnabled) return;
-    if (typeof window === "undefined") return;
-    const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
-    const ws = new WebSocket(wsUrl);
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "price_update") setPrices(data.data);
-      } catch {}
-    };
-    ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "subscribe", symbol: "BTCUSDT" }));
-      ws.send(JSON.stringify({ type: "subscribe", symbol: "ETHUSDT" }));
-    };
-    return () => ws.close();
-  }, [networkEnabled]);
+  // Portfolio page handles WebSocket subscriptions for BTCUSDT/ETHUSDT and updates the shared price store
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
   const { data: positionsData = [] } = usePositions({ enabled: networkEnabled && !!user });
