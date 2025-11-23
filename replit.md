@@ -8,6 +8,25 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 23, 2025 - FIXED: Gainers Page Auto-Refresh & Production Deployment**:
+- **Fixed auto-refresh failure** on Gainers page
+  - Changed from direct Binance API (geo-blocked on Replit) to backend endpoint
+  - Gainers page now fetches from `/api/market/gainers` with fallback support
+  - Manual refresh now works correctly with proper error handling and logging
+  
+- **Created Vercel serverless function** for production deployment
+  - New file: `api/market/gainers.ts` (Vercel function)
+  - Returns same format: `{ ok: true, rows: [...], timestamp: ... }`
+  - Handles Binance API failures gracefully with proper error responses
+  - Filters USDT pairs, excludes leveraged tokens (UP/DOWN/BULL/BEAR)
+  - Returns top 50 gainers sorted by 24h change percentage
+  - Works both on Replit dev server and Vercel production
+
+- **Auto-refresh now fully functional**
+  - Randomized 10-15 minute intervals prevent sync issues
+  - Backend endpoint works on both local and production
+  - Browser console logs track when auto-refresh runs: `[Gainers] ✓ Auto-refreshing data now...`
+
 **November 23, 2025 - NEW: Gainers Page Auto-Refresh & Dashboard Card**:
 - **Added Gainers page auto-refresh every 10-15 minutes**
   - Auto-refresh runs on randomized 10-15 minute intervals to prevent synchronized updates
