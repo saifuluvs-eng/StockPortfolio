@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import "./index.css";
 
-import { FirebaseAuthProvider } from "./hooks/useFirebaseAuth";
+import { AuthProvider } from "./auth/AuthContext";
 import { Router } from "wouter";
 import { useHashLocation } from "wouter/use-hash-location";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -42,11 +42,11 @@ function render() {
       <QueryClientProvider client={queryClient}>
         <ToastProvider>
           <Router hook={useHashLocation}>
-            <FirebaseAuthProvider>
+            <AuthProvider>
               <ErrorBoundary>
                 <App />
               </ErrorBoundary>
-            </FirebaseAuthProvider>
+            </AuthProvider>
           </Router>
         </ToastProvider>
         <ReactQueryDevtools initialIsOpen={false} />

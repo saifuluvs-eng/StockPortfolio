@@ -12,6 +12,9 @@ async function throwIfResNotOk(res: Response) {
 const PUBLIC_ENDPOINT_PATHS = new Set([
   "/api/health",
   "/api/scanner/history",
+  "/api/market/ticker/BTCUSDT",
+  "/api/market/ticker/ETHUSDT",
+  "/api/market/gainers",
 ]);
 
 function normalizePath(input: string): string {

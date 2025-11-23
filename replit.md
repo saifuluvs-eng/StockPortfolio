@@ -8,24 +8,31 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 23, 2025 - FIXED: Dashboard Issues (3 Critical Fixes)**:
-- **Dashboard greeting now shows personalized name in theme color**
-  - Displays user's first name (e.g., "Welcome back, Saifu!") in cyan (primary theme color)
-  - Removed profile lookup that was failing silently
-  - Falls back to first name from user's displayName or email
+**November 23, 2025 - FIXED: Authentication & Dashboard Issues (Major Fixes)**:
+- **Switched from Firebase to Supabase authentication**
+  - Changed main.tsx to use AuthProvider from Supabase instead of FirebaseAuthProvider
+  - Updated useAuth hook to read from Supabase AuthContext instead of Firebase
+  - Supabase user data now properly populates displayName from user_metadata.full_name or email
+  - AI Summary now correctly detects login state based on Supabase session
   
-- **Market Overview now shows real-time BTC/ETH prices**
-  - Fixed ticker API response format to match client expectations
-  - API now returns `price` field (from Binance's `lastPrice`)
-  - REST queries now always run (changed `enabled: networkEnabled && !prices.BTCUSDT` to `enabled: networkEnabled`)
-  - Added 10s staleTime to prevent excessive refetches
-  - Prices update every 15 seconds with fresh data from Binance
+- **Market Overview prices now display (Backend API Fixed)**
+  - Fixed ticker API response format in `/api/market/ticker/[symbol].ts`
+  - API now returns `price`, `priceChangePercent`, and other fields correctly
+  - Added BTCUSDT, ETHUSDT, and gainers endpoints to PUBLIC_ENDPOINT_PATHS
+  - Ticker queries now execute without requiring auth headers (public data)
+  - Reduced staleTime to 5s for more frequent updates while preventing excessive refetches
+  - Changed error handling from "throw" to "returnNull" for graceful degradation
   
-- **AI Summary is now login-gated**
-  - Generate button only visible to logged-in users
-  - Logged-out users see "Sign In" button instead of Generate option
-  - Shows "Sign in to use AI Summary" message for unauthenticated users
-  - Prevents unauthorized API calls to AI endpoints
+- **AI Summary properly gated by authentication**
+  - Component checks `user` from Supabase AuthContext
+  - "Generate" button only shows for authenticated users
+  - "Sign In" button shown for logged-out users with appropriate message
+  - Uses Supabase session token instead of Firebase token
+
+**Troubleshooting Notes**:
+- If greeting still shows "Trader": Verify Supabase session is loaded (check browser DevTools Network tab for `/auth/v1/` calls)
+- If prices show $0.00: Check Network tab for `/api/market/ticker/` responses - should return valid price data
+- Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON environment variables are properly set in Vercel
 
 **November 23, 2025 - FIXED: Chart Loading Blank Space (Complete Solution)**:
 - **TradingView script now preloads globally**

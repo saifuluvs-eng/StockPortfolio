@@ -1,16 +1,18 @@
-import { useFirebaseAuth } from "./useFirebaseAuth";
+import { useAuth as useSupabaseAuth } from "@/auth/AuthContext";
 
 export function useAuth() {
-  const { user, loading, idToken, getIdToken, signInWithGoogle, signOut } =
-    useFirebaseAuth();
+  const { user, loading, session, signOut } = useSupabaseAuth();
   return {
     user,
-    idToken,
-    getIdToken,
-    signInWithGoogle,
+    session,
     signOut,
     isLoading: loading,
     authReady: !loading,
     isAuthenticated: !!user,
+    idToken: session?.access_token ?? null,
+    getIdToken: async () => session?.access_token ?? null,
+    signInWithGoogle: async () => {
+      // Supabase OAuth handled in AuthPage
+    },
   };
 }

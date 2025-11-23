@@ -61,7 +61,8 @@ export default function Home() {
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
   
-  const displayName = (user?.displayName?.trim() ?? user?.email ?? "Trader");
+  // Extract name from Supabase user (email or metadata)
+  const displayName = user?.user_metadata?.full_name?.trim() || user?.email?.split("@")[0] || "Trader";
   const firstName = displayName.split(" ")[0] || displayName;
 
   const containerClass = "w-full max-w-full overflow-hidden px-3 sm:px-4 md:px-6 py-4";
@@ -74,18 +75,18 @@ export default function Home() {
   // Fallback: If prices not in Zustand store (e.g., Portfolio not visited), fetch from API
   const { data: btcTicker } = useQuery({
     queryKey: ["/api/market/ticker/BTCUSDT"],
-    queryFn: getQueryFn<TickerResponse>({ on401: "throw" }),
+    queryFn: getQueryFn<TickerResponse>({ on401: "returnNull" }),
     refetchInterval: 15_000,
     enabled: networkEnabled,
-    staleTime: 10_000,
+    staleTime: 5_000,
   });
 
   const { data: ethTicker } = useQuery({
     queryKey: ["/api/market/ticker/ETHUSDT"],
-    queryFn: getQueryFn<TickerResponse>({ on401: "throw" }),
+    queryFn: getQueryFn<TickerResponse>({ on401: "returnNull" }),
     refetchInterval: 15_000,
     enabled: networkEnabled,
-    staleTime: 10_000,
+    staleTime: 5_000,
   });
 
   useEffect(() => {
