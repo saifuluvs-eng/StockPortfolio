@@ -448,17 +448,25 @@ export default function Analyse() {
         const data = await res.json();
         if (!active) return;
         
-        console.debug("[Ticker] Backend data received:", targetSymbol);
-        setPriceData({
-          symbol: data.symbol,
-          lastPrice: data.lastPrice,
-          priceChange: data.priceChange,
-          priceChangePercent: data.priceChangePercent,
-          highPrice: data.highPrice,
-          lowPrice: data.lowPrice,
-          volume: data.volume,
-          quoteVolume: data.quoteVolume,
-        });
+        // Validate we got a proper response with all required fields
+        if (!data?.symbol || !data?.lastPrice) {
+          throw new Error(`Invalid ticker response for ${targetSymbol}`);
+        }
+        
+        console.debug("[Ticker] Backend data received:", { targetSymbol, apiData: data });
+        // Ensure all values are present and are strings
+        const priceObj: PriceData = {
+          symbol: String(data.symbol || targetSymbol),
+          lastPrice: String(data.lastPrice || "0"),
+          priceChange: String(data.priceChange || "0"),
+          priceChangePercent: String(data.priceChangePercent || "0"),
+          highPrice: String(data.highPrice || "0"),
+          lowPrice: String(data.lowPrice || "0"),
+          volume: String(data.volume || "0"),
+          quoteVolume: String(data.quoteVolume || "0"),
+        };
+        console.debug("[Ticker] Setting price data:", priceObj);
+        setPriceData(priceObj);
       } catch (err) {
         console.warn("[Ticker] Backend fetch failed, trying WebSocket:", err);
         if (!active) return;
@@ -520,6 +528,19 @@ export default function Analyse() {
 
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
+  
+  // Debug: log when price data changes
+  useEffect(() => {
+    console.debug("[Ticker] State after update:", {
+      priceDataSymbol: priceData?.symbol,
+      selectedSymbol,
+      symbolsMatch: (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase(),
+      latestPrice: latestPrice ? "LOADED" : "NULL",
+      lastPrice: latestPrice?.lastPrice,
+      quoteVolume: latestPrice?.quoteVolume
+    });
+  }, [priceData, selectedSymbol, latestPrice]);
+  
   const showLoadingState = !latestPrice;
   const priceChange = showLoadingState ? 0 : parseFloat(latestPrice?.priceChangePercent || "0");
   const isPositive = priceChange > 0;
