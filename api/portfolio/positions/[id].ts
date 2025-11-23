@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { z } from "zod";
 import { getStorage, getUserId, readJsonBody } from "../../_lib/serverless";
-import type { PortfolioPosition } from "@shared/schema";
+import type { PortfolioPosition } from "../../../shared/schema";
 
 const patchSchema = z
   .object({

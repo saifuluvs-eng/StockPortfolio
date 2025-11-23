@@ -6,7 +6,7 @@ import type {
   InsertWatchlistItem,
   WatchlistItem,
   PortfolioPosition,
-} from "@shared/schema";
+} from "../../shared/schema";
 import { randomUUID } from "node:crypto";
 
 const DEMO_USER_ID = "demo-user";

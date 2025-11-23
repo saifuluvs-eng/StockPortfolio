@@ -6,7 +6,7 @@ import {
   type MarketData,
   type InsertPortfolioAnalytics,
   type InsertTradeTransaction 
-} from '@shared/schema';
+} from '../../shared/schema';
 
 interface PortfolioSummary {
   totalValue: number;
