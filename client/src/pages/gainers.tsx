@@ -233,12 +233,17 @@ export default function Gainers() {
     const randomInterval = 10 + Math.random() * 5; // 10-15 minutes
     const intervalMs = randomInterval * 60 * 1000;
     
+    console.log(`[Gainers] Auto-refresh configured for ${randomInterval.toFixed(1)} minutes (${(intervalMs/1000/60).toFixed(1)} sec)`);
+    
     const intervalId = setInterval(() => {
-      console.debug(`[Gainers] Auto-refreshing data (interval: ${randomInterval.toFixed(1)} min)`);
+      console.log(`[Gainers] ✓ Auto-refreshing data now...`);
       fetchData(true);
     }, intervalMs);
 
-    return () => clearInterval(intervalId);
+    return () => {
+      console.log(`[Gainers] Auto-refresh cleared on unmount`);
+      clearInterval(intervalId);
+    };
   }, []);
 
   const displayRows = useMemo<DisplayRow[]>(() => {
