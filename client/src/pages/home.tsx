@@ -60,31 +60,11 @@ export default function Home() {
   const { user } = useAuth();
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus === true;
-  const [profileUsername, setProfileUsername] = useState<string | null>(null);
   
   const displayName = (user?.displayName?.trim() ?? user?.email ?? "Trader");
   const firstName = displayName.split(" ")[0] || displayName;
-  const welcomeName = profileUsername || firstName;
 
   const containerClass = "w-full max-w-full overflow-hidden px-3 sm:px-4 md:px-6 py-4";
-
-  // Load user's saved username
-  useEffect(() => {
-    async function loadProfile() {
-      if (!user) return;
-      try {
-        const { data } = await supabase
-          .from("profiles")
-          .select("username")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (data?.username) setProfileUsername(data.username);
-      } catch (err) {
-        console.log("Could not load profile username");
-      }
-    }
-    loadProfile();
-  }, [user]);
 
   // ---------- Lower “Market Overview” (REST polling; WS disabled on Vercel) ----------
   const [btcChange, setBtcChange] = useState<{ priceChangePercent?: string | number }>({});
@@ -96,14 +76,16 @@ export default function Home() {
     queryKey: ["/api/market/ticker/BTCUSDT"],
     queryFn: getQueryFn<TickerResponse>({ on401: "throw" }),
     refetchInterval: 15_000,
-    enabled: networkEnabled && !prices.BTCUSDT,
+    enabled: networkEnabled,
+    staleTime: 10_000,
   });
 
   const { data: ethTicker } = useQuery({
     queryKey: ["/api/market/ticker/ETHUSDT"],
     queryFn: getQueryFn<TickerResponse>({ on401: "throw" }),
     refetchInterval: 15_000,
-    enabled: networkEnabled && !prices.ETHUSDT,
+    enabled: networkEnabled,
+    staleTime: 10_000,
   });
 
   useEffect(() => {
@@ -219,7 +201,7 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 md:mb-8">
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground break-words">
-              Welcome back, {welcomeName}!
+              Welcome back, <span className="text-primary">{firstName}</span>!
             </h1>
             <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
           </div>
