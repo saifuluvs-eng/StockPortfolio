@@ -183,6 +183,21 @@ function formatIndicatorLabel(key: string) {
     .join(" ");
 }
 
+function formatIndicatorValue(value: any): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (typeof value === "string") return value;
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return "—";
+    // For percentages and small numbers, use 2 decimals
+    if (Math.abs(value) < 100) return value.toFixed(2);
+    // For larger numbers, use fewer decimals
+    if (Math.abs(value) < 10000) return value.toFixed(1);
+    // For very large numbers, use no decimals or scientific notation
+    return value.toFixed(0);
+  }
+  return String(value);
+}
+
 function getRawBreakdownRows(item: ScannerAnalysis | ScanResult | null | undefined) {
   if (!item) return [] as any[];
 
@@ -610,44 +625,56 @@ export default function Analyse() {
   );
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      console.debug("[Analyse] Skipping auto-run: no user");
+      return;
+    }
+
+    if (!networkEnabled) {
+      console.debug("[Analyse] Skipping auto-run: network disabled");
+      return;
+    }
+
+    if (!selectedSymbol) {
+      console.debug("[Analyse] Skipping auto-run: no symbol selected");
+      return;
+    }
 
     if (isFirstRenderRef.current) {
       isFirstRenderRef.current = false;
       previousSymbolRef.current = selectedSymbol;
       previousTimeframeRef.current = timeframe;
-      if (
-        initialExplicitSymbolRef.current &&
-        selectedSymbol &&
-        networkEnabled
-      ) {
+      console.debug("[Analyse] First render:", { selectedSymbol, timeframe, initialExplicit: initialExplicitSymbolRef.current });
+      
+      if (initialExplicitSymbolRef.current) {
+        console.debug("[Analyse] Triggering initial analysis");
         void runAnalysis(selectedSymbol, timeframe);
       }
-      return;
-    }
-
-    if (!networkEnabled) {
       return;
     }
 
     const symbolChanged = selectedSymbol !== previousSymbolRef.current;
     const timeframeChanged = timeframe !== previousTimeframeRef.current;
 
-    if (!selectedSymbol) {
+    if (!symbolChanged && !timeframeChanged) {
+      console.debug("[Analyse] No changes detected, skipping");
       return;
     }
 
-    if (symbolChanged || timeframeChanged) {
-      previousSymbolRef.current = selectedSymbol;
-      previousTimeframeRef.current = timeframe;
-      void runAnalysis(selectedSymbol, timeframe);
-      console.debug("[Analyse] Auto-run triggered:", {
-        symbolChanged,
-        timeframeChanged,
-        symbol: selectedSymbol,
-        timeframe,
-      });
-    }
+    const oldSymbol = previousSymbolRef.current;
+    const oldTimeframe = previousTimeframeRef.current;
+    
+    previousSymbolRef.current = selectedSymbol;
+    previousTimeframeRef.current = timeframe;
+    
+    console.warn("[Analyse] Auto-run triggered:", {
+      symbolChanged,
+      timeframeChanged,
+      from: { symbol: oldSymbol, timeframe: oldTimeframe },
+      to: { symbol: selectedSymbol, timeframe: timeframe },
+    });
+    
+    void runAnalysis(selectedSymbol, timeframe);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     user,
@@ -1145,10 +1172,7 @@ export default function Analyse() {
                         : "neutral";
 
                     const rawValue = row?.value;
-                    const value =
-                      typeof rawValue === "number"
-                        ? rawValue
-                        : asString(rawValue);
+                    const value = formatIndicatorValue(rawValue);
 
                     return {
                       title: asString(row?.title || row?.key || row?.name),
