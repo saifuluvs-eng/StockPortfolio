@@ -8,6 +8,25 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 23, 2025 - FIXED: Dashboard Issues (3 Critical Fixes)**:
+- **Dashboard greeting now shows personalized name in theme color**
+  - Displays user's first name (e.g., "Welcome back, Saifu!") in cyan (primary theme color)
+  - Removed profile lookup that was failing silently
+  - Falls back to first name from user's displayName or email
+  
+- **Market Overview now shows real-time BTC/ETH prices**
+  - Fixed ticker API response format to match client expectations
+  - API now returns `price` field (from Binance's `lastPrice`)
+  - REST queries now always run (changed `enabled: networkEnabled && !prices.BTCUSDT` to `enabled: networkEnabled`)
+  - Added 10s staleTime to prevent excessive refetches
+  - Prices update every 15 seconds with fresh data from Binance
+  
+- **AI Summary is now login-gated**
+  - Generate button only visible to logged-in users
+  - Logged-out users see "Sign In" button instead of Generate option
+  - Shows "Sign in to use AI Summary" message for unauthenticated users
+  - Prevents unauthorized API calls to AI endpoints
+
 **November 23, 2025 - FIXED: Chart Loading Blank Space (Complete Solution)**:
 - **TradingView script now preloads globally**
   - Script loads in background on app startup
