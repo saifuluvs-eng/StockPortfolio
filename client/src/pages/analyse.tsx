@@ -292,6 +292,11 @@ const MiniStat: React.FC<MiniStatProps> = ({ label, value, hint, tone = "default
   );
 };
 
+const ANALYSE_CACHE_KEYS = {
+  priceData: (symbol: string) => `analyse_price_${symbol}`,
+  scanResult: (symbol: string, tf: string) => `analyse_scan_${symbol}_${tf}`,
+};
+
 export default function Analyse() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -344,9 +349,12 @@ export default function Analyse() {
   const [chartKey, setChartKey] = useState<string>(() => `tv-${Date.now()}`);
   const syncingFromQueryRef = useRef(false);
   const [symbolInput, setSymbolInput] = useState<string>(initialSymbol || DEFAULT_SYMBOL);
-  const [scanResult, setScanResult] = useState<ScannerAnalysis | ScanResult | null>(
-    null,
-  );
+  const [scanResult, setScanResult] = useState<ScannerAnalysis | ScanResult | null>(() => {
+    // Load from cache on mount
+    if (typeof window === "undefined") return null;
+    const cached = localStorage.getItem(ANALYSE_CACHE_KEYS.scanResult(normalizeSymbol(initialSymbol), initialTimeframe));
+    return cached ? JSON.parse(cached) : null;
+  });
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const abortRef = useRef<AbortController | null>(null);
   const lastScanRef = useRef<string>("");
@@ -431,10 +439,24 @@ export default function Analyse() {
     matchWithParam,
   ]);
 
-  const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [priceData, setPriceData] = useState<PriceData | null>(() => {
+    // Load from cache on mount
+    if (typeof window === "undefined") return null;
+    const cached = localStorage.getItem(ANALYSE_CACHE_KEYS.priceData(initialSymbol));
+    return cached ? JSON.parse(cached) : null;
+  });
+
   useEffect(() => {
-    setPriceData(null);
     if (!selectedSymbol) return;
+    
+    // Load from cache first if available
+    const cachedPrice = localStorage.getItem(ANALYSE_CACHE_KEYS.priceData(selectedSymbol));
+    if (cachedPrice) {
+      try {
+        setPriceData(JSON.parse(cachedPrice));
+      } catch {}
+    }
+    
     const targetSymbol = selectedSymbol.toUpperCase();
     let active = true;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -467,6 +489,7 @@ export default function Analyse() {
         };
         console.debug("[Ticker] Setting price data:", priceObj);
         setPriceData(priceObj);
+        localStorage.setItem(ANALYSE_CACHE_KEYS.priceData(selectedSymbol), JSON.stringify(priceObj));
       } catch (err) {
         console.warn("[Ticker] Backend fetch failed, trying WebSocket:", err);
         if (!active) return;
@@ -483,7 +506,7 @@ export default function Analyse() {
             if ((ticker.symbol || "").toUpperCase() !== targetSymbol) return;
             console.debug("[Ticker] WebSocket data received:", targetSymbol);
             if (timeoutId) clearTimeout(timeoutId);
-            setPriceData({
+            const priceObj = {
               symbol: ticker.symbol,
               lastPrice: ticker.lastPrice,
               priceChange: ticker.priceChange,
@@ -492,7 +515,9 @@ export default function Analyse() {
               lowPrice: ticker.lowPrice,
               volume: ticker.volume,
               quoteVolume: ticker.quoteVolume,
-            });
+            };
+            setPriceData(priceObj);
+            localStorage.setItem(ANALYSE_CACHE_KEYS.priceData(selectedSymbol), JSON.stringify(priceObj));
           },
           onError: (error) => {
             console.warn("[Ticker] WebSocket error:", error);
@@ -500,7 +525,7 @@ export default function Analyse() {
             // Last resort: retry backend after brief delay
             if (timeoutId) clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
-              if (active && !priceData) {
+              if (active) {
                 console.debug("[Ticker] Retrying backend after WebSocket failure");
                 void fetchFromBackend();
               }
@@ -571,8 +596,16 @@ export default function Analyse() {
       const ac = new AbortController();
       abortRef.current = ac;
 
+      // Load from cache first to show previous results while fetching new ones
+      const cachedResult = localStorage.getItem(ANALYSE_CACHE_KEYS.scanResult(normalizedSymbol, tfValue));
+      if (cachedResult) {
+        try {
+          setScanResult(JSON.parse(cachedResult));
+          console.debug("[Analyse] Loaded cached result for", normalizedSymbol, tfValue);
+        } catch {}
+      }
+
       setIsScanning(true);
-      setScanResult(null);
       setChartSymbol(normalizedSymbol);
       setChartTf(tfValue);
       setChartKey(`tv-${normalizedSymbol}-${tfValue}-${Date.now()}`);
@@ -627,6 +660,8 @@ export default function Analyse() {
         const resolved = asString(item.symbol || apiSymbol).toUpperCase();
         toast.success(`${resolved} analysed`, { id: ANALYSE_TOAST_ID });
         setScanResult(item);
+        // Cache the scan result
+        localStorage.setItem(ANALYSE_CACHE_KEYS.scanResult(normalizedSymbol, tfValue), JSON.stringify(item));
         queryClient.invalidateQueries({ queryKey: ["aiSummary", normalizedSymbol, tfValue] });
         queryClient.invalidateQueries({ queryKey: ["scan-history"] });
 
@@ -857,9 +892,16 @@ export default function Analyse() {
     }
 
     const fullSymbol = toUsdtSymbol(raw);
-    setScanResult(null);
+    const normalizedSymbol = normalizeSymbol(fullSymbol);
+    // Load cached result if available instead of clearing
+    const cachedResult = localStorage.getItem(ANALYSE_CACHE_KEYS.scanResult(normalizedSymbol, timeframe));
+    if (cachedResult) {
+      try {
+        setScanResult(JSON.parse(cachedResult));
+      } catch {}
+    }
     setSymbolInput(displaySymbol(fullSymbol));
-    setChartSymbol(normalizeSymbol(fullSymbol));
+    setChartSymbol(normalizedSymbol);
     setChartTf(timeframe);
 
     if (!isAuthenticated) {
@@ -905,6 +947,14 @@ export default function Analyse() {
     }
 
     const normalizedTarget = normalizeSymbol(targetSymbol);
+    
+    // Load cached result if available instead of clearing
+    const cachedResult = localStorage.getItem(ANALYSE_CACHE_KEYS.scanResult(normalizedTarget, timeframe));
+    if (cachedResult) {
+      try {
+        setScanResult(JSON.parse(cachedResult));
+      } catch {}
+    }
 
     if (!networkEnabled) {
       setChartSymbol(normalizedTarget);
@@ -930,7 +980,6 @@ export default function Analyse() {
       description: `Analyzing ${displayTarget}`,
     });
 
-    setScanResult(null);
     void runAnalysis(targetSymbol, timeframe);
   }, [
     backendOffline,

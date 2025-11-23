@@ -6,6 +6,45 @@ This project is a cryptocurrency trading analysis dashboard offering real-time m
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes
+
+**November 23, 2025 - FIXED: Analyse Page Flickering & Data Persistence**:
+- **Chart and analysis no longer disappear/reappear**
+  - Added intelligent caching for price data and scan results to localStorage
+  - Cached price data loads instantly when switching symbols
+  - Cached analysis results show while fresh scan runs silently
+  - No clearing of data on symbol/timeframe changes - only updates when fresh data arrives
+  
+- **Smooth page transitions**
+  - Switching pages instantly preserves displayed data
+  - Old cached results visible while new analysis completes
+  - Price cards never show loading state if cached data available
+  - Chart persists while analysis runs
+  
+- **Implementation details**
+  - Cache keys: `analyse_price_${symbol}` and `analyse_scan_${symbol}_${timeframe}`
+  - Loads cached data on component mount and symbol/timeframe changes
+  - Saves results to cache when analysis completes
+  - Removed `setScanResult(null)` and `setPriceData(null)` that caused flickering
+
+**November 23, 2025 - FIXED: Gainers Page Persistence, Volume Filter & Page Refresh**:
+- **Table structure persists during updates**
+  - Table headings, Rank column, and Analyse buttons remain visible at all times
+  - Only data rows (coin name, price, 24h change, volume) update smoothly
+  - No table disappearing/reappearing when page loads or refreshing
+  
+- **Volume filter removes low-liquidity coins**
+  - Enforces MIN_USD_VOL = 1,000,000 minimum volume in USD
+  - Filters out futures pairs like CREAM and other low-volume coins
+  - Applied to both local dev and production deployments
+  - Filters: USDT pairs only, excludes leveraged tokens (UP/DOWN/BULL/BEAR), volume >= 1M USD
+  
+- **Page refresh now fetches fresh data**
+  - Cached data displays instantly with no loading state
+  - Fresh data fetches silently in background
+  - Page refresh will always show the latest gainers and rates
+  - Refresh button and auto-refresh (10-15 mins) continue to work
+
 # System Architecture
 
 ## Frontend Architecture
