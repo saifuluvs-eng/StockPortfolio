@@ -8,6 +8,13 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 23, 2025 - FIXED: Gainers Page Page Refresh**:
+- **Page refresh now fetches fresh data**
+  - Gainers page always fetches latest data on mount (not just as fallback)
+  - Cached data displays instantly while fresh data loads in background
+  - Page refresh will always show the latest gainers and rates
+  - Refresh button and auto-refresh (10-15 mins) continue to work
+
 **November 23, 2025 - FIXED: Dashboard Market Overview BTC/ETH Price Display**:
 - **Removed non-functional WebSocket code**
   - Server doesn't have WebSocket endpoint implementation

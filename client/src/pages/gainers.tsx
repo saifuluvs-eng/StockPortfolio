@@ -209,7 +209,7 @@ export default function Gainers() {
   };
 
   useEffect(() => {
-    // Try to load from cache first
+    // Load from cache first for instant display
     const cachedData = localStorage.getItem(CACHE_KEY);
     const cachedTimestamp = localStorage.getItem(TIMESTAMP_KEY);
     
@@ -217,15 +217,13 @@ export default function Gainers() {
       try {
         setRows(JSON.parse(cachedData));
         setLastUpdated(new Date(cachedTimestamp));
-        setLoading(false);
       } catch {
-        // If cache is corrupted, fetch fresh data
-        fetchData(false);
+        // Cache corrupted, will fetch fresh below
       }
-    } else {
-      // No cache, fetch fresh data
-      fetchData(false);
     }
+    
+    // Always fetch fresh data on mount (page refresh will get latest data)
+    fetchData(false);
   }, []);
 
   // Auto-refresh every 10-15 minutes
