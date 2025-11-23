@@ -233,7 +233,7 @@ export default function Gainers() {
     const randomInterval = 10 + Math.random() * 5; // 10-15 minutes
     const intervalMs = randomInterval * 60 * 1000;
     
-    console.log(`[Gainers] Auto-refresh configured for ${randomInterval.toFixed(1)} minutes (${(intervalMs/1000/60).toFixed(1)} sec)`);
+    console.log(`[Gainers] Auto-refresh configured for ${randomInterval.toFixed(1)} minutes`);
     
     const intervalId = setInterval(() => {
       console.log(`[Gainers] ✓ Auto-refreshing data now...`);

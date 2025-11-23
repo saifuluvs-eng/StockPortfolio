@@ -311,7 +311,17 @@ export function registerRoutes(app: Express): void {
     try {
       const { symbol } = req.params;
       const ticker = await binanceService.getTickerData(symbol);
-      res.json(ticker);
+      // Map lastPrice to price for consistent API response
+      res.json({
+        symbol: ticker.symbol,
+        price: ticker.lastPrice,
+        priceChangePercent: ticker.priceChangePercent,
+        priceChange: ticker.priceChange,
+        highPrice: ticker.highPrice,
+        lowPrice: ticker.lowPrice,
+        volume: ticker.volume,
+        quoteVolume: ticker.quoteVolume
+      });
     } catch (error) {
       console.error("Error fetching ticker:", error);
       res.status(500).json({ message: "Failed to fetch ticker data" });

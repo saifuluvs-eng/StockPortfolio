@@ -15,10 +15,19 @@ Preferred communication style: Simple, everyday language.
   - Replaced with pure REST API approach using ticker endpoints
 
 - **Dashboard Market Overview now uses REST API fetches**
+  - Fixed ticker endpoint to return `price` field (was returning `lastPrice`)
   - Fallback queries fetch from `/api/market/ticker/BTCUSDT` and `/api/market/ticker/ETHUSDT`
-  - These endpoints ARE working and returning valid ticker data
+  - These endpoints working correctly and returning valid ticker data
   - Prices stored in Zustand store and displayed in Market Overview card
   - Refetch interval: 15 seconds
+
+- **Fixed Gainers page auto-refresh logging**
+  - Auto-refresh timer message now shows only minutes (was showing "X minutes (X sec)")
+  - Console log example: `[Gainers] Auto-refresh configured for 12.3 minutes`
+
+- **TopGainersCard properly updates timestamp**
+  - Dashboard card now syncs "last updated" timestamp when periodic polling finds fresh data
+  - Timestamp updates every 5 seconds when new data detected in localStorage
 
 - **Simplified architecture**
   - Removed complex WebSocket subscription logic

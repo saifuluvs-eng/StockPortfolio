@@ -32,7 +32,8 @@ export default function TopGainersCard() {
           change24h: typeof item.change24h === "number" ? item.change24h : parseFloat(item.change24h || "0"),
         }));
         setTopGainers(topThree);
-        setLastUpdated(new Date(cachedTimestamp));
+        const newDate = new Date(cachedTimestamp);
+        setLastUpdated(newDate);
         return true;
       }
     } catch (error) {
