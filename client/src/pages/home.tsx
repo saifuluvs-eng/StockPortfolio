@@ -9,6 +9,7 @@ import { usePositions } from "@/hooks/usePositions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
+import TopGainersCard from "@/components/dashboard/TopGainersCard";
 import { getQueryFn } from "@/lib/queryClient";
 import { usePrices } from "@/lib/prices";
 import { supabase } from "@/lib/supabase";
@@ -330,23 +331,8 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* 3) Gainers */}
-          <Link to="/gainers" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-green-500/5 to-green-500/10 h-auto sm:h-full" style={{ "--neon-glow": "hsl(142, 70%, 50%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Top Gainers</h3>
-                    <p className="text-xs text-muted-foreground truncate">Market leaders</p>
-                    <p className="text-xs font-semibold text-foreground mt-0.5 truncate">{gainersDisplay}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">24h change</p>
-                    <p className="text-[8px] text-muted-foreground mt-0.5 truncate">Last updated {gainRefreshed}</p>
-                  </div>
-                  <Award className="w-6 sm:w-8 h-6 sm:h-8 text-accent flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          {/* 3) Top Gainers Card */}
+          <TopGainersCard />
 
           {/* 4) Total P&L */}
           <Link to="/portfolio" className="block h-full">

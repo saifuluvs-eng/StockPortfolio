@@ -8,6 +8,26 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 23, 2025 - NEW: Gainers Page Auto-Refresh & Dashboard Card**:
+- **Added Gainers page auto-refresh every 10-15 minutes**
+  - Auto-refresh runs on randomized 10-15 minute intervals to prevent synchronized updates
+  - Manual refresh button still works as before
+  - Uses same `fetchData(true)` function to silently update data without page reload
+  - Displays "Last updated" timestamp that updates with each refresh
+  - Auto-refresh clears on component unmount
+  
+- **Created Top Gainers Card on Dashboard**
+  - New dedicated `TopGainersCard` component (client/src/components/dashboard/TopGainersCard.tsx)
+  - Shows top 3 market gainers with symbols and 24h percentage gains
+  - Features "view more →" link to navigate to full Gainers page
+  - Displays "last updated" timestamp that syncs automatically
+  - Dual data source:
+    1. Primary: Reads from localStorage (populated by Gainers page auto-refresh)
+    2. Fallback: Fetches from `/api/market/gainers` backend endpoint for first-time visitors
+  - Listens for storage changes to sync with Gainers page updates
+  - Periodic polling (every 5 seconds) ensures up-to-date data across tabs
+  - All data synced in real-time between Dashboard and Gainers page
+
 **November 22, 2025 - RESOLVED: API Endpoints Fixed**:
 - **Fixed hanging Gemini API issue in AI Summary**
   - Added 15-second timeout to `/api/ai/summary` endpoint
