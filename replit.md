@@ -8,6 +8,23 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 23, 2025 - FIXED: Chart Loading Blank Space (Complete Solution)**:
+- **TradingView script now preloads globally**
+  - Script loads in background on app startup
+  - Eliminates loading delay when TVChart mounts
+  - Script is ready before chart component initializes
+  
+- **Added loading skeleton to TVChart**
+  - Shows "Loading chart..." with pulse animation instead of blank space
+  - Provides instant visual feedback while TradingView initializes
+  - Skeleton removes itself when chart is ready
+  
+- **Stable chart key prevents unmounting**
+  - Changed from dynamic `Date.now()` to stable `${symbol}-${timeframe}`
+  - Chart stays mounted when switching pages
+  - Chart updates internally through props instead of re-creating
+  - No more disappearing/reappearing when navigating
+
 **November 23, 2025 - FIXED: Analyse Page Flickering & Data Persistence**:
 - **Chart and analysis no longer disappear/reappear**
   - Added intelligent caching for price data and scan results to localStorage

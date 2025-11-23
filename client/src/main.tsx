@@ -13,6 +13,14 @@ import { ToastProvider } from "@/components/toast";
 
 import App from "./App";
 
+// Preload TradingView script globally to avoid chart blank space
+if (typeof window !== "undefined") {
+  const script = document.createElement("script");
+  script.src = "https://s3.tradingview.com/tv.js";
+  script.async = true;
+  document.head.appendChild(script);
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

@@ -128,6 +128,7 @@ export default function TVChart({
   const latestSymbolRef = useRef(normalizeSymbol(symbol));
   const latestTfRef = useRef(timeframe);
   const containerIdRef = useRef(`tv-chart-${Math.random().toString(36).slice(2)}`);
+  const [isReady, setIsReady] = React.useState(false);
 
   const applySymbolToChart = useCallback((resolvedSymbol: string, resolvedTf: string) => {
     const widget = widgetRef.current;
@@ -233,6 +234,7 @@ export default function TVChart({
         widget.onChartReady?.(() => {
           if (disposed) return;
           readyRef.current = true;
+          setIsReady(true);
           const pending = pendingRef.current;
           const symbolToUse = pending?.symbol ?? latestSymbolRef.current;
           const timeframeToUse = pending?.timeframe ?? latestTfRef.current;
@@ -462,7 +464,15 @@ export default function TVChart({
   }, [queueSymbolAndTf]);
 
   return (
-    <div ref={wrapperRef} className="h-[560px] w-full md:h-[620px]">
+    <div ref={wrapperRef} className="h-[560px] w-full md:h-[620px] relative">
+      {!isReady && (
+        <div className="absolute inset-0 bg-slate-900/40 animate-pulse flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 bg-slate-700/60 rounded-lg mx-auto mb-2 animate-pulse" />
+            <p className="text-xs text-slate-400">Loading chart...</p>
+          </div>
+        </div>
+      )}
       <div
         id={containerIdRef.current}
         ref={containerRef}
