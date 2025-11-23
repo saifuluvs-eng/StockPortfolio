@@ -244,6 +244,19 @@ export default function Gainers() {
     }
   }, []);
 
+  // Auto-refresh every 10-15 minutes
+  useEffect(() => {
+    const randomInterval = 10 + Math.random() * 5; // 10-15 minutes
+    const intervalMs = randomInterval * 60 * 1000;
+    
+    const intervalId = setInterval(() => {
+      console.debug(`[Gainers] Auto-refreshing data (interval: ${randomInterval.toFixed(1)} min)`);
+      fetchData(true);
+    }, intervalMs);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   const displayRows = useMemo<DisplayRow[]>(() => {
     if (!Array.isArray(rows)) return [];
     return rows
