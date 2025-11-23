@@ -137,62 +137,7 @@ export default function Home() {
   );
   const symbolsKey = symbols.join("|");
 
-  useEffect(() => {
-    if (!symbols.length) return;
-    if (!networkEnabled) return;
-    if (typeof window === "undefined") return;
-
-    const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
-    let ws: WebSocket | null = null;
-
-    try {
-      ws = new WebSocket(wsUrl);
-    } catch {
-      return;
-    }
-
-    ws.onopen = () => {
-      symbols.forEach((symbol) => {
-        try {
-          ws?.send(JSON.stringify({ type: "subscribe", symbol }));
-        } catch {
-          // ignore send failures
-        }
-      });
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg?.type === "price_update" && msg?.data && typeof msg.data === "object") {
-          const updates: Record<string, number> = {};
-          for (const [rawSymbol, rawPrice] of Object.entries(msg.data)) {
-            const numeric = Number(rawPrice);
-            if (Number.isFinite(numeric)) {
-              updates[String(rawSymbol).toUpperCase()] = numeric;
-            }
-          }
-          if (Object.keys(updates).length > 0) {
-            updatePortfolioPrices(updates);
-          }
-        }
-      } catch {
-        // ignore malformed messages
-      }
-    };
-
-    return () => {
-      if (ws) {
-        ws.onopen = null;
-        ws.onmessage = null;
-        try {
-          ws.close();
-        } catch {
-          // ignore close errors
-        }
-      }
-    };
-  }, [networkEnabled, updatePortfolioPrices, symbols, symbolsKey]);
+  // WebSocket is not implemented, relying on REST API ticker fetches instead
 
   const safeTotalValue = Number.isFinite(totalMarketValue) ? totalMarketValue : 0;
   const safeTotalPnlPercent = Number.isFinite(totalPnlPercent) ? totalPnlPercent : 0;

@@ -8,6 +8,24 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 23, 2025 - FIXED: Dashboard Market Overview BTC/ETH Price Display**:
+- **Removed non-functional WebSocket code**
+  - Server doesn't have WebSocket endpoint implementation
+  - WebSocket connections were failing silently on both Portfolio and Dashboard
+  - Replaced with pure REST API approach using ticker endpoints
+
+- **Dashboard Market Overview now uses REST API fetches**
+  - Fallback queries fetch from `/api/market/ticker/BTCUSDT` and `/api/market/ticker/ETHUSDT`
+  - These endpoints ARE working and returning valid ticker data
+  - Prices stored in Zustand store and displayed in Market Overview card
+  - Refetch interval: 15 seconds
+
+- **Simplified architecture**
+  - Removed complex WebSocket subscription logic
+  - Both Portfolio and Dashboard now share simple REST API polling for prices
+  - More reliable and maintainable without WebSocket infrastructure
+  - Works identically in dev (Replit) and production (Vercel)
+
 **November 23, 2025 - FIXED: Dashboard Market Overview BTC/ETH Price Updates**:
 - **Unified BTC/ETH price display** across Dashboard and Portfolio
   - Portfolio now ALWAYS subscribes to BTCUSDT/ETHUSDT prices (not just portfolio positions)

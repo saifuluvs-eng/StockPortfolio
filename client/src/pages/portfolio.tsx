@@ -159,74 +159,7 @@ export default function Portfolio() {
   );
   const symbolsKey = symbols.join("|");
 
-  useEffect(() => {
-    if (!symbols.length) return;
-    if (!networkEnabled) return;
-    if (typeof window === "undefined") return;
-
-    const apiBase = import.meta.env.VITE_API_BASE || window.location.origin;
-    const wsUrl = apiBase.replace(/^http/, "ws").replace(/\/$/, "") + "/ws";
-    let ws: WebSocket | null = null;
-
-    try {
-      ws = new WebSocket(wsUrl);
-    } catch {
-      return;
-    }
-
-    ws.onopen = () => {
-      // Always subscribe to BTC/ETH for Dashboard market overview
-      ["BTCUSDT", "ETHUSDT"].forEach((symbol) => {
-        try {
-          ws?.send(JSON.stringify({ type: "subscribe", symbol }));
-        } catch {
-          // ignore send failures
-        }
-      });
-      
-      // Subscribe to portfolio positions
-      symbols.forEach((symbol) => {
-        try {
-          ws?.send(JSON.stringify({ type: "subscribe", symbol }));
-        } catch {
-          // ignore send failures
-        }
-      });
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg?.type === "price_update" && msg?.data && typeof msg.data === "object") {
-          const updates: Record<string, number> = {};
-          for (const [rawSymbol, rawPrice] of Object.entries(msg.data)) {
-            const symbol = String(rawSymbol).toUpperCase();
-            const price = Number(rawPrice);
-            if (Number.isFinite(price)) {
-              updates[symbol] = price;
-            }
-          }
-          if (Object.keys(updates).length > 0) {
-            setPrices(updates);
-          }
-        }
-      } catch {
-        // ignore malformed updates
-      }
-    };
-
-    return () => {
-      if (ws) {
-        ws.onopen = null;
-        ws.onmessage = null;
-        try {
-          ws.close();
-        } catch {
-          // ignore close errors
-        }
-      }
-    };
-  }, [networkEnabled, setPrices, symbols, symbolsKey]);
+  // WebSocket not implemented, using REST API fetch for BTC/ETH prices via dashboard
 
   const currentPriceFor = useCallback(
     (sym: string, fallback: number) => {
