@@ -336,6 +336,7 @@ export default function Analyse() {
   const abortRef = useRef<AbortController | null>(null);
   const lastScanRef = useRef<string>("");
   const previousSymbolRef = useRef<string>(initialSymbol);
+  const previousTimeframeRef = useRef<string>(initialTimeframe);
   const isFirstRenderRef = useRef(true);
   const initialExplicitSymbolRef = useRef(Boolean(params?.symbol || querySymbol));
 
@@ -422,27 +423,63 @@ export default function Analyse() {
     if (!selectedSymbol) return;
     const targetSymbol = selectedSymbol.toUpperCase();
     let active = true;
-    const unsubscribe = openSpotTickerStream(selectedSymbol, {
-      onMessage: (ticker) => {
-        if (!active) return;
-        if ((ticker.symbol || "").toUpperCase() !== targetSymbol) return;
-        setPriceData({
-          symbol: ticker.symbol,
-          lastPrice: ticker.lastPrice,
-          priceChange: ticker.priceChange,
-          priceChangePercent: ticker.priceChangePercent,
-          highPrice: ticker.highPrice,
-          lowPrice: ticker.lowPrice,
-          volume: ticker.volume,
-          quoteVolume: ticker.quoteVolume,
-        });
-      },
-    });
-    return () => {
-      active = false;
-      unsubscribe?.();
-    };
-  }, [selectedSymbol, timeframe, networkEnabled]);
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    
+    try {
+      const unsubscribe = openSpotTickerStream(selectedSymbol, {
+        onMessage: (ticker) => {
+          if (!active) return;
+          if ((ticker.symbol || "").toUpperCase() !== targetSymbol) return;
+          if (timeoutId) clearTimeout(timeoutId);
+          setPriceData({
+            symbol: ticker.symbol,
+            lastPrice: ticker.lastPrice,
+            priceChange: ticker.priceChange,
+            priceChangePercent: ticker.priceChangePercent,
+            highPrice: ticker.highPrice,
+            lowPrice: ticker.lowPrice,
+            volume: ticker.volume,
+            quoteVolume: ticker.quoteVolume,
+          });
+        },
+        onError: (error) => {
+          console.warn("[Ticker] WebSocket error:", error);
+        }
+      });
+      
+      // Fallback: if no data within 5s, try HTTP endpoint as backup
+      if (active) {
+        timeoutId = setTimeout(() => {
+          if (!active || priceData) return;
+          console.debug("[Ticker] No WebSocket data, trying HTTP fallback");
+          fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${targetSymbol}`)
+            .then(r => r.json())
+            .then(data => {
+              if (!active) return;
+              setPriceData({
+                symbol: data.symbol,
+                lastPrice: data.lastPrice,
+                priceChange: data.priceChange,
+                priceChangePercent: data.priceChangePercent,
+                highPrice: data.highPrice,
+                lowPrice: data.lowPrice,
+                volume: data.volume,
+                quoteVolume: data.quoteAssetVolume,
+              });
+            })
+            .catch(err => console.warn("[Ticker] HTTP fallback failed:", err));
+        }, 5000);
+      }
+      
+      return () => {
+        active = false;
+        if (timeoutId) clearTimeout(timeoutId);
+        unsubscribe?.();
+      };
+    } catch (error) {
+      console.error("[Ticker] Failed to open stream:", error);
+    }
+  }, [selectedSymbol, networkEnabled]);
 
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
@@ -464,7 +501,10 @@ export default function Analyse() {
       const tfValue = timeframeOverride ?? timeframe ?? DEFAULT_TIMEFRAME;
 
       const key = `${normalizedSymbol}|${tfValue}`;
-      if (key === lastScanRef.current && isScanning) return;
+      if (key === lastScanRef.current && isScanning) {
+        console.debug("[Analyse] Duplicate scan blocked:", key);
+        return;
+      }
       lastScanRef.current = key;
 
       try {
@@ -575,6 +615,7 @@ export default function Analyse() {
     if (isFirstRenderRef.current) {
       isFirstRenderRef.current = false;
       previousSymbolRef.current = selectedSymbol;
+      previousTimeframeRef.current = timeframe;
       if (
         initialExplicitSymbolRef.current &&
         selectedSymbol &&
@@ -585,17 +626,28 @@ export default function Analyse() {
       return;
     }
 
-    if (!selectedSymbol || selectedSymbol === previousSymbolRef.current) {
-      return;
-    }
-
-    previousSymbolRef.current = selectedSymbol;
-
     if (!networkEnabled) {
       return;
     }
 
-    void runAnalysis(selectedSymbol, timeframe);
+    const symbolChanged = selectedSymbol !== previousSymbolRef.current;
+    const timeframeChanged = timeframe !== previousTimeframeRef.current;
+
+    if (!selectedSymbol) {
+      return;
+    }
+
+    if (symbolChanged || timeframeChanged) {
+      previousSymbolRef.current = selectedSymbol;
+      previousTimeframeRef.current = timeframe;
+      void runAnalysis(selectedSymbol, timeframe);
+      console.debug("[Analyse] Auto-run triggered:", {
+        symbolChanged,
+        timeframeChanged,
+        symbol: selectedSymbol,
+        timeframe,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     user,
