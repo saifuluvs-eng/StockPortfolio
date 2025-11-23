@@ -630,11 +630,6 @@ export default function Analyse() {
       return;
     }
 
-    if (!networkEnabled) {
-      console.debug("[Analyse] Skipping auto-run: network disabled");
-      return;
-    }
-
     if (!selectedSymbol) {
       console.debug("[Analyse] Skipping auto-run: no symbol selected");
       return;
@@ -657,7 +652,6 @@ export default function Analyse() {
     const timeframeChanged = timeframe !== previousTimeframeRef.current;
 
     if (!symbolChanged && !timeframeChanged) {
-      console.debug("[Analyse] No changes detected, skipping");
       return;
     }
 
@@ -680,7 +674,6 @@ export default function Analyse() {
     user,
     selectedSymbol,
     timeframe,
-    networkEnabled,
   ]);
 
   const watchlistQuery = useQuery<WatchlistItem[]>({
@@ -809,7 +802,7 @@ export default function Analyse() {
     }
   };
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     const raw = (symbolInput || "").trim().toUpperCase();
     if (!raw) {
       toast({
@@ -821,41 +814,28 @@ export default function Analyse() {
     }
 
     const fullSymbol = toUsdtSymbol(raw);
-    setSelectedSymbol(fullSymbol);
     setScanResult(null);
     setSymbolInput(displaySymbol(fullSymbol));
     setChartSymbol(normalizeSymbol(fullSymbol));
     setChartTf(timeframe);
 
-    if (!networkEnabled) {
-      if (backendOffline) {
-        toast({
-          title: "Backend required",
-          description: `Symbol set to ${displayPair(fullSymbol)}. Connect this dashboard to your backend build to load analysis.`,
-          variant: "destructive",
-        });
-      } else if (backendPending) {
-        toast({
-          title: "Symbol updated",
-          description: `Waiting for backend status before loading ${displayPair(fullSymbol)}.`,
-        });
-      }
-      return;
-    }
-
     if (!isAuthenticated) {
+      setSelectedSymbol(fullSymbol);
       toast({
-        title: "Symbol updated",
-        description: `Showing ${displayPair(fullSymbol)} price data. Sign in to run full analysis.`,
+        title: "Sign in required",
+        description: "Sign in to run full analysis.",
       });
       return;
     }
 
     toast({
-      title: "Symbol updated",
-      description: `Loading ${displayPair(fullSymbol)} chart`,
+      title: "Analyzing...",
+      description: `Loading ${displayPair(fullSymbol)} indicators`,
     });
-  };
+    
+    console.debug("[Analyse] handleSearch -> runAnalysis", { fullSymbol, timeframe });
+    void runAnalysis(fullSymbol, timeframe);
+  }, [symbolInput, timeframe, isAuthenticated, toast, runAnalysis]);
 
   const handleScan = useCallback(() => {
     const raw = (symbolInput || "").trim().toUpperCase();
