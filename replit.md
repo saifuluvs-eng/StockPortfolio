@@ -8,10 +8,15 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 23, 2025 - FIXED: Gainers Page Page Refresh**:
+**November 23, 2025 - FIXED: Gainers Page Persistence & Page Refresh**:
+- **Table structure persists during updates**
+  - Table headings, Rank column, and Analyse buttons remain visible at all times
+  - Only data rows (coin name, price, 24h change, volume) update smoothly
+  - No table disappearing/reappearing when page loads or refreshing
+  
 - **Page refresh now fetches fresh data**
-  - Gainers page always fetches latest data on mount (not just as fallback)
-  - Cached data displays instantly while fresh data loads in background
+  - Cached data displays instantly with no loading state
+  - Fresh data fetches silently in background
   - Page refresh will always show the latest gainers and rates
   - Refresh button and auto-refresh (10-15 mins) continue to work
 

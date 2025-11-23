@@ -143,7 +143,7 @@ interface DisplayRow {
 
 export default function Gainers() {
   const [rows, setRows] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -166,7 +166,7 @@ export default function Gainers() {
     if (isRefresh) {
       setIsRefreshing(true);
     } else {
-      setLoading(true);
+      setInitialLoading(true);
     }
     setError(null);
     try {
@@ -203,13 +203,13 @@ export default function Gainers() {
       console.error("[Gainers] Fetch error:", e?.message);
       setError(e?.message || "Failed to load gainers.");
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
       setIsRefreshing(false);
     }
   };
 
   useEffect(() => {
-    // Load from cache first for instant display
+    // Load from cache first for instant display (no loading state)
     const cachedData = localStorage.getItem(CACHE_KEY);
     const cachedTimestamp = localStorage.getItem(TIMESTAMP_KEY);
     
@@ -217,12 +217,40 @@ export default function Gainers() {
       try {
         setRows(JSON.parse(cachedData));
         setLastUpdated(new Date(cachedTimestamp));
+        setInitialLoading(false);
+        // Fetch fresh data silently in background
+        fetch("/api/market/gainers")
+          .then(res => res.json())
+          .then(data => {
+            const rows = Array.isArray(data) ? data : data?.rows;
+            if (Array.isArray(rows)) {
+              const top = rows
+                .map((t: any) => ({
+                  symbol: t.symbol || "",
+                  name: t.symbol || "",
+                  price: num(t.price),
+                  change24h: num(t.changePct),
+                  volumeUSDT: num(t.volume),
+                }))
+                .filter((item) => item.symbol)
+                .slice(0, 20);
+              const now = new Date();
+              setRows(top);
+              setLastUpdated(now);
+              localStorage.setItem(CACHE_KEY, JSON.stringify(top));
+              localStorage.setItem(TIMESTAMP_KEY, now.toISOString());
+            }
+          })
+          .catch(() => {
+            // Silent fail, keep cached data
+          });
+        return;
       } catch {
         // Cache corrupted, will fetch fresh below
       }
     }
     
-    // Always fetch fresh data on mount (page refresh will get latest data)
+    // No cache, do full load
     fetchData(false);
   }, []);
 
@@ -265,11 +293,11 @@ export default function Gainers() {
       .filter((item): item is DisplayRow => Boolean(item));
   }, [rows]);
 
-  if (loading) {
+  if (initialLoading) {
     return <GainersSkeleton />;
   }
 
-  if (error) {
+  if (error && !displayRows.length) {
     return <div className="text-sm text-destructive p-4">{error}</div>;
   }
 
