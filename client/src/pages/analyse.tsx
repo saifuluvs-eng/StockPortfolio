@@ -457,7 +457,7 @@ export default function Analyse() {
           highPrice: data.highPrice,
           lowPrice: data.lowPrice,
           volume: data.volume,
-          quoteVolume: data.quoteAssetVolume,
+          quoteVolume: data.quoteVolume,
         });
       } catch (err) {
         console.warn("[Ticker] Backend fetch failed, trying WebSocket:", err);
