@@ -1,3 +1,5 @@
+const MIN_USD_VOL = 1_000_000; // Minimum volume in USD
+
 interface TickerData {
   symbol: string;
   lastPrice: string;
@@ -79,11 +81,17 @@ class BinanceService {
       const allTickers: TickerData[] = await response.json();
       
       const usdtPairs = allTickers
-        .filter(ticker => 
-          ticker.symbol.endsWith('USDT') && 
-          !ticker.symbol.includes('DOWN') && 
-          !ticker.symbol.includes('UP')
-        )
+        .filter(ticker => {
+          const volume = parseFloat(ticker.quoteVolume || '0');
+          return (
+            ticker.symbol.endsWith('USDT') && 
+            !ticker.symbol.includes('DOWN') && 
+            !ticker.symbol.includes('UP') &&
+            !ticker.symbol.includes('BULL') &&
+            !ticker.symbol.includes('BEAR') &&
+            volume >= MIN_USD_VOL
+          );
+        })
         .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
         .slice(0, limit);
 

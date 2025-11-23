@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
+const MIN_USD_VOL = 1_000_000; // Minimum volume in USD
+
 type TickerData = {
   symbol: string;
   lastPrice?: string;
@@ -40,16 +42,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return 0;
     };
 
-    // Filter for USDT pairs, exclude leveraged tokens, sort by change %
+    // Filter for USDT pairs, exclude leveraged tokens, filter by volume, sort by change %
     const gainers = allTickers
       .filter((ticker) => {
         const symbol = ticker.symbol || "";
+        const volume = toNumber(ticker.quoteVolume ?? ticker.volume);
         return (
           symbol.endsWith("USDT") &&
           !symbol.includes("DOWN") &&
           !symbol.includes("UP") &&
           !symbol.includes("BULL") &&
-          !symbol.includes("BEAR")
+          !symbol.includes("BEAR") &&
+          volume >= MIN_USD_VOL
         );
       })
       .sort(
