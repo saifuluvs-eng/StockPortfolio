@@ -170,48 +170,27 @@ export default function Gainers() {
     }
     setError(null);
     try {
-      const [exRes, tRes] = await Promise.all([
-        fetch("https://api.binance.com/api/v3/exchangeInfo"),
-        fetch("https://api.binance.com/api/v3/ticker/24hr"),
-      ]);
+      // Try backend endpoint first (works on Replit)
+      const res = await fetch("/api/market/gainers");
+      if (!res.ok) throw new Error(`Backend HTTP ${res.status}`);
 
-      if (!exRes.ok) throw new Error(`exchangeInfo HTTP ${exRes.status}`);
-      if (!tRes.ok) throw new Error(`ticker24hr HTTP ${tRes.status}`);
+      const data = await res.json();
+      const rows = Array.isArray(data) ? data : data?.rows;
+      if (!Array.isArray(rows)) throw new Error("Invalid response format");
 
-      const ex = await exRes.json();
-      const tickers: any[] = await tRes.json();
-
-      const allowed = new Set<string>(
-        (ex?.symbols ?? [])
-          .filter(
-            (s: any) =>
-              s?.status === "TRADING" &&
-              s?.quoteAsset === "USDT" &&
-              (s?.isSpotTradingAllowed === true || (s?.permissions ?? []).includes("SPOT")),
-          )
-          .map((s: any) => String(s?.symbol)),
-      );
-
-      const top = tickers
-        .filter((t: any) => {
-          const sym = String(t?.symbol || "");
-          if (!allowed.has(sym)) return false;
-          if (isLeveragedName(sym)) return false;
-          const volUSD = num(t?.quoteVolume);
-          return volUSD >= MIN_USD_VOL;
-        })
+      const top = rows
         .map((t: any) => ({
-          symbol: t.symbol,
-          name: t.symbol,
-          price: num(t.lastPrice ?? t.prevClosePrice ?? t.weightedAvgPrice),
-          change24h: num(t.priceChangePercent),
-          volumeUSDT: num(t.quoteVolume),
+          symbol: t.symbol || "",
+          name: t.symbol || "",
+          price: num(t.price),
+          change24h: num(t.changePct),
+          volumeUSDT: num(t.volume),
         }))
-        .sort((a: any, b: any) => b.change24h - a.change24h)
+        .filter((item) => item.symbol)
         .slice(0, 20);
 
       if (top.length === 0)
-        setError("No gainers matched the SPOT/USDT/$1M filters.");
+        setError("No gainers data available.");
       
       const now = new Date();
       setRows(top);
@@ -221,6 +200,7 @@ export default function Gainers() {
       localStorage.setItem(CACHE_KEY, JSON.stringify(top));
       localStorage.setItem(TIMESTAMP_KEY, now.toISOString());
     } catch (e: any) {
+      console.error("[Gainers] Fetch error:", e?.message);
       setError(e?.message || "Failed to load gainers.");
     } finally {
       setLoading(false);
