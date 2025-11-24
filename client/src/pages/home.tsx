@@ -72,40 +72,50 @@ export default function Home() {
   const [ethChange, setEthChange] = useState<{ priceChangePercent?: string | number }>({});
   const { prices, setPrices } = usePrices();
 
-  // Fallback: If prices not in Zustand store (e.g., Portfolio not visited), fetch from API
-  const { data: btcTicker } = useQuery({
-    queryKey: ["/api/market/ticker/BTCUSDT"],
-    queryFn: getQueryFn<TickerResponse>({ on401: "returnNull" }),
-    refetchInterval: 30_000,
-    enabled: networkEnabled,
-    staleTime: 10_000,
-  });
-
-  const { data: ethTicker } = useQuery({
-    queryKey: ["/api/market/ticker/ETHUSDT"],
-    queryFn: getQueryFn<TickerResponse>({ on401: "returnNull" }),
-    refetchInterval: 30_000,
-    enabled: networkEnabled,
-    staleTime: 10_000,
-  });
-
   useEffect(() => {
-    if (btcTicker?.price != null) {
-      setPrices((prev) => ({ ...prev, BTCUSDT: Number(btcTicker.price) }));
-    }
-    if (btcTicker?.priceChangePercent != null) {
-      setBtcChange({ priceChangePercent: btcTicker.priceChangePercent });
-    }
-  }, [btcTicker, setPrices]);
+    let cancelled = false;
 
-  useEffect(() => {
-    if (ethTicker?.price != null) {
-      setPrices((prev) => ({ ...prev, ETHUSDT: Number(ethTicker.price) }));
+    async function fetchMarketData() {
+      try {
+        // Fetch from backend to avoid CORS issues
+        const [btcRes, ethRes] = await Promise.all([
+          fetch("/api/market/ticker/BTCUSDT"),
+          fetch("/api/market/ticker/ETHUSDT"),
+        ]);
+
+        if (!cancelled) {
+          if (btcRes.ok) {
+            const btcData = (await btcRes.json()) as TickerResponse;
+            if (btcData?.price) {
+              setPrices({ BTCUSDT: Number(btcData.price) });
+            }
+            if (btcData?.priceChangePercent != null) {
+              setBtcChange({ priceChangePercent: btcData.priceChangePercent });
+            }
+          }
+
+          if (ethRes.ok) {
+            const ethData = (await ethRes.json()) as TickerResponse;
+            if (ethData?.price) {
+              setPrices({ ETHUSDT: Number(ethData.price) });
+            }
+            if (ethData?.priceChangePercent != null) {
+              setEthChange({ priceChangePercent: ethData.priceChangePercent });
+            }
+          }
+        }
+      } catch {
+        // Silently fail - using current prices or fallback
+      }
     }
-    if (ethTicker?.priceChangePercent != null) {
-      setEthChange({ priceChangePercent: ethTicker.priceChangePercent });
-    }
-  }, [ethTicker, setPrices]);
+
+    fetchMarketData();
+    const id = setInterval(fetchMarketData, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [setPrices]);
 
   // Portfolio page handles WebSocket subscriptions for BTCUSDT/ETHUSDT and updates the shared price store
 
