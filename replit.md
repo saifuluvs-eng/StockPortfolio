@@ -8,7 +8,7 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 24, 2025 - IMPROVED: AI Summary Now Uses Better Gemini Prompt with Formatted Technical Data**:
+**November 24, 2025 - IMPROVED: AI Summary Now Uses Better Gemini Prompt with Formatted Technical Data + Combined Analysis Fields**:
 - **Fixed AI Summary "No technical data" Error & Improved Response Quality**
   - Root cause: Frontend was passing `scanResult?.technicals` but the property is actually `scanResult?.indicators`
   - Fixed `analyse.tsx` to send the correct property: `technicals={scanResult?.indicators}`
@@ -22,19 +22,29 @@ Preferred communication style: Simple, everyday language.
   - Added strict instructions: "DO NOT repeat numbers, DO NOT explain what indicators mean"
   - Output format: Clean markdown with sections (Overall Bias, Why, What to expect, Key Levels, Risk Alert)
   - Technical data is now properly indented with 2-space formatting for readability
+
+- **Combined Analysis Fields for Smarter Summaries** (NEW!)
+  - Added `computeTechnicalSummary()` method that calculates 4 high-level summary fields:
+    - `trend_bias`: "bullish" | "bearish" | "neutral" (from EMA, SMA, MACD)
+    - `momentum_state`: "strong" | "weak" | "oversold" | "overbought" | "neutral" (from RSI, Stochastic)
+    - `volume_context`: "increasing" | "decreasing" | "neutral" (from volume trends, OBV)
+    - `volatility_state`: "high" | "low" | "normal" (from ATR, Bollinger Bands, ADX)
+  - These summary fields are added to the JSON sent to Gemini under `_summary`
+  - Gemini uses these combined signals as PRIMARY foundation instead of raw indicators
+  - Result: Smarter, more cohesive analysis instead of listing indicators individually
   
 - **Better Quality Summaries**
-  - Gemini receives well-structured, formatted technical data
+  - Gemini receives well-structured, formatted technical data WITH combined analysis fields
   - Prompt is cleaner and more organized with section separators
   - Response includes actionable insights without raw indicator values
-  - Summaries now focus on market direction, momentum, and trading setup
+  - Summaries now focus on market direction, momentum, and trading setup based on combined signals
   
 - **Debugging & Logging**
   - Added comprehensive debug logging to track data flow through the system
-  - Logs show: Raw technical data, formatted data, final prompt sent to Gemini, and response
+  - Logs show: Raw technical data, computed summary fields, final prompt sent to Gemini, and response
   - Helps troubleshoot any issues with data formatting or Gemini integration
   
-- **Flow**: Run Analysis → Click Generate → Technical data sent with formatted prompt → Gemini generates professional summary
+- **Flow**: Run Analysis → Click Generate → Technical data + combined summary fields → Gemini generates professional, cohesive summary
 
 - **Simplified Serverless Functions for Vercel Deployment**
   - `api/market/fear-greed.ts` - Uses inline CoinMarketCap logic without service imports

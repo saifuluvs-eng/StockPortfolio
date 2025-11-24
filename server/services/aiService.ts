@@ -305,6 +305,85 @@ Respond with ONLY valid JSON in this exact format:
   }
 
   /**
+   * Compute combined technical summary fields for better AI analysis
+   */
+  private computeTechnicalSummary(technicalAnalysis: any): {
+    trend_bias: "bullish" | "bearish" | "neutral";
+    momentum_state: "strong" | "weak" | "oversold" | "overbought" | "neutral";
+    volume_context: "increasing" | "decreasing" | "neutral";
+    volatility_state: "high" | "low" | "normal";
+  } {
+    const indicators = technicalAnalysis.indicators || {};
+    
+    // Compute trend_bias from EMA, SMA, and MACD
+    let trendScore = 0;
+    const ema20 = indicators.ema20?.value || 0;
+    const sma50 = indicators.sma50?.value || 0;
+    const currentPrice = technicalAnalysis.price || 0;
+    
+    if (currentPrice > ema20 && ema20 > 0) trendScore += 1;
+    if (currentPrice > sma50 && sma50 > 0) trendScore += 1;
+    if (indicators.macd?.signal === "bullish") trendScore += 2;
+    if (indicators.macd?.signal === "bearish") trendScore -= 2;
+    
+    const trend_bias: "bullish" | "bearish" | "neutral" = 
+      trendScore > 2 ? "bullish" : trendScore < -2 ? "bearish" : "neutral";
+    
+    // Compute momentum_state from RSI and Stochastic
+    const rsi = indicators.rsi?.value || 50;
+    const stochK = indicators.stochastic?.k || 50;
+    
+    let momentum_state: "strong" | "weak" | "oversold" | "overbought" | "neutral";
+    if (rsi > 70 || stochK > 80) {
+      momentum_state = "overbought";
+    } else if (rsi < 30 || stochK < 20) {
+      momentum_state = "oversold";
+    } else if ((rsi > 55 && rsi < 70) || (rsi > 40 && rsi < 45)) {
+      momentum_state = "strong";
+    } else if ((rsi < 45 && rsi > 30) || (rsi < 55 && rsi > 50)) {
+      momentum_state = "weak";
+    } else {
+      momentum_state = "neutral";
+    }
+    
+    // Compute volume_context from volume indicators
+    const volumeTrend = indicators.volume_trend?.value || 0;
+    const obv = indicators.obv?.value || 0;
+    const obvTrend = indicators.obv?.trend || "neutral";
+    
+    let volumeScore = 0;
+    if (volumeTrend > 1) volumeScore += 1;
+    if (volumeTrend < -1) volumeScore -= 1;
+    if (obvTrend === "bullish") volumeScore += 1;
+    if (obvTrend === "bearish") volumeScore -= 1;
+    
+    const volume_context: "increasing" | "decreasing" | "neutral" =
+      volumeScore > 0 ? "increasing" : volumeScore < 0 ? "decreasing" : "neutral";
+    
+    // Compute volatility_state from ATR, Bollinger Bands, and ADX
+    const atr = indicators.atr?.value || 0;
+    const atrPercent = (atr / currentPrice) * 100 || 0;
+    const bbWidth = indicators.bollingerBands?.width || 0;
+    const adx = indicators.adx?.value || 25;
+    
+    let volatility_state: "high" | "low" | "normal";
+    if (atrPercent > 3 || bbWidth > 5 || adx > 40) {
+      volatility_state = "high";
+    } else if (atrPercent < 1 || bbWidth < 2 || adx < 15) {
+      volatility_state = "low";
+    } else {
+      volatility_state = "normal";
+    }
+    
+    return {
+      trend_bias,
+      momentum_state,
+      volume_context,
+      volatility_state
+    };
+  }
+
+  /**
    * Generate comprehensive crypto insights combining multiple analysis types
    */
   async generateCryptoInsight(
@@ -313,30 +392,49 @@ Respond with ONLY valid JSON in this exact format:
     marketData: any
   ): Promise<AICryptoInsight> {
     try {
+      // Compute combined technical summary fields
+      const technicalSummary = this.computeTechnicalSummary(technicalAnalysis);
+      console.log("DEBUG: Computed technical summary:", technicalSummary);
+      
+      // Add summary fields to the technical analysis data
+      const enrichedTechnicals = {
+        ...technicalAnalysis,
+        _summary: technicalSummary
+      };
+      
       // Create a template prompt with placeholder for technical data
-      let prompt = `You are an advanced crypto market analyst with expertise in technical analysis.
-You will receive structured technical indicator data in JSON format below.
+      let prompt = `You are an advanced crypto market analyst with deep expertise in technical analysis.
+You will receive structured technical indicator data with pre-computed summary fields.
 
-Your job is to produce a professional, clean AI Summary based ONLY on the *meaning* of the indicators, not the raw numbers.
+Your job is to produce a professional, focused AI Summary based on the combined analysis signals, not individual indicators.
+
+IMPORTANT: The data includes these pre-computed summary fields at the top:
+- trend_bias: Overall direction bias
+- momentum_state: Current momentum condition
+- volume_context: Volume trend direction
+- volatility_state: Volatility environment
+
+Use these summaries as your PRIMARY analysis foundation. Provide deep, combined insights.
 
 =========================
 STRICT INSTRUCTIONS
 =========================
 
 1. DO NOT repeat any indicator numbers, percentages, or raw values.
-2. DO NOT explain what indicators mean (e.g., don't say "RSI measures momentum").
-3. Analyze what the indicators collectively tell us about market direction and strength.
-4. Be concise with 3-5 bullet points max per section.
-5. Format output EXACTLY like this (plain text, NOT JSON):
+2. DO NOT list indicators one by one.
+3. Focus on what the COMBINED signals tell us about market setup.
+4. Use the _summary fields as your starting point for analysis.
+5. Be concise with 3-5 bullet points max per section.
+6. Format output EXACTLY like this (plain text, NOT JSON):
 
 ### AI Summary — ${symbol} (${marketData.timeframe || '4h'})
 
 **Overall Bias:** [Bullish / Bearish / Neutral]
 
 **Why:**
-- [Insight from trend indicators]
-- [Insight from momentum indicators]
-- [Insight from volume/volatility]
+- [Combined insight from summary fields]
+- [Market setup interpretation]
+- [Key driving force]
 
 **What to expect next:**
 - [Expected price action based on current setup]
@@ -359,13 +457,11 @@ ANALYSIS END
 =========================`;
 
       // Format technical data with proper indentation
-      const technicalsJson = technicalAnalysis || {};
-      console.log("DEBUG: About to format technical data for Gemini...");
-      console.log("DEBUG: Technical data type:", typeof technicalsJson);
-      console.log("DEBUG: Raw technical data:", JSON.stringify(technicalsJson));
+      console.log("DEBUG: About to format enriched technical data for Gemini...");
+      console.log("DEBUG: Enriched data:", JSON.stringify(enrichedTechnicals, null, 2));
 
       // Replace placeholder with formatted technical data
-      prompt = prompt.replace('{{TECHNICALS_JSON}}', JSON.stringify(technicalsJson, null, 2));
+      prompt = prompt.replace('{{TECHNICALS_JSON}}', JSON.stringify(enrichedTechnicals, null, 2));
       
       console.log("FINAL PROMPT SENT TO GEMINI:");
       console.log(prompt);
