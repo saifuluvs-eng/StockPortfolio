@@ -28,19 +28,21 @@ export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPane
     }
 
     try {
-      // Clear cache and fetch fresh data
-      queryClient.removeQueries({ queryKey: ["aiSummary", symbol, tf] });
+      // First, invalidate to mark as stale
+      await queryClient.invalidateQueries({ queryKey: ["aiSummary", symbol, tf] });
       
       const response = await (await import("@/lib/api")).apiFetch("/api/ai/summary", {
         method: "POST",
         body: JSON.stringify({ symbol, tf, technicals }),
       });
       
-      console.log("[DEBUG] API response:", response);
+      console.log("[DEBUG] API response received:", !!response?.data);
       
-      // Update cache with new data
-      queryClient.setQueryData(["aiSummary", symbol, tf], 
-        typeof response?.data === "string" ? response.data : "");
+      if (response?.data) {
+        // Set the data in cache
+        queryClient.setQueryData(["aiSummary", symbol, tf], response.data);
+        console.log("[DEBUG] Data set in cache successfully");
+      }
     } catch (error) {
       console.error("[DEBUG] Generation error:", error);
     }
