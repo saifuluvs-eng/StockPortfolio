@@ -57,7 +57,7 @@ export function api(path: string, init: RequestInit = {}) {
   return fetch(url, { mode: "cors", credentials: "include", ...init });
 }
 
-export async function apiFetch(path: string, init: RequestInit = {}) {
+export async function apiFetch(path: string, init: RequestInit = {}, retries = 3) {
   const baseHeaders = toHeaderRecord(init.headers);
   const hasContentType = Object.keys(baseHeaders).some(
     (key) => key.toLowerCase() === "content-type",
@@ -69,21 +69,42 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   const authHeaders = await getAuthHeaders();
   const headers = { ...baseHeaders, ...authHeaders };
 
-  const response = await api(path, { ...init, headers });
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    throw new Error(`API ${response.status}: ${text || response.statusText}`);
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const response = await api(path, { ...init, headers });
+      
+      // Retry on 502 (Bad Gateway - usually means backend is rate limited/busy)
+      if (response.status === 502 && attempt < retries - 1) {
+        const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+        console.warn(`[API] Got 502, retrying after ${waitTime}ms (attempt ${attempt + 1}/${retries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(`API ${response.status}: ${text || response.statusText}`);
+      }
+
+      if (response.status === 204) {
+        return null;
+      }
+
+      try {
+        return await response.json();
+      } catch {
+        return null;
+      }
+    } catch (error) {
+      if (attempt === retries - 1) {
+        throw error;
+      }
+      console.warn(`[API] Attempt ${attempt + 1} failed, retrying...`, error instanceof Error ? error.message : error);
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+    }
   }
 
-  if (response.status === 204) {
-    return null;
-  }
-
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
+  throw new Error("API request failed after retries");
 }
 
 export async function apiFetchLocal(path: string, init: RequestInit = {}) {

@@ -1,0 +1,40 @@
+widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D:137 WebSocket connection to 'wss://widgetdata.tradingview.com/socket.io/websocket?from=widgetembed%2F&date=2025-11-24T13%3A11%3A35&page-uri=stock-portfolio-khaki-nine.vercel.app%2F%23%2Fanalyse%2FBTCUSDT&ancestor-origin=stock-portfolio-khaki-nine.vercel.app' failed: 
+connect @ widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D:137
+connect @ widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D:138
+_doConnect @ widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D:140
+r @ widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D:138
+(anonymous) @ widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D:141
+(anonymous) @ widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D:141Understand this error
+index-DRCIXRAd.js:1747 [Analyse] Auto-run triggered: {symbolChanged: true, timeframeChanged: false, from: {…}, to: {…}}
+(anonymous) @ index-DRCIXRAd.js:1747
+Sc @ index-DRCIXRAd.js:40
+Qi @ index-DRCIXRAd.js:40
+IE @ index-DRCIXRAd.js:40
+ni @ index-DRCIXRAd.js:40
+ov @ index-DRCIXRAd.js:40
+ss @ index-DRCIXRAd.js:38
+(anonymous) @ index-DRCIXRAd.js:40Understand this warning
+index-DRCIXRAd.js:1747 [Analyse] Run Analysis → DASHUSDT 4h
+index-DRCIXRAd.js:1747 [DEBUG] Generate button clicked!
+index-DRCIXRAd.js:1747 [DEBUG] Props - symbol: DASHUSDT tf: 4h hasUser: true
+index-DRCIXRAd.js:1701  POST https://stock-portfolio-khaki-nine.vercel.app/api/ai/summary 502 (Bad Gateway)
+I @ index-DRCIXRAd.js:1701
+Bs @ index-DRCIXRAd.js:1701
+El @ index-DRCIXRAd.js:1701
+await in El
+p @ index-DRCIXRAd.js:1747
+await in p
+Jk @ index-DRCIXRAd.js:37
+Yk @ index-DRCIXRAd.js:37
+Xk @ index-DRCIXRAd.js:37
+Dg @ index-DRCIXRAd.js:37
+Mg @ index-DRCIXRAd.js:37
+(anonymous) @ index-DRCIXRAd.js:37
+Lf @ index-DRCIXRAd.js:40
+Vm @ index-DRCIXRAd.js:37
+Md @ index-DRCIXRAd.js:37
+vd @ index-DRCIXRAd.js:37
+m1 @ index-DRCIXRAd.js:37Understand this error
+index-DRCIXRAd.js:1747 [DEBUG] Generation error: Error: API 502: {"error":"upstream","message":"[GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent: [429 Too Many Requests] Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details."}
+    at Object.El [as apiFetch] (index-DRCIXRAd.js:1701:3286)
+    at async p (index-DRCIXRAd.js:1747:1571)
