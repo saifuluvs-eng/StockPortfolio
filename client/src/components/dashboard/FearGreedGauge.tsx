@@ -36,7 +36,7 @@ export const FearGreedGauge: React.FC<FearGreedGaugeProps> = ({ value, classific
   return (
     <div className="flex flex-col items-center justify-center w-full">
       {/* SVG Gauge */}
-      <svg width="200" height="120" viewBox="0 0 200 120" className="mb-4">
+      <svg width="140" height="85" viewBox="0 0 200 120" className="mb-2">
         {/* Background gauge arc */}
         <defs>
           <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -81,10 +81,10 @@ export const FearGreedGauge: React.FC<FearGreedGaugeProps> = ({ value, classific
 
       {/* Value Display */}
       <div className="text-center">
-        <div className="text-3xl font-bold" style={{ color: needleColor }}>
+        <div className="text-2xl font-bold" style={{ color: needleColor }}>
           {clampedValue.toFixed(0)}
         </div>
-        <div className="text-sm text-muted-foreground mt-1">{classification}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">{classification}</div>
       </div>
     </div>
   );

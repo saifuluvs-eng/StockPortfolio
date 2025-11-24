@@ -414,25 +414,6 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Market Fear &amp; Greed</span>
-                <div className="text-right">
-                  <p className="font-semibold" data-testid="text-fear-greed">
-                    {fearGreed ? `${fearGreed.value.toFixed(1)}` : "--"}
-                  </p>
-                  <p className={`text-sm ${
-                    fearGreed
-                      ? fearGreed.classification.includes("Greed")
-                        ? "text-accent"
-                        : fearGreed.classification.includes("Fear")
-                        ? "text-destructive"
-                        : "text-muted-foreground"
-                      : "text-muted-foreground"
-                  }`}>
-                    {fearGreed ? fearGreed.classification : "Index"}
-                  </p>
-                </div>
-              </div>
               <div className="mt-4 flex flex-col sm:flex-row gap-2">
                 <Button asChild size="sm" className="min-h-[44px]" data-testid="button-view-portfolio">
                   <Link to="/portfolio">View Portfolio</Link>
