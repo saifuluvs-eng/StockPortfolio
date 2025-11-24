@@ -1298,7 +1298,7 @@ export default function Analyse() {
           </section>
 
           <section className="min-w-0 overflow-hidden">
-            <AiSummaryPanel symbol={selectedSymbol} tf={timeframe} technicals={scanResult?.technicals} />
+            <AiSummaryPanel symbol={selectedSymbol} tf={timeframe} technicals={scanResult?.indicators} />
           </section>
         </div>
       </div>

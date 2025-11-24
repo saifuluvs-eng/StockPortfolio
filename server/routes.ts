@@ -452,70 +452,62 @@ export function registerRoutes(app: Express): void {
 
   app.post('/api/ai/summary', async (req: Request, res: Response) => {
     try {
-      const { symbol, tf } = req.body;
+      const { symbol, tf, technicals } = req.body;
       if (!symbol) {
         return res.status(400).json({ error: "symbol is required" });
       }
       const timeframe = tf || '4h';
       
-      let technicalAnalysis: any;
-      let marketData: any;
+      // Log the technical data for debugging
+      console.log("DEBUG: Raw technicals received:", technicals);
+      console.log("DEBUG: technicals type:", typeof technicals);
+      console.log("DEBUG: technicals is array?", Array.isArray(technicals));
       
-      // Get technical analysis for the symbol with error handling
-      try {
-        technicalAnalysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
-      } catch (error) {
-        console.warn(`Could not fetch technical analysis for ${symbol}:`, error);
-        technicalAnalysis = {
-          symbol,
-          totalScore: 50,
-          recommendation: 'hold',
-          indicators: {}
-        };
+      const technicalsJson = technicals || {};
+      console.log("TECHNICAL JSON SENT TO GEMINI:", JSON.stringify(technicalsJson, null, 2));
+
+      // Check if technical data is missing or empty
+      const isMissingData = !technicals || 
+        (typeof technicals === "object" && Object.keys(technicals).length === 0) ||
+        (Array.isArray(technicals) && technicals.length === 0);
+
+      if (isMissingData) {
+        console.warn(`No technical data received for ${symbol}`);
+        return res.json({
+          data: `Error: No technical data received.`,
+        });
       }
       
-      // Get market data with error handling
-      try {
-        marketData = await binanceService.getTickerData(symbol);
-      } catch (error) {
-        console.warn(`Could not fetch market data for ${symbol}:`, error);
-        marketData = {
-          symbol,
-          lastPrice: '0',
-          priceChangePercent: '0',
-          volume: '0'
-        };
+      // Use the provided technicals or fetch if not provided
+      let technicalAnalysis = technicals;
+      if (!technicalAnalysis) {
+        try {
+          technicalAnalysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
+        } catch (error) {
+          console.warn(`Could not fetch technical analysis for ${symbol}:`, error);
+          technicalAnalysis = {
+            symbol,
+            totalScore: 50,
+            recommendation: 'hold',
+            indicators: {}
+          };
+        }
       }
       
-      // Generate AI summary with robust error handling
-      let aiInsight: any;
+      // Generate AI summary using Gemini
       try {
-        aiInsight = await aiService.generateCryptoInsight(
+        const aiSummary = await aiService.generateCryptoInsight(
           symbol,
           technicalAnalysis,
-          marketData
+          {}
         );
+        res.json({ data: aiSummary.reasoning || "No summary available." });
       } catch (aiError) {
-        console.error("AI service error, using fallback:", aiError);
-        // Return fallback response instead of 500
-        aiInsight = {
-          symbol,
-          analysisType: "technical",
-          signal: technicalAnalysis.recommendation === "BUY" ? "bullish" : technicalAnalysis.recommendation === "SELL" ? "bearish" : "neutral",
-          confidence: 0.5,
-          reasoning: "Technical analysis only - AI service temporarily unavailable",
-          recommendation: `Technical signal: ${technicalAnalysis.recommendation || "HOLD"}`,
-          timeframe: timeframe,
-          metadata: {
-            technicalScore: technicalAnalysis.totalScore || 50,
-            volumeAnalysis: "standard",
-            marketCondition: "analyzing",
-            riskLevel: "medium"
-          }
-        };
+        console.error("AI service error:", aiError);
+        return res.json({
+          data: "Error: Failed to generate AI summary. Please try again."
+        });
       }
-      
-      res.json({ data: aiInsight.reasoning || "No summary available." });
     } catch (error) {
       console.error("Error in /api/ai/summary:", error);
       res.status(500).json({ error: "Failed to generate AI summary", message: error instanceof Error ? error.message : String(error) });

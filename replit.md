@@ -10,12 +10,15 @@ Preferred communication style: Simple, everyday language.
 
 **November 24, 2025 - FIXED: AI Summary Now Receives Technical Data & Simplified Vercel Endpoints**:
 - **Fixed AI Summary "No technical data" Error**
-  - Updated `useAiSummary` hook to accept and send `technicals` prop
+  - Root cause: Frontend was passing `scanResult?.technicals` but the property is actually `scanResult?.indicators`
+  - Updated `useAiSummary` hook to accept and send `technicals` prop from frontend
   - Updated `AiSummaryPanel` component to accept and pass technical data
-  - Modified `analyse.tsx` to extract technical data from scan result: `technicals={scanResult?.technicals}`
+  - Fixed `analyse.tsx` to send the correct property: `technicals={scanResult?.indicators}`
+  - Updated backend `/api/ai/summary` route to accept and validate `technicals` from request body
+  - Added logging to show what technical data is being received and sent to Gemini
   - Now when user runs a scan and clicks "Generate", AI Summary receives complete technical indicator data
   - Backend correctly detects data and generates analysis instead of returning error
-  - Flow: Run Analysis → Click Generate → Technical data sent to API → Gemini generates real summary
+  - Flow: Run Analysis → Click Generate → Technical data (indicators) sent to API → Gemini generates real summary
 
 - **Simplified Serverless Functions for Vercel Deployment**
   - `api/market/fear-greed.ts` - Uses inline CoinMarketCap logic without service imports

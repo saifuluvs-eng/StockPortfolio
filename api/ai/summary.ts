@@ -14,11 +14,17 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
 
     // Log the technical data for debugging
+    console.log("DEBUG: Raw technicals received:", technicals);
+    console.log("DEBUG: technicals type:", typeof technicals);
+    console.log("DEBUG: technicals is array?", Array.isArray(technicals));
+    
     const technicalsJson = technicals || {};
-    console.log("TECHNICAL JSON SENT TO GEMINI:", technicalsJson);
+    console.log("TECHNICAL JSON SENT TO GEMINI:", JSON.stringify(technicalsJson, null, 2));
 
     // Check if technical data is missing or empty
-    const isMissingData = !technicals || Object.keys(technicals).length === 0;
+    const isMissingData = !technicals || 
+      (typeof technicals === "object" && Object.keys(technicals).length === 0) ||
+      (Array.isArray(technicals) && technicals.length === 0);
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
