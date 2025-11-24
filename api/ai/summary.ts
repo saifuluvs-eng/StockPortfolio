@@ -7,7 +7,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   }
 
   try {
-    const { symbol, timeframe = "4h" } = req.body;
+    const { symbol, tf = "4h" } = req.body;
 
     if (!symbol) {
       return res.status(400).json({ error: "Missing required field: symbol" });
@@ -20,7 +20,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    const prompt = `You are a professional cryptocurrency market analyst. Analyze ${symbol} on the ${timeframe} timeframe and provide a brief trading analysis.
+    const prompt = `You are a professional cryptocurrency market analyst. Analyze ${symbol} on the ${tf} timeframe and provide a brief trading analysis.
 
 Format your response EXACTLY as:
 **Overall Bias:** [Bullish/Bearish/Neutral]
@@ -48,10 +48,7 @@ Be concise and focus on actionable insights for traders.`;
 
       res.setHeader("Cache-Control", "private, max-age=60");
       return res.json({
-        symbol,
-        timeframe,
-        analysis: text,
-        generatedAt: new Date().toISOString(),
+        data: text,
       });
     } catch (timeoutErr) {
       clearTimeout(timeoutId);
