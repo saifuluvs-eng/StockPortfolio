@@ -1,0 +1,55 @@
+1. 🛑 The Security Barrier (The Most Likely Cause)
+If your website is using a modern framework like Next.js, React, or Vue, the code that makes the CoinMarketCap API call might be executing in the browser (client-side).
+
+By design, secret environment variables set in Vercel (or any other secure host) are not automatically exposed to client-side code for security reasons.
+
+➡️ How to Fix: Move the Logic to a Serverless Function
+The CoinMarketCap API key (X-CMC_PRO_API_KEY) is a secret that should never be exposed in the browser's source code. You must move the API call off the client.
+
+Create an API Route/Serverless Function: Create a new file (e.g., pages/api/fear-greed.js in Next.js, or an equivalent serverless function) on your Vercel project.
+
+Move the CoinMarketCap Logic: Place the entire API fetching and parsing logic into this new serverless function.
+
+Access the Key Securely: Inside this serverless function, access your variable normally. Vercel automatically exposes the environment variable to serverless functions:
+
+JavaScript
+
+const apiKey = process.env.COINMARKETCAP_API_KEY; // Use the exact name you set in Vercel
+// ... use apiKey in the fetch request headers
+Call Your New API: Have your client-side code (the part that loads the index) call your new Vercel API route (e.g., /api/fear-greed) instead of calling the CoinMarketCap API directly.
+
+In summary: Your Vercel link is failing because the browser code cannot see the secret key, but the Replit preview is working because it's running a different, often more permissive, local development server environment.
+
+2. 📝 The API Key Naming/Prefix Issue (If Client-Side is unavoidable)
+While I strongly advise against making the call client-side, if your framework is trying to access the variable and failing, you may need a framework-specific prefix.
+
+If you are using Next.js: Non-secret variables for the client must be prefixed with NEXT_PUBLIC_.
+
+Vercel Variable Name: NEXT_PUBLIC_COINMARKETCAP_API_KEY
+
+Code Access: process.env.NEXT_PUBLIC_COINMARKETCAP_API_KEY
+
+If you are using Create React App (CRA): The prefix is REACT_APP_.
+
+If you use this method, you must change the variable name in your Vercel dashboard and then trigger a new deployment.
+
+3. 💥 Troubleshooting: The "Undefined" Log Check
+Since you are sure the variable is set on Vercel, the next best step is to prove whether the variable is actually being accessed in the running code.
+
+You can temporarily add a log statement in your Vercel API route code (the code that calls CoinMarketCap):
+
+Add a temporary log:
+
+JavaScript
+
+// In your CoinMarketCap fetching code:
+console.log("Key Length:", process.env.COINMARKETCAP_API_KEY ? process.env.COINMARKETCAP_API_KEY.length : '0');
+Redeploy the project.
+
+Trigger the Failure: Go to your Vercel link so the code runs.
+
+Check Vercel Logs: Go to your Vercel dashboard, select your project, go to the "Logs" tab, and filter by the Serverless Function.
+
+If the log shows Key Length: 0 or undefined, the problem is the variable injection (go back to Step 2 and ensure proper prefixing and redeployment).
+
+If the log shows a positive number for the length (e.g., 32), the API key is being accessed, but the CoinMarketCap API call itself is failing (e.g., blocked by CORS, rate limit, or IP restriction). In this case, check the network request status code in your Vercel logs.
