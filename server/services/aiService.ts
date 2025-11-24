@@ -334,6 +334,53 @@ Respond with ONLY valid JSON in this exact format:
 
 
   /**
+   * Convert 4 summary states into natural language for Gemini
+   * This ensures Gemini NEVER sees raw indicator names
+   */
+  private convertSummaryToNarrative(states: any): string {
+    const { trend_bias, momentum_state, volume_context, volatility_state } = states;
+    
+    // Translate trend_bias
+    const trendDescriptions: Record<string, string> = {
+      bullish: "Price is strengthening with buyers in control. Key levels are being tested upward.",
+      bearish: "Price is weakening with sellers in control. Key levels are being tested downward.",
+      neutral: "Price is consolidating without clear directional bias. Buyers and sellers are balanced."
+    };
+    
+    // Translate momentum_state
+    const momentumDescriptions: Record<string, string> = {
+      strong: "Momentum is accelerating in the direction of the trend.",
+      weak: "Momentum is fading and directional moves are losing strength.",
+      oversold: "Extreme selling pressure exists - potential capitulation conditions.",
+      overbought: "Extreme buying pressure exists - potential exhaustion conditions.",
+      neutral: "Momentum is neutral without strong directional bias."
+    };
+    
+    // Translate volume_context
+    const volumeDescriptions: Record<string, string> = {
+      increasing: "Trading activity is elevated with strong institutional participation.",
+      decreasing: "Trading activity is subdued with weak participation.",
+      neutral: "Trading activity is normal and average."
+    };
+    
+    // Translate volatility_state
+    const volatilityDescriptions: Record<string, string> = {
+      high: "Price ranges are wide and volatility is expanding significantly.",
+      low: "Price ranges are compressed and volatility is contracting.",
+      normal: "Price ranges are typical and volatility is normal."
+    };
+    
+    return `
+Market State Summary:
+- Trend: ${trendDescriptions[trend_bias] || "Neutral"}
+- Momentum: ${momentumDescriptions[momentum_state] || "Neutral"}
+- Volume: ${volumeDescriptions[volume_context] || "Neutral"}
+- Volatility: ${volatilityDescriptions[volatility_state] || "Normal"}
+
+Based on these four combined factors, provide trader-style analysis.`;
+  }
+
+  /**
    * Generate comprehensive crypto insights combining multiple analysis types
    */
   async generateCryptoInsight(
@@ -346,80 +393,51 @@ Respond with ONLY valid JSON in this exact format:
       
       // Build final JSON using combined signals builder
       const finalJson = buildTechnicalJSON(technicalAnalysis.indicators || {}, symbol, timeframe);
-      console.log("DEBUG: Built technical JSON with combined signals");
-      console.log("DEBUG: Combined signals:", {
-        trend_bias: finalJson.trend_bias,
-        momentum_state: finalJson.momentum_state,
-        volume_context: finalJson.volume_context,
-        volatility_state: finalJson.volatility_state
-      });
+      console.log("DEBUG: Combined signals:", finalJson);
       
-      // CRITICAL DEBUG: Log exactly what will be sent to Gemini
-      console.log("\n========== CRITICAL: JSON BEING SENT TO GEMINI ==========");
-      console.log(JSON.stringify(finalJson, null, 2));
-      console.log("========================================================\n");
+      // Convert to natural language narrative (NO INDICATOR NAMES)
+      const narrative = this.convertSummaryToNarrative(finalJson);
+      console.log("\n========== NARRATIVE SENT TO GEMINI ==========");
+      console.log(narrative);
+      console.log("=============================================\n");
       
-      // Create a template prompt with placeholder for technical data
-      const promptTemplate = `You are a professional cryptocurrency trader analyzing market conditions.
-Write ONLY what a trader would say, using general market language - NEVER mention specific indicators.
+      // Create a template prompt with ZERO raw indicator data
+      const promptTemplate = `You are a professional cryptocurrency trader analyzing ${symbol} on ${timeframe}.
+Write ONLY trader-style analysis using general market language.
 
-⚠️ ABSOLUTE RULES (VIOLATION MEANS INVALID):
-1. FORBIDDEN WORDS - DO NOT USE THESE UNDER ANY CIRCUMSTANCE:
-   • VWAP, EMA, MACD, RSI, Stochastic, ADX, Williams %R, ATR, Bollinger Bands, OBV, Fibonacci, Ichimoku, SAR
-   • Any mention of specific indicator names or abbreviations
-   • Any reference to "above/below EMA", "MACD crossover", "RSI overbought", "Williams %R", "ADX strength"
-   
-2. WHAT TO SAY INSTEAD (trader language):
-   • Instead of "Below EMA" → "Weak price action" or "Sellers in control"
-   • Instead of "RSI oversold" → "Extreme selling pressure" or "Potential capitulation"
-   • Instead of "MACD bullish" → "Positive momentum emerging" or "Buyers stepping in"
-   • Instead of "ATR expanding" → "Volatility increasing" or "Larger price swings"
-   • Instead of "High volume" → "Strong participation" or "Institutional activity"
+ABSOLUTE REQUIREMENT: 
+- NEVER mention any indicator names (VWAP, EMA, MACD, RSI, Stochastic, ADX, Williams %R, ATR, Bollinger Bands, OBV, etc.)
+- Write as if explaining to another trader - focused on market setup and price action
+- Use only the market state provided below
 
-3. ONLY reference the 4 combined summary states:
-   - trend_bias: Direction of price relative to key levels
-   - momentum_state: Strength of current directional move
-   - volume_context: Activity level compared to normal
-   - volatility_state: Price range compression or expansion
-
-4. YOUR RESPONSE FORMAT (plain text, NOT JSON):
+Format your response EXACTLY like this:
 
 ### AI Summary — ${symbol} (${timeframe})
 
-**Overall Bias:** [Bullish / Bearish / Neutral only]
+**Overall Bias:** [Bullish / Bearish / Neutral]
 
 **Why:**
-- [One insight about price direction - NO INDICATORS]
-- [One insight about momentum - NO INDICATORS]
-- [One insight about market condition - NO INDICATORS]
+- [One insight - use general market language]
+- [One insight - no indicator names]  
+- [One insight - no numbers or percentages]
 
 **What to expect:**
-- [General expectation based on current state]
+- [Expected price action based on current setup]
 
 **Key Levels:**
-- Support: [Generic zone description, no specific numbers]
-- Resistance: [Generic zone description, no specific numbers]
+- Support: [Description without numbers]
+- Resistance: [Description without numbers]
 
 **Risk Alert:**
-- [One risk factor - NO INDICATORS]
+- [One key risk factor]
 
-=========================
-ANALYSIS DATA
-=========================
+MARKET STATE:
+{{MARKET_STATE}}`;
 
-{{TECHNICALS_JSON}}
-
-=========================
-FINAL CHECK: Did you mention any indicator names? If yes, REWRITE without them.
-=========================`;
-
-      // Replace placeholder with formatted technical data
-      const prompt = promptTemplate.replace(
-        "{{TECHNICALS_JSON}}",
-        JSON.stringify(finalJson, null, 2)
-      );
+      // Replace placeholder with narrative (NO raw indicator data)
+      const prompt = promptTemplate.replace("{{MARKET_STATE}}", narrative);
       
-      console.log("FINAL PROMPT SENT TO GEMINI:");
+      console.log("PROMPT SENT TO GEMINI:");
       console.log(prompt);
 
       const responseText = await callGemini(prompt);
