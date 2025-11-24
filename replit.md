@@ -8,27 +8,32 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 24, 2025 - FIXED: AI Summary Data Flow & Symbol Mismatch Caching Bug**:
+**November 24, 2025 - FIXED: AI Summary Button + Rate Limiting Handling**:
 
-- **CRITICAL: React Query Cache Key Mismatch Fixed (`client/src/hooks/useAiSummary.ts`)**
-  - ROOT CAUSE: Cache key included `technicals` object reference (4-part key), but invalidation used 3-part key
-  - BEFORE: `queryKey: ["aiSummary", symbol, tf, technicals]` ❌ (invalidation didn't match this)
-  - AFTER: `queryKey: ["aiSummary", symbol, tf]` ✅ (now matches invalidation in analyse.tsx line 663)
-  - RESULT: Symbol mismatch fixed - switching symbols now properly clears stale cache
+- **Symbol Mismatch Caching Bug Fixed (`client/src/hooks/useAiSummary.ts`)**
+  - ROOT CAUSE: Cache key included `technicals` object reference, but invalidation didn't match
+  - FIXED: Changed to 3-part key `["aiSummary", symbol, tf]` matching invalidation logic
+  - RESULT: Symbol switching now properly clears stale cache
   
-- **Fixed Data Flow Bug in Express Route (`server/routes.ts` line 504)**
-  - Properly wraps technical data: `aiService.generateCryptoInsight(symbol, { indicators: technicalAnalysis }, { timeframe })`
+- **Generate Button Now Working (`client/src/components/analyse/AiSummaryPanel.tsx`)**
+  - Button was working but API was failing silently
+  - Simplified logic: direct API call + cache update
+  - Added console debugging for troubleshooting
   
-- **Fixed Logic Error in aiService (`server/services/aiService.ts` line 414)**
-  - Corrected ternary operator for volatility detection
+- **Gemini API Rate Limiting Handled (`server/services/aiService.ts`)**
+  - Added retry logic with exponential backoff (1s, 2s, 4s waits)
+  - Detects 429 errors and retries up to 3 times
+  - Falls back gracefully when rate limited
   
-- **Combined Signals Only Sent to Gemini (`server/services/combinedSignals.ts`)**
-  - JSON now contains ONLY 4 summary fields: symbol, timeframe, trend_bias, momentum_state, volume_context, volatility_state
-  - No raw indicators object - forces Gemini to use ONLY summary fields
-  - Result: Pure trader-style analysis (not robot indicator listings)
+- **Better Error Messages (`server/routes.ts`)**
+  - Detects rate limiting specifically and returns: "AI service is temporarily busy. Try again in a few moments."
+  - Other errors return: "AI analysis unavailable at the moment. Please try again shortly."
+  - User-friendly messaging instead of 502 errors
 
-- **Added Cache Invalidation on Generate (`client/src/components/analyse/AiSummaryPanel.tsx`)**
-  - "Generate" button now invalidates all AI Summary cache before fetching fresh data
+- **Data Flow Improvements**
+  - Express wraps technical data: `{ indicators: technicalAnalysis }`
+  - Combined signals sends ONLY 4 summary fields to Gemini
+  - Result: Pure trader-style analysis (not robot listings)
 
 # System Architecture
 

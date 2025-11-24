@@ -6,48 +6,73 @@ const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models
 import { buildTechnicalJSON } from "./combinedSignals";
 
 /**
- * Helper function to call Gemini API with timeout
+ * Helper function to call Gemini API with retry logic for rate limiting
  */
-async function callGemini(prompt: string): Promise<string> {
+async function callGemini(prompt: string, retries = 3): Promise<string> {
   if (!GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY environment variable is not set");
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-  try {
-    const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-      }),
-      signal: controller.signal,
-    });
+    try {
+      const response = await fetch(`${GEMINI_ENDPOINT}?key=${GEMINI_API_KEY}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }],
+            },
+          ],
+        }),
+        signal: controller.signal,
+      });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Gemini API error: ${response.status} - ${error}`);
+      // Handle rate limiting (429) with exponential backoff
+      if (response.status === 429) {
+        const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+        console.warn(`[Gemini] Rate limited (429). Retry ${attempt + 1}/${retries} after ${waitTime}ms`);
+        
+        if (attempt < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue; // Retry
+        }
+        // If last attempt, fall through to throw error
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        const errorMessage = `Gemini API error: ${response.status} - ${errorText}`;
+        console.error(`[Gemini] ${errorMessage}`);
+        throw new Error(errorMessage);
+      }
+
+      const json = await response.json();
+      const result = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      
+      if (!result) {
+        throw new Error("No response from Gemini API");
+      }
+
+      return result;
+    } catch (error) {
+      // If this was the last attempt or a non-retryable error, throw
+      if (attempt === retries - 1) {
+        throw error;
+      }
+      // Otherwise, continue to next retry
+      console.warn(`[Gemini] Attempt ${attempt + 1} failed:`, error instanceof Error ? error.message : error);
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    const json = await response.json();
-    const result = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    
-    if (!result) {
-      throw new Error("No response from Gemini API");
-    }
-
-    return result;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  throw new Error("Failed to get response from Gemini API after retries");
 }
 
 // Binance API types

@@ -503,14 +503,28 @@ export function registerRoutes(app: Express): void {
         );
         res.json({ data: aiSummary.reasoning || "No summary available." });
       } catch (aiError) {
-        console.error("AI service error:", aiError);
+        const errorMsg = aiError instanceof Error ? aiError.message : String(aiError);
+        console.error("AI service error:", errorMsg);
+        
+        // Check if it's a rate limiting issue
+        if (errorMsg.includes("429") || errorMsg.includes("rate") || errorMsg.includes("Resource exhausted")) {
+          return res.json({
+            data: "AI service is temporarily busy (rate limited). Try again in a few moments. Analysis still available from technical indicators."
+          });
+        }
+        
+        // For other errors, return a helpful message
         return res.json({
-          data: "Error: Failed to generate AI summary. Please try again."
+          data: "AI analysis unavailable at the moment. Please try again shortly."
         });
       }
     } catch (error) {
       console.error("Error in /api/ai/summary:", error);
-      res.status(500).json({ error: "Failed to generate AI summary", message: error instanceof Error ? error.message : String(error) });
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ 
+        error: "Failed to generate AI summary", 
+        message: errorMsg 
+      });
     }
   });
 
