@@ -130,7 +130,10 @@ export default function Home() {
   const { market: totalMarketValue, pnlPct: totalPnlPercent } = usePortfolioStats();
 
   const symbols = useMemo(
-    () => Array.from(new Set(positionsData.map((p) => p.symbol.trim().toUpperCase()).filter(Boolean))),
+    () => {
+      if (!Array.isArray(positionsData)) return [];
+      return Array.from(new Set(positionsData.map((p) => p.symbol.trim().toUpperCase()).filter(Boolean)));
+    },
     [positionsData],
   );
   const symbolsKey = symbols.join("|");
