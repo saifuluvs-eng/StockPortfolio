@@ -3,20 +3,24 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 const BASE_URL = "https://pro-api.coinmarketcap.com/v3";
 
 async function getFearGreedIndex() {
-  // Read API key at invocation time (not module load time) - fixes Vercel env var injection
-  const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY;
+  // Try multiple ways to access the API key for maximum compatibility
+  let COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || 
+                               process.env["COINMARKETCAP_API_KEY"] ||
+                               (global as any).COINMARKETCAP_API_KEY;
   
   // DEBUG: Check if API key is accessible
-  console.log("[Fear & Greed API] Environment variables check:");
+  console.log("[Fear & Greed API] Environment check:");
+  console.log("[Fear & Greed API] process.env keys:", Object.keys(process.env).filter(k => k.includes("COIN") || k.includes("cmc")).join(", "));
   console.log("[Fear & Greed API] COINMARKETCAP_API_KEY exists:", !!COINMARKETCAP_API_KEY);
-  console.log("[Fear & Greed API] COINMARKETCAP_API_KEY length:", COINMARKETCAP_API_KEY?.length || 0);
+  console.log("[Fear & Greed API] COINMARKETCAP_API_KEY length:", COINMARKETCAP_API_KEY?.length || "0");
   
-  if (!COINMARKETCAP_API_KEY) {
-    console.log("[Fear & Greed API] ⚠️ API key NOT found - returning fallback");
+  if (!COINMARKETCAP_API_KEY || COINMARKETCAP_API_KEY.length === 0) {
+    console.log("[Fear & Greed API] ⚠️ API key NOT found - returning fallback (50)");
+    console.log("[Fear & Greed API] All env vars:", JSON.stringify(Object.keys(process.env).slice(0, 10)));
     return { value: 50, classification: "Neutral", timestamp: String(Date.now()) };
   }
   
-  console.log("[Fear & Greed API] ✅ API key found - making fetch request");
+  console.log("[Fear & Greed API] ✅ API key found (length:", COINMARKETCAP_API_KEY.length + ") - making fetch request");
 
   try {
     console.log("[Fear & Greed API] Fetching from CoinMarketCap...");
