@@ -8,38 +8,27 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 24, 2025 - FIXED: AI Summary Data Flow - Combined Signals Now Properly Sent to Gemini**:
-- **Fixed Critical Data Flow Bug in Express Route (`server/routes.ts` line 504)**
-  - ROOT CAUSE: Express route was passing raw indicators object instead of properly wrapped structure
-  - BEFORE: `aiService.generateCryptoInsight(symbol, technicalAnalysis, {})`  ❌ (aiService expected technicalAnalysis.indicators)
-  - AFTER: `aiService.generateCryptoInsight(symbol, { indicators: technicalAnalysis }, { timeframe })`  ✅ (properly wrapped)
+**November 24, 2025 - FIXED: AI Summary Data Flow & Symbol Mismatch Caching Bug**:
+
+- **CRITICAL: React Query Cache Key Mismatch Fixed (`client/src/hooks/useAiSummary.ts`)**
+  - ROOT CAUSE: Cache key included `technicals` object reference (4-part key), but invalidation used 3-part key
+  - BEFORE: `queryKey: ["aiSummary", symbol, tf, technicals]` ❌ (invalidation didn't match this)
+  - AFTER: `queryKey: ["aiSummary", symbol, tf]` ✅ (now matches invalidation in analyse.tsx line 663)
+  - RESULT: Symbol mismatch fixed - switching symbols now properly clears stale cache
   
-- **Fixed Logic Error in aiService (`server/services/aiService.ts` line 417)**
-  - Changed broken ternary operator: `.includes("high volatility" || "extreme")` ❌
-  - To correct logic: `.includes("high volatility") || responseText.toLowerCase().includes("extreme")` ✅
-
-- **Combined Signals Builder Working Correctly (`server/services/combinedSignals.ts`)**
-  - Module computes 4 high-level technical summary fields: trend_bias, momentum_state, volume_context, volatility_state
-  - These fields now properly reach Gemini in the JSON payload
-  - buildTechnicalJSON() organizes data with 4 summary fields at top level + full indicators nested
+- **Fixed Data Flow Bug in Express Route (`server/routes.ts` line 504)**
+  - Properly wraps technical data: `aiService.generateCryptoInsight(symbol, { indicators: technicalAnalysis }, { timeframe })`
   
-- **Data Flow Now Correct**:
-  - Frontend sends: `scanResult?.indicators` (raw indicators)
-  - Express wraps: `{ indicators: technicalAnalysis }`
-  - aiService extracts: `technicalAnalysis.indicators`
-  - buildTechnicalJSON() computes 4 combined fields
-  - Final JSON sent to Gemini includes all 4 fields ✅
-  - Gemini produces trader-style analysis, NOT indicator listing
+- **Fixed Logic Error in aiService (`server/services/aiService.ts` line 414)**
+  - Corrected ternary operator for volatility detection
+  
+- **Combined Signals Only Sent to Gemini (`server/services/combinedSignals.ts`)**
+  - JSON now contains ONLY 4 summary fields: symbol, timeframe, trend_bias, momentum_state, volume_context, volatility_state
+  - No raw indicators object - forces Gemini to use ONLY summary fields
+  - Result: Pure trader-style analysis (not robot indicator listings)
 
-- **Final Breakthrough - Removed Full Indicators Object (`server/services/combinedSignals.ts`)**
-  - The JSON being sent to Gemini now contains ONLY the 4 summary fields
-  - BEFORE: JSON included both summary fields + full indicators object (Gemini used the indicators instead)
-  - AFTER: JSON ONLY includes: symbol, timeframe, trend_bias, momentum_state, volume_context, volatility_state
-  - Result: Gemini has NO raw indicator data to fall back on - MUST use the summary fields
-
-- **Final Result**: Gemini now produces PURE trader-style analysis:
-  - ✅ Example: "Momentum remains weak with sellers maintaining control and volume participation lacking"
-  - ❌ No longer: "Price is trading below VWAP. EMA crossover indicates a downtrend. Williams %R indicates..."
+- **Added Cache Invalidation on Generate (`client/src/components/analyse/AiSummaryPanel.tsx`)**
+  - "Generate" button now invalidates all AI Summary cache before fetching fresh data
 
 # System Architecture
 

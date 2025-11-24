@@ -9,7 +9,7 @@ type UseAiSummaryParams = {
 
 export function useAiSummary({ symbol, tf, technicals }: UseAiSummaryParams) {
   return useQuery({
-    queryKey: ["aiSummary", symbol, tf, technicals],
+    queryKey: ["aiSummary", symbol, tf],
     queryFn: async () => {
       const response = (await apiFetch("/api/ai/summary", {
         method: "POST",
