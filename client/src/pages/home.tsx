@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
 import TopGainersCard from "@/components/dashboard/TopGainersCard";
+import { FearGreedGauge } from "@/components/dashboard/FearGreedGauge";
 import { getQueryFn } from "@/lib/queryClient";
 import { usePrices } from "@/lib/prices";
 import { supabase } from "@/lib/supabase";
@@ -19,7 +20,7 @@ import {
   Search,
   Award,
   Eye,
-  Bell,
+  Gauge,
   Brain,
   Activity,
   Newspaper,
@@ -201,9 +202,9 @@ export default function Home() {
   const { data: fearGreed } = useQuery({
     queryKey: ["/api/market/fear-greed"],
     queryFn: getQueryFn<FearGreedData | null>({ on401: "returnNull" }),
-    staleTime: 3 * 60 * 1000, // 3 minutes
-    gcTime: 10 * 60 * 1000, // 10 minute cache (reduced from 1 hour)
-    refetchInterval: 3 * 60 * 1000, // Refresh every 3 minutes (reduced from 5)
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 30 * 60 * 1000, // 30 minute cache
+    refetchInterval: 10 * 60 * 1000, // Refresh every 10 minutes
     enabled: networkEnabled,
   });
 
@@ -313,22 +314,26 @@ export default function Home() {
             </Card>
           </Link>
 
-          {/* 6) Smart Alerts */}
-          <Link to="/alerts" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10 h-auto sm:h-full" data-testid="card-alerts" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
+          {/* 6) Market Fear & Greed */}
+          {fearGreed && (
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10 h-auto sm:h-full" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Smart Alerts</h3>
-                    <p className="text-xs text-muted-foreground truncate">Price notifications</p>
-                    <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">{watchCount ? Math.min(watchCount, 3) : 0}</p>
-                    <p className="text-xs text-muted-foreground">Active alerts</p>
-                  </div>
-                  <Bell className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 flex-shrink-0" />
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h3 className="font-semibold text-foreground text-xs sm:text-sm">Market Fear & Greed</h3>
+                  <Gauge className="w-5 sm:w-6 h-5 sm:h-6 text-orange-500 flex-shrink-0" />
+                </div>
+                <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
+                <div className="mt-3 pt-2 border-t border-border/50">
+                  <p className="text-xs text-muted-foreground">
+                    ↻ Updates every 10 minutes
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Last updated: {new Date(parseInt(fearGreed.timestamp)).toLocaleTimeString()}
+                  </p>
                 </div>
               </CardContent>
             </Card>
-          </Link>
+          )}
 
         {/* 7) AI Signals */}
         <Link to="/ai-insights" className="block h-full">
