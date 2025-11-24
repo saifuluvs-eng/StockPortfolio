@@ -35,12 +35,38 @@ function formatVolume(volume: string | undefined) {
   return `$${num.toFixed(2)}`;
 }
 
+// Cache ticker data in localStorage to avoid excessive Binance requests
+function getCachedTicker(symbol: string): Ticker | null {
+  try {
+    const key = `ticker_${symbol}`;
+    const cached = localStorage.getItem(key);
+    if (!cached) return null;
+    const { data, timestamp } = JSON.parse(cached);
+    // Use cache if less than 30 seconds old
+    if (Date.now() - timestamp < 30000) {
+      return data;
+    }
+  } catch {
+    // Ignore cache errors
+  }
+  return null;
+}
+
+function setCachedTicker(symbol: string, ticker: Ticker): void {
+  try {
+    const key = `ticker_${symbol}`;
+    localStorage.setItem(key, JSON.stringify({ data: ticker, timestamp: Date.now() }));
+  } catch {
+    // Ignore cache errors
+  }
+}
+
 async function fetchTickerData(symbol: string): Promise<Ticker | null> {
   try {
     const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`);
     if (!response.ok) return null;
     const data = await response.json();
-    return {
+    const ticker = {
       symbol: data.symbol,
       lastPrice: data.lastPrice,
       priceChange: data.priceChange,
@@ -50,6 +76,8 @@ async function fetchTickerData(symbol: string): Promise<Ticker | null> {
       volume: data.volume,
       quoteVolume: data.quoteVolume,
     };
+    setCachedTicker(symbol, ticker);
+    return ticker;
   } catch {
     return null;
   }
@@ -60,6 +88,18 @@ export default function LiveSummary({ symbols = ["BTCUSDT", "ETHUSDT"] }: Props)
 
   useEffect(() => {
     let cancelled = false;
+
+    // Load cached data immediately on mount
+    const cachedData: Record<string, Ticker> = {};
+    for (const symbol of symbols) {
+      const cached = getCachedTicker(symbol);
+      if (cached) {
+        cachedData[symbol] = cached;
+      }
+    }
+    if (Object.keys(cachedData).length > 0) {
+      setTickers(cachedData);
+    }
 
     async function fetchAll() {
       const results: Record<string, Ticker> = {};
@@ -74,8 +114,10 @@ export default function LiveSummary({ symbols = ["BTCUSDT", "ETHUSDT"] }: Props)
       }
     }
 
+    // Fetch fresh data
     fetchAll();
-    const id = setInterval(fetchAll, 5000);
+    // Refetch every 15 seconds (instead of 5) to avoid Binance rate limits
+    const id = setInterval(fetchAll, 15000);
     return () => {
       cancelled = true;
       clearInterval(id);

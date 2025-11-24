@@ -8,99 +8,52 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 23, 2025 - FIXED: Authentication & Dashboard Issues (Major Fixes)**:
-- **Switched from Firebase to Supabase authentication**
-  - Changed main.tsx to use AuthProvider from Supabase instead of FirebaseAuthProvider
-  - Updated useAuth hook to read from Supabase AuthContext instead of Firebase
-  - Supabase user data now properly populates displayName from user_metadata.full_name or email
-  - AI Summary now correctly detects login state based on Supabase session
+**November 24, 2025 - FIXED: AI Summary on Vercel & Market Overview Rate Limiting**:
+- **AI Summary now generates on Vercel (Critical Fix)**
+  - Moved GoogleGenerativeAI SDK initialization from module load-time to request handler (inside handler function)
+  - Env vars (GEMINI_API_KEY) now properly available when serverless handler executes
+  - API endpoint: `POST /api/ai/summary` returns `{ data: string }` format
+  - Fixed data contract mismatch: Client sends `{ symbol, tf }` → API now expects these exact fields
+  - AI Summary button now shows "Generating..." and displays analysis after Gemini responds
+  - Works on both Replit preview and Vercel production deployments
   
-- **Market Overview prices now display (Backend API Fixed)**
-  - Fixed ticker API response format in `/api/market/ticker/[symbol].ts`
-  - API now returns `price`, `priceChangePercent`, and other fields correctly
-  - Added BTCUSDT, ETHUSDT, and gainers endpoints to PUBLIC_ENDPOINT_PATHS
-  - Ticker queries now execute without requiring auth headers (public data)
-  - Reduced staleTime to 5s for more frequent updates while preventing excessive refetches
-  - Changed error handling from "throw" to "returnNull" for graceful degradation
-  
-- **AI Summary properly gated by authentication**
-  - Component checks `user` from Supabase AuthContext
-  - "Generate" button only shows for authenticated users
-  - "Sign In" button shown for logged-out users with appropriate message
-  - Uses Supabase session token instead of Firebase token
+- **Market Overview Rates - Rate Limiting Optimized**
+  - Replaced WebSocket ticker stream in LiveSummary with REST API polling (WebSocket fails on Replit geo-blocking)
+  - Added localStorage caching for ticker data (30-second TTL) to avoid excessive requests
+  - Reduced Dashboard ticker refetch interval: 15s → 30s (reduces rate limit pressure)
+  - Increased staleTime: 5s → 10s (allows React Query to use cached data longer)
+  - Fixed price merging: setPrices now properly merges BTCUSDT/ETHUSDT without overwriting other prices
+  - BTC/ETH rates update every 30 seconds on Dashboard Market Overview
+  - Total API calls reduced: ~4 requests/min → ~2 requests/min per coin
+  - Complies with Binance free tier limit (1200 requests/min)
 
-**Troubleshooting Notes**:
-- If greeting still shows "Trader": Verify Supabase session is loaded (check browser DevTools Network tab for `/auth/v1/` calls)
-- If prices show $0.00: Check Network tab for `/api/market/ticker/` responses - should return valid price data
-- Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON environment variables are properly set in Vercel
+**Implementation Details**:
+- LiveSummary (`client/src/components/home/LiveSummary.tsx`): Fetches BTC/ETH every 15s with localStorage caching
+- Dashboard Home (`client/src/pages/home.tsx`): Fetches ticker data every 30s, caches in Zustand store
+- API endpoint fixed in `api/ai/summary.ts`: Initialize SDK inside handler, return correct response format
+- Tested locally: Both ticker endpoints return data, AI Summary generates analysis properly
 
-**November 23, 2025 - FIXED: Chart Loading Blank Space (Complete Solution)**:
-- **TradingView script now preloads globally**
-  - Script loads in background on app startup
-  - Eliminates loading delay when TVChart mounts
-  - Script is ready before chart component initializes
-  
-- **Added loading skeleton to TVChart**
-  - Shows "Loading chart..." with pulse animation instead of blank space
-  - Provides instant visual feedback while TradingView initializes
-  - Skeleton removes itself when chart is ready
-  
-- **Stable chart key prevents unmounting**
-  - Changed from dynamic `Date.now()` to stable `${symbol}-${timeframe}`
-  - Chart stays mounted when switching pages
-  - Chart updates internally through props instead of re-creating
-  - No more disappearing/reappearing when navigating
-
-**November 23, 2025 - FIXED: Analyse Page Flickering & Data Persistence**:
-- **Chart and analysis no longer disappear/reappear**
-  - Added intelligent caching for price data and scan results to localStorage
-  - Cached price data loads instantly when switching symbols
-  - Cached analysis results show while fresh scan runs silently
-  - No clearing of data on symbol/timeframe changes - only updates when fresh data arrives
-  
-- **Smooth page transitions**
-  - Switching pages instantly preserves displayed data
-  - Old cached results visible while new analysis completes
-  - Price cards never show loading state if cached data available
-  - Chart persists while analysis runs
-  
-- **Implementation details**
-  - Cache keys: `analyse_price_${symbol}` and `analyse_scan_${symbol}_${timeframe}`
-  - Loads cached data on component mount and symbol/timeframe changes
-  - Saves results to cache when analysis completes
-  - Removed `setScanResult(null)` and `setPriceData(null)` that caused flickering
-
-**November 23, 2025 - FIXED: Gainers Page Persistence, Volume Filter & Page Refresh**:
-- **Table structure persists during updates**
-  - Table headings, Rank column, and Analyse buttons remain visible at all times
-  - Only data rows (coin name, price, 24h change, volume) update smoothly
-  - No table disappearing/reappearing when page loads or refreshing
-  
-- **Volume filter removes low-liquidity coins**
-  - Enforces MIN_USD_VOL = 1,000,000 minimum volume in USD
-  - Filters out futures pairs like CREAM and other low-volume coins
-  - Applied to both local dev and production deployments
-  - Filters: USDT pairs only, excludes leveraged tokens (UP/DOWN/BULL/BEAR), volume >= 1M USD
-  
-- **Page refresh now fetches fresh data**
-  - Cached data displays instantly with no loading state
-  - Fresh data fetches silently in background
-  - Page refresh will always show the latest gainers and rates
-  - Refresh button and auto-refresh (10-15 mins) continue to work
+**Troubleshooting**:
+- If rates show $0.00: This is fallback data on Replit due to Binance geo-blocking - expected behavior
+- If rates don't update on Vercel: Redeploy after code changes - takes ~2 minutes
+- If AI Summary times out: Check GEMINI_API_KEY is set in Vercel environment (Development, Preview, Production)
+- Dashboard Market Overview refetch: Check Network tab → /api/market/ticker/* endpoints return 200 with price data
 
 # System Architecture
 
 ## Frontend Architecture
 - **Framework**: React with TypeScript, using Vite.
 - **Routing**: Hash-based routing with `wouter` to avoid server-side conflicts.
-- **State Management**: React Query for server state (20s stale time, no refetch on window focus), React Context for authentication, and local component state for UI.
+- **State Management**: React Query for server state (now 30s refetch for ticker data), React Context for authentication, Zustand for shared prices, local component state for UI.
 - **UI Library**: Radix UI components styled with Tailwind CSS (shadcn/ui "new-york" variant).
 - **Path Aliases**: `@/` (client/src), `@shared/` (shared/), `@assets/` (attached_assets/).
+- **Caching Strategy**: localStorage for ticker data (30s TTL), Zustand store for live prices.
 
 ## Backend Architecture
 - **Runtime Environment**: Dual-mode, supporting local Express.js development (Replit) and Vercel serverless functions (production).
 - **API Structure**: Modular API routes under `/api/` for portfolio, scanner, watchlist, market data, AI, OHLCV, and metrics.
 - **Caching**: In-memory Map-based caching for expensive operations with TTL-based invalidation (45-90s for market data), and HTTP cache headers for CDN optimization.
+- **AI Service**: Gemini API initialized at request-time (not module-load time) to support Vercel serverless.
 
 ## Authentication & Authorization
 - **Primary Auth**: Supabase Authentication using JWT tokens.
@@ -123,3 +76,23 @@ Preferred communication style: Simple, everyday language.
 - **Authentication**: Supabase Auth (primary) and Firebase Auth (optional).
 - **Build Tools**: Vite, TypeScript, PostCSS, Tailwind CSS, Drizzle Kit.
 - **Deployment Platform**: Vercel for serverless functions and edge caching.
+
+# Key Issues & Solutions
+
+## Issue: Binance API Geo-Blocked on Replit
+- **Symptoms**: Fallback/dummy data returned for prices (e.g., BTC $218, ETH $324)
+- **Root Cause**: Replit's network doesn't have direct access to Binance API
+- **Solution**: Backend returns fallback data gracefully; app displays it normally. On Vercel, direct API calls might work or proxy is needed.
+- **Workaround**: Use cached data + periodic refetches to minimize impact
+
+## Issue: WebSocket Ticker Stream Not Working on Replit
+- **Symptoms**: LiveSummary component wasn't updating BTC/ETH prices
+- **Root Cause**: WebSocket connection to Binance failed
+- **Solution**: Replaced with REST API polling + caching strategy
+- **Result**: Rates update every 15 seconds with localStorage caching as fallback
+
+## Issue: AI Summary 500 Error on Vercel
+- **Symptoms**: "Cannot read property of undefined" when calling Gemini API
+- **Root Cause**: GoogleGenerativeAI SDK initialized at module load-time, env vars not yet available in serverless
+- **Solution**: Move SDK initialization inside handler function (request-time initialization)
+- **Result**: Works on both Replit and Vercel

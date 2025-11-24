@@ -76,22 +76,22 @@ export default function Home() {
   const { data: btcTicker } = useQuery({
     queryKey: ["/api/market/ticker/BTCUSDT"],
     queryFn: getQueryFn<TickerResponse>({ on401: "returnNull" }),
-    refetchInterval: 15_000,
+    refetchInterval: 30_000,
     enabled: networkEnabled,
-    staleTime: 5_000,
+    staleTime: 10_000,
   });
 
   const { data: ethTicker } = useQuery({
     queryKey: ["/api/market/ticker/ETHUSDT"],
     queryFn: getQueryFn<TickerResponse>({ on401: "returnNull" }),
-    refetchInterval: 15_000,
+    refetchInterval: 30_000,
     enabled: networkEnabled,
-    staleTime: 5_000,
+    staleTime: 10_000,
   });
 
   useEffect(() => {
     if (btcTicker?.price != null) {
-      setPrices({ BTCUSDT: Number(btcTicker.price) });
+      setPrices((prev) => ({ ...prev, BTCUSDT: Number(btcTicker.price) }));
     }
     if (btcTicker?.priceChangePercent != null) {
       setBtcChange({ priceChangePercent: btcTicker.priceChangePercent });
@@ -100,7 +100,7 @@ export default function Home() {
 
   useEffect(() => {
     if (ethTicker?.price != null) {
-      setPrices({ ETHUSDT: Number(ethTicker.price) });
+      setPrices((prev) => ({ ...prev, ETHUSDT: Number(ethTicker.price) }));
     }
     if (ethTicker?.priceChangePercent != null) {
       setEthChange({ priceChangePercent: ethTicker.priceChangePercent });
