@@ -328,7 +328,7 @@ export default function Home() {
                     ↻ Updates every 10 minutes
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Last updated: {new Date(parseInt(fearGreed.timestamp)).toLocaleTimeString()}
+                    Last updated: {new Date(parseInt(fearGreed.timestamp) * 1000).toLocaleTimeString()}
                   </p>
                 </div>
               </CardContent>
