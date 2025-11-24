@@ -10,21 +10,22 @@ import { Link } from "wouter";
 type AiSummaryPanelProps = {
   symbol: string;
   tf: string;
+  technicals?: unknown;
 };
 
-export default function AiSummaryPanel({ symbol, tf }: AiSummaryPanelProps) {
+export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPanelProps) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf });
+  const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals });
 
   const handleGenerate = async () => {
     await queryClient.fetchQuery({
-      queryKey: ["aiSummary", symbol, tf],
+      queryKey: ["aiSummary", symbol, tf, technicals],
       queryFn: async () => {
         const { apiFetch } = await import("@/lib/api");
         const response = (await apiFetch("/api/ai/summary", {
           method: "POST",
-          body: JSON.stringify({ symbol, tf }),
+          body: JSON.stringify({ symbol, tf, technicals }),
         })) as { data?: string } | null;
         return typeof response?.data === "string" ? response.data : "";
       },

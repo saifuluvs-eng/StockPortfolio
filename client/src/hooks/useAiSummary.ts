@@ -4,15 +4,16 @@ import { apiFetch } from "@/lib/api";
 type UseAiSummaryParams = {
   symbol: string;
   tf: string;
+  technicals?: unknown;
 };
 
-export function useAiSummary({ symbol, tf }: UseAiSummaryParams) {
+export function useAiSummary({ symbol, tf, technicals }: UseAiSummaryParams) {
   return useQuery({
-    queryKey: ["aiSummary", symbol, tf],
+    queryKey: ["aiSummary", symbol, tf, technicals],
     queryFn: async () => {
       const response = (await apiFetch("/api/ai/summary", {
         method: "POST",
-        body: JSON.stringify({ symbol, tf }),
+        body: JSON.stringify({ symbol, tf, technicals }),
       })) as { data?: string } | null;
       const text = typeof response?.data === "string" ? response.data : "";
       return text;

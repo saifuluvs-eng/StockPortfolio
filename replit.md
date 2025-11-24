@@ -8,9 +8,17 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 24, 2025 - FIXED: Vercel API Endpoints & Simplified Serverless Functions**:
+**November 24, 2025 - FIXED: AI Summary Now Receives Technical Data & Simplified Vercel Endpoints**:
+- **Fixed AI Summary "No technical data" Error**
+  - Updated `useAiSummary` hook to accept and send `technicals` prop
+  - Updated `AiSummaryPanel` component to accept and pass technical data
+  - Modified `analyse.tsx` to extract technical data from scan result: `technicals={scanResult?.technicals}`
+  - Now when user runs a scan and clicks "Generate", AI Summary receives complete technical indicator data
+  - Backend correctly detects data and generates analysis instead of returning error
+  - Flow: Run Analysis → Click Generate → Technical data sent to API → Gemini generates real summary
+
 - **Simplified Serverless Functions for Vercel Deployment**
-  - `api/market/fear-greed.ts` - Now uses inline CoinMarketCap logic without service imports
+  - `api/market/fear-greed.ts` - Uses inline CoinMarketCap logic without service imports
   - Fetches Fear & Greed index directly from CoinMarketCap API on each request
   - Returns { value, classification, timestamp } with fallback { value: 50, classification: "Neutral" }
   - `api/ai/market-overview.ts` - Returns basic market overview (no complex service imports)
@@ -23,10 +31,10 @@ Preferred communication style: Simple, everyday language.
   - Graceful fallback to neutral/default values if external APIs fail
   - Results: 200 responses guaranteed, error-free on both Replit and Vercel
 
-- **Verified Working Endpoints**
-  - `/api/market/fear-greed` returns real CoinMarketCap data when API key is set
-  - Falls back to neutral sentiment (50) if API unreachable or key missing
-  - Fear & Greed index now fully functional on both platforms
+- **Environment Variables for Vercel Deployment**
+  - Set `COINMARKETCAP_API_KEY` on Vercel to enable live Fear & Greed data (else shows fallback 50)
+  - Set `GEMINI_API_KEY` on Vercel for AI Summary analysis
+  - Fear & Greed on Replit: Works with real CoinMarketCap API key from secrets
 
 **November 24, 2025 - FIXED: Market Fear & Greed Index Now Displays on Dashboard**:
 - **Critical Fix: React Query was disabled on initial load**
