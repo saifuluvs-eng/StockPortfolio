@@ -41,6 +41,11 @@ type TickerResponse = {
   price?: string | number;
   priceChangePercent?: string | number;
 } & Record<string, unknown>;
+type FearGreedData = {
+  value: number;
+  classification: string;
+  timestamp: string;
+};
 
 // ---------- Utils ----------
 const nf2 = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -187,6 +192,13 @@ export default function Home() {
       return null;
     },
     refetchInterval: 120_000,
+    enabled: networkEnabled,
+  });
+
+  const { data: fearGreed } = useQuery({
+    queryKey: ["/api/market/fear-greed"],
+    queryFn: getQueryFn<FearGreedData | null>({ on401: "returnNull" }),
+    refetchInterval: 3_600_000, // Hourly
     enabled: networkEnabled,
   });
 
@@ -395,8 +407,20 @@ export default function Home() {
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Market Fear &amp; Greed</span>
                 <div className="text-right">
-                  <p className="font-semibold" data-testid="text-fear-greed">--</p>
-                  <p className="text-sm text-muted-foreground">Index</p>
+                  <p className="font-semibold" data-testid="text-fear-greed">
+                    {fearGreed ? `${fearGreed.value.toFixed(1)}` : "--"}
+                  </p>
+                  <p className={`text-sm ${
+                    fearGreed
+                      ? fearGreed.classification.includes("Greed")
+                        ? "text-accent"
+                        : fearGreed.classification.includes("Fear")
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                      : "text-muted-foreground"
+                  }`}>
+                    {fearGreed ? fearGreed.classification : "Index"}
+                  </p>
                 </div>
               </div>
               <div className="mt-4 flex flex-col sm:flex-row gap-2">

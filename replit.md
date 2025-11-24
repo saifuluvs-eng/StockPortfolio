@@ -8,6 +8,22 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 24, 2025 - ADDED: Market Fear & Greed Index & Fixed Dashboard Market Overview**:
+- **Market Fear & Greed Index integrated**
+  - Displays CoinMarketCap Fear & Greed Index in Market Overview card on Dashboard
+  - New backend endpoint: `GET /api/market/fear-greed` returns `{ value, classification, timestamp }`
+  - Color-coded display: Green for "Greed", Red for "Fear", Grey for "Neutral"
+  - Refetch interval: 1 hour (CoinMarketCap updates hourly)
+  - API Service: `server/services/coinmarketcapService.ts` with fallback data support
+  - Frontend query in `client/src/pages/home.tsx` with conditional styling
+  
+- **Dashboard Market Overview - Fixed ticker display**
+  - Removed cached warning message from Portfolio page
+  - Changed from React Query to direct fetch pattern for BTC/USDT and ETH/USDT rates
+  - Now fetches from `/api/market/ticker/BTCUSDT` and `/api/market/ticker/ETHUSDT` every 30 seconds
+  - BTC/ETH prices now update correctly with proper percentage changes
+  - State management: Zustand store for live prices
+
 **November 24, 2025 - FIXED: AI Summary on Vercel & Market Overview Rate Limiting**:
 - **AI Summary now generates on Vercel (Critical Fix)**
   - Moved GoogleGenerativeAI SDK initialization from module load-time to request handler (inside handler function)
@@ -29,31 +45,34 @@ Preferred communication style: Simple, everyday language.
 
 **Implementation Details**:
 - LiveSummary (`client/src/components/home/LiveSummary.tsx`): Fetches BTC/ETH every 15s with localStorage caching
-- Dashboard Home (`client/src/pages/home.tsx`): Fetches ticker data every 30s, caches in Zustand store
+- Dashboard Home (`client/src/pages/home.tsx`): Fetches ticker data every 30s, caches in Zustand store, displays Fear & Greed index
 - API endpoint fixed in `api/ai/summary.ts`: Initialize SDK inside handler, return correct response format
+- CoinMarketCap Service (`server/services/coinmarketcapService.ts`): Fetches Fear & Greed historical data with fallback
 - Tested locally: Both ticker endpoints return data, AI Summary generates analysis properly
 
 **Troubleshooting**:
 - If rates show $0.00: This is fallback data on Replit due to Binance geo-blocking - expected behavior
+- If Fear & Greed shows fallback: CoinMarketCap API rate limited or API key not set - will show realistic fallback data
 - If rates don't update on Vercel: Redeploy after code changes - takes ~2 minutes
 - If AI Summary times out: Check GEMINI_API_KEY is set in Vercel environment (Development, Preview, Production)
-- Dashboard Market Overview refetch: Check Network tab → /api/market/ticker/* endpoints return 200 with price data
+- Dashboard Market Overview refetch: Check Network tab → /api/market/ticker/* and /api/market/fear-greed endpoints return 200 with data
 
 # System Architecture
 
 ## Frontend Architecture
 - **Framework**: React with TypeScript, using Vite.
 - **Routing**: Hash-based routing with `wouter` to avoid server-side conflicts.
-- **State Management**: React Query for server state (now 30s refetch for ticker data), React Context for authentication, Zustand for shared prices, local component state for UI.
+- **State Management**: React Query for server state (30s refetch for ticker data), React Context for authentication, Zustand for shared prices, local component state for UI.
 - **UI Library**: Radix UI components styled with Tailwind CSS (shadcn/ui "new-york" variant).
 - **Path Aliases**: `@/` (client/src), `@shared/` (shared/), `@assets/` (attached_assets/).
 - **Caching Strategy**: localStorage for ticker data (30s TTL), Zustand store for live prices.
 
 ## Backend Architecture
 - **Runtime Environment**: Dual-mode, supporting local Express.js development (Replit) and Vercel serverless functions (production).
-- **API Structure**: Modular API routes under `/api/` for portfolio, scanner, watchlist, market data, AI, OHLCV, and metrics.
+- **API Structure**: Modular API routes under `/api/` for portfolio, scanner, watchlist, market data, AI, OHLCV, metrics, and fear & greed.
 - **Caching**: In-memory Map-based caching for expensive operations with TTL-based invalidation (45-90s for market data), and HTTP cache headers for CDN optimization.
 - **AI Service**: Gemini API initialized at request-time (not module-load time) to support Vercel serverless.
+- **Market Data Service**: CoinMarketCap API service with fallback support for Fear & Greed index.
 
 ## Authentication & Authorization
 - **Primary Auth**: Supabase Authentication using JWT tokens.
@@ -71,6 +90,7 @@ Preferred communication style: Simple, everyday language.
 # External Dependencies
 
 - **Market Data**: Binance REST API (`api.binance.com/api/v3`) for real-time tickers and OHLC data.
+- **Market Sentiment**: CoinMarketCap API (`pro-api.coinmarketcap.com/v3`) for Fear & Greed index (requires API key).
 - **AI Services**: Google Gemini API (`gemini-2.0-flash` model) for market analysis and AI Summary.
 - **News**: CryptoPanic API for cryptocurrency news aggregation.
 - **Authentication**: Supabase Auth (primary) and Firebase Auth (optional).
@@ -96,3 +116,9 @@ Preferred communication style: Simple, everyday language.
 - **Root Cause**: GoogleGenerativeAI SDK initialized at module load-time, env vars not yet available in serverless
 - **Solution**: Move SDK initialization inside handler function (request-time initialization)
 - **Result**: Works on both Replit and Vercel
+
+## Issue: Dashboard Market Overview Rates Not Updating
+- **Symptoms**: BTC/ETH prices showing $0.00 or stale values
+- **Root Cause**: React Query with backend endpoints working, but CORS issues when fetching directly from Binance on frontend
+- **Solution**: Changed from React Query to direct fetch from backend ticker endpoints every 30 seconds
+- **Result**: Rates now update correctly with proper percentage changes, color-coded sentiment

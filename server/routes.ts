@@ -328,6 +328,17 @@ export function registerRoutes(app: Express): void {
     }
   });
 
+  app.get('/api/market/fear-greed', async (_req: Request, res: Response) => {
+    try {
+      const { coinmarketcapService } = await import('./services/coinmarketcapService');
+      const fgData = await coinmarketcapService.getFearGreedIndex();
+      res.json(fgData);
+    } catch (error) {
+      console.error("Error fetching Fear & Greed index:", error);
+      res.status(500).json({ message: "Failed to fetch Fear & Greed index" });
+    }
+  });
+
   app.get('/api/market/gainers', async (_req: Request, res: Response) => {
     try {
       type RawGainer = {
