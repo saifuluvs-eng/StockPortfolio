@@ -92,8 +92,8 @@ news.get("/", async (req, res) => {
     cache.set(key, { at: now, data: out });
     return res.json(out);
   } catch (err: any) {
-    console.error("GET /api/news failed", err?.message || err);
-    return res.status(500).json({ error: "Internal error" });
+    console.error("GET /api/news failed:", err?.message || err, err?.stack);
+    return res.status(500).json({ error: "Internal error", details: err?.message });
   }
 });
 

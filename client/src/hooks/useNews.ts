@@ -77,11 +77,17 @@ export function useNews({
     queryFn: async () => {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(await response.text());
+        const errorText = await response.text();
+        console.error("[News Hook] API Error:", response.status, errorText);
+        throw new Error(errorText);
       }
-      return response.json() as Promise<NewsResponse>;
+      const data = await response.json() as NewsResponse;
+      console.log("[News Hook] Success, articles:", data.data?.length || 0);
+      return data;
     },
     staleTime: 5 * 60 * 1000,
-    gcTime: 24 * 60 * 60 * 1000,
+    gcTime: 5 * 60 * 1000, // Reduce to 5 min so stale errors don't persist
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 }
