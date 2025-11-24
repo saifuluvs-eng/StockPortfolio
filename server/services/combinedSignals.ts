@@ -76,7 +76,6 @@ export function buildTechnicalJSON(
 ): {
   symbol: string;
   timeframe: string;
-  indicators: any;
   trend_bias: "bullish" | "bearish" | "neutral";
   momentum_state: "strong" | "weak" | "oversold" | "overbought" | "neutral";
   volume_context: "increasing" | "decreasing" | "neutral";
@@ -102,7 +101,6 @@ export function buildTechnicalJSON(
   return {
     symbol,
     timeframe,
-    indicators,
     trend_bias,
     momentum_state,
     volume_context,

@@ -31,7 +31,15 @@ Preferred communication style: Simple, everyday language.
   - Final JSON sent to Gemini includes all 4 fields ✅
   - Gemini produces trader-style analysis, NOT indicator listing
 
-- **Result**: Gemini now receives properly formatted JSON with 4 combined signal fields and strict instructions not to mention indicator names. Produces professional trader-style combined analysis.
+- **Final Breakthrough - Removed Full Indicators Object (`server/services/combinedSignals.ts`)**
+  - The JSON being sent to Gemini now contains ONLY the 4 summary fields
+  - BEFORE: JSON included both summary fields + full indicators object (Gemini used the indicators instead)
+  - AFTER: JSON ONLY includes: symbol, timeframe, trend_bias, momentum_state, volume_context, volatility_state
+  - Result: Gemini has NO raw indicator data to fall back on - MUST use the summary fields
+
+- **Final Result**: Gemini now produces PURE trader-style analysis:
+  - ✅ Example: "Momentum remains weak with sellers maintaining control and volume participation lacking"
+  - ❌ No longer: "Price is trading below VWAP. EMA crossover indicates a downtrend. Williams %R indicates..."
 
 # System Architecture
 
