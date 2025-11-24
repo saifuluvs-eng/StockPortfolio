@@ -103,7 +103,6 @@ export default function Portfolio() {
     positionsErrorValue instanceof Error
       ? positionsErrorValue.message
       : "Failed to load portfolio positions";
-  const showCachedWarning = positions.length > 0 && (!networkEnabled || positionsError);
 
   useEffect(() => {
     if (positionsError && positionsErrorValue) {
@@ -330,12 +329,6 @@ export default function Portfolio() {
 
         {!sessionLoading && !sessionUser && (
           <div className="mb-4 text-sm text-muted-foreground">Please sign in at /account</div>
-        )}
-
-        {showCachedWarning && (
-          <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            You&apos;re viewing cached positions. Changes will sync once the connection is restored.
-          </div>
         )}
 
         {/* Live market strip - hidden on mobile */}
