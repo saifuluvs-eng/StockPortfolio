@@ -2,13 +2,13 @@ interface FearGreedResponse {
   data: {
     timestamp: string;
     value: number;
-    valueClassification: string;
+    value_classification: string;
   }[];
   status: {
     timestamp: string;
-    error_code: number;
+    error_code: number | string;
     error_message: string;
-    elapsed: string;
+    elapsed: number;
     credit_count: number;
     notice: string | null;
   };
@@ -22,7 +22,9 @@ class CoinMarketCapService {
     try {
       if (!this.apiKey) {
         console.warn('COINMARKETCAP_API_KEY not set, returning fallback data');
-        return this.generateFallbackFearGreed();
+        const fallback = this.generateFallbackFearGreed();
+        console.log('[CoinMarketCap] Returning fallback:', fallback);
+        return fallback;
       }
 
       const response = await fetch(
@@ -36,25 +38,34 @@ class CoinMarketCapService {
 
       if (!response.ok) {
         console.error(`CoinMarketCap API error: ${response.status}`, await response.text().catch(() => ''));
-        return this.generateFallbackFearGreed();
+        const fallback = this.generateFallbackFearGreed();
+        console.log('[CoinMarketCap] API error, returning fallback:', fallback);
+        return fallback;
       }
 
       const data: FearGreedResponse = await response.json();
+      console.log('[CoinMarketCap] API response:', JSON.stringify(data));
 
       if (!data.data || data.data.length === 0) {
         console.warn('No Fear & Greed data received from CoinMarketCap');
-        return this.generateFallbackFearGreed();
+        const fallback = this.generateFallbackFearGreed();
+        console.log('[CoinMarketCap] No data, returning fallback:', fallback);
+        return fallback;
       }
 
       const latest = data.data[0];
-      return {
+      const result = {
         value: latest.value,
-        classification: latest.valueClassification,
+        classification: latest.value_classification,
         timestamp: latest.timestamp,
       };
+      console.log('[CoinMarketCap] Returning data:', result);
+      return result;
     } catch (error) {
       console.error('Error fetching Fear & Greed index:', error);
-      return this.generateFallbackFearGreed();
+      const fallback = this.generateFallbackFearGreed();
+      console.log('[CoinMarketCap] Exception, returning fallback:', fallback);
+      return fallback;
     }
   }
 
