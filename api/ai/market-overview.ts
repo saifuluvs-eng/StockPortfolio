@@ -6,8 +6,19 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   }
 
   try {
-    const { binanceService } = await import("../../server/services/binanceService");
-    const { aiService } = await import("../../server/services/aiService");
+    // Import service instances
+    const binanceModule = await import("../../server/services/binanceService");
+    const aiModule = await import("../../server/services/aiService");
+    
+    const binanceService = binanceModule.binanceService;
+    const aiService = aiModule.aiService;
+
+    if (!binanceService || typeof binanceService.getTopGainers !== 'function') {
+      throw new Error("Binance service not properly initialized");
+    }
+    if (!aiService || typeof aiService.generateMarketOverview !== 'function') {
+      throw new Error("AI service not properly initialized");
+    }
 
     // Get top gainers and market data
     const gainers = await binanceService.getTopGainers(20);

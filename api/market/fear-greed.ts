@@ -6,7 +6,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   }
 
   try {
-    const { coinmarketcapService } = await import("../../server/services/coinmarketcapService");
+    // Import the service instance
+    const module = await import("../../server/services/coinmarketcapService");
+    const coinmarketcapService = module.coinmarketcapService;
+    
+    if (!coinmarketcapService || typeof coinmarketcapService.getFearGreedIndex !== 'function') {
+      throw new Error("CoinMarketCap service not properly initialized");
+    }
+    
     const fgData = await coinmarketcapService.getFearGreedIndex();
     
     res.setHeader("Cache-Control", "public, max-age=3600");
