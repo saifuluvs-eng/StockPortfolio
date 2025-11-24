@@ -8,6 +8,22 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 24, 2025 - FIXED: Market Fear & Greed Index Now Displays on Dashboard**:
+- **Critical Fix: React Query was disabled on initial load**
+  - Changed `networkEnabled = backendStatus === true` to `networkEnabled = backendStatus !== false`
+  - Problem: `backendStatus` starts as `null` during health check, causing all queries to be disabled
+  - Solution: Enable queries by default unless backend is explicitly down
+  - Result: Fear & Greed data now fetches and displays immediately on page load
+  
+- **Fixed CoinMarketCap API response parsing**
+  - API returns `value_classification` (snake_case) not `valueClassification` (camelCase)
+  - Updated `server/services/coinmarketcapService.ts` interface and data extraction
+  - Now correctly returns: `{ value: 10, classification: 'Extreme fear', timestamp: '1763856000' }`
+  
+- **Verification**: Logs show successful queries and correct classification display
+  - Fear & Greed index now loads automatically with proper color coding (red for fear, green for greed)
+  - Updates hourly from CoinMarketCap API
+
 **November 24, 2025 - ADDED: Market Fear & Greed Index & Fixed Dashboard Market Overview**:
 - **Market Fear & Greed Index integrated**
   - Displays CoinMarketCap Fear & Greed Index in Market Overview card on Dashboard

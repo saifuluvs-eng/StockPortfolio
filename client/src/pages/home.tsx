@@ -64,7 +64,7 @@ export default function Home() {
   // SINGLE useAuth() — no duplicate signOut
   const { user } = useAuth();
   const backendStatus = useBackendHealth();
-  const networkEnabled = backendStatus === true;
+  const networkEnabled = backendStatus !== false; // Enable queries unless backend is explicitly down
   
   // Extract name from Supabase user (email or metadata)
   const displayName = user?.user_metadata?.full_name?.trim() || user?.email?.split("@")[0] || "Trader";
