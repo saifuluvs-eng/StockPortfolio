@@ -360,55 +360,57 @@ Respond with ONLY valid JSON in this exact format:
       console.log("========================================================\n");
       
       // Create a template prompt with placeholder for technical data
-      const promptTemplate = `You are a professional cryptocurrency trader and technical analyst.
-Your analysis is TRADER-STYLE: combined insights, NOT indicator listing.
+      const promptTemplate = `You are a professional cryptocurrency trader analyzing market conditions.
+Write ONLY what a trader would say, using general market language - NEVER mention specific indicators.
 
-CRITICAL RULES - FOLLOW STRICTLY:
-1. Use ONLY the 4 summary fields for primary analysis (trend_bias, momentum_state, volume_context, volatility_state)
-2. DO NOT mention indicator names (VWAP, EMA, MACD, RSI, Stochastic, ADX, Williams %R, ATR, Bollinger Bands, OBV, etc.)
-3. DO NOT list indicators one-by-one (this is robot-style, not trader-style)
-4. DO NOT repeat any numbers, percentages, or values
-5. INSTEAD: Interpret what the 4 combined signals mean together for market direction and setup
-6. Write like a professional trader would speak to another trader
+⚠️ ABSOLUTE RULES (VIOLATION MEANS INVALID):
+1. FORBIDDEN WORDS - DO NOT USE THESE UNDER ANY CIRCUMSTANCE:
+   • VWAP, EMA, MACD, RSI, Stochastic, ADX, Williams %R, ATR, Bollinger Bands, OBV, Fibonacci, Ichimoku, SAR
+   • Any mention of specific indicator names or abbreviations
+   • Any reference to "above/below EMA", "MACD crossover", "RSI overbought", "Williams %R", "ADX strength"
+   
+2. WHAT TO SAY INSTEAD (trader language):
+   • Instead of "Below EMA" → "Weak price action" or "Sellers in control"
+   • Instead of "RSI oversold" → "Extreme selling pressure" or "Potential capitulation"
+   • Instead of "MACD bullish" → "Positive momentum emerging" or "Buyers stepping in"
+   • Instead of "ATR expanding" → "Volatility increasing" or "Larger price swings"
+   • Instead of "High volume" → "Strong participation" or "Institutional activity"
 
-TRADER STYLE EXAMPLES (Good):
-✅ "Momentum remains weak with price staying under key moving averages and sellers maintaining control."
-✅ "Oversold conditions limit aggressive downside but buyers are still not showing strength."
-✅ "Volume remains soft, indicating lack of strong institutional participation."
+3. ONLY reference the 4 combined summary states:
+   - trend_bias: Direction of price relative to key levels
+   - momentum_state: Strength of current directional move
+   - volume_context: Activity level compared to normal
+   - volatility_state: Price range compression or expansion
 
-NOT TRADER STYLE (Bad):
-❌ "Price is trading below VWAP. EMAs indicate a downtrend. Volume is supporting the downtrend."
-❌ "Williams %R indicates overbought. ADX suggests a weak trend."
-
-Format output EXACTLY like this (plain text, NOT JSON):
+4. YOUR RESPONSE FORMAT (plain text, NOT JSON):
 
 ### AI Summary — ${symbol} (${timeframe})
 
-**Overall Bias:** [Bullish / Bearish / Neutral]
+**Overall Bias:** [Bullish / Bearish / Neutral only]
 
 **Why:**
-- [Combined trader insight - what do the 4 summary states tell us?]
-- [Market setup interpretation - what's happening?]
-- [Key driving force - why is this happening?]
+- [One insight about price direction - NO INDICATORS]
+- [One insight about momentum - NO INDICATORS]
+- [One insight about market condition - NO INDICATORS]
 
-**What to expect next:**
-- [Expected price action based on current combined state]
+**What to expect:**
+- [General expectation based on current state]
 
 **Key Levels:**
-- Support: [Zone based on combined analysis]
-- Resistance: [Zone based on combined analysis]
+- Support: [Generic zone description, no specific numbers]
+- Resistance: [Generic zone description, no specific numbers]
 
 **Risk Alert:**
-- [Single key risk based on combined analysis]
+- [One risk factor - NO INDICATORS]
 
 =========================
-ANALYSIS DATA (USE ONLY THE SUMMARY SECTION)
+ANALYSIS DATA
 =========================
 
 {{TECHNICALS_JSON}}
 
 =========================
-REMEMBER: Trader insights from combined signals, NOT robot listing of indicators
+FINAL CHECK: Did you mention any indicator names? If yes, REWRITE without them.
 =========================`;
 
       // Replace placeholder with formatted technical data

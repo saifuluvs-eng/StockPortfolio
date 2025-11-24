@@ -458,14 +458,6 @@ export function registerRoutes(app: Express): void {
       }
       const timeframe = tf || '4h';
       
-      // Log the technical data for debugging
-      console.log("DEBUG: Raw technicals received:", technicals);
-      console.log("DEBUG: technicals type:", typeof technicals);
-      console.log("DEBUG: technicals is array?", Array.isArray(technicals));
-      
-      const technicalsJson = technicals || {};
-      console.log("TECHNICAL JSON SENT TO GEMINI:", JSON.stringify(technicalsJson, null, 2));
-
       // Check if technical data is missing or empty
       const isMissingData = !technicals || 
         (typeof technicals === "object" && Object.keys(technicals).length === 0) ||
