@@ -354,6 +354,11 @@ Respond with ONLY valid JSON in this exact format:
         volatility_state: finalJson.volatility_state
       });
       
+      // CRITICAL DEBUG: Log exactly what will be sent to Gemini
+      console.log("\n========== CRITICAL: JSON BEING SENT TO GEMINI ==========");
+      console.log(JSON.stringify(finalJson, null, 2));
+      console.log("========================================================\n");
+      
       // Create a template prompt with placeholder for technical data
       const promptTemplate = `You are a professional cryptocurrency trader and technical analyst.
 Your analysis is TRADER-STYLE: combined insights, NOT indicator listing.
