@@ -1,9 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY;
 const BASE_URL = "https://pro-api.coinmarketcap.com/v3";
 
 async function getFearGreedIndex() {
+  // Read API key at invocation time (not module load time) - fixes Vercel env var injection
+  const COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY;
+  
   // DEBUG: Check if API key is accessible
   console.log("[Fear & Greed API] Environment variables check:");
   console.log("[Fear & Greed API] COINMARKETCAP_API_KEY exists:", !!COINMARKETCAP_API_KEY);
