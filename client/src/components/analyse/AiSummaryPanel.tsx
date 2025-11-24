@@ -19,6 +19,8 @@ export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPane
   const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals });
 
   const handleGenerate = async () => {
+    // Invalidate cache first to ensure fresh data
+    await queryClient.invalidateQueries({ queryKey: ["aiSummary"] });
     await queryClient.fetchQuery({
       queryKey: ["aiSummary", symbol, tf, technicals],
       queryFn: async () => {
