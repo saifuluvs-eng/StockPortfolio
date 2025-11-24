@@ -19,19 +19,31 @@ export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPane
   const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals });
 
   const handleGenerate = async () => {
-    // Invalidate cache first to ensure fresh data
-    await queryClient.invalidateQueries({ queryKey: ["aiSummary"] });
-    await queryClient.fetchQuery({
-      queryKey: ["aiSummary", symbol, tf, technicals],
-      queryFn: async () => {
-        const { apiFetch } = await import("@/lib/api");
-        const response = (await apiFetch("/api/ai/summary", {
-          method: "POST",
-          body: JSON.stringify({ symbol, tf, technicals }),
-        })) as { data?: string } | null;
-        return typeof response?.data === "string" ? response.data : "";
-      },
-    });
+    console.log("[DEBUG] Generate button clicked!");
+    console.log("[DEBUG] Props - symbol:", symbol, "tf:", tf, "hasUser:", !!user);
+    
+    if (!symbol || !tf) {
+      console.error("[DEBUG] Cannot generate: missing symbol or tf", { symbol, tf });
+      return;
+    }
+
+    try {
+      // Clear cache and fetch fresh data
+      queryClient.removeQueries({ queryKey: ["aiSummary", symbol, tf] });
+      
+      const response = await (await import("@/lib/api")).apiFetch("/api/ai/summary", {
+        method: "POST",
+        body: JSON.stringify({ symbol, tf, technicals }),
+      });
+      
+      console.log("[DEBUG] API response:", response);
+      
+      // Update cache with new data
+      queryClient.setQueryData(["aiSummary", symbol, tf], 
+        typeof response?.data === "string" ? response.data : "");
+    } catch (error) {
+      console.error("[DEBUG] Generation error:", error);
+    }
   };
 
   const handleCopy = async () => {
