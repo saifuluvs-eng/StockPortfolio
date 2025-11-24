@@ -323,25 +323,32 @@ export default function Home() {
           </Link>
 
           {/* 6) Market Fear & Greed */}
-          {fearGreed && (
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10 h-auto sm:h-full" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <h3 className="font-semibold text-foreground text-xs sm:text-sm">Market Fear & Greed</h3>
-                  <Gauge className="w-5 sm:w-6 h-5 sm:h-6 text-orange-500 flex-shrink-0" />
+          <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10 h-auto sm:h-full" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
+            <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+              {fearGreed ? (
+                <>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <h3 className="font-semibold text-foreground text-xs sm:text-sm">Market Fear & Greed</h3>
+                    <Gauge className="w-5 sm:w-6 h-5 sm:h-6 text-orange-500 flex-shrink-0" />
+                  </div>
+                  <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
+                  <div className="mt-3 pt-2 border-t border-border/50">
+                    <p className="text-xs text-muted-foreground">
+                      ↻ Updates every 10 minutes
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Last updated: {new Date(lastFetchTime).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center w-full py-6">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500/30 border-t-orange-500 mb-2"></div>
+                  <p className="text-xs text-muted-foreground">Loading...</p>
                 </div>
-                <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
-                <div className="mt-3 pt-2 border-t border-border/50">
-                  <p className="text-xs text-muted-foreground">
-                    ↻ Updates every 10 minutes
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Last updated: {new Date(lastFetchTime).toLocaleTimeString()}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
 
         {/* 7) AI Signals */}
         <Link to="/ai-insights" className="block h-full">
