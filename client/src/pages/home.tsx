@@ -201,9 +201,9 @@ export default function Home() {
   const { data: fearGreed } = useQuery({
     queryKey: ["/api/market/fear-greed"],
     queryFn: getQueryFn<FearGreedData | null>({ on401: "returnNull" }),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 60 * 60 * 1000, // 1 hour cache
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    gcTime: 10 * 60 * 1000, // 10 minute cache (reduced from 1 hour)
+    refetchInterval: 3 * 60 * 1000, // Refresh every 3 minutes (reduced from 5)
     enabled: networkEnabled,
   });
 
