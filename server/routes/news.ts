@@ -44,7 +44,7 @@ news.get("/", async (req, res) => {
     const params = new URLSearchParams({
       auth_token: process.env.CRYPTOPANIC_TOKEN!,
       public: "true",
-      kind,
+      kind: kind === "all" ? "news" : kind,
       page: String(page),
     });
     if (filter !== "latest") params.set("filter", filter);
