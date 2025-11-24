@@ -1,8 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
 export default async (req: VercelRequest, res: VercelResponse) => {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -15,9 +13,12 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return res.status(400).json({ error: "Missing required field: symbol" });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
       return res.status(500).json({ error: "Gemini API key not configured" });
     }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
 
     const prompt = `You are a professional cryptocurrency market analyst. Analyze ${symbol} on the ${timeframe} timeframe and provide a brief trading analysis.
 
