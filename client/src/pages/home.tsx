@@ -199,9 +199,17 @@ export default function Home() {
     enabled: networkEnabled,
   });
 
+  const [lastFetchTime, setLastFetchTime] = useState<number>(Date.now());
+
   const { data: fearGreed } = useQuery({
     queryKey: ["/api/market/fear-greed"],
-    queryFn: getQueryFn<FearGreedData | null>({ on401: "returnNull" }),
+    queryFn: async () => {
+      const result = await getQueryFn<FearGreedData | null>({ on401: "returnNull" })({
+        queryKey: ["/api/market/fear-greed"],
+      } as any);
+      setLastFetchTime(Date.now());
+      return result;
+    },
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minute cache
     refetchInterval: 10 * 60 * 1000, // Refresh every 10 minutes
@@ -328,7 +336,7 @@ export default function Home() {
                     ↻ Updates every 10 minutes
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Last updated: {new Date(parseInt(fearGreed.timestamp) * 1000).toLocaleTimeString()}
+                    Last updated: {new Date(lastFetchTime).toLocaleTimeString()}
                   </p>
                 </div>
               </CardContent>
