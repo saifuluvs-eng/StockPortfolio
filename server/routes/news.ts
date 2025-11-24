@@ -53,9 +53,11 @@ news.get("/", async (req, res) => {
     params.set("regions", "en");
 
     const url = `https://cryptopanic.com/api/developer/v2/posts/?${params.toString()}`;
+    console.log("[News] Params:", { kind, filter, currencies, search, page });
     const r = await fetch(url, { method: "GET" });
     if (!r.ok) {
       const txt = await r.text().catch(() => "");
+      console.error("[News] CryptoPanic API error:", r.status, txt.slice(0, 300));
       const out = {
         error: "CryptoPanic error",
         status: r.status,
@@ -65,6 +67,7 @@ news.get("/", async (req, res) => {
       return res.status(r.status >= 400 ? r.status : 502).json(out);
     }
     const j = await r.json();
+    console.log("[News] CryptoPanic success - articles returned:", j?.results?.length || 0);
 
     const articles = (j?.results || []).map((it: any) => ({
       id: String(it?.id ?? ""),
