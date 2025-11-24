@@ -7,7 +7,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   }
 
   try {
-    const { symbol, tf = "4h" } = req.body;
+    const { symbol, tf = "4h", technicals = null } = req.body;
 
     if (!symbol) {
       return res.status(400).json({ error: "Missing required field: symbol" });
@@ -20,20 +20,55 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    const prompt = `You are a professional cryptocurrency market analyst. Analyze ${symbol} on the ${tf} timeframe and provide a brief trading analysis.
+    const technicalDataStr = technicals ? JSON.stringify(technicals, null, 2) : "No technical indicators provided";
 
-Format your response EXACTLY as:
-**Overall Bias:** [Bullish/Bearish/Neutral]
+    const prompt = `You are a technical crypto analyst. You will receive structured indicator data in JSON format. Your job is to generate a concise AI Summary without inventing trends, news, patterns, or events. Use ONLY the information inside the JSON.
 
-**Why:** [2-3 sentences explaining the main reason]
+=====================
+STRICT INSTRUCTIONS
+=====================
 
-**What to Expect:** [2-3 sentences about likely price action]
+1. DO NOT mention any indicator values or numbers.
+2. DO NOT add news, fundamentals, macro events, or made-up narrative.
+3. DO NOT assume chart patterns unless clearly implied by the indicators.
+4. DO NOT repeat the JSON data — interpret it.
+5. Keep the tone short, direct, and analytical.
+6. Focus ONLY on: 
+   - Trend direction
+   - Momentum
+   - Strength/weakness
+   - Volume conditions
+   - Volatility
+   - Support & resistance (from JSON)
+7. Output must ALWAYS follow this exact structure:
 
-**Levels to Watch:** [2-3 key price levels]
+### AI Summary — ${symbol} ${tf}
 
-**Risk Assessment:** [Low/Medium/High risk and why]
+**Overall Bias:**  
+One-word bias only (Bullish / Bearish / Neutral).
 
-Be concise and focus on actionable insights for traders.`;
+**Why:**  
+- 3 to 5 short bullet points summarizing the combined meaning of the indicators  
+- No storytelling  
+- No repeating values  
+- No fake breakouts or predictions  
+
+**What to Expect Next:**  
+1–2 short lines describing the most likely next scenario based ONLY on momentum + trend + volatility in indicators.  
+No certainty, only likelihood.
+
+**Levels to Watch:**  
+List support and resistance from JSON.  
+Do NOT create new levels.
+
+**Risk:**  
+One short line on risk (trend weakness, volatility, strong momentum, etc.)
+
+=====================
+TECHNICAL INDICATORS DATA
+=====================
+
+${technicalDataStr}`;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
