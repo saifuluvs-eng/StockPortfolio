@@ -2,6 +2,9 @@
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
+// Import combined signal builder
+import { buildTechnicalJSON } from "./combinedSignals";
+
 /**
  * Helper function to call Gemini API with timeout
  */
@@ -304,84 +307,6 @@ Respond with ONLY valid JSON in this exact format:
     }
   }
 
-  /**
-   * Compute combined technical summary fields for better AI analysis
-   */
-  private computeTechnicalSummary(technicalAnalysis: any): {
-    trend_bias: "bullish" | "bearish" | "neutral";
-    momentum_state: "strong" | "weak" | "oversold" | "overbought" | "neutral";
-    volume_context: "increasing" | "decreasing" | "neutral";
-    volatility_state: "high" | "low" | "normal";
-  } {
-    const indicators = technicalAnalysis.indicators || {};
-    
-    // Compute trend_bias from EMA, SMA, and MACD
-    let trendScore = 0;
-    const ema20 = indicators.ema20?.value || 0;
-    const sma50 = indicators.sma50?.value || 0;
-    const currentPrice = technicalAnalysis.price || 0;
-    
-    if (currentPrice > ema20 && ema20 > 0) trendScore += 1;
-    if (currentPrice > sma50 && sma50 > 0) trendScore += 1;
-    if (indicators.macd?.signal === "bullish") trendScore += 2;
-    if (indicators.macd?.signal === "bearish") trendScore -= 2;
-    
-    const trend_bias: "bullish" | "bearish" | "neutral" = 
-      trendScore > 2 ? "bullish" : trendScore < -2 ? "bearish" : "neutral";
-    
-    // Compute momentum_state from RSI and Stochastic
-    const rsi = indicators.rsi?.value || 50;
-    const stochK = indicators.stochastic?.k || 50;
-    
-    let momentum_state: "strong" | "weak" | "oversold" | "overbought" | "neutral";
-    if (rsi > 70 || stochK > 80) {
-      momentum_state = "overbought";
-    } else if (rsi < 30 || stochK < 20) {
-      momentum_state = "oversold";
-    } else if ((rsi > 55 && rsi < 70) || (rsi > 40 && rsi < 45)) {
-      momentum_state = "strong";
-    } else if ((rsi < 45 && rsi > 30) || (rsi < 55 && rsi > 50)) {
-      momentum_state = "weak";
-    } else {
-      momentum_state = "neutral";
-    }
-    
-    // Compute volume_context from volume indicators
-    const volumeTrend = indicators.volume_trend?.value || 0;
-    const obv = indicators.obv?.value || 0;
-    const obvTrend = indicators.obv?.trend || "neutral";
-    
-    let volumeScore = 0;
-    if (volumeTrend > 1) volumeScore += 1;
-    if (volumeTrend < -1) volumeScore -= 1;
-    if (obvTrend === "bullish") volumeScore += 1;
-    if (obvTrend === "bearish") volumeScore -= 1;
-    
-    const volume_context: "increasing" | "decreasing" | "neutral" =
-      volumeScore > 0 ? "increasing" : volumeScore < 0 ? "decreasing" : "neutral";
-    
-    // Compute volatility_state from ATR, Bollinger Bands, and ADX
-    const atr = indicators.atr?.value || 0;
-    const atrPercent = (atr / currentPrice) * 100 || 0;
-    const bbWidth = indicators.bollingerBands?.width || 0;
-    const adx = indicators.adx?.value || 25;
-    
-    let volatility_state: "high" | "low" | "normal";
-    if (atrPercent > 3 || bbWidth > 5 || adx > 40) {
-      volatility_state = "high";
-    } else if (atrPercent < 1 || bbWidth < 2 || adx < 15) {
-      volatility_state = "low";
-    } else {
-      volatility_state = "normal";
-    }
-    
-    return {
-      trend_bias,
-      momentum_state,
-      volume_context,
-      volatility_state
-    };
-  }
 
   /**
    * Generate comprehensive crypto insights combining multiple analysis types
@@ -392,24 +317,20 @@ Respond with ONLY valid JSON in this exact format:
     marketData: any
   ): Promise<AICryptoInsight> {
     try {
-      // Compute combined technical summary fields
-      const technicalSummary = this.computeTechnicalSummary(technicalAnalysis);
-      console.log("DEBUG: Computed technical summary:", technicalSummary);
+      const timeframe = marketData.timeframe || "4h";
       
-      // Create analysis-focused data with summary fields at TOP LEVEL (primary focus)
-      // Full indicators are secondary reference only
-      const analysisData = {
-        symbol,
-        timeframe: marketData.timeframe || "4h",
-        price: technicalAnalysis.price,
-        // SUMMARY FIELDS ARE PRIMARY - Use these for analysis
-        summary: technicalSummary,
-        // Full indicators as secondary reference (Gemini should NOT list these)
-        _full_indicators: technicalAnalysis.indicators || {}
-      };
+      // Build final JSON using combined signals builder
+      const finalJson = buildTechnicalJSON(technicalAnalysis.indicators || {}, symbol, timeframe);
+      console.log("DEBUG: Built technical JSON with combined signals");
+      console.log("DEBUG: Combined signals:", {
+        trend_bias: finalJson.trend_bias,
+        momentum_state: finalJson.momentum_state,
+        volume_context: finalJson.volume_context,
+        volatility_state: finalJson.volatility_state
+      });
       
       // Create a template prompt with placeholder for technical data
-      let prompt = `You are a professional cryptocurrency trader and technical analyst.
+      const promptTemplate = `You are a professional cryptocurrency trader and technical analyst.
 Your analysis is TRADER-STYLE: combined insights, NOT indicator listing.
 
 CRITICAL RULES - FOLLOW STRICTLY:
@@ -431,7 +352,7 @@ NOT TRADER STYLE (Bad):
 
 Format output EXACTLY like this (plain text, NOT JSON):
 
-### AI Summary — ${symbol} (${marketData.timeframe || '4h'})
+### AI Summary — ${symbol} (${timeframe})
 
 **Overall Bias:** [Bullish / Bearish / Neutral]
 
@@ -460,12 +381,11 @@ ANALYSIS DATA (USE ONLY THE SUMMARY SECTION)
 REMEMBER: Trader insights from combined signals, NOT robot listing of indicators
 =========================`;
 
-      // Format technical data with proper indentation
-      console.log("DEBUG: Formatted analysis data for Gemini");
-      console.log("DEBUG: Summary fields:", JSON.stringify(technicalSummary, null, 2));
-
-      // Replace placeholder with formatted data
-      prompt = prompt.replace('{{TECHNICALS_JSON}}', JSON.stringify(analysisData, null, 2));
+      // Replace placeholder with formatted technical data
+      const prompt = promptTemplate.replace(
+        "{{TECHNICALS_JSON}}",
+        JSON.stringify(finalJson, null, 2)
+      );
       
       console.log("FINAL PROMPT SENT TO GEMINI:");
       console.log(prompt);
@@ -486,7 +406,7 @@ REMEMBER: Trader insights from combined signals, NOT robot listing of indicators
         confidence: 0.8,
         reasoning: responseText,
         recommendation: responseText,
-        timeframe: marketData.timeframe || "4h",
+        timeframe,
         metadata: {
           technicalScore: 50,
           volumeAnalysis: "analysis based on combined signals",

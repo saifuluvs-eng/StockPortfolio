@@ -6,6 +6,29 @@ This project is a cryptocurrency trading analysis dashboard providing real-time 
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes
+
+**November 24, 2025 - OPTIMIZED: AI Summary Now Uses Dedicated Combined Signals Builder Module**:
+- **Created New Module: `server/services/combinedSignals.ts`**
+  - Dedicated TypeScript module for computing 4 high-level technical summary fields
+  - Functions: `computeTrendBias()`, `computeMomentumState()`, `computeVolumeContext()`, `computeVolatilityState()`
+  - Main export: `buildTechnicalJSON(indicators, symbol, timeframe)` - builds final JSON for Gemini
+  - Cleaner, modular code - easier to maintain and update signal logic
+  
+- **Updated `generateCryptoInsight()` Method in aiService**
+  - Now calls `buildTechnicalJSON()` from combined signals module
+  - Replaces manual computation with optimized builder
+  - Sends enriched JSON with 4 combined fields at top level to Gemini
+  - Full indicators kept as secondary reference (Gemini focuses only on summary fields)
+  
+- **Trader-Style Analysis Enforced**
+  - Prompt explicitly forbids indicator name mentions (VWAP, EMA, MACD, RSI, etc.)
+  - Instructions force trader-style insights instead of robot-style indicator listing
+  - Examples included in prompt: Good vs Bad output formats
+  - Result: Professional trader analysis, not technical analysis explanation
+  
+- **Data Flow**: Run Analysis → Click Generate → buildTechnicalJSON() computes 4 signals → Send to Gemini with strict prompt → Get professional trader-style summary
+
 # System Architecture
 
 ## Frontend Architecture

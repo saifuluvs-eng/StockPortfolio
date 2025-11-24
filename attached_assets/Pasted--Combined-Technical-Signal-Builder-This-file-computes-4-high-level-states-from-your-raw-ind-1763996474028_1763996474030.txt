@@ -1,0 +1,106 @@
+/**
+ * Combined Technical Signal Builder
+ * This file computes 4 high-level states from your raw indicator data
+ * and returns a final JSON object ready to send to Gemini.
+ *
+ * Just call: buildTechnicalJSON(rawIndicators, symbol, timeframe)
+ */
+
+function computeTrendBias(price, ema20, ema50, vwap) {
+  let bias = "neutral";
+
+  // EMA structure
+  if (price < ema20 && ema20 < ema50) {
+    bias = "bearish";
+  } else if (price > ema20 && ema20 > ema50) {
+    bias = "bullish";
+  }
+
+  // VWAP influence
+  if (price < vwap && bias !== "bullish") bias = "bearish";
+  if (price > vwap && bias !== "bearish") bias = "bullish";
+
+  // If contradictory signals → neutral
+  if (
+    (price > ema20 && ema20 < ema50) ||
+    (price < ema20 && ema20 > ema50)
+  ) {
+    bias = "neutral";
+  }
+
+  return bias;
+}
+
+function computeMomentumState(rsi, macd) {
+  if (rsi < 30) return "oversold";
+  if (rsi > 70) return "overbought";
+
+  if (rsi > 55 && macd > 0) return "strong";
+  if (rsi < 45 && macd < 0) return "weak";
+
+  if (macd > 0) return "strong";
+  if (macd < 0) return "weak";
+
+  return "neutral";
+}
+
+function computeVolumeContext(obvTrend, avgVol, prevAvgVol) {
+  // If OBV trend provided
+  if (obvTrend === "up") return "increasing";
+  if (obvTrend === "down") return "decreasing";
+
+  // Use volume averages if available
+  if (avgVol && prevAvgVol) {
+    if (avgVol > prevAvgVol) return "increasing";
+    if (avgVol < prevAvgVol) return "decreasing";
+  }
+
+  return "neutral";
+}
+
+function computeVolatilityState(bbSqueeze, atr) {
+  // BB squeeze indicator (1 = low volatility)
+  if (bbSqueeze === 1) return "low";
+
+  // ATR rules
+  if (atr && atr < 0.5) return "low";
+  if (atr && atr > 2.0) return "high";
+
+  return "normal";
+}
+
+/**
+ * Main builder
+ */
+function buildTechnicalJSON(indicators, symbol, timeframe) {
+  const {
+    price,
+    ema20,
+    ema50,
+    vwap,
+    rsi,
+    macd,
+    bb_squeeze,
+    atr,
+    obvTrend,
+    avgVol,
+    prevAvgVol
+  } = indicators;
+
+  const trend_bias = computeTrendBias(price, ema20, ema50, vwap);
+  const momentum_state = computeMomentumState(rsi, macd);
+  const volume_context = computeVolumeContext(obvTrend, avgVol, prevAvgVol);
+  const volatility_state = computeVolatilityState(bb_squeeze, atr);
+
+  return {
+    symbol,
+    timeframe,
+    indicators,
+    trend_bias,
+    momentum_state,
+    volume_context,
+    volatility_state
+  };
+}
+
+module.exports = { buildTechnicalJSON };
