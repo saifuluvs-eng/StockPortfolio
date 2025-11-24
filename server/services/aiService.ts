@@ -396,72 +396,76 @@ Respond with ONLY valid JSON in this exact format:
       const technicalSummary = this.computeTechnicalSummary(technicalAnalysis);
       console.log("DEBUG: Computed technical summary:", technicalSummary);
       
-      // Add summary fields to the technical analysis data
-      const enrichedTechnicals = {
-        ...technicalAnalysis,
-        _summary: technicalSummary
+      // Create analysis-focused data with summary fields at TOP LEVEL (primary focus)
+      // Full indicators are secondary reference only
+      const analysisData = {
+        symbol,
+        timeframe: marketData.timeframe || "4h",
+        price: technicalAnalysis.price,
+        // SUMMARY FIELDS ARE PRIMARY - Use these for analysis
+        summary: technicalSummary,
+        // Full indicators as secondary reference (Gemini should NOT list these)
+        _full_indicators: technicalAnalysis.indicators || {}
       };
       
       // Create a template prompt with placeholder for technical data
-      let prompt = `You are an advanced crypto market analyst with deep expertise in technical analysis.
-You will receive structured technical indicator data with pre-computed summary fields.
+      let prompt = `You are a professional cryptocurrency trader and technical analyst.
+Your analysis is TRADER-STYLE: combined insights, NOT indicator listing.
 
-Your job is to produce a professional, focused AI Summary based on the combined analysis signals, not individual indicators.
+CRITICAL RULES - FOLLOW STRICTLY:
+1. Use ONLY the 4 summary fields for primary analysis (trend_bias, momentum_state, volume_context, volatility_state)
+2. DO NOT mention indicator names (VWAP, EMA, MACD, RSI, Stochastic, ADX, Williams %R, ATR, Bollinger Bands, OBV, etc.)
+3. DO NOT list indicators one-by-one (this is robot-style, not trader-style)
+4. DO NOT repeat any numbers, percentages, or values
+5. INSTEAD: Interpret what the 4 combined signals mean together for market direction and setup
+6. Write like a professional trader would speak to another trader
 
-IMPORTANT: The data includes these pre-computed summary fields at the top:
-- trend_bias: Overall direction bias
-- momentum_state: Current momentum condition
-- volume_context: Volume trend direction
-- volatility_state: Volatility environment
+TRADER STYLE EXAMPLES (Good):
+✅ "Momentum remains weak with price staying under key moving averages and sellers maintaining control."
+✅ "Oversold conditions limit aggressive downside but buyers are still not showing strength."
+✅ "Volume remains soft, indicating lack of strong institutional participation."
 
-Use these summaries as your PRIMARY analysis foundation. Provide deep, combined insights.
+NOT TRADER STYLE (Bad):
+❌ "Price is trading below VWAP. EMAs indicate a downtrend. Volume is supporting the downtrend."
+❌ "Williams %R indicates overbought. ADX suggests a weak trend."
 
-=========================
-STRICT INSTRUCTIONS
-=========================
-
-1. DO NOT repeat any indicator numbers, percentages, or raw values.
-2. DO NOT list indicators one by one.
-3. Focus on what the COMBINED signals tell us about market setup.
-4. Use the _summary fields as your starting point for analysis.
-5. Be concise with 3-5 bullet points max per section.
-6. Format output EXACTLY like this (plain text, NOT JSON):
+Format output EXACTLY like this (plain text, NOT JSON):
 
 ### AI Summary — ${symbol} (${marketData.timeframe || '4h'})
 
 **Overall Bias:** [Bullish / Bearish / Neutral]
 
 **Why:**
-- [Combined insight from summary fields]
-- [Market setup interpretation]
-- [Key driving force]
+- [Combined trader insight - what do the 4 summary states tell us?]
+- [Market setup interpretation - what's happening?]
+- [Key driving force - why is this happening?]
 
 **What to expect next:**
-- [Expected price action based on current setup]
+- [Expected price action based on current combined state]
 
 **Key Levels:**
-- Support: [Zone/Level]
-- Resistance: [Zone/Level]
+- Support: [Zone based on combined analysis]
+- Resistance: [Zone based on combined analysis]
 
 **Risk Alert:**
-- [Key risk or concern]
+- [Single key risk based on combined analysis]
 
 =========================
-TECHNICAL INDICATOR DATA
+ANALYSIS DATA (USE ONLY THE SUMMARY SECTION)
 =========================
 
 {{TECHNICALS_JSON}}
 
 =========================
-ANALYSIS END
+REMEMBER: Trader insights from combined signals, NOT robot listing of indicators
 =========================`;
 
       // Format technical data with proper indentation
-      console.log("DEBUG: About to format enriched technical data for Gemini...");
-      console.log("DEBUG: Enriched data:", JSON.stringify(enrichedTechnicals, null, 2));
+      console.log("DEBUG: Formatted analysis data for Gemini");
+      console.log("DEBUG: Summary fields:", JSON.stringify(technicalSummary, null, 2));
 
-      // Replace placeholder with formatted technical data
-      prompt = prompt.replace('{{TECHNICALS_JSON}}', JSON.stringify(enrichedTechnicals, null, 2));
+      // Replace placeholder with formatted data
+      prompt = prompt.replace('{{TECHNICALS_JSON}}', JSON.stringify(analysisData, null, 2));
       
       console.log("FINAL PROMPT SENT TO GEMINI:");
       console.log(prompt);
@@ -485,9 +489,9 @@ ANALYSIS END
         timeframe: marketData.timeframe || "4h",
         metadata: {
           technicalScore: 50,
-          volumeAnalysis: "analysis based on indicators",
+          volumeAnalysis: "analysis based on combined signals",
           marketCondition: signal,
-          riskLevel: responseText.toLowerCase().includes("high volatility") ? "high" : "medium"
+          riskLevel: responseText.toLowerCase().includes("high volatility" || "extreme") ? "high" : "medium"
         }
       };
     } catch (error) {
