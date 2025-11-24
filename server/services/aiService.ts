@@ -313,46 +313,67 @@ Respond with ONLY valid JSON in this exact format:
     marketData: any
   ): Promise<AICryptoInsight> {
     try {
-      const prompt = `You are an advanced crypto market analyst. 
-You will receive structured technical indicator data in JSON format.
+      // Create a template prompt with placeholder for technical data
+      let prompt = `You are an advanced crypto market analyst with expertise in technical analysis.
+You will receive structured technical indicator data in JSON format below.
 
-Your job is to produce a clean AI Summary based ONLY on the *meaning* of the indicators, not the raw values.
+Your job is to produce a professional, clean AI Summary based ONLY on the *meaning* of the indicators, not the raw numbers.
 
 =========================
-INSTRUCTIONS (FOLLOW STRICTLY)
+STRICT INSTRUCTIONS
 =========================
 
-1. DO NOT repeat any indicator numbers.
+1. DO NOT repeat any indicator numbers, percentages, or raw values.
 2. DO NOT explain what indicators mean (e.g., don't say "RSI measures momentum").
-3. Focus ONLY on what the indicators collectively imply.
-4. Summarise in short, clear points — avoid long paragraphs.
+3. Analyze what the indicators collectively tell us about market direction and strength.
+4. Be concise with 3-5 bullet points max per section.
 5. Format output EXACTLY like this (plain text, NOT JSON):
 
-### AI Summary — ${symbol} ${marketData.timeframe || '4h'}
+### AI Summary — ${symbol} (${marketData.timeframe || '4h'})
 
-**Overall Bias:** (Bullish / Bearish / Neutral)
+**Overall Bias:** [Bullish / Bearish / Neutral]
 
 **Why:**
-- 3–5 short bullet points combining all major signals
-- Focus on trend direction, momentum, volatility, and volume strength
+- [Insight from trend indicators]
+- [Insight from momentum indicators]
+- [Insight from volume/volatility]
 
 **What to expect next:**
-- Expected short-term move (bounce, continuation, rejection, consolidation)
+- [Expected price action based on current setup]
 
-**Levels to watch:**
-- Support zones
-- Resistance zones
+**Key Levels:**
+- Support: [Zone/Level]
+- Resistance: [Zone/Level]
 
-**Risk:**
-- Short risk note based on trend strength, volatility, or extreme readings
+**Risk Alert:**
+- [Key risk or concern]
 
 =========================
-HERE IS THE DATA:
+TECHNICAL INDICATOR DATA
 =========================
 
-${JSON.stringify(technicalAnalysis)}`;
+{{TECHNICALS_JSON}}
+
+=========================
+ANALYSIS END
+=========================`;
+
+      // Format technical data with proper indentation
+      const technicalsJson = technicalAnalysis || {};
+      console.log("DEBUG: About to format technical data for Gemini...");
+      console.log("DEBUG: Technical data type:", typeof technicalsJson);
+      console.log("DEBUG: Raw technical data:", JSON.stringify(technicalsJson));
+
+      // Replace placeholder with formatted technical data
+      prompt = prompt.replace('{{TECHNICALS_JSON}}', JSON.stringify(technicalsJson, null, 2));
+      
+      console.log("FINAL PROMPT SENT TO GEMINI:");
+      console.log(prompt);
 
       const responseText = await callGemini(prompt);
+      
+      console.log("GEMINI RESPONSE:");
+      console.log(responseText);
       
       // Extract signal from response text
       const signal = responseText.toLowerCase().includes("bullish") ? "bullish" :

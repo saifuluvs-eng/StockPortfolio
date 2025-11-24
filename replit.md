@@ -8,17 +8,33 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 24, 2025 - FIXED: AI Summary Now Receives Technical Data & Simplified Vercel Endpoints**:
-- **Fixed AI Summary "No technical data" Error**
+**November 24, 2025 - IMPROVED: AI Summary Now Uses Better Gemini Prompt with Formatted Technical Data**:
+- **Fixed AI Summary "No technical data" Error & Improved Response Quality**
   - Root cause: Frontend was passing `scanResult?.technicals` but the property is actually `scanResult?.indicators`
-  - Updated `useAiSummary` hook to accept and send `technicals` prop from frontend
-  - Updated `AiSummaryPanel` component to accept and pass technical data
   - Fixed `analyse.tsx` to send the correct property: `technicals={scanResult?.indicators}`
   - Updated backend `/api/ai/summary` route to accept and validate `technicals` from request body
-  - Added logging to show what technical data is being received and sent to Gemini
-  - Now when user runs a scan and clicks "Generate", AI Summary receives complete technical indicator data
-  - Backend correctly detects data and generates analysis instead of returning error
-  - Flow: Run Analysis → Click Generate → Technical data (indicators) sent to API → Gemini generates real summary
+  
+- **Enhanced Gemini Prompt for Better AI Analysis**
+  - Created professional template prompt with strict formatting rules for Gemini
+  - Uses placeholder `{{TECHNICALS_JSON}}` in the prompt template
+  - Replaces placeholder with formatted technical data: `prompt.replace('{{TECHNICALS_JSON}}', JSON.stringify(technicalsJson, null, 2))`
+  - Prompt now tells Gemini to ONLY analyze indicator meaning, NOT raw numbers
+  - Added strict instructions: "DO NOT repeat numbers, DO NOT explain what indicators mean"
+  - Output format: Clean markdown with sections (Overall Bias, Why, What to expect, Key Levels, Risk Alert)
+  - Technical data is now properly indented with 2-space formatting for readability
+  
+- **Better Quality Summaries**
+  - Gemini receives well-structured, formatted technical data
+  - Prompt is cleaner and more organized with section separators
+  - Response includes actionable insights without raw indicator values
+  - Summaries now focus on market direction, momentum, and trading setup
+  
+- **Debugging & Logging**
+  - Added comprehensive debug logging to track data flow through the system
+  - Logs show: Raw technical data, formatted data, final prompt sent to Gemini, and response
+  - Helps troubleshoot any issues with data formatting or Gemini integration
+  
+- **Flow**: Run Analysis → Click Generate → Technical data sent with formatted prompt → Gemini generates professional summary
 
 - **Simplified Serverless Functions for Vercel Deployment**
   - `api/market/fear-greed.ts` - Uses inline CoinMarketCap logic without service imports
