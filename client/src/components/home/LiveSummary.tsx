@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { DollarSign, TrendingUp, TrendingDown, Volume, Target } from "lucide-react";
-import { openSpotTickerStream } from "@/lib/binanceWs";
 
 type Ticker = {
   symbol: string;
@@ -36,16 +35,51 @@ function formatVolume(volume: string | undefined) {
   return `$${num.toFixed(2)}`;
 }
 
+async function fetchTickerData(symbol: string): Promise<Ticker | null> {
+  try {
+    const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return {
+      symbol: data.symbol,
+      lastPrice: data.lastPrice,
+      priceChange: data.priceChange,
+      priceChangePercent: data.priceChangePercent,
+      highPrice: data.highPrice,
+      lowPrice: data.lowPrice,
+      volume: data.volume,
+      quoteVolume: data.quoteVolume,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export default function LiveSummary({ symbols = ["BTCUSDT", "ETHUSDT"] }: Props) {
   const [tickers, setTickers] = useState<Record<string, Ticker>>({});
 
   useEffect(() => {
-    const unsubscribe = openSpotTickerStream(symbols, {
-      onMessage: (t) => {
-        setTickers((prev) => ({ ...prev, [t.symbol]: t }));
-      },
-    });
-    return unsubscribe;
+    let cancelled = false;
+
+    async function fetchAll() {
+      const results: Record<string, Ticker> = {};
+      for (const symbol of symbols) {
+        const ticker = await fetchTickerData(symbol);
+        if (ticker && !cancelled) {
+          results[symbol] = ticker;
+        }
+      }
+      if (!cancelled && Object.keys(results).length > 0) {
+        setTickers(results);
+      }
+    }
+
+    fetchAll();
+    const id = setInterval(fetchAll, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [symbols.join("|")]); // stable enough for this simple case
 
   const cards = useMemo(() => {
