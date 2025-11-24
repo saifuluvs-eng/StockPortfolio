@@ -411,7 +411,7 @@ REMEMBER: Trader insights from combined signals, NOT robot listing of indicators
           technicalScore: 50,
           volumeAnalysis: "analysis based on combined signals",
           marketCondition: signal,
-          riskLevel: responseText.toLowerCase().includes("high volatility" || "extreme") ? "high" : "medium"
+          riskLevel: responseText.toLowerCase().includes("high volatility") || responseText.toLowerCase().includes("extreme") ? "high" : "medium"
         }
       };
     } catch (error) {

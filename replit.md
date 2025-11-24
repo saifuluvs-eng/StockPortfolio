@@ -8,26 +8,30 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**November 24, 2025 - OPTIMIZED: AI Summary Now Uses Dedicated Combined Signals Builder Module**:
-- **Created New Module: `server/services/combinedSignals.ts`**
-  - Dedicated TypeScript module for computing 4 high-level technical summary fields
-  - Functions: `computeTrendBias()`, `computeMomentumState()`, `computeVolumeContext()`, `computeVolatilityState()`
-  - Main export: `buildTechnicalJSON(indicators, symbol, timeframe)` - builds final JSON for Gemini
-  - Cleaner, modular code - easier to maintain and update signal logic
+**November 24, 2025 - FIXED: AI Summary Data Flow - Combined Signals Now Properly Sent to Gemini**:
+- **Fixed Critical Data Flow Bug in Express Route (`server/routes.ts` line 504)**
+  - ROOT CAUSE: Express route was passing raw indicators object instead of properly wrapped structure
+  - BEFORE: `aiService.generateCryptoInsight(symbol, technicalAnalysis, {})`  ❌ (aiService expected technicalAnalysis.indicators)
+  - AFTER: `aiService.generateCryptoInsight(symbol, { indicators: technicalAnalysis }, { timeframe })`  ✅ (properly wrapped)
   
-- **Updated `generateCryptoInsight()` Method in aiService**
-  - Now calls `buildTechnicalJSON()` from combined signals module
-  - Replaces manual computation with optimized builder
-  - Sends enriched JSON with 4 combined fields at top level to Gemini
-  - Full indicators kept as secondary reference (Gemini focuses only on summary fields)
+- **Fixed Logic Error in aiService (`server/services/aiService.ts` line 417)**
+  - Changed broken ternary operator: `.includes("high volatility" || "extreme")` ❌
+  - To correct logic: `.includes("high volatility") || responseText.toLowerCase().includes("extreme")` ✅
+
+- **Combined Signals Builder Working Correctly (`server/services/combinedSignals.ts`)**
+  - Module computes 4 high-level technical summary fields: trend_bias, momentum_state, volume_context, volatility_state
+  - These fields now properly reach Gemini in the JSON payload
+  - buildTechnicalJSON() organizes data with 4 summary fields at top level + full indicators nested
   
-- **Trader-Style Analysis Enforced**
-  - Prompt explicitly forbids indicator name mentions (VWAP, EMA, MACD, RSI, etc.)
-  - Instructions force trader-style insights instead of robot-style indicator listing
-  - Examples included in prompt: Good vs Bad output formats
-  - Result: Professional trader analysis, not technical analysis explanation
-  
-- **Data Flow**: Run Analysis → Click Generate → buildTechnicalJSON() computes 4 signals → Send to Gemini with strict prompt → Get professional trader-style summary
+- **Data Flow Now Correct**:
+  - Frontend sends: `scanResult?.indicators` (raw indicators)
+  - Express wraps: `{ indicators: technicalAnalysis }`
+  - aiService extracts: `technicalAnalysis.indicators`
+  - buildTechnicalJSON() computes 4 combined fields
+  - Final JSON sent to Gemini includes all 4 fields ✅
+  - Gemini produces trader-style analysis, NOT indicator listing
+
+- **Result**: Gemini now receives properly formatted JSON with 4 combined signal fields and strict instructions not to mention indicator names. Produces professional trader-style combined analysis.
 
 # System Architecture
 

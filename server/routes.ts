@@ -498,8 +498,8 @@ export function registerRoutes(app: Express): void {
       try {
         const aiSummary = await aiService.generateCryptoInsight(
           symbol,
-          technicalAnalysis,
-          {}
+          { indicators: technicalAnalysis },
+          { timeframe }
         );
         res.json({ data: aiSummary.reasoning || "No summary available." });
       } catch (aiError) {
