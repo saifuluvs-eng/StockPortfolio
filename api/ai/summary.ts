@@ -13,6 +13,13 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       return res.status(400).json({ error: "Missing required field: symbol" });
     }
 
+    // Log the technical data for debugging
+    const technicalsJson = technicals || {};
+    console.log("TECHNICAL JSON SENT TO GEMINI:", technicalsJson);
+
+    // Check if technical data is missing or empty
+    const isMissingData = !technicals || Object.keys(technicals).length === 0;
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: "Gemini API key not configured" });
@@ -20,7 +27,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    const technicalDataStr = technicals ? JSON.stringify(technicals, null, 2) : "No technical indicators provided";
+    // If no data, return error message
+    if (isMissingData) {
+      return res.json({
+        data: `Error: No technical data received.`,
+      });
+    }
+
+    const technicalDataStr = JSON.stringify(technicalsJson, null, 2);
 
     const prompt = `You are a technical crypto analyst. You will receive structured indicator data in JSON format. Your job is to generate a concise AI Summary without inventing trends, news, patterns, or events. Use ONLY the information inside the JSON.
 
