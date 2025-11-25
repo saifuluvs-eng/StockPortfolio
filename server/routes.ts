@@ -488,11 +488,13 @@ export function registerRoutes(app: Express): void {
       
       // Generate AI summary using Gemini
       try {
+        console.log("[AI Summary] Input technicalAnalysis:", JSON.stringify(technicalAnalysis).slice(0, 300));
         const aiSummary = await aiService.generateCryptoInsight(
           symbol,
-          { indicators: technicalAnalysis },
+          technicalAnalysis,
           { timeframe }
         );
+        console.log("[AI Summary] Response:", aiSummary.reasoning.slice(0, 200));
         res.json({ data: aiSummary.reasoning || "No summary available." });
       } catch (aiError) {
         const errorMsg = aiError instanceof Error ? aiError.message : String(aiError);

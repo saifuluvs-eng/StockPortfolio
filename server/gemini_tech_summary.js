@@ -285,14 +285,29 @@ async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride 
 
     console.log("FINAL JSON sent to Gemini:", JSON.stringify(finalJson, null, 2));
 
-    // Build prompt
+    // Build prompt with STRICT enforcement
     const prompt = `You are a professional cryptocurrency trader analyzing ${symbol} on ${timeframe}.
-Write ONLY trader-style analysis using general market language.
 
-ABSOLUTE REQUIREMENT:
-- NEVER mention any indicator names (EMA, MACD, RSI, VWAP, etc.)
-- Write as if explaining to another trader
-- Use only the market state provided below
+**CRITICAL RULES - MUST FOLLOW 100% OF THE TIME:**
+
+1. NEVER EVER mention ANY of these terms, even in different forms:
+   - EMA, SMA, Moving Average, MA
+   - RSI, Relative Strength
+   - MACD, Signal Line, Histogram
+   - VWAP, Volume Weighted
+   - ATR, Average True Range, volatility
+   - Bollinger, BB, Bands
+   - OBV, On Balance Volume, volume oscillator
+   - ADX, Stochastic, Williams %R, SAR, Parabolic
+   - Crossover, cross-over, crossing
+
+2. Use ONLY trader language like:
+   - "Price action", "support", "resistance"
+   - "Trend", "momentum", "consolidation"
+   - "Buyers in control", "sellers in control"
+   - "Strong close", "weak volume"
+
+3. Never use numbers, percentages, or technical thresholds
 
 Format your response EXACTLY like this:
 
@@ -301,21 +316,21 @@ Format your response EXACTLY like this:
 **Overall Bias:** [Bullish / Bearish / Neutral]
 
 **Why:**
-- [One insight - use general market language]
-- [One insight - no indicator names]
-- [One insight - no numbers or percentages]
+- [One market insight using only general trader language]
+- [One setup observation]
+- [One volume or strength observation]
 
 **What to expect:**
-- [Expected price action based on current setup]
+- [Expected price action]
 
 **Key Levels:**
-- Support: [Description without numbers]
-- Resistance: [Description without numbers]
+- Support: [General level description]
+- Resistance: [General level description]
 
 **Risk Alert:**
-- [One key risk factor]
+- [One key trading risk]
 
-MARKET STATE:
+MARKET STATE DATA:
 ${JSON.stringify(finalJson, null, 2)}`;
 
     const geminiText = await callGemini(prompt);

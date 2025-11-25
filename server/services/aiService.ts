@@ -391,22 +391,27 @@ Based on these four combined factors, provide trader-style analysis.`;
   ): Promise<AICryptoInsight> {
     try {
       const timeframe = marketData.timeframe || "4h";
-      const indicators = technicalAnalysis.indicators || {};
+      
+      // Extract indicators - they can be at root level or nested under .indicators
+      const rawIndicators = technicalAnalysis.indicators || technicalAnalysis;
+      console.log("[AI Summary] Raw indicators keys:", Object.keys(rawIndicators).slice(0, 10));
       
       // Extract precomputed indicators from the analysis
       const indicatorsOverride = {
-        price: indicators.price || 0,
-        ema20: indicators.ema20 || null,
-        ema50: indicators.ema50 || null,
-        vwap: indicators.vwap || null,
-        rsi: indicators.rsi || null,
-        macd: indicators.macd || null,
-        obvSeries: indicators.obvSeries || [],
-        avgVol: indicators.avgVol || null,
-        prevAvgVol: indicators.prevAvgVol || null,
-        atr: indicators.atr || null,
-        bbSqueeze: indicators.bbSqueeze || false,
+        price: rawIndicators.price || 0,
+        ema20: rawIndicators.ema20 || null,
+        ema50: rawIndicators.ema50 || null,
+        vwap: rawIndicators.vwap || null,
+        rsi: rawIndicators.rsi || null,
+        macd: rawIndicators.macd || null,
+        obvSeries: rawIndicators.obvSeries || [],
+        avgVol: rawIndicators.avgVol || null,
+        prevAvgVol: rawIndicators.prevAvgVol || null,
+        atr: rawIndicators.atr || null,
+        bbSqueeze: rawIndicators.bbSqueeze || false,
       };
+      
+      console.log("[AI Summary] Indicators Override:", JSON.stringify(indicatorsOverride).slice(0, 200));
       
       // Dynamically import gemini_tech_summary module
       const gemimiModule = await import("../gemini_tech_summary.js");
