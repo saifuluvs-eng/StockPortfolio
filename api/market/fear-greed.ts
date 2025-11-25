@@ -1,4 +1,4 @@
-export default async (req: any, res: any) => {
+async function getFearGreedIndex() {
   try {
     console.log("[Fear & Greed API] Fetching from Alternative.me...");
     const response = await fetch("https://api.alternative.me/fng/?limit=1");
@@ -33,7 +33,7 @@ export default async (req: any, res: any) => {
   }
 }
 
-export default async (req: VercelRequest, res: VercelResponse) => {
+export default async (req: any, res: any) => {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -51,4 +51,4 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       timestamp: String(Date.now()),
     });
   }
-};
+}
