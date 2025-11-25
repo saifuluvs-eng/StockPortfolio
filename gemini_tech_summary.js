@@ -431,31 +431,38 @@ function findRecentSwings(candles, lookback = 50) {
  * This template expects {{TECHNICALS_JSON}} to be replaced with final JSON.
  */
 const promptTemplate = `
-You are a professional crypto technical analyst. You will receive a single JSON object containing raw indicators, computed combined fields, and optional support/resistance. Use ONLY the data in the JSON. Do not invent external events or extra levels.
+You are a professional crypto technical analyst.
 
 Follow these strict rules:
-1) Do NOT repeat raw indicator numbers.
-2) Do NOT list indicators one-by-one. Instead use the combined fields to form concise insights.
-3) Output this exact structure:
+1. DO NOT list indicators like EMA20, RSI, MACD, VWAP, PSAR by name.
+2. ONLY use the combined fields:
+   - trend_bias
+   - momentum_state
+   - volume_context
+   - volatility_state
+3. Produce trader-style combined insights.
+4. Follow this exact format:
 
 ### AI Summary — {{symbol}} {{timeframe}}
 
 **Overall Bias:** (Bullish / Bearish / Neutral)
 
 **Why:**
-- 3–4 short bullets combining trend_bias, momentum_state, volume_context, volatility_state and support/resistance context.
+- 3–4 bullets based only on combined fields.
 
 **What to Expect Next:**
-- 1–2 short sentences focused on likely short-term scenario using combined fields.
+- Explain the likely short-term behavior.
 
 **Levels to Watch:**
-- Use the support/resistance arrays from the JSON. If none, say "No levels provided."
+- Use the support/resistance arrays. If none, say "No levels provided."
 
 **Risk:**
-- One short line describing risk (momentum risk, volatility, mixed signals)
+- 1 short line.
 
-Only use the JSON.
+Here is the JSON:
+\`\`\`json
 {{TECHNICALS_JSON}}
+\`\`\`
 `;
 
 /**
@@ -557,7 +564,7 @@ function buildFinalJSONAndPrompt({ symbol, timeframe, candles = null, indicators
     const prompt = promptTemplate
         .replace("{{symbol}}", symbol)
         .replace("{{timeframe}}", timeframe)
-        .replace("{{TECHNICALS_JSON}}", `\n\`\`\`json\n${JSON.stringify(finalJson, null, 2)}\n\`\`\`\n`);
+        .replace("{{TECHNICALS_JSON}}", JSON.stringify(finalJson, null, 2));
 
     return { finalJson, prompt };
 }
@@ -576,7 +583,7 @@ async function sendToGemini(prompt) {
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY not set in environment variables");
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
     const body = {
         // Use a single content part containing the prompt
         "contents": [
@@ -585,7 +592,7 @@ async function sendToGemini(prompt) {
         // Configuration must be nested in generationConfig
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 400
+            "maxOutputTokens": 300
         }
     };
 
