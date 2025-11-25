@@ -582,9 +582,11 @@ async function sendToGemini(prompt) {
         "contents": [
             { "parts": [{ "text": prompt }] }
         ],
-        // You can adjust safety, temperature, etc. if supported
-        "temperature": 0.1,
-        "maxOutputTokens": 400
+        // Configuration must be nested in generationConfig
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 400
+        }
     };
 
     console.log("SENDING TO GEMINI. Prompt length:", prompt.length);
