@@ -18,7 +18,7 @@ function calculateEMA(prices: number[], period: number): number {
 
 function calculateRSI(prices: number[], period: number = 14): number {
   if (prices.length < period + 1) return 50;
-  
+
   const changes: number[] = [];
   for (let i = 1; i < prices.length; i++) {
     changes.push(prices[i] - prices[i - 1]);
@@ -26,15 +26,15 @@ function calculateRSI(prices: number[], period: number = 14): number {
 
   let avgGain = 0;
   let avgLoss = 0;
-  
+
   for (let i = 0; i < period; i++) {
     if (changes[i] > 0) avgGain += changes[i];
     else avgLoss += Math.abs(changes[i]);
   }
-  
+
   avgGain /= period;
   avgLoss /= period;
-  
+
   for (let i = period; i < changes.length; i++) {
     const gain = changes[i] > 0 ? changes[i] : 0;
     const loss = changes[i] < 0 ? Math.abs(changes[i]) : 0;
@@ -43,7 +43,7 @@ function calculateRSI(prices: number[], period: number = 14): number {
   }
 
   if (avgLoss === 0) return 100;
-  
+
   const rs = avgGain / avgLoss;
   return 100 - (100 / (1 + rs));
 }
@@ -60,10 +60,10 @@ function calculateMACD(prices: number[]): { macd: number; signal: number; histog
 function calculateBollingerBands(prices: number[], period: number = 20): { upper: number; middle: number; lower: number; squeeze: boolean } {
   const sma = calculateSMA(prices, period);
   const slice = prices.slice(-period);
-  
+
   const variance = slice.reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / period;
   const stdDev = Math.sqrt(variance);
-  
+
   const upper = sma + (2 * stdDev);
   const lower = sma - (2 * stdDev);
   const squeeze = (upper - lower) / sma < 0.1;
@@ -75,7 +75,7 @@ function calculateVWAP(closes: number[], volumes: number[]): number {
   if (closes.length < 2) return closes[0];
   const slice = closes.slice(-20);
   const volSlice = volumes.slice(-20);
-  
+
   let cumPV = 0;
   let cumV = 0;
   for (let i = 0; i < slice.length; i++) {
@@ -93,7 +93,7 @@ function calculateADX(highs: number[], lows: number[], closes: number[]): { adx:
   for (let i = 1; i < highs.length; i++) {
     const upMove = highs[i] - highs[i - 1];
     const downMove = lows[i - 1] - lows[i];
-    
+
     if (upMove > downMove && upMove > 0) plusDM += upMove;
     else if (downMove > upMove && downMove > 0) minusDM += downMove;
   }
@@ -108,7 +108,7 @@ function calculateADX(highs: number[], lows: number[], closes: number[]): { adx:
 
 function calculateATR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
   if (highs.length < period) return 0;
-  
+
   let sumTR = 0;
   for (let i = 0; i < Math.min(period, highs.length); i++) {
     const tr = Math.max(
@@ -123,49 +123,49 @@ function calculateATR(highs: number[], lows: number[], closes: number[], period:
 
 function calculateStochastic(highs: number[], lows: number[], closes: number[], period: number = 14): { k: number; d: number } {
   if (highs.length < period) return { k: 50, d: 50 };
-  
+
   const slice = { highs: highs.slice(-period), lows: lows.slice(-period), closes: closes.slice(-period) };
   const highest = Math.max(...slice.highs);
   const lowest = Math.min(...slice.lows);
-  
+
   const k = ((closes[closes.length - 1] - lowest) / (highest - lowest)) * 100 || 50;
   return { k: Math.min(100, Math.max(0, k)), d: k };
 }
 
 function calculateWilliamsR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
   if (highs.length < period) return -50;
-  
+
   const slice = { highs: highs.slice(-period), lows: lows.slice(-period) };
   const highest = Math.max(...slice.highs);
   const lowest = Math.min(...slice.lows);
-  
+
   return ((closes[closes.length - 1] - highest) / (highest - lowest)) * -100 || -50;
 }
 
 function calculateCCI(highs: number[], lows: number[], closes: number[], period: number = 20): number {
   if (highs.length < period) return 0;
-  
+
   const typicalPrices = closes.map((c, i) => (highs[i] + lows[i] + c) / 3);
   const sma = calculateSMA(typicalPrices, period);
   const slice = typicalPrices.slice(-period);
-  
+
   const meanDev = slice.reduce((sum, tp) => sum + Math.abs(tp - sma), 0) / period;
   return meanDev === 0 ? 0 : (typicalPrices[typicalPrices.length - 1] - sma) / (0.015 * meanDev);
 }
 
 function calculateMFI(highs: number[], lows: number[], closes: number[], volumes: number[], period: number = 14): number {
   if (highs.length < period) return 50;
-  
+
   let positiveMF = 0, negativeMF = 0;
   for (let i = 1; i < Math.min(period + 1, highs.length); i++) {
     const tp = (highs[i] + lows[i] + closes[i]) / 3;
     const prevTp = (highs[i - 1] + lows[i - 1] + closes[i - 1]) / 3;
     const mf = tp * volumes[i];
-    
+
     if (tp > prevTp) positiveMF += mf;
     else if (tp < prevTp) negativeMF += mf;
   }
-  
+
   if (negativeMF === 0) return 100;
   const mr = positiveMF / negativeMF;
   return 100 - (100 / (1 + mr));
@@ -182,19 +182,19 @@ function calculateOBV(closes: number[], volumes: number[]): number {
 
 function calculateParabolicSAR(highs: number[], lows: number[], closes: number[]): { sar: number; trend: 'bullish' | 'bearish' } {
   if (highs.length < 3) return { sar: closes[closes.length - 1], trend: 'bullish' };
-  
+
   const trend = closes[closes.length - 1] > closes[closes.length - 2] ? 'bullish' : 'bearish';
   const extreme = trend === 'bullish' ? Math.max(...highs.slice(-5)) : Math.min(...lows.slice(-5));
-  
+
   let sar = trend === 'bullish' ? Math.min(...lows.slice(-3)) : Math.max(...highs.slice(-3));
   sar = sar + 0.02 * (extreme - sar);
-  
+
   return { sar: Math.max(0, sar), trend };
 }
 
 function calculateVolumeOscillator(volumes: number[]): number {
   if (volumes.length < 20) return 0;
-  
+
   const short = calculateSMA(volumes, 12);
   const long = calculateSMA(volumes, 26);
   return long === 0 ? 0 : ((short - long) / long) * 100;
@@ -206,21 +206,21 @@ async function fetchKlines(symbol: string, interval: string): Promise<any[]> {
   try {
     const sym = String(symbol).trim().toUpperCase();
     if (!sym) return [];
-    
+
     const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(sym)}&interval=${encodeURIComponent(interval)}&limit=100`;
     const response = await fetch(url, { cache: "no-store" });
-    
+
     if (!response.ok) {
       console.error(`Binance error for ${sym}: ${response.status}`);
       return [];
     }
-    
+
     const data = await response.json();
     if (!Array.isArray(data) || data.length < 10) {
       console.error(`Insufficient data for ${sym}: got ${data?.length || 0} candles`);
       return [];
     }
-    
+
     return data.map((k: any[]) => ({
       time: k[0],
       open: parseFloat(k[1]),
@@ -240,7 +240,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
   res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version");
-  
+
   if (req.method === "OPTIONS") {
     res.status(200).end();
     return;
@@ -265,10 +265,10 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     else if (timeframe === "15m" || timeframe === "15") interval = "15m";
     else if (timeframe === "1d" || timeframe === "1day" || timeframe === "d") interval = "1d";
     else if (timeframe === "15min") interval = "15m";
-    
+
     // Fetch real market data from Binance
     const klines = await fetchKlines(symbol, interval);
-    
+
     if (klines.length < 10) {
       console.warn(`Not enough data for ${symbol}: got ${klines.length} candles`);
       return res.status(400).json({ error: `Insufficient data for ${symbol}. Try another symbol.` });
@@ -279,7 +279,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     const lows = klines.map(k => k.low);
     const closes = klines.map(k => k.close);
     const volumes = klines.map(k => k.volume);
-    
+
     const currentPrice = closes[closes.length - 1];
 
     // Calculate ALL 15 indicators
@@ -430,6 +430,14 @@ export default async (req: VercelRequest, res: VercelResponse) => {
       recommendation,
       calculationTimestamp: new Date().toISOString(),
       latestDataTime: new Date(klines[klines.length - 1].time).toISOString(),
+      candles: klines.map(k => ({
+        t: k.time,
+        o: k.open,
+        h: k.high,
+        l: k.low,
+        c: k.close,
+        v: k.volume
+      }))
     };
 
     res.setHeader("Cache-Control", "private, max-age=30");
