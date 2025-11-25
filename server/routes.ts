@@ -387,20 +387,20 @@ export function registerRoutes(app: Express): void {
     try {
       const { symbol } = req.params;
       const { analysisType = 'recommendation', timeframe = '4h' } = req.body;
-      
+
       // Get technical analysis for the symbol
       const technicalAnalysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
-      
+
       // Get market data
       const marketData = await binanceService.getTickerData(symbol);
-      
+
       // Generate AI insight
       const aiInsight = await aiService.generateCryptoInsight(
         symbol,
         technicalAnalysis,
         marketData
       );
-      
+
       res.json(aiInsight);
     } catch (error) {
       console.error("Error generating AI analysis:", error);
@@ -412,7 +412,7 @@ export function registerRoutes(app: Express): void {
     try {
       // Get top gainers and market data
       const gainers = await binanceService.getTopGainers(20);
-      
+
       // Create market summary
       const marketSummary = {
         topGainers: gainers.slice(0, 5),
@@ -420,10 +420,10 @@ export function registerRoutes(app: Express): void {
         highVolumeCount: gainers.filter(g => parseFloat(g.quoteVolume) > 10000000).length,
         timestamp: new Date().toISOString(),
       };
-      
+
       // Generate AI market overview
       const overview = await aiService.generateMarketOverview(marketSummary);
-      
+
       res.json(overview);
     } catch (error) {
       console.error("Error generating market overview:", error);
@@ -434,15 +434,15 @@ export function registerRoutes(app: Express): void {
   app.get('/api/ai/sentiment/:symbol/:timeframe', async (req: Request, res: Response) => {
     try {
       const { symbol, timeframe = '4h' } = req.params;
-      
+
       // Get price data and technical analysis
       const klines = await binanceService.getKlineData(symbol, timeframe as string, 50);
       const priceData = klines.map(k => parseFloat(k.close));
       const technicalData = await technicalIndicators.analyzeSymbol(symbol, timeframe);
-      
+
       // Generate sentiment analysis
       const sentiment = await aiService.analyzeMarketSentiment(symbol, priceData, technicalData);
-      
+
       res.json(sentiment);
     } catch (error) {
       console.error("Error analyzing sentiment:", error);
@@ -457,9 +457,9 @@ export function registerRoutes(app: Express): void {
         return res.status(400).json({ error: "symbol is required" });
       }
       const timeframe = tf || '4h';
-      
+
       // Check if technical data is missing or empty
-      const isMissingData = !technicals || 
+      const isMissingData = !technicals ||
         (typeof technicals === "object" && Object.keys(technicals).length === 0) ||
         (Array.isArray(technicals) && technicals.length === 0);
 
@@ -469,7 +469,7 @@ export function registerRoutes(app: Express): void {
           data: `Error: No technical data received.`,
         });
       }
-      
+
       // Use the provided technicals or fetch if not provided
       let technicalAnalysis = technicals;
       if (!technicalAnalysis) {
@@ -485,7 +485,7 @@ export function registerRoutes(app: Express): void {
           };
         }
       }
-      
+
       // Generate AI summary using Gemini
       try {
         console.log("[AI Summary] Input technicalAnalysis:", JSON.stringify(technicalAnalysis).slice(0, 300));
@@ -499,14 +499,14 @@ export function registerRoutes(app: Express): void {
       } catch (aiError) {
         const errorMsg = aiError instanceof Error ? aiError.message : String(aiError);
         console.error("AI service error:", errorMsg);
-        
+
         // Check if it's a rate limiting issue
         if (errorMsg.includes("429") || errorMsg.includes("rate") || errorMsg.includes("Resource exhausted")) {
           return res.json({
             data: "AI service is temporarily busy (rate limited). Try again in a few moments. Analysis still available from technical indicators."
           });
         }
-        
+
         // For other errors, return a helpful message
         return res.json({
           data: "AI analysis unavailable at the moment. Please try again shortly."
@@ -515,9 +515,9 @@ export function registerRoutes(app: Express): void {
     } catch (error) {
       console.error("Error in /api/ai/summary:", error);
       const errorMsg = error instanceof Error ? error.message : String(error);
-      res.status(500).json({ 
-        error: "Failed to generate AI summary", 
-        message: errorMsg 
+      res.status(500).json({
+        error: "Failed to generate AI summary",
+        message: errorMsg
       });
     }
   });
@@ -529,6 +529,8 @@ export function registerRoutes(app: Express): void {
       const { symbol, timeframe, filters } = req.body;
 
       const analysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
+      console.log(`[API] /scan result for ${symbol}. Keys: ${Object.keys(analysis).join(",")}`);
+      console.log(`[API] /scan candles present: ${analysis.candles ? analysis.candles.length : "No"}`);
 
       // Save scan history
       await storage.createScanHistory({

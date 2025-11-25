@@ -468,7 +468,7 @@ class TechnicalIndicators {
       else if (totalScore <= -5) recommendation = 'sell';
       else recommendation = 'hold';
 
-      return {
+      const result = {
         symbol,
         price: currentPrice,
         indicators,
@@ -485,6 +485,9 @@ class TechnicalIndicators {
           v: parseFloat(k.volume)
         }))
       };
+
+      console.log(`[TechnicalIndicators] analyzeSymbol ${symbol} returning. Candles: ${result.candles?.length}`);
+      return result;
 
     } catch (error) {
       console.error(`Error analyzing ${symbol}:`, error);
