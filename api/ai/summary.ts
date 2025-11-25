@@ -7,7 +7,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
   }
 
   try {
-    const { symbol, tf = "4h", technicals = null } = req.body;
+    const { symbol, tf = "4h", technicals = null, candles = null } = req.body;
 
     if (!symbol) {
       return res.status(400).json({ error: "Missing required field: symbol" });
@@ -29,13 +29,12 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
     // Call the shared Gemini summary logic
     // We assume 'technicals' contains the precomputed indicators
-    // If the frontend sends raw candles, we would use runSummary({ symbol, timeframe: tf, candles: technicals })
-    // But based on context, it seems to be precomputed indicators.
-
+    // We pass 'candles' if available for Support/Resistance engine
     const result = await runSummaryWithIndicators({
       symbol,
       timeframe: tf,
-      indicatorsOverride: technicals
+      indicatorsOverride: technicals,
+      candles
     });
 
     res.setHeader("Cache-Control", "private, max-age=60");

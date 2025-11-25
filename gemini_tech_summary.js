@@ -864,11 +864,12 @@ async function runSummary({ symbol, timeframe, candles }) {
 }
 
 /**
- * runSummaryWithIndicators({symbol, timeframe, indicatorsOverride})
+ * runSummaryWithIndicators({symbol, timeframe, indicatorsOverride, candles})
  * - if you compute indicators in backend already, call this with override
+ * - optional: pass candles for Support/Resistance engine
  */
-async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride }) {
-    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride });
+async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride, candles }) {
+    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride, candles });
     console.log("FINAL JSON sent to Gemini (override):", JSON.stringify(finalJson, null, 2));
     const { raw, text } = await sendToGemini(prompt);
     return { finalJson, geminiRaw: raw, geminiText: text };
