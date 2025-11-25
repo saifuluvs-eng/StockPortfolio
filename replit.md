@@ -8,6 +8,29 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 25, 2025 - INTEGRATED: Gemini Technical Summary Module**:
+
+- **New Module: `server/gemini_tech_summary.js`**
+  - Complete single-file solution for technical indicator calculation
+  - Computes 10+ technical indicators (EMA, RSI, MACD, VWAP, ATR, Bollinger Bands, OBV, ADX, Stochastic, Williams %R, Parabolic SAR)
+  - Builds 4 combined fields: `trend_bias`, `momentum_state`, `volume_context`, `volatility_state`
+  - Sends only these 4 summary fields to Gemini (NEVER raw indicator names)
+  - Handles Gemini API with retry logic and rate limiting (429 errors)
+  - Supports two usage modes:
+    - `runSummaryWithIndicators()` - with pre-computed indicators
+    - `runSummary()` - with OHLCV candles (computes indicators internally)
+
+- **Updated: `server/services/aiService.ts`**
+  - Modified `generateCryptoInsight()` to use new gemini_tech_summary module
+  - Dynamically imports module at request-time (compatible with Vercel serverless)
+  - Extracts precomputed indicators and passes to `runSummaryWithIndicators()`
+  - Cleaner code flow: indicators → summary fields → Gemini prompt → response
+
+- **Data Flow Improvement**
+  - No raw indicator data sent to Gemini (prevents indicator names in output)
+  - Only structured trader-style summary fields: trend state, momentum state, volume context, volatility state
+  - Result: Professional trader-style analysis (e.g., "Price is trading below VWAP" → "Price strengthening with sellers in control")
+
 **November 24, 2025 - FIXED: AI Summary Button + Rate Limiting Handling**:
 
 - **Symbol Mismatch Caching Bug Fixed (`client/src/hooks/useAiSummary.ts`)**

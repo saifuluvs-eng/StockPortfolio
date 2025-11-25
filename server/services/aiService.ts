@@ -382,6 +382,7 @@ Based on these four combined factors, provide trader-style analysis.`;
 
   /**
    * Generate comprehensive crypto insights combining multiple analysis types
+   * Uses new gemini_tech_summary module for clean technical analysis
    */
   async generateCryptoInsight(
     symbol: string,
@@ -390,78 +391,54 @@ Based on these four combined factors, provide trader-style analysis.`;
   ): Promise<AICryptoInsight> {
     try {
       const timeframe = marketData.timeframe || "4h";
+      const indicators = technicalAnalysis.indicators || {};
       
-      // Build final JSON using combined signals builder
-      const finalJson = buildTechnicalJSON(technicalAnalysis.indicators || {}, symbol, timeframe);
-      console.log("DEBUG: Combined signals:", finalJson);
+      // Extract precomputed indicators from the analysis
+      const indicatorsOverride = {
+        price: indicators.price || 0,
+        ema20: indicators.ema20 || null,
+        ema50: indicators.ema50 || null,
+        vwap: indicators.vwap || null,
+        rsi: indicators.rsi || null,
+        macd: indicators.macd || null,
+        obvSeries: indicators.obvSeries || [],
+        avgVol: indicators.avgVol || null,
+        prevAvgVol: indicators.prevAvgVol || null,
+        atr: indicators.atr || null,
+        bbSqueeze: indicators.bbSqueeze || false,
+      };
       
-      // Convert to natural language narrative (NO INDICATOR NAMES)
-      const narrative = this.convertSummaryToNarrative(finalJson);
-      console.log("\n========== NARRATIVE SENT TO GEMINI ==========");
-      console.log(narrative);
-      console.log("=============================================\n");
+      // Dynamically import gemini_tech_summary module
+      const gemimiModule = await import("../gemini_tech_summary.js");
+      const { runSummaryWithIndicators } = gemimiModule;
       
-      // Create a template prompt with ZERO raw indicator data
-      const promptTemplate = `You are a professional cryptocurrency trader analyzing ${symbol} on ${timeframe}.
-Write ONLY trader-style analysis using general market language.
-
-ABSOLUTE REQUIREMENT: 
-- NEVER mention any indicator names (VWAP, EMA, MACD, RSI, Stochastic, ADX, Williams %R, ATR, Bollinger Bands, OBV, etc.)
-- Write as if explaining to another trader - focused on market setup and price action
-- Use only the market state provided below
-
-Format your response EXACTLY like this:
-
-### AI Summary — ${symbol} (${timeframe})
-
-**Overall Bias:** [Bullish / Bearish / Neutral]
-
-**Why:**
-- [One insight - use general market language]
-- [One insight - no indicator names]  
-- [One insight - no numbers or percentages]
-
-**What to expect:**
-- [Expected price action based on current setup]
-
-**Key Levels:**
-- Support: [Description without numbers]
-- Resistance: [Description without numbers]
-
-**Risk Alert:**
-- [One key risk factor]
-
-MARKET STATE:
-{{MARKET_STATE}}`;
-
-      // Replace placeholder with narrative (NO raw indicator data)
-      const prompt = promptTemplate.replace("{{MARKET_STATE}}", narrative);
-      
-      console.log("PROMPT SENT TO GEMINI:");
-      console.log(prompt);
-
-      const responseText = await callGemini(prompt);
+      // Call new gemini_tech_summary module
+      const result = await runSummaryWithIndicators({
+        symbol,
+        timeframe,
+        indicatorsOverride,
+      });
       
       console.log("GEMINI RESPONSE:");
-      console.log(responseText);
+      console.log(result.geminiText);
       
       // Extract signal from response text
-      const signal = responseText.toLowerCase().includes("bullish") ? "bullish" :
-                    responseText.toLowerCase().includes("bearish") ? "bearish" : "neutral";
+      const signal = result.geminiText.toLowerCase().includes("bullish") ? "bullish" :
+                    result.geminiText.toLowerCase().includes("bearish") ? "bearish" : "neutral";
       
       return {
         symbol,
         analysisType: "recommendation",
         signal: signal as "bullish" | "bearish" | "neutral",
         confidence: 0.8,
-        reasoning: responseText,
-        recommendation: responseText,
+        reasoning: result.geminiText,
+        recommendation: result.geminiText,
         timeframe,
         metadata: {
           technicalScore: 50,
           volumeAnalysis: "analysis based on combined signals",
           marketCondition: signal,
-          riskLevel: responseText.toLowerCase().includes("high volatility") || responseText.toLowerCase().includes("extreme") ? "high" : "medium"
+          riskLevel: result.geminiText.toLowerCase().includes("high volatility") || result.geminiText.toLowerCase().includes("extreme") ? "high" : "medium"
         }
       };
     } catch (error) {
