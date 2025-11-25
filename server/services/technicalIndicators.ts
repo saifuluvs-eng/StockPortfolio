@@ -285,6 +285,7 @@ class TechnicalIndicators {
   }
 
   async analyzeSymbol(symbol: string, timeframe: string = '1h'): Promise<TechnicalAnalysis> {
+    console.log(`[TRACE] analyzeSymbol called for ${symbol} ${timeframe}`);
     try {
       // Convert timeframe to Binance format
       const binanceInterval = this.convertTimeframeToBinance(timeframe);
