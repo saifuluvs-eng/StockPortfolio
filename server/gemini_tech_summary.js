@@ -285,29 +285,50 @@ async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride 
 
     console.log("FINAL JSON sent to Gemini:", JSON.stringify(finalJson, null, 2));
 
-    // Build prompt with STRICT enforcement
+    // Convert JSON data to pure natural language (DO NOT send JSON or field names)
+    const trendText = {
+      bullish: "price is strengthening with buyers gaining control",
+      bearish: "price is weakening with sellers gaining control",
+      neutral: "price is consolidating without clear direction"
+    }[finalJson.trend_bias] || "price is neutral";
+
+    const momentumText = {
+      strong: "momentum is accelerating",
+      weak: "momentum is weakening",
+      overbought: "momentum is extremely elevated",
+      oversold: "momentum is extremely depressed",
+      neutral: "momentum is neutral"
+    }[finalJson.momentum_state] || "momentum is neutral";
+
+    const volumeText = {
+      increasing: "trading activity is rising with strong participation",
+      decreasing: "trading activity is declining with weak participation",
+      neutral: "trading activity is normal"
+    }[finalJson.volume_context] || "trading activity is normal";
+
+    const volatilityText = {
+      high: "price ranges are expanding with high volatility",
+      low: "price ranges are contracting with low volatility",
+      normal: "price ranges are typical"
+    }[finalJson.volatility_state] || "price ranges are typical";
+
+    // Build PURE NATURAL LANGUAGE prompt (NO JSON, NO FIELD NAMES)
+    const marketDescription = `
+Current Market Setup for ${symbol} on ${timeframe}:
+- ${trendText}
+- ${momentumText}
+- ${volumeText}
+- ${volatilityText}`;
+
     const prompt = `You are a professional cryptocurrency trader analyzing ${symbol} on ${timeframe}.
 
-**CRITICAL RULES - MUST FOLLOW 100% OF THE TIME:**
+IMPORTANT - ABSOLUTELY DO NOT:
+- Mention any technical indicators (EMA, MACD, RSI, VWAP, Bollinger, OBV, ADX, Stochastic, ATR, etc.)
+- Mention "moving averages", "volume oscillator", "on balance volume", "parabolic SAR"
+- Use ANY indicator names or abbreviations
+- Discuss "crossovers" or "signals" from indicators
 
-1. NEVER EVER mention ANY of these terms, even in different forms:
-   - EMA, SMA, Moving Average, MA
-   - RSI, Relative Strength
-   - MACD, Signal Line, Histogram
-   - VWAP, Volume Weighted
-   - ATR, Average True Range, volatility
-   - Bollinger, BB, Bands
-   - OBV, On Balance Volume, volume oscillator
-   - ADX, Stochastic, Williams %R, SAR, Parabolic
-   - Crossover, cross-over, crossing
-
-2. Use ONLY trader language like:
-   - "Price action", "support", "resistance"
-   - "Trend", "momentum", "consolidation"
-   - "Buyers in control", "sellers in control"
-   - "Strong close", "weak volume"
-
-3. Never use numbers, percentages, or technical thresholds
+ONLY use general trader language about price action and market structure.
 
 Format your response EXACTLY like this:
 
@@ -316,22 +337,22 @@ Format your response EXACTLY like this:
 **Overall Bias:** [Bullish / Bearish / Neutral]
 
 **Why:**
-- [One market insight using only general trader language]
-- [One setup observation]
-- [One volume or strength observation]
+- [Market setup insight in trader language only]
+- [Price structure observation]
+- [One volume or momentum observation]
 
-**What to expect:**
+**What to Expect Next:**
 - [Expected price action]
 
-**Key Levels:**
-- Support: [General level description]
-- Resistance: [General level description]
+**Levels to Watch:**
+- Support: [General description]
+- Resistance: [General description]
 
-**Risk Alert:**
-- [One key trading risk]
+**Risk:**
+- [One key risk]
 
-MARKET STATE DATA:
-${JSON.stringify(finalJson, null, 2)}`;
+${marketDescription}`;
+
 
     const geminiText = await callGemini(prompt);
     
