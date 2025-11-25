@@ -1,6 +1,4 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
     // CORS headers
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -46,19 +44,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const search = String(query.search || "").trim();
 
-        // Cache key
-        const key = JSON.stringify({ kind, filter, currencies, search, page });
-        const now = Date.now();
-
-        // Simple in-memory cache for serverless (might not persist across invocations but helps with bursts)
-        // Note: In Vercel serverless, global state isn't guaranteed to persist, but often does for warm starts.
-        (globalThis as any).__NEWS_CACHE ??= new Map();
-        const cache = (globalThis as any).__NEWS_CACHE as Map<string, { at: number; data: any }>;
-        const TTL = 5 * 60 * 1000;
-        const hit = cache.get(key);
-        if (hit && now - hit.at < TTL) {
-            return res.json(hit.data);
-        }
+        // REMOVED SERVER-SIDE CACHE to fix "Refresh" button
+        // The client (React Query) handles caching. Vercel functions should be stateless for this use case
+        // to ensure the user always gets fresh data when they ask for it.
 
         const params = new URLSearchParams({
             auth_token: process.env.CRYPTOPANIC_TOKEN!,
@@ -83,44 +71,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 status: r.status,
                 detail: txt.slice(0, 300),
             };
-            // Cache error briefly to avoid hammering API
-            cache.set(key, { at: now, data: out });
             return res.status(r.status >= 400 ? r.status : 502).json(out);
         }
 
         const j = await r.json();
 
-        const articles = (j?.results || []).map((it: any) => ({
-            id: String(it?.id ?? ""),
-            title: String(it?.title ?? ""),
-            url: String(it?.original_url || it?.url || "#"),
-            source: {
-                name: it?.source?.title ?? "",
-                domain: it?.source?.domain ?? "",
-            },
-            publishedAt: it?.published_at ?? it?.created_at ?? new Date().toISOString(),
-            kind: typeof it?.kind === "string" ? it.kind : "news",
-            currencies: Array.isArray(it?.instruments)
-                ? it.instruments
-                    .map((c: any) => String(c?.code || "").toUpperCase())
-                    .filter(Boolean)
-                : [],
-            image: it?.image || null,
-            votes: it?.votes || undefined,
-        }));
+        const articles = (j?.results || []).map((it: any) => {
+            // Fix URL: Prefer original, then deep link, then construct from ID
+            let articleUrl = it?.original_url || it?.url;
+            if (!articleUrl && it?.id) {
+                articleUrl = `https://cryptopanic.com/news/${it.id}/`;
+            }
+            if (!articleUrl) articleUrl = "#";
+
+            return {
+                id: String(it?.id ?? ""),
+                title: String(it?.title ?? ""),
+                url: String(articleUrl),
+                source: {
+                    name: it?.source?.title ?? "",
+                    domain: it?.source?.domain ?? "",
+                },
+                publishedAt: it?.published_at ?? it?.created_at ?? new Date().toISOString(),
+                kind: typeof it?.kind === "string" ? it.kind : "news",
+                currencies: Array.isArray(it?.instruments)
+                    ? it.instruments
+                        .map((c: any) => String(c?.code || "").toUpperCase())
+                        .filter(Boolean)
+                    : [],
+                image: it?.image || null,
+                votes: it?.votes || undefined,
+            };
+        });
+
+        // Debug logging for "1 day ago" issue
+        if (articles.length > 0) {
+            console.log(`[News] First article: ${articles[0].title} | ${articles[0].publishedAt} | ${articles[0].url}`);
+        }
 
         const out = {
             data: articles,
             paging: { next: j?.next || null, previous: j?.previous || null, page },
         };
 
-        // Don't cache empty results to prevent stale cache issues
-        if (articles.length > 0) {
-            cache.set(key, { at: now, data: out });
-        }
-
-        // Add cache control headers
-        res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+        // Add cache control headers - short max-age for browser
+        res.setHeader("Cache-Control", "public, max-age=60, must-revalidate");
         return res.status(200).json(out);
     } catch (err: any) {
         console.error("GET /api/news failed:", err?.message || err, err?.stack);
