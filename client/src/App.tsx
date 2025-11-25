@@ -1,7 +1,7 @@
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import { useState } from "react";
 
-import { AuthProvider } from "@/auth/AuthContext";
+
 import RequireAuth from "@/auth/RequireAuth";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
@@ -34,74 +34,72 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Switch>
-        <Route path="/">
-          <Redirect to="/dashboard" />
-        </Route>
+    <Switch>
+      <Route path="/">
+        <Redirect to="/dashboard" />
+      </Route>
 
-        <Route path="/login">
-          <Redirect to="/account" />
-        </Route>
-        <Route path="/signup">
-          <Redirect to="/account" />
-        </Route>
-        <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/login">
+        <Redirect to="/account" />
+      </Route>
+      <Route path="/signup">
+        <Redirect to="/account" />
+      </Route>
+      <Route path="/reset-password" component={ResetPassword} />
 
-        <Route path="/dashboard">
-          <ShellLayout>
-            <Dashboard />
-          </ShellLayout>
-        </Route>
-        <Route path="/portfolio">
-          <ShellLayout>
-            <Portfolio />
-          </ShellLayout>
-        </Route>
-        <Route path="/gainers">
-          <ShellLayout>
-            <Gainers />
-          </ShellLayout>
-        </Route>
-        <Route path="/analyse/:symbol?">
-          <ShellLayout>
-            <Analyse />
-          </ShellLayout>
-        </Route>
-        <Route path="/watchlist">
-          <ShellLayout>
-            <RequireAuth>
-              <Watchlist />
-            </RequireAuth>
-          </ShellLayout>
-        </Route>
-        <Route path="/alerts">
-          <ShellLayout>
-            <RequireAuth>
-              <Alerts />
-            </RequireAuth>
-          </ShellLayout>
-        </Route>
-        <Route path="/account">
-          <ShellLayout>
-            <Account />
-          </ShellLayout>
-        </Route>
-        <Route path="/ai-insights">
-          <ShellLayout>
-            <AIInsights />
-          </ShellLayout>
-        </Route>
-        <Route path="/news">
-          <ShellLayout>
-            <News />
-          </ShellLayout>
-        </Route>
+      <Route path="/dashboard">
+        <ShellLayout>
+          <Dashboard />
+        </ShellLayout>
+      </Route>
+      <Route path="/portfolio">
+        <ShellLayout>
+          <Portfolio />
+        </ShellLayout>
+      </Route>
+      <Route path="/gainers">
+        <ShellLayout>
+          <Gainers />
+        </ShellLayout>
+      </Route>
+      <Route path="/analyse/:symbol?">
+        <ShellLayout>
+          <Analyse />
+        </ShellLayout>
+      </Route>
+      <Route path="/watchlist">
+        <ShellLayout>
+          <RequireAuth>
+            <Watchlist />
+          </RequireAuth>
+        </ShellLayout>
+      </Route>
+      <Route path="/alerts">
+        <ShellLayout>
+          <RequireAuth>
+            <Alerts />
+          </RequireAuth>
+        </ShellLayout>
+      </Route>
+      <Route path="/account">
+        <ShellLayout>
+          <Account />
+        </ShellLayout>
+      </Route>
+      <Route path="/ai-insights">
+        <ShellLayout>
+          <AIInsights />
+        </ShellLayout>
+      </Route>
+      <Route path="/news">
+        <ShellLayout>
+          <News />
+        </ShellLayout>
+      </Route>
 
-        <Route>
-          <Redirect to="/dashboard" />
-        </Route>
-      </Switch>
-    </AuthProvider>
+      <Route>
+        <Redirect to="/dashboard" />
+      </Route>
+    </Switch>
   );
 }

@@ -1,4 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
+import { createServer, type Server } from "http";
+import { WebSocketServer } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated as replitIsAuthenticated } from "./replitAuth";
 import { binanceService } from "./services/binanceService";
@@ -39,7 +41,26 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
   // return replitIsAuthenticated(req, res, next);
 };
 
-export function registerRoutes(app: Express): void {
+export function registerRoutes(app: Express): Server {
+  const server = createServer(app);
+  const wss = new WebSocketServer({ noServer: true });
+
+  wss.on("connection", (socket) => {
+    socket.on("message", (message) => {
+      socket.send(message.toString());
+    });
+  });
+
+  server.on("upgrade", (request, socket, head) => {
+    if (request.url !== "/ws") {
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(request, socket, head, (websocket) => {
+      wss.emit("connection", websocket, request);
+    });
+  });
   // Auth middleware
   // TODO: Uncomment this when you are ready to enable real authentication.
   //await setupAuth(app);
@@ -605,4 +626,5 @@ export function registerRoutes(app: Express): void {
       res.status(500).json({ message: "Failed to remove from watchlist" });
     }
   });
+  return server;
 }
