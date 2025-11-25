@@ -36,25 +36,25 @@ let lastBinanceRequestAt = 0;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const intervalMap = (tf) =>
-  ({
-    '15m': '15m',
-    '30m': '30m',
-    '1h': '1h',
-    '2h': '2h',
-    '3h': '3h',
-    '4h': '4h',
-    '6h': '6h',
-    '8h': '8h',
-    '12h': '12h',
-    '1d': '1d',
-    '1D': '1d',
-    '1day': '1d',
-    '1Day': '1d',
-    '1w': '1w',
-    '1W': '1w',
-    '1M': '1M',
-    '1m': '1M',
-  }[String(tf)] || '4h');
+({
+  '15m': '15m',
+  '30m': '30m',
+  '1h': '1h',
+  '2h': '2h',
+  '3h': '3h',
+  '4h': '4h',
+  '6h': '6h',
+  '8h': '8h',
+  '12h': '12h',
+  '1d': '1d',
+  '1D': '1d',
+  '1day': '1d',
+  '1Day': '1d',
+  '1w': '1w',
+  '1W': '1w',
+  '1M': '1M',
+  '1m': '1M',
+}[String(tf)] || '4h');
 
 const ohlcvTimeframeMap = Object.freeze({
   '15m': '15m',
@@ -67,8 +67,8 @@ const fmt = (v) =>
   typeof v === 'string'
     ? v
     : v == null || Number.isNaN(+v)
-    ? '—'
-    : (+v).toFixed(2);
+      ? '—'
+      : (+v).toFixed(2);
 
 function normalizeSymbol(s) {
   if (!s) return "BTCUSDT";
@@ -203,7 +203,7 @@ function scheduleBinanceRequest(task) {
   };
 
   const chained = binanceLimiter.then(run);
-  binanceLimiter = chained.catch(() => {});
+  binanceLimiter = chained.catch(() => { });
   return chained;
 }
 
@@ -276,14 +276,14 @@ async function getKlines(symbol, timeframe, limit = 500) {
     const rows = await fetchBinanceKlines(symbol, interval, limit);
     const candles = Array.isArray(rows)
       ? rows.map((k) => ({
-          openTime: Number(k[0]),
-          open: Number(k[1]),
-          high: Number(k[2]),
-          low: Number(k[3]),
-          close: Number(k[4]),
-          volume: Number(k[5]),
-          closeTime: Number(k[6]),
-        }))
+        openTime: Number(k[0]),
+        open: Number(k[1]),
+        high: Number(k[2]),
+        low: Number(k[3]),
+        close: Number(k[4]),
+        volume: Number(k[5]),
+        closeTime: Number(k[6]),
+      }))
       : [];
     if (candles.length === 0) {
       throw new Error('empty_binance_response');
@@ -508,7 +508,7 @@ async function handleTicker(req, res) {
     }
     res.set("cache-control", "no-store");
     return res.json({ error: "binance_request_failed", status: r.status ?? primaryStatus });
-  } catch (_) {}
+  } catch (_) { }
   // 3) last resort: synthetic safe payload
   res.set("cache-control", "no-store");
   return res.json(safeTicker(symbol));
@@ -1046,8 +1046,8 @@ app.post('/api/scanner/scan', async (req, res) => {
       lastClose > bb.upper
         ? 'Above upper band'
         : lastClose < bb.lower
-        ? 'Below lower band'
-        : 'Inside bands',
+          ? 'Below lower band'
+          : 'Inside bands',
     );
 
     const stoch =
@@ -1100,6 +1100,7 @@ app.post('/api/scanner/scan', async (req, res) => {
       checks: out,
       breakdown: out,
       technicals: out,
+      candles: kl.candles, // Pass candles to frontend
     };
 
     memory.scans.push(result);
