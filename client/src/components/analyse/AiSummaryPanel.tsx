@@ -21,14 +21,32 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
   const [isGenerating, setIsGenerating] = useState(false);
 
   const COOLDOWN_MS = 2 * 60 * 1000;
+  const PERSISTENCE_MS = 60 * 60 * 1000; // 1 hour
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
-    const key = `ai_last_gen_${symbol}_${tf}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      const lastTime = parseInt(saved, 10);
+    const genKey = `ai_last_gen_${symbol}_${tf}`;
+    const contentKey = `ai_summary_content_${symbol}_${tf}`;
+
+    // Load persisted content
+    const savedContent = localStorage.getItem(contentKey);
+    if (savedContent) {
+      try {
+        const parsed = JSON.parse(savedContent);
+        const age = Date.now() - parsed.timestamp;
+        if (age < PERSISTENCE_MS) {
+          queryClient.setQueryData(["aiSummary", symbol, tf], parsed.content);
+        }
+      } catch (e) {
+        console.error("Failed to parse saved summary", e);
+      }
+    }
+
+    // Load cooldown
+    const savedGen = localStorage.getItem(genKey);
+    if (savedGen) {
+      const lastTime = parseInt(savedGen, 10);
       const now = Date.now();
       const diff = now - lastTime;
       if (diff < COOLDOWN_MS) {
@@ -39,7 +57,7 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
       setCooldownRemaining(0);
       setLastUpdated(null);
     }
-  }, [symbol, tf]);
+  }, [symbol, tf, queryClient]);
 
   useEffect(() => {
     if (cooldownRemaining <= 0) return;
@@ -80,6 +98,11 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
 
         const now = Date.now();
         localStorage.setItem(`ai_last_gen_${symbol}_${tf}`, now.toString());
+        localStorage.setItem(`ai_summary_content_${symbol}_${tf}`, JSON.stringify({
+          content: response.data,
+          timestamp: now
+        }));
+
         setCooldownRemaining(COOLDOWN_MS / 1000);
         setLastUpdated(new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
       }
@@ -117,44 +140,33 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
     <div className="flex flex-col rounded-2xl border border-border bg-card backdrop-blur overflow-hidden mb-8">
       <div className="sticky top-0 z-10 bg-muted/60 backdrop-blur px-4 md:px-5 py-3 border-b border-border flex items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">AI Summary</h3>
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-2">
             {user ? (
-              <>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={handleGenerate}
-                  disabled={isFetching || isLoading || isGenerating || cooldownRemaining > 0}
-                  className={cn(cooldownRemaining > 0 && "opacity-80")}
-                >
-                  {cooldownRemaining > 0 ? (
-                    <>
-                      <Clock3 className="mr-2 h-4 w-4 animate-pulse" />
-                      Wait {formatCooldown(cooldownRemaining)}
-                    </>
-                  ) : (
-                    <>
-                      <Wand2
-                        className={cn(
-                          "mr-2 h-4 w-4",
-                          (isFetching || isLoading || isGenerating) && "animate-spin",
-                        )}
-                      />
-                      Generate
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCopy}
-                  disabled={!data}
-                  aria-label="Copy summary"
-                >
-                  <CopyIcon className="h-4 w-4" />
-                </Button>
-              </>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleGenerate}
+                disabled={isFetching || isLoading || isGenerating || cooldownRemaining > 0}
+                className={cn(cooldownRemaining > 0 && "opacity-80")}
+              >
+                {cooldownRemaining > 0 ? (
+                  <>
+                    <Clock3 className="mr-2 h-4 w-4 animate-pulse" />
+                    Regenerate ({formatCooldown(cooldownRemaining)})
+                  </>
+                ) : (
+                  <>
+                    <Wand2
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        (isFetching || isLoading || isGenerating) && "animate-spin",
+                      )}
+                    />
+                    Generate
+                  </>
+                )}
+              </Button>
             ) : (
               <Button asChild variant="default" size="sm">
                 <Link to="/account">Sign In</Link>
@@ -170,9 +182,20 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
       </div>
 
       <div
-        className="flex-1 overflow-y-auto whitespace-pre-wrap text-sm leading-6 px-4 md:px-5 py-4 min-h-[400px] md:min-h-[520px] lg:min-h-[620px]"
+        className="relative flex-1 overflow-y-auto whitespace-pre-wrap text-sm leading-6 px-4 md:px-5 py-4 min-h-[400px] md:min-h-[520px] lg:min-h-[620px]"
         style={{ maxHeight: "70vh" }}
       >
+        {data && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCopy}
+            className="absolute top-2 right-2 h-8 w-8 bg-background/50 hover:bg-background/80 backdrop-blur"
+            aria-label="Copy summary"
+          >
+            <CopyIcon className="h-4 w-4" />
+          </Button>
+        )}
         {content}
         <div className="mt-4 text-xs text-muted-foreground border-t border-border/50 pt-2">
           Powered by Gemini • Context: {symbol} {tf}
