@@ -17,6 +17,8 @@ function allow(key: string) {
   return n <= 20;
 }
 
+import { runSummaryWithIndicators } from "./gemini_tech_summary.js";
+
 ai.post("/summary", express.json({ limit: "1mb" }), async (req, res) => {
   try {
     const userId =
@@ -28,15 +30,21 @@ ai.post("/summary", express.json({ limit: "1mb" }), async (req, res) => {
       return res.status(429).json({ error: "Rate limit" });
     }
 
-    const { symbol, tf } = (req.body || {}) as { symbol?: string; tf?: string };
+    const { symbol, tf, technicals, candles } = req.body || {};
+
     if (!symbol || !tf) {
       return res.status(400).json({ error: "symbol and tf required" });
     }
 
-    const key = `${symbol}:${tf}`;
-    const cached = cache.get(key);
-    if (cached && Date.now() - cached.at < TTL_MS) {
-      return res.json({ data: cached.text, cached: true });
+    console.log(`[AI] /summary request for ${symbol} ${tf}. Candles present: ${candles ? candles.length : "No"}`);
+
+    const key = `${symbol}:${tf}:${technicals ? "custom" : "auto"}`;
+    // Skip cache if custom technicals provided, as they might change
+    if (!technicals) {
+      const cached = cache.get(key);
+      if (cached && Date.now() - cached.at < TTL_MS) {
+        return res.json({ data: cached.text, cached: true });
+      }
     }
 
     if (!process.env.GEMINI_API_KEY) {
@@ -44,10 +52,18 @@ ai.post("/summary", express.json({ limit: "1mb" }), async (req, res) => {
     }
 
     try {
-      // Use the new Gemini-based AIService
-      const insight = await aiService.generateCryptoInsight(symbol, {}, { timeframe: tf });
-      const text = insight.reasoning || "No summary available.";
-      cache.set(key, { at: Date.now(), text });
+      // Use the shared Gemini summary logic
+      const result = await runSummaryWithIndicators({
+        symbol,
+        timeframe: tf,
+        indicatorsOverride: technicals,
+        candles
+      });
+
+      const text = result.geminiText || "No summary available.";
+      if (!technicals) {
+        cache.set(key, { at: Date.now(), text });
+      }
       return res.json({ data: text });
     } catch (error) {
       console.error("Error generating AI insight:", error);
