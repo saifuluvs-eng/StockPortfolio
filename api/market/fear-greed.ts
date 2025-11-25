@@ -1,59 +1,29 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-const BASE_URL = "https://pro-api.coinmarketcap.com/v3";
-
-async function getFearGreedIndex() {
-  // Try multiple ways to access the API key for maximum compatibility
-  let COINMARKETCAP_API_KEY = process.env.COINMARKETCAP_API_KEY || 
-                               process.env["COINMARKETCAP_API_KEY"] ||
-                               (global as any).COINMARKETCAP_API_KEY;
-  
-  // DEBUG: Check if API key is accessible
-  console.log("[Fear & Greed API] Environment check:");
-  console.log("[Fear & Greed API] process.env keys:", Object.keys(process.env).filter(k => k.includes("COIN") || k.includes("cmc")).join(", "));
-  console.log("[Fear & Greed API] COINMARKETCAP_API_KEY exists:", !!COINMARKETCAP_API_KEY);
-  console.log("[Fear & Greed API] COINMARKETCAP_API_KEY length:", COINMARKETCAP_API_KEY?.length || "0");
-  
-  if (!COINMARKETCAP_API_KEY || COINMARKETCAP_API_KEY.length === 0) {
-    console.log("[Fear & Greed API] ⚠️ API key NOT found - returning fallback (50)");
-    console.log("[Fear & Greed API] All env vars:", JSON.stringify(Object.keys(process.env).slice(0, 10)));
-    return { value: 50, classification: "Neutral", timestamp: String(Date.now()) };
-  }
-  
-  console.log("[Fear & Greed API] ✅ API key found (length:", COINMARKETCAP_API_KEY.length + ") - making fetch request");
-
+export default async (req: any, res: any) => {
   try {
-    console.log("[Fear & Greed API] Fetching from CoinMarketCap...");
-    const response = await fetch(
-      `${BASE_URL}/fear-and-greed/historical?limit=1`,
-      {
-        headers: {
-          "X-CMC_PRO_API_KEY": COINMARKETCAP_API_KEY,
-        },
-      }
-    );
-
-    console.log("[Fear & Greed API] Response status:", response.status);
+    console.log("[Fear & Greed API] Fetching from Alternative.me...");
+    const response = await fetch("https://api.alternative.me/fng/?limit=1");
 
     if (!response.ok) {
       console.log("[Fear & Greed API] ❌ API request failed with status", response.status);
-      console.log("[Fear & Greed API] Response body:", await response.text());
       return { value: 50, classification: "Neutral", timestamp: String(Date.now()) };
     }
 
     const data = await response.json();
     console.log("[Fear & Greed API] ✅ API response received:", JSON.stringify(data));
-    
+
     if (!data.data || !data.data[0]) {
       console.log("[Fear & Greed API] ⚠️ No data in API response");
       return { value: 50, classification: "Neutral", timestamp: String(Date.now()) };
     }
 
     const latest = data.data[0];
+    // Alternative.me returns string values, need to parse
+    const value = parseInt(latest.value, 10);
+
     const result = {
-      value: latest.value,
+      value: isNaN(value) ? 50 : value,
       classification: latest.value_classification,
-      timestamp: latest.timestamp,
+      timestamp: latest.timestamp, // Alternative.me returns unix timestamp string
     };
     console.log("[Fear & Greed API] ✅ Returning result:", result);
     return result;
@@ -70,12 +40,12 @@ export default async (req: VercelRequest, res: VercelResponse) => {
 
   try {
     const fgData = await getFearGreedIndex();
-    
+
     res.setHeader("Cache-Control", "public, max-age=3600");
     return res.json(fgData);
   } catch (error: any) {
     console.error("Error fetching Fear & Greed index:", error?.message || error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       value: 50,
       classification: "Neutral",
       timestamp: String(Date.now()),
