@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 const FILTERS: { value: NewsFilter; label: string }[] = [
   { value: "latest", label: "Latest" },
@@ -18,7 +19,7 @@ const FILTERS: { value: NewsFilter; label: string }[] = [
   { value: "important", label: "Important" },
 ];
 
-const SYMBOLS = ["", "BTC", "ETH", "SOL", "XRP", "AVAX", "ADA", "BNB", "DOGE"];
+const SYMBOLS = ["", "BTC", "ETH", "SOL", "XRP", "DASH"];
 
 function ArticleCard({ article }: { article: NewsArticle }) {
   const timeAgo = useMemo(() => {
@@ -106,7 +107,7 @@ export default function NewsPage() {
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={refresh} disabled={isFetching} className="min-h-[44px]">
-            <RefreshCw className="w-4 h-4 sm:mr-2" />
+            <RefreshCw className={cn("w-4 h-4 sm:mr-2", isFetching && "animate-spin")} />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
         </div>
