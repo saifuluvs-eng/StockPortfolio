@@ -649,7 +649,16 @@ export default function Analyse() {
         }
 
         const payload = await res.json().catch(() => null);
+        console.log("[DEBUG] Scan payload received:", payload ? "Yes" : "No");
+        if (payload) {
+          console.log("[DEBUG] Payload keys:", Object.keys(payload));
+          if (payload.candles) console.log("[DEBUG] Payload has candles:", payload.candles.length);
+          else console.log("[DEBUG] Payload MISSING candles");
+        }
+
         const item = extractScanResult<ScannerAnalysis | ScanResult>(payload);
+        console.log("[DEBUG] Extracted item candles:", item?.candles ? item.candles.length : "Missing");
+
         if (!item) {
           toast.error("Analysis unavailable", { id: ANALYSE_TOAST_ID });
           setScanResult(null);
