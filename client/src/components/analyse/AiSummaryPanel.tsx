@@ -159,7 +159,7 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
                 {cooldownRemaining > 0 ? (
                   <>
                     <Clock3 className="mr-2 h-4 w-4 animate-pulse" />
-                    Regenerate ({formatCooldown(cooldownRemaining)})
+                    Generate ({formatCooldown(cooldownRemaining)})
                   </>
                 ) : (
                   <>
