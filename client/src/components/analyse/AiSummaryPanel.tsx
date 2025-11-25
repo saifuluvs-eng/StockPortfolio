@@ -4,9 +4,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CopyIcon, Wand2, Clock3 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
+import { useEffect, useState, useMemo } from "react";
+import { Link } from "wouter";
 
-// ... imports
+type AiSummaryPanelProps = {
+  symbol: string;
+  tf: string;
+  technicals?: unknown;
+  candles?: unknown[];
+};
 
 export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSummaryPanelProps) {
   const queryClient = useQueryClient();
