@@ -20,16 +20,16 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
   const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals, candles });
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const COOLDOWN_MS = 2 * 60 * 1000;
+  const COOLDOWN_MS = 60 * 1000; // 1 minute global cap
   const PERSISTENCE_MS = 60 * 60 * 1000; // 1 hour
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   useEffect(() => {
-    const genKey = `ai_last_gen_${symbol}_${tf}`;
+    const globalGenKey = "ai_global_last_gen";
     const contentKey = `ai_summary_content_${symbol}_${tf}`;
 
-    // Load persisted content
+    // Load persisted content & timestamp for THIS coin
     const savedContent = localStorage.getItem(contentKey);
     if (savedContent) {
       try {
@@ -37,25 +37,28 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
         const age = Date.now() - parsed.timestamp;
         if (age < PERSISTENCE_MS) {
           queryClient.setQueryData(["aiSummary", symbol, tf], parsed.content);
+          setLastUpdated(new Date(parsed.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         }
       } catch (e) {
         console.error("Failed to parse saved summary", e);
       }
+    } else {
+      setLastUpdated(null);
     }
 
-    // Load cooldown
-    const savedGen = localStorage.getItem(genKey);
-    if (savedGen) {
-      const lastTime = parseInt(savedGen, 10);
+    // Load GLOBAL cooldown
+    const savedGlobalGen = localStorage.getItem(globalGenKey);
+    if (savedGlobalGen) {
+      const lastTime = parseInt(savedGlobalGen, 10);
       const now = Date.now();
       const diff = now - lastTime;
       if (diff < COOLDOWN_MS) {
         setCooldownRemaining(Math.ceil((COOLDOWN_MS - diff) / 1000));
+      } else {
+        setCooldownRemaining(0);
       }
-      setLastUpdated(new Date(lastTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     } else {
       setCooldownRemaining(0);
-      setLastUpdated(null);
     }
   }, [symbol, tf, queryClient]);
 
@@ -97,7 +100,10 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
         console.log("[DEBUG] Data set in cache successfully");
 
         const now = Date.now();
-        localStorage.setItem(`ai_last_gen_${symbol}_${tf}`, now.toString());
+        // Set GLOBAL cooldown
+        localStorage.setItem("ai_global_last_gen", now.toString());
+
+        // Save content for THIS coin
         localStorage.setItem(`ai_summary_content_${symbol}_${tf}`, JSON.stringify({
           content: response.data,
           timestamp: now
