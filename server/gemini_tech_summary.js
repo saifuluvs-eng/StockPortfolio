@@ -356,43 +356,59 @@ ${marketDescription}`;
 
     let geminiText = await callGemini(prompt);
     
-    // Post-process: Remove any indicator name mentions from the response
-    const indicatorTerms = [
-      /\bEMA\b/gi,
-      /\bSMA\b/gi,
-      /\bMoving Average\b/gi,
-      /\bMoving average\b/gi,
-      /\bRSI\b/gi,
-      /\bRelative Strength\b/gi,
-      /\bMACD\b/gi,
-      /\bSignal Line\b/gi,
-      /\bVWAP\b/gi,
-      /\bVolume Weighted\b/gi,
-      /\bATR\b/gi,
-      /\bAverage True Range\b/gi,
-      /\bBollinger\b/gi,
-      /\bBollingers\b/gi,
-      /\bBB Band\b/gi,
-      /\bOBV\b/gi,
-      /\bOn Balance Volume\b/gi,
-      /\bvolume oscillator\b/gi,
-      /\bADX\b/gi,
-      /\bStochastic\b/gi,
-      /\bWilliams %R\b/gi,
-      /\bParabolic SAR\b/gi,
-      /\bSAR\b/gi,
-      /\bCrossover\b/gi,
-      /\bcross-over\b/gi,
-      /\bCrossing\b/gi,
-      /\bHistogram\b/gi,
+    // Post-process: Remove entire phrases/sentences mentioning indicator names
+    // This removes the full line/phrase, not just the indicator name
+    const indicatorPatterns = [
+      /- .*?\bEMA\b.*?\n/gi,
+      /- .*?\bSMA\b.*?\n/gi,
+      /- .*?\bMoving [Aa]verage.*?\n/gi,
+      /- .*?\bRSI\b.*?\n/gi,
+      /- .*?\bRelative Strength.*?\n/gi,
+      /- .*?\bMACD\b.*?\n/gi,
+      /- .*?\bSignal Line.*?\n/gi,
+      /- .*?\bVWAP\b.*?\n/gi,
+      /- .*?\bVolume Weighted.*?\n/gi,
+      /- .*?\bATR\b.*?\n/gi,
+      /- .*?\bAverage True Range.*?\n/gi,
+      /- .*?\bBollinger.*?\n/gi,
+      /- .*?\bOBV\b.*?\n/gi,
+      /- .*?\bOn Balance Volume.*?\n/gi,
+      /- .*?\bvolume oscillator.*?\n/gi,
+      /- .*?\bADX\b.*?\n/gi,
+      /- .*?\bStochastic.*?\n/gi,
+      /- .*?\bWilliams %R.*?\n/gi,
+      /- .*?\bParabolic SAR.*?\n/gi,
+      /- .*?\bSAR\b.*?\n/gi,
+      /- .*?\bcrossover.*?\n/gi,
+      /- .*?\bcross-over.*?\n/gi,
+      /- .*?\bcrossing.*?\n/gi,
+      /- .*?\bHistogram.*?\n/gi,
+      /- .*?\bindicator.*?\n/gi,
     ];
     
-    for (const term of indicatorTerms) {
-      geminiText = geminiText.replace(term, "");
+    for (const pattern of indicatorPatterns) {
+      geminiText = geminiText.replace(pattern, "");
     }
     
-    // Clean up multiple spaces and newlines
-    geminiText = geminiText.replace(/  +/g, " ").replace(/\n\n+/g, "\n");
+    // Also remove any remaining sentences that mention these terms (for sentences not starting with -)
+    const sentencePatterns = [
+      /[^.\n]*\bEMA\b[^.\n]*\.\s*/gi,
+      /[^.\n]*\bMACD\b[^.\n]*\.\s*/gi,
+      /[^.\n]*\bVWAP\b[^.\n]*\.\s*/gi,
+      /[^.\n]*\bRSI\b[^.\n]*\.\s*/gi,
+      /[^.\n]*\bADX\b[^.\n]*\.\s*/gi,
+      /[^.\n]*\bOBV\b[^.\n]*\.\s*/gi,
+      /[^.\n]*\bParabolic SAR\b[^.\n]*\.\s*/gi,
+      /[^.\n]*\bcrossover[^.\n]*\.\s*/gi,
+    ];
+    
+    for (const pattern of sentencePatterns) {
+      geminiText = geminiText.replace(pattern, "");
+    }
+    
+    // Clean up multiple spaces, newlines, and orphaned punctuation
+    geminiText = geminiText.replace(/  +/g, " ").replace(/\n\n+/g, "\n").trim();
+    geminiText = geminiText.replace(/^- \s*$/gm, ""); // Remove empty bullet points
     
     return {
       symbol,
