@@ -399,29 +399,125 @@ function computeVolatilityStateFromValues(bbSqueezeFlag, atrVal) {
     return "normal";
 }
 
-/* ========== Support/Resistance: simple swing detection ========== */
+/* =======================================================
+   SUPPORT / RESISTANCE ENGINE (Option D - Full Suite)
+   ======================================================= */
 
-/**
- * findRecentSwings(candles, lookback = 50)
- * returns {supports: [..], resistances: [..]} using local minima/maxima
- */
-function findRecentSwings(candles, lookback = 50) {
+/* -----------------------------
+   A. BASIC SWING HIGH/LOW LOGIC
+   ----------------------------- */
+function findSwingLevels(candles, lookback = 60) {
     const supports = [];
     const resistances = [];
     const n = candles.length;
-    const start = Math.max(0, n - lookback);
-    for (let i = start + 2; i < n - 2; i++) {
-        const l = candles[i].l, h = candles[i].h;
-        // local min
-        if (l < candles[i - 1].l && l < candles[i - 2].l && l < candles[i + 1].l && l < candles[i + 2].l)
-            supports.push(l);
-        // local max
-        if (h > candles[i - 1].h && h > candles[i - 2].h && h > candles[i + 1].h && h > candles[i + 2].h)
-            resistances.push(h);
+    const start = Math.max(2, n - lookback);
+
+    for (let i = start; i < n - 2; i++) {
+        const prev1 = candles[i - 1];
+        const prev2 = candles[i - 2];
+        const curr = candles[i];
+        const next1 = candles[i + 1];
+        const next2 = candles[i + 2];
+
+        // Local support (swing low)
+        if (
+            curr.l < prev1.l && curr.l < prev2.l &&
+            curr.l < next1.l && curr.l < next2.l
+        ) {
+            supports.push(curr.l);
+        }
+
+        // Local resistance (swing high)
+        if (
+            curr.h > prev1.h && curr.h > prev2.h &&
+            curr.h > next1.h && curr.h > next2.h
+        ) {
+            resistances.push(curr.h);
+        }
     }
-    // dedupe and sort
-    const uniq = arr => Array.from(new Set(arr)).sort((a, b) => a - b);
-    return { supports: uniq(supports).slice(-3), resistances: uniq(resistances).slice(-3) };
+
+    return {
+        supports: [...new Set(supports)].sort((a, b) => a - b),
+        resistances: [...new Set(resistances)].sort((a, b) => a - b),
+    };
+}
+
+/* --------------------------------------------------
+   B. LIQUIDITY ZONES (Institutional wick clustering)
+   -------------------------------------------------- */
+function findLiquidityZones(candles, thresholdPct = 0.003) {
+    const lows = candles.map(c => c.l).sort((a, b) => a - b);
+    const highs = candles.map(c => c.h).sort((a, b) => a - b);
+
+    const supportZones = [];
+    const resistanceZones = [];
+
+    // Cluster lows → support zones
+    for (let i = 1; i < lows.length; i++) {
+        const diff = Math.abs((lows[i] - lows[i - 1]) / lows[i - 1]);
+        if (diff < thresholdPct) supportZones.push(lows[i]);
+    }
+
+    // Cluster highs → resistance zones
+    for (let i = 1; i < highs.length; i++) {
+        const diff = Math.abs((highs[i] - highs[i - 1]) / highs[i - 1]);
+        if (diff < thresholdPct) resistanceZones.push(highs[i]);
+    }
+
+    return {
+        supportZones: [...new Set(supportZones)].sort((a, b) => a - b),
+        resistanceZones: [...new Set(resistanceZones)].sort((a, b) => a - b),
+    };
+}
+
+/* --------------------------------------------
+   C. SOFT ZONES (Range Midpoints & Price Memory)
+   -------------------------------------------- */
+function findSoftZones(candles, depth = 40) {
+    const sliced = candles.slice(-depth);
+    const lows = sliced.map(c => c.l);
+    const highs = sliced.map(c => c.h);
+
+    const softSupport = Math.min(...lows);
+    const softResistance = Math.max(...highs);
+
+    const midpoint = (softSupport + softResistance) / 2;
+
+    return {
+        softSupport,
+        softResistance,
+        midpoint
+    };
+}
+
+/* ----------------------------------------
+   D. UNIFIED SUPPORT / RESISTANCE OUTPUT
+   ---------------------------------------- */
+function computeUnifiedSupportResistance(candles) {
+    const swings = findSwingLevels(candles);
+    const liquidity = findLiquidityZones(candles);
+    const soft = findSoftZones(candles);
+
+    // Combine all into unified arrays
+    let support = [
+        ...swings.supports,
+        ...liquidity.supportZones,
+        soft.softSupport,
+        soft.midpoint
+    ];
+
+    let resistance = [
+        ...swings.resistances,
+        ...liquidity.resistanceZones,
+        soft.softResistance,
+        soft.midpoint
+    ];
+
+    // Remove duplicates + sort
+    support = [...new Set(support)].sort((a, b) => a - b).slice(0, 5);      // top 5 levels max
+    resistance = [...new Set(resistance)].sort((a, b) => a - b).slice(-5);  // top 5 levels max
+
+    return { support, resistance };
 }
 
 /* ========== Final JSON builder + Gemini prompt builder ========== */
@@ -679,7 +775,13 @@ function buildFinalJSONAndPrompt({ symbol, timeframe, candles = null, indicators
     const volatility_state = computeVolatilityStateFromValues(indicators.bbSqueeze, indicators.atr);
 
     // Support/resistance detection
-    const swings = candles ? findRecentSwings(candles, 60) : { supports: [], resistances: [] };
+    let support = [];
+    let resistance = [];
+    if (candles) {
+        const sr = computeUnifiedSupportResistance(candles);
+        support = sr.support;
+        resistance = sr.resistance;
+    }
 
     const finalJson = {
         symbol,
@@ -690,8 +792,8 @@ function buildFinalJSONAndPrompt({ symbol, timeframe, candles = null, indicators
         momentum_state,
         volume_context,
         volatility_state,
-        support: swings.supports,
-        resistance: swings.resistances
+        support,
+        resistance
     };
 
     // prompt assemble
