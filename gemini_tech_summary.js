@@ -431,43 +431,41 @@ function findRecentSwings(candles, lookback = 50) {
  * This template expects {{TECHNICALS_JSON}} to be replaced with final JSON.
  */
 const promptTemplate = `
-You are a professional crypto technical analyst. You must produce PREMIUM-LEVEL ANALYSIS written in the style of a professional crypto market analyst.
+You are a professional crypto technical analyst. You will receive a JSON containing combined fields that summarize trend, momentum, volume, and volatility.
 
-Use trader language such as “momentum follow-through,” “range-bound behavior,” “buyer/seller commitment,” “fakeouts,” “stability,” or “pressure build-up,” depending on the combined fields.
-
-Rules for premium output:
-1. If trend_bias is neutral but momentum_state is weak → output "Neutral (Leaning Bearish)".
-2. If trend_bias is neutral but momentum_state is strong → output "Neutral (Leaning Bullish)".
-3. If volume_context is decreasing → mention “lack of commitment” or “uninspired volume”.
-4. If volatility_state is low → emphasize “tight conditions” or “compressed price action”.
-5. If volatility_state is high → emphasize “expanded volatility” or “potential spillovers”.
-6. Do NOT list raw indicators. Only use combined fields.
-7. Produce deeper insights by explaining how trend + momentum + volume + volatility interact.
-
-Follow this exact format:
+STRICT RULES:
+1. DO NOT mention any indicator names (EMA, RSI, MACD, VWAP, ADX, Stochastic, etc.).
+2. DO NOT reference individual signals or indicator crosses.
+3. ONLY use the combined fields:
+   - trend_bias
+   - momentum_state
+   - volume_context
+   - volatility_state
+4. Combine these fields into professional, trader-grade insights.
+5. Use premium trader language:
+   “momentum follow-through”, “buyer commitment”, “range-bound drift”, “trend pressure”, “tight volatility”, “distribution”, “absorption”, etc.
+6. Use this exact output structure:
 
 ### AI Summary — {{symbol}} {{timeframe}}
 
-**Overall Bias:** (Bullish / Bearish / Neutral / Neutral (Leaning ...))
+**Overall Bias:** (Bullish / Bearish / Neutral / Neutral (Leaning Bullish) / Neutral (Leaning Bearish))
 
 **Why:**
-- 3–4 bullets explaining how signals interact (trend + momentum + volume + volatility). Add nuance.
+- 3–4 premium-level bullets combining trend, momentum, volume, and volatility.
+- No raw indicators. No indicator names. No numeric values.
 
 **What to Expect Next:**
-- Explain the likely short-term behavior.
+1–2 sentences forecasting likely behavior based ONLY on combined fields.
 
 **Levels to Watch:**
-- Use the support/resistance arrays. If none, say "No levels provided."
+Use the support and resistance arrays from the JSON. If none → “No levels provided.”
 
 **Risk:**
-- 1 short line describing risk (momentum risk, volatility, mixed signals).
-
-Your output should be concise, confident, professional, and feel like analysis from a crypto research desk.
+One short line describing the market’s risk profile based on combined fields.
 
 Here is the JSON:
-\`\`\`json
+
 {{TECHNICALS_JSON}}
-\`\`\`
 `;
 
 /**
