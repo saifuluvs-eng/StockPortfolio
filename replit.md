@@ -8,6 +8,21 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**November 25, 2025 - FIXED: AI Summary Button + Indicator Filtering**:
+
+- **Generate Button Loading State (`client/src/components/analyse/AiSummaryPanel.tsx`)**
+  - Added `isGenerating` state to track manual API calls
+  - Wand icon now spins during generation
+  - Button disables during generation to prevent duplicate clicks
+
+- **Indicator Name Filtering (`server/gemini_tech_summary.js`)**
+  - Added post-processing filter to remove indicator names from Gemini response
+  - Removes: EMA, MACD, RSI, VWAP, OBV, ADX, Stochastic, ATR, Bollinger, Williams %R, SAR, etc.
+  - Cleans up extra spaces/newlines left by filtering
+  - Much more reliable than trying to restrict Gemini's output via prompts
+
+- **Result**: Clean trader-language analysis without any indicator name mentions
+
 **November 25, 2025 - INTEGRATED: Gemini Technical Summary Module**:
 
 - **New Module: `server/gemini_tech_summary.js`**

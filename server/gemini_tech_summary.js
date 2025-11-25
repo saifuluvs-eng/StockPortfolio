@@ -354,7 +354,45 @@ Format your response EXACTLY like this:
 ${marketDescription}`;
 
 
-    const geminiText = await callGemini(prompt);
+    let geminiText = await callGemini(prompt);
+    
+    // Post-process: Remove any indicator name mentions from the response
+    const indicatorTerms = [
+      /\bEMA\b/gi,
+      /\bSMA\b/gi,
+      /\bMoving Average\b/gi,
+      /\bMoving average\b/gi,
+      /\bRSI\b/gi,
+      /\bRelative Strength\b/gi,
+      /\bMACD\b/gi,
+      /\bSignal Line\b/gi,
+      /\bVWAP\b/gi,
+      /\bVolume Weighted\b/gi,
+      /\bATR\b/gi,
+      /\bAverage True Range\b/gi,
+      /\bBollinger\b/gi,
+      /\bBollingers\b/gi,
+      /\bBB Band\b/gi,
+      /\bOBV\b/gi,
+      /\bOn Balance Volume\b/gi,
+      /\bvolume oscillator\b/gi,
+      /\bADX\b/gi,
+      /\bStochastic\b/gi,
+      /\bWilliams %R\b/gi,
+      /\bParabolic SAR\b/gi,
+      /\bSAR\b/gi,
+      /\bCrossover\b/gi,
+      /\bcross-over\b/gi,
+      /\bCrossing\b/gi,
+      /\bHistogram\b/gi,
+    ];
+    
+    for (const term of indicatorTerms) {
+      geminiText = geminiText.replace(term, "");
+    }
+    
+    // Clean up multiple spaces and newlines
+    geminiText = geminiText.replace(/  +/g, " ").replace(/\n\n+/g, "\n");
     
     return {
       symbol,

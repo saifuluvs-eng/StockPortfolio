@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { CopyIcon, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
 
 type AiSummaryPanelProps = {
@@ -17,6 +17,7 @@ export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPane
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals });
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
     console.log("[DEBUG] Generate button clicked!");
@@ -27,6 +28,7 @@ export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPane
       return;
     }
 
+    setIsGenerating(true);
     try {
       // First, invalidate to mark as stale
       await queryClient.invalidateQueries({ queryKey: ["aiSummary", symbol, tf] });
@@ -45,6 +47,8 @@ export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPane
       }
     } catch (error) {
       console.error("[DEBUG] Generation error:", error);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -76,12 +80,12 @@ export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPane
                 variant="default"
                 size="sm"
                 onClick={handleGenerate}
-                disabled={isFetching || isLoading}
+                disabled={isFetching || isLoading || isGenerating}
               >
                 <Wand2
                   className={cn(
                     "mr-2 h-4 w-4",
-                    (isFetching || isLoading) && "animate-spin",
+                    (isFetching || isLoading || isGenerating) && "animate-spin",
                   )}
                 />
                 Generate
