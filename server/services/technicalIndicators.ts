@@ -315,6 +315,16 @@ class TechnicalIndicators {
         lows = fallbackData.lows;
         volumes = fallbackData.volumes;
         currentPrice = closes[closes.length - 1];
+
+        // Construct mock klines for candles array
+        klines = closes.map((c, i) => ({
+          openTime: Date.now() - (closes.length - 1 - i) * 3600000, // Mock timestamps
+          open: c, // Simplified: open = close
+          high: highs[i],
+          low: lows[i],
+          close: c,
+          volume: volumes[i]
+        }));
       }
 
       // Add timing info for accuracy
