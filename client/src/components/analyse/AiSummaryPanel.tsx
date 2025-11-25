@@ -72,8 +72,8 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
   }, [data, isError, isLoading, user]);
 
   return (
-    <div className="flex h-full flex-col rounded-2xl border border-border/70 bg-card/70 p-4">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex flex-col rounded-2xl border border-border bg-card backdrop-blur overflow-hidden mb-8">
+      <div className="sticky top-0 z-10 bg-muted/60 backdrop-blur px-4 md:px-5 py-3 border-b border-border flex items-center justify-between gap-2">
         <h3 className="text-lg font-semibold">AI Summary</h3>
         <div className="flex items-center gap-2">
           {user ? (
@@ -110,12 +110,14 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
         </div>
       </div>
 
-      <div className="mt-3 flex-1 overflow-auto whitespace-pre-wrap text-sm leading-6">
+      <div
+        className="flex-1 overflow-y-auto whitespace-pre-wrap text-sm leading-6 px-4 md:px-5 py-4 min-h-[400px] md:min-h-[520px] lg:min-h-[620px]"
+        style={{ maxHeight: "70vh" }}
+      >
         {content}
-      </div>
-
-      <div className="mt-3 text-xs text-muted-foreground">
-        Powered by Gemini • Context: {symbol} {tf}
+        <div className="mt-4 text-xs text-muted-foreground border-t border-border/50 pt-2">
+          Powered by Gemini • Context: {symbol} {tf}
+        </div>
       </div>
     </div>
   );
