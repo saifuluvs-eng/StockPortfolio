@@ -11,18 +11,19 @@ type AiSummaryPanelProps = {
   symbol: string;
   tf: string;
   technicals?: unknown;
+  candles?: unknown[];
 };
 
-export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPanelProps) {
+export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSummaryPanelProps) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals });
+  const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals, candles });
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
     console.log("[DEBUG] Generate button clicked!");
     console.log("[DEBUG] Props - symbol:", symbol, "tf:", tf, "hasUser:", !!user);
-    
+
     if (!symbol || !tf) {
       console.error("[DEBUG] Cannot generate: missing symbol or tf", { symbol, tf });
       return;
@@ -32,14 +33,14 @@ export default function AiSummaryPanel({ symbol, tf, technicals }: AiSummaryPane
     try {
       // First, invalidate to mark as stale
       await queryClient.invalidateQueries({ queryKey: ["aiSummary", symbol, tf] });
-      
+
       const response = await (await import("@/lib/api")).apiFetch("/api/ai/summary", {
         method: "POST",
-        body: JSON.stringify({ symbol, tf, technicals }),
+        body: JSON.stringify({ symbol, tf, technicals, candles }),
       });
-      
+
       console.log("[DEBUG] API response received:", !!response?.data);
-      
+
       if (response?.data) {
         // Set the data in cache
         queryClient.setQueryData(["aiSummary", symbol, tf], response.data);

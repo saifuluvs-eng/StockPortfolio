@@ -16,6 +16,7 @@ interface TechnicalAnalysis {
   recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
   calculationTimestamp?: string;
   latestDataTime?: string;
+  candles?: { t: number; o: number; h: number; l: number; c: number; v: number }[];
 }
 
 interface ScanFilters {
@@ -36,18 +37,18 @@ class TechnicalIndicators {
   private calculateEMA(prices: number[], period: number): number {
     const multiplier = 2 / (period + 1);
     let ema = prices[0];
-    
+
     for (let i = 1; i < prices.length; i++) {
       ema = (prices[i] * multiplier) + (ema * (1 - multiplier));
     }
-    
+
     return ema;
   }
 
   // Relative Strength Index using Wilder's smoothing method
   private calculateRSI(prices: number[], period: number = 14): number {
     if (prices.length < period + 1) return 50; // Not enough data
-    
+
     const changes: number[] = [];
     for (let i = 1; i < prices.length; i++) {
       changes.push(prices[i] - prices[i - 1]);
@@ -56,7 +57,7 @@ class TechnicalIndicators {
     // Calculate initial averages for the first period (simple average)
     let avgGain = 0;
     let avgLoss = 0;
-    
+
     for (let i = 0; i < period; i++) {
       if (changes[i] > 0) {
         avgGain += changes[i];
@@ -64,22 +65,22 @@ class TechnicalIndicators {
         avgLoss += Math.abs(changes[i]);
       }
     }
-    
+
     avgGain /= period;
     avgLoss /= period;
-    
+
     // Apply Wilder's smoothing method for remaining periods
     for (let i = period; i < changes.length; i++) {
       const gain = changes[i] > 0 ? changes[i] : 0;
       const loss = changes[i] < 0 ? Math.abs(changes[i]) : 0;
-      
+
       // Wilder's smoothing: (previous_average * (period - 1) + current_value) / period
       avgGain = (avgGain * (period - 1) + gain) / period;
       avgLoss = (avgLoss * (period - 1) + loss) / period;
     }
 
     if (avgLoss === 0) return 100;
-    
+
     const rs = avgGain / avgLoss;
     return 100 - (100 / (1 + rs));
   }
@@ -89,7 +90,7 @@ class TechnicalIndicators {
     const ema12 = this.calculateEMA(prices, 12);
     const ema26 = this.calculateEMA(prices, 26);
     const macd = ema12 - ema26;
-    
+
     // For signal line, we'd need historical MACD values, simplified for demo
     const signal = macd * 0.9; // Approximation
     const histogram = macd - signal;
@@ -106,13 +107,13 @@ class TechnicalIndicators {
   } {
     const sma = this.calculateSMA(prices, period);
     const slice = prices.slice(-period);
-    
+
     const variance = slice.reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / period;
     const stdDev = Math.sqrt(variance);
-    
+
     const upper = sma + (2 * stdDev);
     const lower = sma - (2 * stdDev);
-    
+
     // BB Squeeze detection (simplified)
     const squeeze = (upper - lower) / sma < 0.1;
 
@@ -143,12 +144,12 @@ class TechnicalIndicators {
     const currentClose = closes[closes.length - 1];
     const highestHigh = Math.max(...highs.slice(-kPeriod));
     const lowestLow = Math.min(...lows.slice(-kPeriod));
-    
+
     const k = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
-    
+
     // Simplified %D as 3-period SMA of %K (in practice, track recent %K values)
     const d = k; // Simplified for demo
-    
+
     return { k, d };
   }
 
@@ -157,7 +158,7 @@ class TechnicalIndicators {
     const currentClose = closes[closes.length - 1];
     const highestHigh = Math.max(...highs.slice(-period));
     const lowestLow = Math.min(...lows.slice(-period));
-    
+
     return ((highestHigh - currentClose) / (highestHigh - lowestLow)) * -100;
   }
 
@@ -166,10 +167,10 @@ class TechnicalIndicators {
     const typicalPrices = closes.map((close, i) => (highs[i] + lows[i] + close) / 3);
     const sma = this.calculateSMA(typicalPrices, period);
     const slice = typicalPrices.slice(-period);
-    
+
     const meanDeviation = slice.reduce((sum, tp) => sum + Math.abs(tp - sma), 0) / period;
     const currentTP = typicalPrices[typicalPrices.length - 1];
-    
+
     return meanDeviation !== 0 ? (currentTP - sma) / (0.015 * meanDeviation) : 0;
   }
 
@@ -177,10 +178,10 @@ class TechnicalIndicators {
   private calculateMFI(highs: number[], lows: number[], closes: number[], volumes: number[], period: number = 14): number {
     const typicalPrices = closes.map((close, i) => (highs[i] + lows[i] + close) / 3);
     const rawMoneyFlows = typicalPrices.map((tp, i) => tp * volumes[i]);
-    
+
     let positiveFlow = 0;
     let negativeFlow = 0;
-    
+
     for (let i = 1; i < Math.min(rawMoneyFlows.length, period + 1); i++) {
       if (typicalPrices[i] > typicalPrices[i - 1]) {
         positiveFlow += rawMoneyFlows[i];
@@ -188,7 +189,7 @@ class TechnicalIndicators {
         negativeFlow += rawMoneyFlows[i];
       }
     }
-    
+
     if (negativeFlow === 0) return 100;
     const moneyFlowRatio = positiveFlow / negativeFlow;
     return 100 - (100 / (1 + moneyFlowRatio));
@@ -197,7 +198,7 @@ class TechnicalIndicators {
   // On Balance Volume (OBV)
   private calculateOBV(closes: number[], volumes: number[]): number {
     let obv = 0;
-    
+
     for (let i = 1; i < closes.length; i++) {
       if (closes[i] > closes[i - 1]) {
         obv += volumes[i];
@@ -205,22 +206,22 @@ class TechnicalIndicators {
         obv -= volumes[i];
       }
     }
-    
+
     return obv;
   }
 
   // Average True Range (ATR)
   private calculateATR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
     const trueRanges: number[] = [];
-    
+
     for (let i = 1; i < closes.length; i++) {
       const tr1 = highs[i] - lows[i];
       const tr2 = Math.abs(highs[i] - closes[i - 1]);
       const tr3 = Math.abs(lows[i] - closes[i - 1]);
-      
+
       trueRanges.push(Math.max(tr1, tr2, tr3));
     }
-    
+
     return this.calculateSMA(trueRanges, Math.min(period, trueRanges.length));
   }
 
@@ -230,10 +231,10 @@ class TechnicalIndicators {
     const prevClose = closes[closes.length - 2] || currentClose;
     const highestHigh = Math.max(...highs.slice(-10));
     const lowestLow = Math.min(...lows.slice(-10));
-    
+
     const trend = currentClose > prevClose ? 'bullish' : 'bearish';
     const sar = trend === 'bullish' ? lowestLow * 0.98 : highestHigh * 1.02;
-    
+
     return { sar, trend };
   }
 
@@ -241,7 +242,7 @@ class TechnicalIndicators {
   private calculateVolumeOscillator(volumes: number[], shortPeriod: number = 5, longPeriod: number = 10): number {
     const shortSMA = this.calculateSMA(volumes, shortPeriod);
     const longSMA = this.calculateSMA(volumes, longPeriod);
-    
+
     return longSMA !== 0 ? ((shortSMA - longSMA) / longSMA) * 100 : 0;
   }
 
@@ -265,7 +266,7 @@ class TechnicalIndicators {
 
       const hh = highs[i] - highs[i - 1];
       const ll = lows[i - 1] - lows[i];
-      
+
       plusDMs.push(hh > ll && hh > 0 ? hh : 0);
       minusDMs.push(ll > hh && ll > 0 ? ll : 0);
     }
@@ -287,14 +288,14 @@ class TechnicalIndicators {
     try {
       // Convert timeframe to Binance format
       const binanceInterval = this.convertTimeframeToBinance(timeframe);
-      
+
       let closes: number[], highs: number[], lows: number[], volumes: number[], currentPrice: number;
       let klines: any[] = [];
-      
+
       try {
         // Get candlestick data (increased for better RSI accuracy)
         klines = await binanceService.getKlineData(symbol, binanceInterval, 200);
-        
+
         if (klines.length === 0) {
           throw new Error('No kline data received from API');
         }
@@ -306,7 +307,7 @@ class TechnicalIndicators {
         currentPrice = closes[closes.length - 1];
       } catch (apiError) {
         console.warn(`Failed to fetch real market data for ${symbol}, using fallback data:`, apiError);
-        
+
         // Generate fallback data for demonstration when API fails
         const fallbackData = this.generateFallbackData(symbol);
         closes = fallbackData.closes;
@@ -319,7 +320,7 @@ class TechnicalIndicators {
       // Add timing info for accuracy
       const calculationTimestamp = new Date().toISOString();
       const latestCandleTime = klines?.length > 0 ? new Date(klines[klines.length - 1].closeTime).toISOString() : calculationTimestamp;
-      
+
       // Calculate indicators
       const rsi = this.calculateRSI(closes);
       const macd = this.calculateMACD(closes);
@@ -464,7 +465,15 @@ class TechnicalIndicators {
         totalScore,
         recommendation,
         calculationTimestamp,
-        latestDataTime: latestCandleTime
+        latestDataTime: latestCandleTime,
+        candles: klines.map(k => ({
+          t: k.openTime,
+          o: parseFloat(k.open),
+          h: parseFloat(k.high),
+          l: parseFloat(k.low),
+          c: parseFloat(k.close),
+          v: parseFloat(k.volume)
+        }))
       };
 
     } catch (error) {
@@ -476,26 +485,26 @@ class TechnicalIndicators {
   async scanHighPotential(filters: ScanFilters): Promise<TechnicalAnalysis[]> {
     try {
       let allPairs: string[];
-      
+
       try {
         allPairs = await binanceService.getAllUSDTPairs();
       } catch (apiError) {
         console.warn('Failed to fetch USDT pairs from API, using fallback pairs:', apiError);
         // Fallback to common trading pairs when API fails
         allPairs = [
-          'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 
+          'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT',
           'DOTUSDT', 'MATICUSDT', 'AVAXUSDT', 'LTCUSDT', 'LINKUSDT',
           'ATOMUSDT', 'ALGOUSDT', 'XLMUSDT', 'VETUSDT', 'FILUSDT'
         ];
       }
-      
+
       const results: TechnicalAnalysis[] = [];
 
       // Filter out stablecoins if requested
       let pairsToScan = allPairs;
       if (filters.excludeStablecoins) {
         const stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP'];
-        pairsToScan = allPairs.filter(pair => 
+        pairsToScan = allPairs.filter(pair =>
           !stablecoins.some(stable => pair.replace('USDT', '') === stable)
         );
       }
@@ -506,10 +515,10 @@ class TechnicalIndicators {
       for (const symbol of topPairs) {
         try {
           const analysis = await this.analyzeSymbol(symbol, filters.timeframe || '1h');
-          
+
           // Apply filters
           if (filters.minScore && analysis.totalScore < filters.minScore) continue;
-          
+
           // Check bullish criteria
           const meetsBullishCriteria = this.checkBullishCriteria(analysis);
           if (meetsBullishCriteria) {
@@ -535,23 +544,23 @@ class TechnicalIndicators {
 
   private checkBullishCriteria(analysis: TechnicalAnalysis): boolean {
     const indicators = analysis.indicators;
-    
+
     // Price above EMAs
     const emaPositive = indicators.ema_crossover?.signal === 'bullish';
-    
+
     // RSI in healthy range
     const rsiHealthy = indicators.rsi?.value > 40 && indicators.rsi?.value < 70;
-    
+
     // Positive MACD
     const macdPositive = indicators.macd?.signal === 'bullish';
-    
+
     // Strong trend
     const strongTrend = indicators.adx?.value > 25;
-    
+
     // At least 3 out of 4 criteria met
     const criteriaCount = [emaPositive, rsiHealthy, macdPositive, strongTrend]
       .filter(Boolean).length;
-    
+
     return criteriaCount >= 3 && analysis.totalScore > 10;
   }
 
@@ -572,11 +581,11 @@ class TechnicalIndicators {
     volumes: number[]
   } {
     // Generate realistic mock data for demonstration
-    const basePrice = symbol.includes('BTC') ? 45000 : 
-                     symbol.includes('ETH') ? 3000 : 
-                     symbol.includes('BNB') ? 400 : 
-                     symbol.includes('ADA') ? 0.5 : 
-                     symbol.includes('SOL') ? 100 : 50;
+    const basePrice = symbol.includes('BTC') ? 45000 :
+      symbol.includes('ETH') ? 3000 :
+        symbol.includes('BNB') ? 400 :
+          symbol.includes('ADA') ? 0.5 :
+            symbol.includes('SOL') ? 100 : 50;
 
     const closes: number[] = [];
     const highs: number[] = [];
@@ -587,7 +596,7 @@ class TechnicalIndicators {
     for (let i = 0; i < 100; i++) {
       const variation = (Math.random() - 0.5) * 0.05; // ±2.5% variation
       const price = basePrice * (1 + variation + (i / 100) * 0.1); // Slight upward trend
-      
+
       const volatility = 0.02; // 2% volatility
       const high = price * (1 + Math.random() * volatility);
       const low = price * (1 - Math.random() * volatility);

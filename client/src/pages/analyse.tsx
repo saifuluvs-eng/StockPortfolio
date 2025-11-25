@@ -72,6 +72,7 @@ interface ScanResult {
   totalScore: number;
   recommendation: Recommendation;
   meta?: Record<string, unknown> | null;
+  candles?: unknown[];
 }
 
 interface ScannerAnalysis {
@@ -81,6 +82,7 @@ interface ScannerAnalysis {
   breakdown?: unknown;
   technicals?: unknown;
   checks?: unknown;
+  candles?: unknown[];
   [key: string]: unknown;
 }
 
@@ -240,7 +242,7 @@ function getRawBreakdownRows(item: ScannerAnalysis | ScanResult | null | undefin
         };
       })
       .filter((entry) => entry?.title);
-    
+
     if (rows.length === 0 && Object.keys(indicators).length > 0) {
       console.warn("[Breakdown] Indicators present but no rows extracted", {
         indicatorCount: Object.keys(indicators).length,
@@ -248,7 +250,7 @@ function getRawBreakdownRows(item: ScannerAnalysis | ScanResult | null | undefin
         firstValue: Object.values(indicators)[0]
       });
     }
-    
+
     return rows;
   }
 
@@ -367,7 +369,7 @@ export default function Analyse() {
     return () => {
       try {
         abortRef.current?.abort();
-      } catch {}
+      } catch { }
     };
   }, []);
 
@@ -420,9 +422,8 @@ export default function Analyse() {
     const queryString = nextParams.toString();
     const targetPath = `/analyse/${selectedSymbol}`;
     const target = queryString ? `${targetPath}?${queryString}` : targetPath;
-    const current = `${locationInfo.path}${
-      locationInfo.hashSearch ? `?${locationInfo.hashSearch}` : ""
-    }`;
+    const current = `${locationInfo.path}${locationInfo.hashSearch ? `?${locationInfo.hashSearch}` : ""
+      }`;
 
     if (current !== target) {
       setLocation(target);
@@ -447,19 +448,19 @@ export default function Analyse() {
 
   useEffect(() => {
     if (!selectedSymbol) return;
-    
+
     // Load from cache first if available
     const cachedPrice = localStorage.getItem(ANALYSE_CACHE_KEYS.priceData(selectedSymbol));
     if (cachedPrice) {
       try {
         setPriceData(JSON.parse(cachedPrice));
-      } catch {}
+      } catch { }
     }
-    
+
     const targetSymbol = selectedSymbol.toUpperCase();
     let active = true;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    
+
     // Try backend endpoint first (works everywhere), then WebSocket fallback
     const fetchFromBackend = async () => {
       try {
@@ -468,12 +469,12 @@ export default function Analyse() {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (!active) return;
-        
+
         // Validate we got a proper response with all required fields
         if (!data?.symbol || !data?.lastPrice) {
           throw new Error(`Invalid ticker response for ${targetSymbol}`);
         }
-        
+
         console.debug("[Ticker] Backend data received:", { targetSymbol, apiData: data });
         // Ensure all values are present and are strings
         const priceObj: PriceData = {
@@ -496,7 +497,7 @@ export default function Analyse() {
         tryWebSocket();
       }
     };
-    
+
     const tryWebSocket = () => {
       try {
         const unsubscribe = openSpotTickerStream(selectedSymbol, {
@@ -531,7 +532,7 @@ export default function Analyse() {
             }, 2000);
           }
         });
-        
+
         return () => {
           if (timeoutId) clearTimeout(timeoutId);
           unsubscribe?.();
@@ -540,10 +541,10 @@ export default function Analyse() {
         console.error("[Ticker] WebSocket setup failed:", error);
       }
     };
-    
+
     // Start with backend fetch
     void fetchFromBackend();
-    
+
     return () => {
       active = false;
       if (timeoutId) clearTimeout(timeoutId);
@@ -552,7 +553,7 @@ export default function Analyse() {
 
   const latestPrice =
     (priceData?.symbol || "").toUpperCase() === selectedSymbol.toUpperCase() ? priceData : null;
-  
+
   // Debug: log when price data changes
   useEffect(() => {
     console.debug("[Ticker] State after update:", {
@@ -564,7 +565,7 @@ export default function Analyse() {
       quoteVolume: latestPrice?.quoteVolume
     });
   }, [priceData, selectedSymbol, latestPrice]);
-  
+
   const showLoadingState = !latestPrice;
   const priceChange = showLoadingState ? 0 : parseFloat(latestPrice?.priceChangePercent || "0");
   const isPositive = priceChange > 0;
@@ -591,7 +592,7 @@ export default function Analyse() {
 
       try {
         abortRef.current?.abort();
-      } catch {}
+      } catch { }
       const ac = new AbortController();
       abortRef.current = ac;
 
@@ -601,7 +602,7 @@ export default function Analyse() {
         try {
           setScanResult(JSON.parse(cachedResult));
           console.debug("[Analyse] Loaded cached result for", normalizedSymbol, tfValue);
-        } catch {}
+        } catch { }
       }
 
       setIsScanning(true);
@@ -716,7 +717,7 @@ export default function Analyse() {
       previousSymbolRef.current = selectedSymbol;
       previousTimeframeRef.current = timeframe;
       console.debug("[Analyse] First render:", { selectedSymbol, timeframe, initialExplicit: initialExplicitSymbolRef.current });
-      
+
       if (initialExplicitSymbolRef.current) {
         console.debug("[Analyse] Triggering initial analysis");
         void runAnalysis(selectedSymbol, timeframe);
@@ -733,17 +734,17 @@ export default function Analyse() {
 
     const oldSymbol = previousSymbolRef.current;
     const oldTimeframe = previousTimeframeRef.current;
-    
+
     previousSymbolRef.current = selectedSymbol;
     previousTimeframeRef.current = timeframe;
-    
+
     console.warn("[Analyse] Auto-run triggered:", {
       symbolChanged,
       timeframeChanged,
       from: { symbol: oldSymbol, timeframe: oldTimeframe },
       to: { symbol: selectedSymbol, timeframe: timeframe },
     });
-    
+
     void runAnalysis(selectedSymbol, timeframe);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -896,7 +897,7 @@ export default function Analyse() {
     if (cachedResult) {
       try {
         setScanResult(JSON.parse(cachedResult));
-      } catch {}
+      } catch { }
     }
     setSymbolInput(displaySymbol(fullSymbol));
     setChartSymbol(normalizedSymbol);
@@ -915,7 +916,7 @@ export default function Analyse() {
       title: "Analyzing...",
       description: `Loading ${displayPair(fullSymbol)} indicators`,
     });
-    
+
     console.debug("[Analyse] handleSearch -> runAnalysis", { fullSymbol, timeframe });
     void runAnalysis(fullSymbol, timeframe);
   }, [symbolInput, timeframe, isAuthenticated, toast, runAnalysis]);
@@ -945,13 +946,13 @@ export default function Analyse() {
     }
 
     const normalizedTarget = normalizeSymbol(targetSymbol);
-    
+
     // Load cached result if available instead of clearing
     const cachedResult = localStorage.getItem(ANALYSE_CACHE_KEYS.scanResult(normalizedTarget, timeframe));
     if (cachedResult) {
       try {
         setScanResult(JSON.parse(cachedResult));
-      } catch {}
+      } catch { }
     }
 
     if (!networkEnabled) {
@@ -1081,229 +1082,234 @@ export default function Analyse() {
       <div className="flex flex-col gap-5 py-6">
         <BackendWarningBanner status={backendStatus} />
         <header className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-3xl font-bold text-foreground">
-              <BarChart3 className="h-7 w-7 text-primary" />
-              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Decision Hub</span>
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Real-time charts, quantitative scans, and idea discovery in one cockpit.
-            </p>
-          </div>
-          <Button
-            variant={symbolInWatchlist ? "secondary" : "outline"}
-            onClick={handleToggleWatchlist}
-            disabled={
-              addToWatchlist.isPending ||
-              removeFromWatchlist.isPending ||
-              !networkEnabled
-            }
-          >
-            <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
-            <span className="ml-2">
-              {symbolInWatchlist ? "Watching" : "Add to Watchlist"}
-            </span>
-          </Button>
-        </div>
-      </header>
-      {/* HEADER */}
-      <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 p-3 md:p-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-[260px] grow lg:basis-[66%]">
-            <div className="relative">
-              <Input
-                placeholder="Enter coin (BTC, ETH, SOL...)"
-                value={symbolInput}
-                onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
-                onKeyPress={handleKeyPress}
-                className="h-11 w-full min-w-0 pl-10"
-                data-testid="input-search-symbol"
-              />
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-3xl font-bold text-foreground">
+                <BarChart3 className="h-7 w-7 text-primary" />
+                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Decision Hub</span>
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Real-time charts, quantitative scans, and idea discovery in one cockpit.
+              </p>
             </div>
+            <Button
+              variant={symbolInWatchlist ? "secondary" : "outline"}
+              onClick={handleToggleWatchlist}
+              disabled={
+                addToWatchlist.isPending ||
+                removeFromWatchlist.isPending ||
+                !networkEnabled
+              }
+            >
+              <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
+              <span className="ml-2">
+                {symbolInWatchlist ? "Watching" : "Add to Watchlist"}
+              </span>
+            </Button>
+          </div>
+        </header>
+        {/* HEADER */}
+        <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 p-3 md:p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-[260px] grow lg:basis-[66%]">
+              <div className="relative">
+                <Input
+                  placeholder="Enter coin (BTC, ETH, SOL...)"
+                  value={symbolInput}
+                  onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
+                  onKeyPress={handleKeyPress}
+                  className="h-11 w-full min-w-0 pl-10"
+                  data-testid="input-search-symbol"
+                />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground md:text-sm">
+              <Clock3 className="h-4 w-4" />
+              <span className="whitespace-nowrap">Timeframe</span>
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <SelectTrigger
+                  className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
+                  data-testid="select-timeframe"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEFRAMES.map((tf) => (
+                    <SelectItem key={tf.value} value={tf.value}>
+                      {tf.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <button
+              type="button"
+              onClick={onRunAnalysis}
+              disabled={isScanning}
+              className="ml-auto rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors"
+              data-testid="button-scan"
+            >
+              {isScanning ? "Scanning…" : "Run Analysis"}
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground md:text-sm">
-            <Clock3 className="h-4 w-4" />
-            <span className="whitespace-nowrap">Timeframe</span>
-            <Select value={timeframe} onValueChange={setTimeframe}>
-              <SelectTrigger
-                className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
-                data-testid="select-timeframe"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIMEFRAMES.map((tf) => (
-                  <SelectItem key={tf.value} value={tf.value}>
-                    {tf.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="mt-3 flex flex-wrap items-center gap-3 md:gap-4">
+            <MiniStat
+              label="Current Price"
+              value={
+                showLoadingState
+                  ? loadingMessage
+                  : formatPrice(latestPrice?.lastPrice)
+              }
+              icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
+            />
+            <MiniStat
+              label="24h Change"
+              value={
+                showLoadingState
+                  ? loadingMessage
+                  : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
+              }
+              tone={
+                showLoadingState
+                  ? "default"
+                  : priceChange > 0
+                    ? "up"
+                    : priceChange < 0
+                      ? "down"
+                      : "default"
+              }
+              icon={
+                showLoadingState ? (
+                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                ) : isPositive ? (
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
+                ) : priceChange < 0 ? (
+                  <TrendingDown className="h-3.5 w-3.5 text-rose-300" />
+                ) : (
+                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                )
+              }
+            />
+            <MiniStat
+              label="24h Volume"
+              value={
+                showLoadingState
+                  ? loadingMessage
+                  : formatVolume(latestPrice?.quoteVolume)
+              }
+              icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
+            />
+            <MiniStat
+              label="Today's Range"
+              value={
+                showLoadingState ? (
+                  loadingMessage
+                ) : (
+                  `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
+                )
+              }
+              icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
+            />
           </div>
-
-          <button
-            type="button"
-            onClick={onRunAnalysis}
-            disabled={isScanning}
-            className="ml-auto rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors"
-            data-testid="button-scan"
-          >
-            {isScanning ? "Scanning…" : "Run Analysis"}
-          </button>
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3 md:gap-4">
-          <MiniStat
-            label="Current Price"
-            value={
-              showLoadingState
-                ? loadingMessage
-                : formatPrice(latestPrice?.lastPrice)
-            }
-            icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
-          />
-          <MiniStat
-            label="24h Change"
-            value={
-              showLoadingState
-                ? loadingMessage
-                : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
-            }
-            tone={
-              showLoadingState
-                ? "default"
-                : priceChange > 0
-                  ? "up"
-                  : priceChange < 0
-                    ? "down"
-                    : "default"
-            }
-            icon={
-              showLoadingState ? (
-                <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
-              ) : isPositive ? (
-                <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
-              ) : priceChange < 0 ? (
-                <TrendingDown className="h-3.5 w-3.5 text-rose-300" />
-              ) : (
-                <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
-              )
-            }
-          />
-          <MiniStat
-            label="24h Volume"
-            value={
-              showLoadingState
-                ? loadingMessage
-                : formatVolume(latestPrice?.quoteVolume)
-            }
-            icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
-          />
-          <MiniStat
-            label="Today's Range"
-            value={
-              showLoadingState ? (
-                loadingMessage
-              ) : (
-                `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
-              )
-            }
-            icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
-          />
-        </div>
-      </div>
+        {false && priceSummaryCards}
 
-      {false && priceSummaryCards}
-
-      <div className="mt-4">
-        <div
-          className="
+        <div className="mt-4">
+          <div
+            className="
             grid gap-6 items-start content-start
             grid-cols-1
             xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]
           "
-        >
-          <section className="min-w-0 overflow-hidden">
-            {scanResult ? (
-              (() => {
-                const item = scanResult;
-                const rawRows = getRawBreakdownRows(item);
+          >
+            <section className="min-w-0 overflow-hidden">
+              {scanResult ? (
+                (() => {
+                  const item = scanResult;
+                  const rawRows = getRawBreakdownRows(item);
 
-                const breakdownRows: BreakdownRow[] = rawRows
-                  .map((row: any) => {
-                    const rawSignal = asString(row?.signal).toLowerCase();
-                    const normalizedSignal: BreakdownRow["signal"] =
-                      rawSignal === "bullish" || rawSignal === "bearish"
-                        ? (rawSignal as BreakdownRow["signal"])
-                        : "neutral";
+                  const breakdownRows: BreakdownRow[] = rawRows
+                    .map((row: any) => {
+                      const rawSignal = asString(row?.signal).toLowerCase();
+                      const normalizedSignal: BreakdownRow["signal"] =
+                        rawSignal === "bullish" || rawSignal === "bearish"
+                          ? (rawSignal as BreakdownRow["signal"])
+                          : "neutral";
 
-                    const rawValue = row?.value;
-                    const value = formatIndicatorValue(rawValue);
+                      const rawValue = row?.value;
+                      const value = formatIndicatorValue(rawValue);
 
-                    return {
-                      title: asString(row?.title || row?.key || row?.name),
-                      value,
-                      signal: normalizedSignal,
-                      reason: row?.reason
-                        ? asString(row.reason)
-                        : row?.description
-                          ? asString(row.description)
-                          : undefined,
-                    } satisfies BreakdownRow;
-                  })
-                  .filter((row: BreakdownRow) => row.title);
+                      return {
+                        title: asString(row?.title || row?.key || row?.name),
+                        value,
+                        signal: normalizedSignal,
+                        reason: row?.reason
+                          ? asString(row.reason)
+                          : row?.description
+                            ? asString(row.description)
+                            : undefined,
+                      } satisfies BreakdownRow;
+                    })
+                    .filter((row: BreakdownRow) => row.title);
 
-                if (breakdownRows.length === 0) {
-                  return <BreakdownSection rows={[]} />;
-                }
+                  if (breakdownRows.length === 0) {
+                    return <BreakdownSection rows={[]} />;
+                  }
 
-                return <BreakdownSection rows={breakdownRows} />;
-              })()
-            ) : (
-              <BreakdownSection
-                rows={[]}
-                emptyState={
-                  <div className="py-12 text-center text-muted-foreground">
-                    <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
-                    <h4 className="text-lg font-medium text-white">No analysis yet</h4>
-                    <p className="mx-auto mt-1 max-w-xs text-sm">
-                      Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
-                    </p>
+                  return <BreakdownSection rows={breakdownRows} />;
+                })()
+              ) : (
+                <BreakdownSection
+                  rows={[]}
+                  emptyState={
+                    <div className="py-12 text-center text-muted-foreground">
+                      <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
+                      <h4 className="text-lg font-medium text-white">No analysis yet</h4>
+                      <p className="mx-auto mt-1 max-w-xs text-sm">
+                        Run a scan to unlock AI-enhanced technical breakdowns across all indicators.
+                      </p>
+                    </div>
+                  }
+                />
+              )}
+            </section>
+
+            <section className="min-w-0 overflow-hidden">
+              <Card className="flex h-full flex-col border-border/70 bg-card/70">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="h-[560px] min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
+                    <div className="h-full w-full">
+                      <TVChart
+                        key={`${chartSymbol}-${chartTf}`}
+                        symbol={chartSymbol}
+                        timeframe={chartTf}
+                      />
+                    </div>
                   </div>
-                }
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="min-w-0 overflow-hidden">
+              <AiSummaryPanel
+                symbol={selectedSymbol}
+                tf={timeframe}
+                technicals={scanResult?.indicators}
+                candles={scanResult?.candles as unknown[]}
               />
-            )}
-          </section>
-
-          <section className="min-w-0 overflow-hidden">
-            <Card className="flex h-full flex-col border-border/70 bg-card/70">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="h-[560px] min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
-                  <div className="h-full w-full">
-                    <TVChart
-                      key={`${chartSymbol}-${chartTf}`}
-                      symbol={chartSymbol}
-                      timeframe={chartTf}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          <section className="min-w-0 overflow-hidden">
-            <AiSummaryPanel symbol={selectedSymbol} tf={timeframe} technicals={scanResult?.indicators} />
-          </section>
+            </section>
+          </div>
         </div>
       </div>
     </div>
-  </div>
   );
 }
 

@@ -5,15 +5,16 @@ type UseAiSummaryParams = {
   symbol: string;
   tf: string;
   technicals?: unknown;
+  candles?: unknown[];
 };
 
-export function useAiSummary({ symbol, tf, technicals }: UseAiSummaryParams) {
+export function useAiSummary({ symbol, tf, technicals, candles }: UseAiSummaryParams) {
   return useQuery({
     queryKey: ["aiSummary", symbol, tf],
     queryFn: async () => {
       const response = (await apiFetch("/api/ai/summary", {
         method: "POST",
-        body: JSON.stringify({ symbol, tf, technicals }),
+        body: JSON.stringify({ symbol, tf, technicals, candles }),
       })) as { data?: string } | null;
       const text = typeof response?.data === "string" ? response.data : "";
       return text;
