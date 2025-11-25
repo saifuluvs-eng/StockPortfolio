@@ -190,11 +190,20 @@ function formatIndicatorValue(value: any): string {
   if (typeof value === "string") return value;
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return "—";
-    // For percentages and small numbers, use 2 decimals
-    if (Math.abs(value) < 100) return value.toFixed(2);
-    // For larger numbers, use fewer decimals
-    if (Math.abs(value) < 10000) return value.toFixed(1);
-    // For very large numbers, use no decimals or scientific notation
+
+    const absVal = Math.abs(value);
+    if (absVal === 0) return "0.00";
+
+    // For very small numbers (e.g. crypto prices/diffs), use more precision
+    if (absVal < 0.0001) return value.toFixed(8);
+    if (absVal < 0.01) return value.toFixed(6);
+    if (absVal < 1) return value.toFixed(4);
+
+    // For percentages and normal numbers
+    if (absVal < 100) return value.toFixed(2);
+    // For larger numbers
+    if (absVal < 10000) return value.toFixed(1);
+    // For very large numbers
     return value.toFixed(0);
   }
   return String(value);
