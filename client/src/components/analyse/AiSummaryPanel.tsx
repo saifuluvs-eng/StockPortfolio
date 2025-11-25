@@ -23,6 +23,7 @@ export default function AiSummaryPanel({ symbol, tf, technicals, candles }: AiSu
   const handleGenerate = async () => {
     console.log("[DEBUG] Generate button clicked!");
     console.log("[DEBUG] Props - symbol:", symbol, "tf:", tf, "hasUser:", !!user);
+    console.log("[DEBUG] Candles prop:", candles ? `Present (Length: ${candles.length})` : "Missing");
 
     if (!symbol || !tf) {
       console.error("[DEBUG] Cannot generate: missing symbol or tf", { symbol, tf });

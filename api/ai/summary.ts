@@ -14,7 +14,8 @@ export default async (req: VercelRequest, res: VercelResponse) => {
     }
 
     // Log the technical data for debugging
-    console.log("DEBUG: Raw technicals received:", technicals);
+    console.log("DEBUG: Raw technicals received:", technicals ? "Present" : "Missing");
+    console.log("DEBUG: Candles received:", candles ? `Yes (Length: ${candles.length})` : "No");
 
     // Check if technical data is missing or empty
     const isMissingData = !technicals ||
