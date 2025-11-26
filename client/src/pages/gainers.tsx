@@ -70,7 +70,7 @@ function GainerRow({ index, symbol, name, change24h, price, volume, onAnalyse }:
         </div>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-right font-semibold">{formatPrice(price)}</td>
-      <td className={`whitespace-nowrap px-4 py-3 text-right font-semibold ${isUp ? "text-accent" : "text-destructive"}`}>
+      <td className={`whitespace-nowrap px-4 py-3 text-right font-semibold ${isUp ? "text-emerald-500" : "text-destructive"}`}>
         {isUp ? "+" : ""}
         {changeDisplay.toFixed(2)}%
       </td>
@@ -104,7 +104,7 @@ function GainerRowMobile({ index, symbol, name, change24h, price, volume, onAnal
         </div>
         <span className="text-xs text-muted-foreground">#{index + 1}</span>
       </div>
-      
+
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div>
           <p className="text-xs text-muted-foreground">Price</p>
@@ -112,7 +112,7 @@ function GainerRowMobile({ index, symbol, name, change24h, price, volume, onAnal
         </div>
         <div className="text-right">
           <p className="text-xs text-muted-foreground">24h Change</p>
-          <p className={`font-semibold ${isUp ? "text-accent" : "text-destructive"}`}>
+          <p className={`font-semibold ${isUp ? "text-emerald-500" : "text-destructive"}`}>
             {isUp ? "+" : ""}{changeDisplay.toFixed(2)}%
           </p>
         </div>
@@ -155,10 +155,10 @@ export default function Gainers() {
   };
 
   const formatTimestamp = (date: Date) => {
-    return date.toLocaleTimeString("en-US", { 
-      hour: "2-digit", 
-      minute: "2-digit", 
-      second: "2-digit" 
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
     });
   };
 
@@ -191,11 +191,11 @@ export default function Gainers() {
 
       if (top.length === 0)
         setError("No gainers data available.");
-      
+
       const now = new Date();
       setRows(top);
       setLastUpdated(now);
-      
+
       // Cache the data and timestamp
       localStorage.setItem(CACHE_KEY, JSON.stringify(top));
       localStorage.setItem(TIMESTAMP_KEY, now.toISOString());
@@ -212,7 +212,7 @@ export default function Gainers() {
     // Load from cache first for instant display (no loading state)
     const cachedData = localStorage.getItem(CACHE_KEY);
     const cachedTimestamp = localStorage.getItem(TIMESTAMP_KEY);
-    
+
     if (cachedData && cachedTimestamp) {
       try {
         setRows(JSON.parse(cachedData));
@@ -249,7 +249,7 @@ export default function Gainers() {
         // Cache corrupted, will fetch fresh below
       }
     }
-    
+
     // No cache, do full load
     fetchData(false);
   }, []);
@@ -258,9 +258,9 @@ export default function Gainers() {
   useEffect(() => {
     const randomInterval = 10 + Math.random() * 5; // 10-15 minutes
     const intervalMs = randomInterval * 60 * 1000;
-    
+
     console.log(`[Gainers] Auto-refresh configured for ${randomInterval.toFixed(1)} minutes`);
-    
+
     const intervalId = setInterval(() => {
       console.log(`[Gainers] ✓ Auto-refreshing data now...`);
       fetchData(true);

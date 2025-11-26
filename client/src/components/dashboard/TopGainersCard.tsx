@@ -133,7 +133,7 @@ export default function TopGainersCard() {
               topGainers.map((gainer) => (
                 <div key={gainer.symbol} className="flex items-center justify-between text-xs sm:text-sm">
                   <span className="font-medium text-foreground">{stripUSDT(gainer.symbol)}</span>
-                  <span className={`font-semibold ${gainer.change24h >= 0 ? "text-accent" : "text-destructive"}`}>
+                  <span className={`font-semibold ${gainer.change24h >= 0 ? "text-emerald-500" : "text-destructive"}`}>
                     {formatPercent(gainer.change24h)}
                   </span>
                 </div>
