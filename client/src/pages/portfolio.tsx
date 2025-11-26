@@ -36,6 +36,8 @@ import { useAuth as useSupabaseAuth } from "@/auth/AuthContext";
 import { useLoginGate } from "@/auth/useLoginGate";
 import type { PortfolioPosition } from "@/lib/api/portfolio";
 import { openSpotTickerStream } from "@/lib/binanceWs";
+import { AssetAllocationChart } from "@/components/portfolio/AssetAllocationChart";
+import { PerformanceComparisonCard } from "@/components/portfolio/PerformanceComparisonCard";
 
 type Position = {
   id: string;
@@ -84,6 +86,8 @@ export default function Portfolio() {
     pnlPct: totalPnLPercent,
     cost: totalCost,
   } = usePortfolioStats();
+
+  const [btcChange, setBtcChange] = useState<number>(0);
 
   const positions = useMemo<Position[]>(
     () =>
@@ -180,6 +184,12 @@ export default function Portfolio() {
         // Update global price store
         if (!Number.isNaN(price)) {
           setPrices({ [sym]: price });
+        }
+
+        // Capture BTC change for analytics
+        const change = parseFloat(ticker.priceChangePercent);
+        if (sym === "BTCUSDT" && !Number.isNaN(change)) {
+          setBtcChange(change);
         }
       },
       onError: (err) => console.error("WS Error:", err),
@@ -364,6 +374,16 @@ export default function Portfolio() {
         {/* Live market strip - hidden on mobile */}
         <div className="mb-6 hidden sm:block">
           <LiveSummary symbols={["BTCUSDT", "ETHUSDT"]} />
+        </div>
+
+        {/* Analytics Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 h-[300px]">
+          <div className="lg:col-span-2 h-full">
+            <AssetAllocationChart positions={positions} prices={prices} />
+          </div>
+          <div className="h-full">
+            <PerformanceComparisonCard btcChange={btcChange} totalPnlPct={totalPnLPercent} />
+          </div>
         </div>
 
         {/* Stat cards */}
