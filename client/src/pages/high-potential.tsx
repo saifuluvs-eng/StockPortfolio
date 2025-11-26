@@ -33,9 +33,10 @@ export default function HighPotentialPage() {
                 });
                 if (!res.ok) throw new Error("Failed to fetch high potential coins");
                 const data = await res.json();
-                setCoins(data.data);
+                console.log("High Potential API Response:", data);
+                setCoins(Array.isArray(data.data) ? data.data : []);
             } catch (err) {
-                console.error(err);
+                console.error("High Potential Page Error:", err);
                 setError("Failed to load high potential coins. Please try again later.");
             } finally {
                 setLoading(false);
@@ -43,6 +44,9 @@ export default function HighPotentialPage() {
         }
         fetchData();
     }, []);
+
+    // Safe check for coins
+    const safeCoins = Array.isArray(coins) ? coins : [];
 
     return (
         <div className="p-4 sm:p-6 text-foreground min-h-screen">
@@ -63,13 +67,13 @@ export default function HighPotentialPage() {
                 <div className="text-center p-8 text-red-400 bg-red-500/10 rounded-lg border border-red-500/20">
                     {error}
                 </div>
-            ) : coins.length === 0 ? (
+            ) : safeCoins.length === 0 ? (
                 <div className="text-center p-8 text-muted-foreground bg-card rounded-lg border border-border">
                     No coins match the high potential criteria right now.
                 </div>
             ) : (
                 <div className="grid gap-4">
-                    {coins.map((coin) => (
+                    {safeCoins.map((coin) => (
                         <Card key={coin.symbol} className="bg-card border-border hover:border-primary/50 transition-colors">
                             <CardContent className="p-4 sm:p-5">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
