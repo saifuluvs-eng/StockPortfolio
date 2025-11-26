@@ -6,13 +6,13 @@ function json(res, code, body) {
   res.setHeader("Cache-Control", "s-maxage=30, stale-while-revalidate=60");
   return res.status(code).json(body);
 }
-const ok  = (res, body) => json(res, 200, body);
+const ok = (res, body) => json(res, 200, body);
 const bad = (res, code, message, extra = {}) => json(res, code, { ok: false, message, ...extra });
 
 const BINANCE = "https://api.binance.com";
 
 // ---------- indicators ----------
-const VALID = new Set(["1m","3m","5m","15m","30m","1h","2h","4h","6h","8h","12h","1d","3d","1w","1M"]);
+const VALID = new Set(["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"]);
 function normTF(tf) {
   const t = String(tf || "").toLowerCase().trim();
   if (VALID.has(t)) return t;
@@ -200,6 +200,125 @@ async function scan(req, res) {
   });
 }
 
+const obv = (closes, volumes) => {
+  if (closes.length === 0) return [];
+  const out = [0];
+  let acc = 0;
+  for (let i = 1; i < closes.length; i++) {
+    if (closes[i] > closes[i - 1]) acc += volumes[i];
+    else if (closes[i] < closes[i - 1]) acc -= volumes[i];
+    out.push(acc);
+  }
+  return out;
+};
+
+const stdDev = (arr) => {
+  const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+  const variance = arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arr.length;
+  return Math.sqrt(variance);
+};
+
+const bollingerBands = (closes, period = 20, mult = 2) => {
+  if (closes.length < period) return { upper: [], middle: [], lower: [] };
+  const middle = sma(closes, period);
+  const upper = [];
+  const lower = [];
+
+  for (let i = 0; i < middle.length; i++) {
+    const slice = closes.slice(i, i + period);
+    const sd = stdDev(slice);
+    upper.push(middle[i] + mult * sd);
+    lower.push(middle[i] - mult * sd);
+  }
+  return { upper, middle, lower };
+};
+
+async function highPotential(_req, res) {
+  const pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT', 'NEARUSDT', 'FILUSDT', 'INJUSDT', 'OPUSDT', 'ARBUSDT'];
+  const results = [];
+
+  for (const symbol of pairs) {
+    try {
+      const r = await fetch(`${BINANCE}/api/v3/klines?symbol=${symbol}&interval=4h&limit=100`, { cache: "no-store" });
+      if (!r.ok) continue;
+      const klines = await r.json();
+      if (!Array.isArray(klines) || klines.length < 50) continue;
+
+      const closes = klines.map(k => parseFloat(k[4]));
+      const volumes = klines.map(k => parseFloat(k[5]));
+      const price = closes[closes.length - 1];
+      const volume = volumes[volumes.length - 1];
+
+      // Indicators
+      const ema20Arr = ema(closes, 20);
+      const ema50Arr = ema(closes, 50);
+      const rsiArr = rsi(closes, 14);
+      const { hist } = macd(closes, 12, 26, 9);
+      const obvArr = obv(closes, volumes);
+      const bb = bollingerBands(closes, 20, 2);
+      const avgVolume = sma(volumes, 20).at(-1) || 0;
+
+      const ema20 = ema20Arr.at(-1) || 0;
+      const ema50 = ema50Arr.at(-1) || 0;
+      const rsiVal = rsiArr.at(-1) || 0;
+      const macdHist = hist.at(-1) || 0;
+
+      // OBV Slope (last 5)
+      const last5Obv = obvArr.slice(-5);
+      const obvSlope = (last5Obv[last5Obv.length - 1] - last5Obv[0]) / 5;
+
+      // Volatility
+      const upper = bb.upper.at(-1) || 0;
+      const lower = bb.lower.at(-1) || 0;
+      const middle = bb.middle.at(-1) || 0;
+      const bandwidth = (upper - lower) / middle;
+      let volatilityState = "normal";
+      if (bandwidth < 0.05) volatilityState = "low";
+      if (bandwidth > 0.15) volatilityState = "high";
+
+      // Scoring
+      let score = 0;
+      const passesDetail = {
+        trend: false,
+        rsi: false,
+        macd: false,
+        volume: false,
+        obv: false,
+        volatility: false
+      };
+
+      if (price > ema20) { passesDetail.trend = true; score += 1; }
+      if (ema20 > ema50) { passesDetail.trend = true; score += 1; }
+      if (rsiVal >= 48 && rsiVal <= 65) { passesDetail.rsi = true; score += 2; }
+      if (macdHist > 0) { passesDetail.macd = true; score += 1; }
+      if (volume > avgVolume) { passesDetail.volume = true; score += 2; }
+      if (obvSlope > 0) { passesDetail.obv = true; score += 1; }
+      if (volatilityState === "normal" || volatilityState === "high") { passesDetail.volatility = true; score += 1; }
+
+      const passes = score >= 5;
+
+      if (score > 0) {
+        results.push({
+          symbol,
+          score,
+          passes,
+          passesDetail,
+          price,
+          rsi: rsiVal,
+          volume,
+          avgVolume,
+          volatilityState
+        });
+      }
+    } catch (e) {
+      console.error(`Error scanning ${symbol}`, e);
+    }
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  return ok(res, { data: results });
+}
+
 // ---------- router ----------
 export default async function handler(req, res) {
   try {
@@ -219,6 +338,8 @@ export default async function handler(req, res) {
       if (seg[1] === "scan") return scan(req, res);
       return bad(res, 404, "Unknown scanner route", { path });
     }
+
+    if (seg[0] === "high-potential") return highPotential(req, res);
 
     if (seg[0] === "watchlist") return ok(res, { ok: true, items: [], time: new Date().toISOString() });
     if (seg[0] === "portfolio") return ok(res, { ok: true, positions: [], time: new Date().toISOString() });
