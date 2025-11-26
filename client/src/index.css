@@ -21,11 +21,13 @@
   --background: hsl(240, 10%, 3.9%);
   --foreground: hsl(0, 0%, 98%);
 
-  --card: hsl(240, 10%, 3.9%);
+  /* Slightly lighter card background for contrast */
+  --card: hsl(240, 10%, 6%);
   --card-foreground: hsl(0, 0%, 98%);
-  --card-border: hsl(240, 3.7%, 15.9%);
+  /* Lighter border for definition */
+  --card-border: hsl(240, 3.7%, 20%);
 
-  --popover: hsl(240, 10%, 3.9%);
+  --popover: hsl(240, 10%, 6%);
   --popover-foreground: hsl(0, 0%, 98%);
 
   --primary: hsl(0, 0%, 98%);
@@ -88,10 +90,10 @@
   /* Same as root for now */
   --background: hsl(240, 10%, 3.9%);
   --foreground: hsl(0, 0%, 98%);
-  --card: hsl(240, 10%, 3.9%);
+  --card: hsl(240, 10%, 6%);
   --card-foreground: hsl(0, 0%, 98%);
-  --card-border: hsl(240, 3.7%, 15.9%);
-  --popover: hsl(240, 10%, 3.9%);
+  --card-border: hsl(240, 3.7%, 20%);
+  --popover: hsl(240, 10%, 6%);
   --popover-foreground: hsl(0, 0%, 98%);
   --primary: hsl(0, 0%, 98%);
   --primary-foreground: hsl(240, 5.9%, 10%);
