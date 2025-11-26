@@ -27,6 +27,25 @@ import {
   Newspaper,
 } from "lucide-react";
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+  defaultDropAnimationSideEffects,
+  type DropAnimation,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableCard } from "@/components/dashboard/SortableCard";
+
 
 // ---------- Types (defensive) ----------
 type GainerItem = {
@@ -224,24 +243,6 @@ export default function Home() {
   const aiDisplay = aiCount == null || Number.isNaN(aiCount) ? "—" : nf0.format(aiCount);
 
   // ---------- Drag & Drop State ----------
-  import {
-    DndContext,
-    closestCenter,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragOverlay,
-    defaultDropAnimationSideEffects,
-    type DropAnimation,
-  } from "@dnd-kit/core";
-  import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    rectSortingStrategy,
-  } from "@dnd-kit/sortable";
-  import { SortableCard } from "@/components/dashboard/SortableCard";
 
   const defaultOrder = [
     "portfolio",
@@ -314,13 +315,13 @@ export default function Home() {
 
   // ---------- Card Renderers ----------
   const renderCard = (id: string, isOverlay = false) => {
-    const Wrapper = isOverlay ? "div" : SortableCard;
+    const Wrapper = (isOverlay ? "div" : SortableCard) as any;
     const props = isOverlay ? { className: "h-full" } : { id, className: "h-full" };
 
     switch (id) {
       case "portfolio":
         return (
-          <Wrapper {...props}>
+          <Wrapper {...(props as any)}>
             <Link to="/portfolio" className="block h-full">
               <Card className="dashboard-card neon-hover bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(190, 100%, 50%)" } as React.CSSProperties}>
                 <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
