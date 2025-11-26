@@ -35,6 +35,7 @@ import {
 import { useAuth as useSupabaseAuth } from "@/auth/AuthContext";
 import { useLoginGate } from "@/auth/useLoginGate";
 import type { PortfolioPosition } from "@/lib/api/portfolio";
+import { openSpotTickerStream } from "@/lib/binanceWs";
 
 type Position = {
   id: string;
@@ -158,7 +159,36 @@ export default function Portfolio() {
   );
   const symbolsKey = symbols.join("|");
 
-  // WebSocket not implemented, using REST API fetch for BTC/ETH prices via dashboard
+  // WebSocket subscription for portfolio symbols
+  useEffect(() => {
+    // 1. Determine symbols to track
+    // Always track BTC/ETH + any user positions
+    const trackSymbols = new Set(["BTCUSDT", "ETHUSDT"]);
+    if (Array.isArray(positions)) {
+      positions.forEach((p) => {
+        if (p.symbol) trackSymbols.add(p.symbol.toUpperCase());
+      });
+    }
+    const symbolList = Array.from(trackSymbols);
+
+    // 2. Open WebSocket stream
+    const closeStream = openSpotTickerStream(symbolList, {
+      onMessage: (ticker) => {
+        const sym = ticker.symbol.toUpperCase();
+        const price = parseFloat(ticker.lastPrice);
+
+        // Update global price store
+        if (!Number.isNaN(price)) {
+          setPrices({ [sym]: price });
+        }
+      },
+      onError: (err) => console.error("WS Error:", err),
+    });
+
+    return () => {
+      closeStream();
+    };
+  }, [positions, setPrices]);
 
   const currentPriceFor = useCallback(
     (sym: string, fallback: number) => {
@@ -290,8 +320,8 @@ export default function Portfolio() {
         error instanceof Error
           ? error.message
           : lastError instanceof Error
-          ? lastError.message
-          : "Failed to delete position";
+            ? lastError.message
+            : "Failed to delete position";
       alert(message);
     }
   }
