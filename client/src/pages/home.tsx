@@ -223,6 +223,282 @@ export default function Home() {
   const watchDisplay = watchCount == null || Number.isNaN(watchCount) ? "—" : nf0.format(watchCount);
   const aiDisplay = aiCount == null || Number.isNaN(aiCount) ? "—" : nf0.format(aiCount);
 
+  // ---------- Drag & Drop State ----------
+  import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragOverlay,
+    defaultDropAnimationSideEffects,
+    type DropAnimation,
+  } from "@dnd-kit/core";
+  import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+  } from "@dnd-kit/sortable";
+  import { SortableCard } from "@/components/dashboard/SortableCard";
+
+  const defaultOrder = [
+    "portfolio",
+    "scanner",
+    "top-gainers",
+    "total-pnl",
+    "watchlist",
+    "fear-greed",
+    "ai-signals",
+    "btc-dominance",
+    "news",
+  ];
+
+  const [items, setItems] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem("dashboard_order");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure all default items are present (in case of updates)
+        const unique = Array.from(new Set([...parsed, ...defaultOrder]));
+        return unique.filter(id => defaultOrder.includes(id));
+      }
+    } catch (e) {
+      console.error("Failed to load dashboard order", e);
+    }
+    return defaultOrder;
+  });
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement before drag starts to prevent accidental drags on click
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setItems((items) => {
+        const oldIndex = items.indexOf(active.id);
+        const newIndex = items.indexOf(over.id);
+        const newOrder = arrayMove(items, oldIndex, newIndex);
+        localStorage.setItem("dashboard_order", JSON.stringify(newOrder));
+        return newOrder;
+      });
+    }
+    setActiveId(null);
+  };
+
+  const dropAnimation: DropAnimation = {
+    sideEffects: defaultDropAnimationSideEffects({
+      styles: {
+        active: {
+          opacity: '0.5',
+        },
+      },
+    }),
+  };
+
+  // ---------- Card Renderers ----------
+  const renderCard = (id: string, isOverlay = false) => {
+    const Wrapper = isOverlay ? "div" : SortableCard;
+    const props = isOverlay ? { className: "h-full" } : { id, className: "h-full" };
+
+    switch (id) {
+      case "portfolio":
+        return (
+          <Wrapper {...props}>
+            <Link to="/portfolio" className="block h-full">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(190, 100%, 50%)" } as React.CSSProperties}>
+                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Portfolio</h3>
+                      <p className="text-base sm:text-lg md:text-2xl font-bold text-foreground truncate" data-testid="text-portfolio-value">{portfolioValueDisplay}</p>
+                      <div className="flex items-center space-x-1 mt-0.5">
+                        <TrendingUp className={`w-3 h-3 ${pctColorClass}`} />
+                        <span className={`text-xs ${pctColorClass}`} data-testid="text-portfolio-change">
+                          {portfolioPctDisplay}
+                        </span>
+                      </div>
+                    </div>
+                    <BarChart3 className="w-6 sm:w-8 h-6 sm:h-8 text-primary flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </Wrapper>
+        );
+      case "scanner":
+        return (
+          <Wrapper {...props}>
+            <Link to="/analyse/BTCUSDT" className="block h-full">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/10 to-blue-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(220, 100%, 50%)" } as React.CSSProperties}>
+                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Scanner</h3>
+                      <p className="text-xs text-muted-foreground truncate">Technical analysis</p>
+                      <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">15+</p>
+                      <p className="text-xs text-muted-foreground">Indicators</p>
+                    </div>
+                    <Search className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </Wrapper>
+        );
+      case "top-gainers":
+        return (
+          <Wrapper {...props}>
+            <TopGainersCard />
+          </Wrapper>
+        );
+      case "total-pnl":
+        return (
+          <Wrapper {...props}>
+            <Link to="/portfolio" className="block h-full">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-yellow-500/10 to-yellow-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(45, 100%, 50%)" } as React.CSSProperties}>
+                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Total P&L</h3>
+                      <p className={`text-base sm:text-lg md:text-2xl font-bold ${pctColorClass} truncate`} data-testid="text-total-pnl-percent">
+                        {portfolioPctDisplay}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Overall performance</p>
+                    </div>
+                    <Activity className="w-6 sm:w-8 h-6 sm:h-8 text-yellow-500 flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </Wrapper>
+        );
+      case "watchlist":
+        return (
+          <Wrapper {...props}>
+            <Link to="/watchlist" className="block h-full">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-100/10 to-orange-100/20 h-auto sm:h-full" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(40, 50%, 70%)" } as React.CSSProperties}>
+                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Watchlist</h3>
+                      <p className="text-xs text-muted-foreground truncate">Track favorites</p>
+                      <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">{watchDisplay}</p>
+                      <p className="text-xs text-muted-foreground">Coins tracked</p>
+                    </div>
+                    <Eye className="w-6 sm:w-8 h-6 sm:h-8 text-orange-200 flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </Wrapper>
+        );
+      case "fear-greed":
+        return (
+          <Wrapper {...props}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/10 to-orange-500/20 h-auto sm:h-full" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
+              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+                {fearGreed ? (
+                  <>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm">Market Fear & Greed</h3>
+                      <Gauge className="w-5 sm:w-6 h-5 sm:h-6 text-orange-500 flex-shrink-0" />
+                    </div>
+                    <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
+                    <div className="mt-3 pt-2 border-t border-border/50">
+                      <p className="text-xs text-muted-foreground">
+                        ↻ Updates every 10 minutes
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Last updated: {new Date(lastFetchTime).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center w-full py-6">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500/30 border-t-orange-500 mb-2"></div>
+                    <p className="text-xs text-muted-foreground">Loading...</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </Wrapper>
+        );
+      case "ai-signals":
+        return (
+          <Wrapper {...props}>
+            <Link to="/ai-insights" className="block h-full">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-violet-500/10 to-violet-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(270, 100%, 60%)" } as React.CSSProperties}>
+                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">AI Signals</h3>
+                      <p className="text-xs text-muted-foreground truncate">Market analysis</p>
+                      <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5" data-testid="text-ai-signals">{aiDisplay}</p>
+                      <p className="text-xs text-accent">Active insights</p>
+                    </div>
+                    <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-violet-500 flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </Wrapper>
+        );
+      case "btc-dominance":
+        return (
+          <Wrapper {...props}>
+            <BtcDominanceCard />
+          </Wrapper>
+        );
+      case "news":
+        return (
+          <Wrapper {...props} className={`${props.className} xl:col-span-2`}>
+            <Link to="/news" className="block h-full">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-rose-500/10 to-rose-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(350, 100%, 60%)" } as React.CSSProperties}>
+                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Curated market headlines and analyst takes to keep you ahead of the next move.
+                      </p>
+                    </div>
+                    <Newspaper className="w-8 h-8 text-primary" />
+                  </div>
+                  <div className="space-y-2 text-sm text-muted-foreground">
+                    <p className="flex items-center justify-between text-foreground">
+                      <span className="font-medium">Morning Brief</span>
+                      <span className="text-xs text-muted-foreground">Updated 10 min ago</span>
+                    </p>
+                    <p>US equities rally as inflation cools; crypto follows with strong altcoin bids.</p>
+                    <p className="text-xs text-primary mt-2 font-medium">Click to read latest →</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </Wrapper>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex-1 overflow-hidden">
       <div className="p-3 sm:p-4 md:p-6">
@@ -236,156 +512,22 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 8 Tiles */}
-        <div className="grid items-stretch grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 md:mb-8">
-          {/* 1) Portfolio */}
-          <Link to="/portfolio" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(190, 100%, 50%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Portfolio</h3>
-                    <p className="text-base sm:text-lg md:text-2xl font-bold text-foreground truncate" data-testid="text-portfolio-value">{portfolioValueDisplay}</p>
-                    <div className="flex items-center space-x-1 mt-0.5">
-                      <TrendingUp className={`w-3 h-3 ${pctColorClass}`} />
-                      <span className={`text-xs ${pctColorClass}`} data-testid="text-portfolio-change">
-                        {portfolioPctDisplay}
-                      </span>
-                    </div>
-                  </div>
-                  <BarChart3 className="w-6 sm:w-8 h-6 sm:h-8 text-primary flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* 2) Scanner */}
-          <Link to="/analyse/BTCUSDT" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/10 to-blue-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(220, 100%, 50%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Scanner</h3>
-                    <p className="text-xs text-muted-foreground truncate">Technical analysis</p>
-                    <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">15+</p>
-                    <p className="text-xs text-muted-foreground">Indicators</p>
-                  </div>
-                  <Search className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* 3) Top Gainers Card */}
-          <TopGainersCard />
-
-          {/* 4) Total P&L */}
-          <Link to="/portfolio" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-yellow-500/10 to-yellow-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(45, 100%, 50%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Total P&L</h3>
-                    <p className={`text-base sm:text-lg md:text-2xl font-bold ${pctColorClass} truncate`} data-testid="text-total-pnl-percent">
-                      {portfolioPctDisplay}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Overall performance</p>
-                  </div>
-                  <Activity className="w-6 sm:w-8 h-6 sm:h-8 text-yellow-500 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* 5) Watchlist */}
-          <Link to="/watchlist" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-100/10 to-orange-100/20 h-auto sm:h-full" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(40, 50%, 70%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Watchlist</h3>
-                    <p className="text-xs text-muted-foreground truncate">Track favorites</p>
-                    <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">{watchDisplay}</p>
-                    <p className="text-xs text-muted-foreground">Coins tracked</p>
-                  </div>
-                  <Eye className="w-6 sm:w-8 h-6 sm:h-8 text-orange-200 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* 6) Market Fear & Greed */}
-          <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/10 to-orange-500/20 h-auto sm:h-full" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
-            <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-              {fearGreed ? (
-                <>
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <h3 className="font-semibold text-foreground text-xs sm:text-sm">Market Fear & Greed</h3>
-                    <Gauge className="w-5 sm:w-6 h-5 sm:h-6 text-orange-500 flex-shrink-0" />
-                  </div>
-                  <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
-                  <div className="mt-3 pt-2 border-t border-border/50">
-                    <p className="text-xs text-muted-foreground">
-                      ↻ Updates every 10 minutes
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Last updated: {new Date(lastFetchTime).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center w-full py-6">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-orange-500/30 border-t-orange-500 mb-2"></div>
-                  <p className="text-xs text-muted-foreground">Loading...</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 7) AI Signals */}
-          <Link to="/ai-insights" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-violet-500/10 to-violet-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(270, 100%, 60%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">AI Signals</h3>
-                    <p className="text-xs text-muted-foreground truncate">Market analysis</p>
-                    <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5" data-testid="text-ai-signals">{aiDisplay}</p>
-                    <p className="text-xs text-accent">Active insights</p>
-                  </div>
-                  <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-violet-500 flex-shrink-0" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <BtcDominanceCard />
-
-          {/* 8) News & Insights */}
-          <Link to="/news" className="block h-full xl:col-span-2">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-rose-500/10 to-rose-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(350, 100%, 60%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Curated market headlines and analyst takes to keep you ahead of the next move.
-                    </p>
-                  </div>
-                  <Newspaper className="w-8 h-8 text-primary" />
-                </div>
-                <div className="space-y-2 text-sm text-muted-foreground">
-                  <p className="flex items-center justify-between text-foreground">
-                    <span className="font-medium">Morning Brief</span>
-                    <span className="text-xs text-muted-foreground">Updated 10 min ago</span>
-                  </p>
-                  <p>US equities rally as inflation cools; crypto follows with strong altcoin bids.</p>
-                  <p className="text-xs text-primary mt-2 font-medium">Click to read latest →</p>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
+        {/* Draggable Grid */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={items} strategy={rectSortingStrategy}>
+            <div className="grid items-stretch grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 md:mb-8">
+              {items.map((id) => renderCard(id))}
+            </div>
+          </SortableContext>
+          <DragOverlay dropAnimation={dropAnimation}>
+            {activeId ? renderCard(activeId, true) : null}
+          </DragOverlay>
+        </DndContext>
 
         {/* The 3 big boxes below */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
