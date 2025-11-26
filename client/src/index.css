@@ -4,6 +4,7 @@
 @tailwind utilities;
 
 @layer base {
+
   h1,
   h2,
   h3,
@@ -19,42 +20,42 @@
   /* Global Theme: Zinc (Neutral) */
   --background: hsl(240, 10%, 3.9%);
   --foreground: hsl(0, 0%, 98%);
-  
+
   --card: hsl(240, 10%, 3.9%);
   --card-foreground: hsl(0, 0%, 98%);
   --card-border: hsl(240, 3.7%, 15.9%);
-  
+
   --popover: hsl(240, 10%, 3.9%);
   --popover-foreground: hsl(0, 0%, 98%);
-  
+
   --primary: hsl(0, 0%, 98%);
   --primary-foreground: hsl(240, 5.9%, 10%);
-  
+
   --secondary: hsl(240, 3.7%, 15.9%);
   --secondary-foreground: hsl(0, 0%, 98%);
-  
+
   --muted: hsl(240, 3.7%, 15.9%);
   --muted-foreground: hsl(240, 5%, 64.9%);
-  
+
   --accent: hsl(240, 3.7%, 15.9%);
   --accent-foreground: hsl(0, 0%, 98%);
-  
+
   --destructive: hsl(0, 62.8%, 30.6%);
   --destructive-foreground: hsl(0, 0%, 98%);
-  
+
   --border: hsl(240, 3.7%, 15.9%);
   --input: hsl(240, 3.7%, 15.9%);
   --ring: hsl(240, 4.9%, 83.9%);
-  
+
   /* Chart Colors (Neutral/Professional) */
   --chart-1: hsl(220, 70%, 50%);
   --chart-2: hsl(160, 60%, 45%);
   --chart-3: hsl(30, 80%, 55%);
   --chart-4: hsl(280, 65%, 60%);
   --chart-5: hsl(340, 75%, 55%);
-  
+
   --radius: 0.75rem;
-  
+
   /* Sidebar */
   --sidebar: hsl(240, 5.9%, 10%);
   --sidebar-foreground: hsl(240, 4.8%, 95.9%);
@@ -64,22 +65,23 @@
   --sidebar-accent-foreground: hsl(240, 4.8%, 95.9%);
   --sidebar-border: hsl(240, 3.7%, 15.9%);
   --sidebar-ring: hsl(217.2, 91.2%, 59.8%);
-  
+
   /* Typography */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  
+
   /* Misc */
   --shadow-glow: 0 0 24px hsla(0, 0%, 100%, 0.1);
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.2);
   --shadow-intense: 0 0 48px rgba(0, 0, 0, 0.4);
-  
+
   --profit: hsl(142, 76%, 36%);
   --loss: hsl(0, 84%, 60%);
   --neutral: hsl(240, 5%, 64.9%);
-  
-  --neon-glow: hsl(0, 0%, 100%); /* Default glow is white/neutral */
+
+  --neon-glow: hsl(0, 0%, 100%);
+  /* Default glow is white/neutral */
 }
 
 .dark {
@@ -108,30 +110,15 @@
 
 @layer components {
   .dashboard-card {
-    /* PRESERVED: Original Deep Blue Theme for Dashboard Cards */
-    --card: hsl(222, 40%, 13%);
-    --card-foreground: hsl(210, 40%, 98%);
-    --card-border: hsl(214, 35%, 25%);
-    --primary: hsl(190, 100%, 50%);
-    --primary-foreground: hsl(222, 47%, 7%);
-    --muted: hsl(222, 20%, 24%);
-    --muted-foreground: hsl(210, 14%, 66%);
-    --accent: hsl(140, 100%, 46%);
-    --accent-foreground: hsl(222, 47%, 7%);
-    --border: hsl(214, 32%, 22%);
-    --neon-glow: hsl(190, 100%, 50%); /* Restore Cyan Glow */
-    
     @apply relative h-full min-h-44 md:min-h-48 rounded-xl border bg-card text-card-foreground;
-    background-color: var(--card); /* Force background */
-    border-color: var(--border);
   }
-  
+
   .neon-hover {
     position: relative;
     border-color: transparent;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   }
-  
+
   .neon-hover::before {
     content: "";
     position: absolute;
@@ -142,17 +129,18 @@
     opacity: 0;
     transition: opacity 0.2s ease;
   }
-  
+
   .neon-hover:hover {
     border-color: var(--neon-glow);
     box-shadow: 0 0 0 1px var(--neon-glow);
   }
-  
+
   .neon-hover:hover::before {
     opacity: 1;
   }
-  
+
   @media (prefers-reduced-motion: reduce) {
+
     .neon-hover,
     .neon-hover::before {
       transition: none;
@@ -169,26 +157,26 @@
     @apply font-sans antialiased bg-background text-foreground;
     font-family: var(--font-sans);
   }
-  
+
   /* Custom scrollbar styling */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
-  
+
   ::-webkit-scrollbar-track {
     background: hsl(222, 47%, 11%);
   }
-  
+
   ::-webkit-scrollbar-thumb {
     background: hsl(222, 30%, 25%);
     border-radius: 4px;
   }
-  
+
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(190, 100%, 50%);
   }
-  
+
   /* Firefox scrollbar */
   * {
     scrollbar-color: hsl(222, 30%, 25%) hsl(222, 47%, 11%);
@@ -197,6 +185,7 @@
 }
 
 @layer utilities {
+
   /* Cybernetic Card Effects */
   .cyber-card {
     background: var(--card);
@@ -205,60 +194,58 @@
     backdrop-filter: blur(20px);
     transition: all 0.3s ease;
   }
-  
+
   .cyber-card:hover {
     box-shadow: var(--shadow-glow);
     border-color: var(--primary);
     transform: translateY(-2px);
   }
-  
+
   .cyber-card-intense {
     background: var(--card);
     border: 1px solid var(--primary);
     box-shadow: var(--shadow-intense);
     backdrop-filter: blur(20px);
   }
-  
+
   /* Holographic Effects */
   .hologram-bg {
-    background: linear-gradient(
-      135deg,
-      var(--hologram-1) 0%,
-      transparent 50%,
-      var(--hologram-2) 100%
-    );
+    background: linear-gradient(135deg,
+        var(--hologram-1) 0%,
+        transparent 50%,
+        var(--hologram-2) 100%);
   }
-  
+
   .gradient-cyber {
     background: var(--gradient-cyber);
   }
-  
+
   .gradient-profit {
     background: var(--gradient-profit);
   }
-  
+
   .gradient-loss {
     background: var(--gradient-loss);
   }
-  
+
   /* Neon Glow Text */
   .text-neon {
     color: var(--primary);
     text-shadow: 0 0 10px var(--primary);
   }
-  
+
   .text-profit {
     color: var(--profit);
   }
-  
+
   .text-loss {
     color: var(--loss);
   }
-  
+
   .text-neutral {
     color: var(--neutral);
   }
-  
+
   /* Trading Chart Enhanced */
   .chart-container {
     min-height: 400px;
@@ -268,7 +255,7 @@
     box-shadow: var(--shadow-card);
     backdrop-filter: blur(20px);
   }
-  
+
   /* Button Enhancements */
   .btn-cyber {
     background: var(--gradient-cyber);
@@ -278,58 +265,58 @@
     transition: all 0.3s ease;
     box-shadow: var(--shadow-glow);
   }
-  
+
   .btn-cyber:hover {
     box-shadow: var(--shadow-intense);
     transform: translateY(-1px);
   }
-  
+
   /* Animations */
   .pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite alternate;
   }
-  
+
   @keyframes pulse-glow {
     from {
       box-shadow: var(--shadow-glow);
     }
+
     to {
       box-shadow: var(--shadow-intense);
     }
   }
-  
+
   /* Data Display */
   .data-positive {
     color: var(--profit);
     font-weight: 600;
   }
-  
+
   .data-negative {
     color: var(--loss);
     font-weight: 600;
   }
-  
+
   .data-neutral {
     color: var(--neutral);
     font-weight: 500;
   }
-  
+
   /* Loading States */
   .loading-shimmer {
-    background: linear-gradient(
-      90deg,
-      var(--muted) 25%,
-      var(--hologram-1) 50%,
-      var(--muted) 75%
-    );
+    background: linear-gradient(90deg,
+        var(--muted) 25%,
+        var(--hologram-1) 50%,
+        var(--muted) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
   }
-  
+
   @keyframes shimmer {
     0% {
       background-position: -200% 0;
     }
+
     100% {
       background-position: 200% 0;
     }
@@ -358,13 +345,19 @@ nav a.relative:hover .tooltip {
 .tooltip::after {
   content: attr(data-label);
 }
+
 /* Sidebar offset applied by Sidebar component */
 #app-content {
   padding-left: var(--sidebar-offset, 64px);
   transition: padding-left 160ms ease;
 }
+
 @media (max-width: 768px) {
-  #app-content { padding-left: 64px; } /* always rail width on small screens */
+  #app-content {
+    padding-left: 64px;
+  }
+
+  /* always rail width on small screens */
 }
 
 dialog::backdrop {
@@ -405,6 +398,7 @@ dialog {
   color: rgba(255, 255, 255, 0.8);
   font-size: 15px;
 }
+
 .sb-card__body {
   padding: 16px;
   font-size: 15px;
@@ -418,6 +412,7 @@ dialog {
   margin-bottom: 12px;
   color: rgba(255, 255, 255, 0.92);
 }
+
 .sb-row:last-child {
   margin-bottom: 0;
 }
