@@ -189,62 +189,46 @@ export default function HighPotentialPage() {
             </div>
 
             {/* Top Section: Filters & Placeholder */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 {/* Left Card: Choose your Technicals */}
-                <div style={{
-                    background: "#111",
-                    padding: "20px",
-                    borderRadius: "10px",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    minHeight: "200px"
-                }}>
+                <div className="bg-[#111] p-4 rounded-lg flex flex-col justify-between min-h-[140px]">
                     <div>
-                        <h3 className="font-bold text-lg mb-4">Choose your Technicals</h3>
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-6">
+                        <h3 className="font-bold text-base mb-2">Choose your Technicals</h3>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-3">
                             {Object.keys(pendingFilters).filter(key => key !== 'likely10PercentUpside').map(key => (
                                 <label key={key} className="flex items-center cursor-pointer hover:bg-white/5 p-1 rounded transition-colors">
                                     <input
                                         type="checkbox"
                                         checked={(pendingFilters as any)[key]}
                                         onChange={() => handleFilterChange(key)}
-                                        className="accent-primary w-4 h-4"
+                                        className="accent-primary w-3 h-3"
                                     />
-                                    <span className="ml-3 text-sm font-medium">{key.toUpperCase()}</span>
+                                    <span className="ml-2 text-xs font-medium">{key.toUpperCase()}</span>
                                 </label>
                             ))}
-                            <label className="flex items-center cursor-pointer hover:bg-white/5 p-1 rounded transition-colors col-span-2 mt-2 border-t border-white/10 pt-3">
+                            <label className="flex items-center cursor-pointer hover:bg-white/5 p-1 rounded transition-colors col-span-2 mt-1 border-t border-white/10 pt-2">
                                 <input
                                     type="checkbox"
                                     checked={pendingFilters.likely10PercentUpside}
                                     onChange={() => handleFilterChange('likely10PercentUpside')}
-                                    className="accent-[#0f0] w-4 h-4"
+                                    className="accent-[#0f0] w-3 h-3"
                                 />
-                                <span className="ml-3 text-sm font-bold text-[#0f0]">Likely +10% Upside</span>
+                                <span className="ml-2 text-xs font-bold text-[#0f0]">Likely +10% Upside</span>
                             </label>
                         </div>
                     </div>
 
                     <Button
                         onClick={applyFilters}
-                        size="default"
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 w-full font-bold text-md h-10"
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 w-full font-bold text-sm h-8"
                     >
                         Submit Filters
                     </Button>
                 </div>
 
                 {/* Right Card: Placeholder */}
-                <div style={{
-                    background: "#111",
-                    padding: "20px",
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    minHeight: "200px"
-                }}>
+                <div className="bg-[#111] p-4 rounded-lg flex items-center justify-center min-h-[140px]">
                     {/* Empty for now */}
                 </div>
             </div>
