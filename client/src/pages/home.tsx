@@ -500,6 +500,19 @@ export default function Home() {
     }
   };
 
+  // ---------- Onboarding Tip ----------
+  const [showTip, setShowTip] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("dashboard_tip_dismissed") !== "true";
+    }
+    return true;
+  });
+
+  const dismissTip = () => {
+    setShowTip(false);
+    localStorage.setItem("dashboard_tip_dismissed", "true");
+  };
+
   return (
     <div className="flex-1 overflow-hidden">
       <div className="p-3 sm:p-4 md:p-6">
@@ -512,6 +525,28 @@ export default function Home() {
             <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1">Your trading dashboard is ready. Let's make some profitable trades today.</p>
           </div>
         </div>
+
+        {/* Onboarding Tip */}
+        {showTip && (
+          <div className="mb-6 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 flex items-start gap-3 relative animate-in fade-in slide-in-from-top-2">
+            <div className="p-1 bg-blue-500/20 rounded-full">
+              <Activity className="w-4 h-4 text-blue-400" />
+            </div>
+            <div className="flex-1 mr-6">
+              <h3 className="text-sm font-medium text-blue-100">Customize your layout</h3>
+              <p className="text-xs text-blue-200/70 mt-1">
+                Did you know? You can <strong>drag and drop</strong> any of the cards below to reorder your dashboard. Put your most important metrics first!
+              </p>
+            </div>
+            <button
+              onClick={dismissTip}
+              className="absolute top-3 right-3 text-blue-200/50 hover:text-blue-100 transition-colors"
+            >
+              <span className="sr-only">Dismiss</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 18 18" /></svg>
+            </button>
+          </div>
+        )}
 
         {/* Draggable Grid */}
         <DndContext
