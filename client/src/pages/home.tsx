@@ -230,7 +230,7 @@ export default function Home() {
   // ---------- Displays ----------
   const portfolioValueDisplay = `$${nf2.format(safeTotalValue)}`;
   const portfolioPctDisplay = `${safeTotalPnlPercent >= 0 ? "+" : ""}${nf2.format(safeTotalPnlPercent)}%`;
-  const pctColorClass = safeTotalPnlPercent >= 0 ? "text-accent" : "text-destructive";
+  const pctColorClass = safeTotalPnlPercent >= 0 ? "text-emerald-500" : "text-red-500";
 
   const top3 = gain?.top ?? null;
   const gainersDisplay =
@@ -581,7 +581,7 @@ export default function Home() {
                   <p className="font-semibold" data-testid="text-btc-price">
                     ${nf2.format(prices.BTCUSDT || 0)}
                   </p>
-                  <p className={`text-sm ${parseFloat(String(btcChange?.priceChangePercent || "0")) >= 0 ? "text-accent" : "text-destructive"}`} data-testid="text-btc-change">
+                  <p className={`text-sm ${parseFloat(String(btcChange?.priceChangePercent || "0")) >= 0 ? "text-emerald-500" : "text-red-500"}`} data-testid="text-btc-change">
                     {parseFloat(String(btcChange?.priceChangePercent || "0")) >= 0 ? "+" : ""}
                     {nf2.format(parseFloat(String(btcChange?.priceChangePercent || "0")))}%
                   </p>
@@ -593,7 +593,7 @@ export default function Home() {
                   <p className="font-semibold" data-testid="text-eth-price">
                     ${nf2.format(prices.ETHUSDT || 0)}
                   </p>
-                  <p className={`text-sm ${parseFloat(String(ethChange?.priceChangePercent || "0")) >= 0 ? "text-accent" : "text-destructive"}`} data-testid="text-eth-change">
+                  <p className={`text-sm ${parseFloat(String(ethChange?.priceChangePercent || "0")) >= 0 ? "text-emerald-500" : "text-red-500"}`} data-testid="text-eth-change">
                     {parseFloat(String(ethChange?.priceChangePercent || "0")) >= 0 ? "+" : ""}
                     {nf2.format(parseFloat(String(ethChange?.priceChangePercent || "0")))}%
                   </p>
