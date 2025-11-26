@@ -15,7 +15,8 @@ interface HighPotentialCoin {
     rsi: number;
     volume: number;
     avgVolume: number;
-    volatilityState: string;
+    volatilityState: "low" | "normal" | "high";
+    likely10PercentUpside?: boolean;
     passesDetail: {
         trend: boolean;
         rsi: boolean;
@@ -32,7 +33,8 @@ const defaultFilters = {
     macd: false,
     volume: false,
     obv: false,
-    volatility: false
+    volatility: false,
+    likely10PercentUpside: false
 };
 
 const CACHE_KEY = "high_potential_data_cache";
@@ -132,15 +134,28 @@ export default function HighPotentialPage() {
     const safeCoins = Array.isArray(coins) ? coins : [];
 
     const filteredCoins = safeCoins.filter(coin => {
-        if (!coin.passesDetail) return false; // Safety check
+        let passes = true;
 
-        const activeFilters = Object.entries(filters).filter(([_, isActive]) => isActive);
+        // Filter by individual technicals
+        if (coin.passesDetail) {
+            const activeTechFilters = Object.entries(filters).filter(([key, isActive]) => isActive && key !== 'likely10PercentUpside');
+            if (activeTechFilters.length > 0) {
+                passes = activeTechFilters.every(([key]) => (coin.passesDetail as any)[key]);
+            }
+        } else {
+            // If passesDetail is missing, it cannot pass technical filters
+            const hasActiveTechFilters = Object.entries(filters).some(([key, isActive]) => isActive && key !== 'likely10PercentUpside');
+            if (hasActiveTechFilters) {
+                passes = false;
+            }
+        }
 
-        // If no filters are active, show all coins
-        if (activeFilters.length === 0) return true;
+        // Filter by "Likely +10% Upside"
+        if (filters.likely10PercentUpside && !coin.likely10PercentUpside) {
+            passes = false;
+        }
 
-        // Otherwise, coin must pass ALL active filters
-        return activeFilters.every(([key]) => (coin.passesDetail as any)[key]);
+        return passes;
     });
 
     return (
@@ -188,7 +203,7 @@ export default function HighPotentialPage() {
                     <div>
                         <h3 className="font-bold text-lg mb-4">Choose your Technicals</h3>
                         <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-6">
-                            {Object.keys(pendingFilters).map(key => (
+                            {Object.keys(pendingFilters).filter(key => key !== 'likely10PercentUpside').map(key => (
                                 <label key={key} className="flex items-center cursor-pointer hover:bg-white/5 p-1 rounded transition-colors">
                                     <input
                                         type="checkbox"
@@ -199,6 +214,15 @@ export default function HighPotentialPage() {
                                     <span className="ml-3 text-sm font-medium">{key.toUpperCase()}</span>
                                 </label>
                             ))}
+                            <label className="flex items-center cursor-pointer hover:bg-white/5 p-1 rounded transition-colors col-span-2 mt-2 border-t border-white/10 pt-3">
+                                <input
+                                    type="checkbox"
+                                    checked={pendingFilters.likely10PercentUpside}
+                                    onChange={() => handleFilterChange('likely10PercentUpside')}
+                                    className="accent-[#0f0] w-4 h-4"
+                                />
+                                <span className="ml-3 text-sm font-bold text-[#0f0]">Likely +10% Upside</span>
+                            </label>
                         </div>
                     </div>
 
@@ -359,112 +383,132 @@ export default function HighPotentialPage() {
                         </div>
                     </div>
 
-                    <div>
-                        <h3 className="font-semibold text-lg mb-3 text-primary">Badge Definitions</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            {/* Trend Badges */}
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#0f0] mt-1">🟢</span>
-                                <div>
-                                    <span className="font-bold block">Strong Trend</span>
-                                    <span className="text-muted-foreground">Score ≥ 8. Price significantly above EMAs with strong momentum.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#4aff4a] mt-1">🟩</span>
-                                <div>
-                                    <span className="font-bold block">Trend Strong</span>
-                                    <span className="text-muted-foreground">Score ≥ 6. Solid uptrend, price above key EMAs.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#ffff55] mt-1">🟨</span>
-                                <div>
-                                    <span className="font-bold block">Trend Forming</span>
-                                    <span className="text-muted-foreground">Score ≥ 5. Early signs of a trend, potentially breaking out.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#999] mt-1">⚪</span>
-                                <div>
-                                    <span className="font-bold block">Weak Trend</span>
-                                    <span className="text-muted-foreground">Score &lt; 5. No clear trend or consolidation.</span>
-                                </div>
-                            </div>
+                </div>
+            </div>
 
-                            {/* Momentum Badges */}
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#0f0] mt-1">🟢</span>
-                                <div>
-                                    <span className="font-bold block">Momentum Rising</span>
-                                    <span className="text-muted-foreground">RSI 55-65. Sweet spot for bullish momentum without being overbought.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#4aff4a] mt-1">🟩</span>
-                                <div>
-                                    <span className="font-bold block">Healthy Momentum</span>
-                                    <span className="text-muted-foreground">RSI &ge; 48. Positive momentum, room to grow.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#999] mt-1">⚪</span>
-                                <div>
-                                    <span className="font-bold block">Momentum Neutral</span>
-                                    <span className="text-muted-foreground">RSI below 48 or weak momentum signals.</span>
-                                </div>
-                            </div>
+            <div>
+                <h3 className="font-semibold text-lg mb-3 text-[#0f0]">Likely +10% Upside Filter</h3>
+                <p className="text-muted-foreground text-sm mb-4">
+                    When checked, this filter selects coins that meet at least <strong>4 out of 5</strong> of the following bullish conditions:
+                </p>
+                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-2 ml-2">
+                    <li><strong>Volatility Expanding:</strong> Expanding Bollinger Bands or rising ATR.</li>
+                    <li><strong>Momentum Rising:</strong> Rising MACD, healthy RSI (45-60), or bullish Stochastic.</li>
+                    <li><strong>Trend Bullish/Recovering:</strong> Price above EMAs or strong ADX trend.</li>
+                    <li><strong>Volume Improved:</strong> Volume above average or rising OBV.</li>
+                    <li><strong>Room to Rise:</strong> Nearest resistance level is at least +10% away.</li>
+                </ul>
+                <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs text-yellow-200">
+                    <strong>Disclaimer:</strong> Not financial advice. This is a technical probability score based on historical data and does not guarantee future performance.
+                </div>
+            </div>
 
-                            {/* Volume Badges */}
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#0f0] mt-1">🟢</span>
-                                <div>
-                                    <span className="font-bold block">Strong Volume</span>
-                                    <span className="text-muted-foreground">Volume &gt; 1.5x average. High buying interest.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#4aff4a] mt-1">🟩</span>
-                                <div>
-                                    <span className="font-bold block">Volume Rising</span>
-                                    <span className="text-muted-foreground">Volume &gt; Average. Increasing market participation.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#999] mt-1">⚪</span>
-                                <div>
-                                    <span className="font-bold block">Neutral Volume</span>
-                                    <span className="text-muted-foreground">Volume at or below average levels.</span>
-                                </div>
-                            </div>
+            <div>
+                <h3 className="font-semibold text-lg mb-3 text-primary">Badge Definitions</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    {/* Trend Badges */}
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#0f0] mt-1">🟢</span>
+                        <div>
+                            <span className="font-bold block">Strong Trend</span>
+                            <span className="text-muted-foreground">Score ≥ 8. Price significantly above EMAs with strong momentum.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#4aff4a] mt-1">🟩</span>
+                        <div>
+                            <span className="font-bold block">Trend Strong</span>
+                            <span className="text-muted-foreground">Score ≥ 6. Solid uptrend, price above key EMAs.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#ffff55] mt-1">🟨</span>
+                        <div>
+                            <span className="font-bold block">Trend Forming</span>
+                            <span className="text-muted-foreground">Score ≥ 5. Early signs of a trend, potentially breaking out.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#999] mt-1">⚪</span>
+                        <div>
+                            <span className="font-bold block">Weak Trend</span>
+                            <span className="text-muted-foreground">Score &lt; 5. No clear trend or consolidation.</span>
+                        </div>
+                    </div>
 
-                            {/* Volatility Badges */}
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#c084fc] mt-1">🟣</span>
-                                <div>
-                                    <span className="font-bold block">Volatility Expanding</span>
-                                    <span className="text-muted-foreground">Bollinger Bands widening. Expect large price moves.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-white mt-1">⚪</span>
-                                <div>
-                                    <span className="font-bold block">Normal Volatility</span>
-                                    <span className="text-muted-foreground">Standard price fluctuation range.</span>
-                                </div>
-                            </div>
-                            <div className="flex items-start gap-2">
-                                <span className="text-[#60a5fa] mt-1">🔵</span>
-                                <div>
-                                    <span className="font-bold block">Compression</span>
-                                    <span className="text-muted-foreground">Bollinger Bands squeezing. Potential breakout imminent.</span>
-                                </div>
-                            </div>
+                    {/* Momentum Badges */}
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#0f0] mt-1">🟢</span>
+                        <div>
+                            <span className="font-bold block">Momentum Rising</span>
+                            <span className="text-muted-foreground">RSI 55-65. Sweet spot for bullish momentum without being overbought.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#4aff4a] mt-1">🟩</span>
+                        <div>
+                            <span className="font-bold block">Healthy Momentum</span>
+                            <span className="text-muted-foreground">RSI &ge; 48. Positive momentum, room to grow.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#999] mt-1">⚪</span>
+                        <div>
+                            <span className="font-bold block">Momentum Neutral</span>
+                            <span className="text-muted-foreground">RSI below 48 or weak momentum signals.</span>
+                        </div>
+                    </div>
+
+                    {/* Volume Badges */}
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#0f0] mt-1">🟢</span>
+                        <div>
+                            <span className="font-bold block">Strong Volume</span>
+                            <span className="text-muted-foreground">Volume &gt; 1.5x average. High buying interest.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#4aff4a] mt-1">🟩</span>
+                        <div>
+                            <span className="font-bold block">Volume Rising</span>
+                            <span className="text-muted-foreground">Volume &gt; Average. Increasing market participation.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#999] mt-1">⚪</span>
+                        <div>
+                            <span className="font-bold block">Neutral Volume</span>
+                            <span className="text-muted-foreground">Volume at or below average levels.</span>
+                        </div>
+                    </div>
+
+                    {/* Volatility Badges */}
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#c084fc] mt-1">🟣</span>
+                        <div>
+                            <span className="font-bold block">Volatility Expanding</span>
+                            <span className="text-muted-foreground">Bollinger Bands widening. Expect large price moves.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-white mt-1">⚪</span>
+                        <div>
+                            <span className="font-bold block">Normal Volatility</span>
+                            <span className="text-muted-foreground">Standard price fluctuation range.</span>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                        <span className="text-[#60a5fa] mt-1">🔵</span>
+                        <div>
+                            <span className="font-bold block">Compression</span>
+                            <span className="text-muted-foreground">Bollinger Bands squeezing. Potential breakout imminent.</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+            </div >
+        </div >
     );
 }
 

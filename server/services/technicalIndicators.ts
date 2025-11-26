@@ -43,6 +43,14 @@ interface HighPotentialCoin {
   volume: number;
   avgVolume: number;
   volatilityState: "low" | "normal" | "high";
+  likely10PercentUpside?: boolean;
+  upsideConditions?: {
+    volatilityExpanding: boolean;
+    momentumRising: boolean;
+    trendRecovering: boolean;
+    volumeImproved: boolean;
+    resistanceRoom: boolean;
+  };
 }
 
 class TechnicalIndicators {
@@ -659,6 +667,108 @@ class TechnicalIndicators {
     return "normal";
   }
 
+  private findNearestResistance(highs: number[], currentPrice: number): number | null {
+    // Simple local maxima logic over last 50 periods
+    const lookback = 50;
+    if (highs.length < lookback) return null;
+
+    const recentHighs = highs.slice(-lookback);
+    // Filter for peaks (higher than neighbors)
+    const peaks: number[] = [];
+    for (let i = 2; i < recentHighs.length - 2; i++) {
+      if (recentHighs[i] > recentHighs[i - 1] &&
+        recentHighs[i] > recentHighs[i - 2] &&
+        recentHighs[i] > recentHighs[i + 1] &&
+        recentHighs[i] > recentHighs[i + 2]) {
+        peaks.push(recentHighs[i]);
+      }
+    }
+
+    // Find lowest peak that is above current price
+    const resistanceLevels = peaks.filter(p => p > currentPrice).sort((a, b) => a - b);
+    return resistanceLevels.length > 0 ? resistanceLevels[0] : null;
+  }
+
+  public evaluateLikely10PercentUpside(analysis: TechnicalAnalysis, avgVolume: number): { likely: boolean; conditions: any } {
+    const indicators = analysis.indicators;
+    const price = analysis.price;
+    const closes = analysis.candles?.map(c => c.c) || [];
+    const highs = analysis.candles?.map(c => c.h) || [];
+    const lows = analysis.candles?.map(c => c.l) || [];
+    const volumes = analysis.candles?.map(c => c.v) || [];
+
+    if (closes.length < 50) return { likely: false, conditions: {} };
+
+    const ema20 = this.calculateEMA(closes, 20);
+    const ema50 = this.calculateEMA(closes, 50);
+    const bb = this.calculateBollingerBands(closes);
+    const volatilityState = this.getVolatilityState(bb);
+    const atr = this.calculateATR(highs, lows, closes); // Current ATR
+    // Calculate previous ATRs for rising check (simplified: compare current to 3 periods ago)
+    const prevAtr = this.calculateATR(highs.slice(0, -3), lows.slice(0, -3), closes.slice(0, -3));
+
+    const macd = this.calculateMACD(closes);
+    // Need previous MACD histogram for "rising" check
+    const prevMacd = this.calculateMACD(closes.slice(0, -1));
+
+    const rsi = indicators.rsi.value;
+    const stoch = this.calculateStochastic(highs, lows, closes);
+    const adx = this.calculateADX(highs, lows, closes);
+
+    const volume = volumes[volumes.length - 1];
+    const prevVolume = volumes[volumes.length - 2];
+    const obvSlope = this.calculateOBVSlope(closes.map((c, i) => {
+      // Reconstruct OBV array locally or use existing method if refactored. 
+      // For now, re-calculate simple OBV slope on last few candles
+      return 0; // Placeholder, using simplified logic below
+    }));
+    // Re-calc OBV slope properly
+    let localObv = 0;
+    const localObvValues = [0];
+    const last6Closes = closes.slice(-6);
+    const last6Vols = volumes.slice(-6);
+    for (let i = 1; i < last6Closes.length; i++) {
+      if (last6Closes[i] > last6Closes[i - 1]) localObv += last6Vols[i];
+      else if (last6Closes[i] < last6Closes[i - 1]) localObv -= last6Vols[i];
+      localObvValues.push(localObv);
+    }
+    const calculatedObvSlope = this.calculateOBVSlope(localObvValues);
+
+
+    // Condition A: Volatility Expanding
+    // volatility_state == "high" OR ATR rising OR BB squeeze released (squeeze was true recently, now false - simplified to just current state check or ATR)
+    const condA = volatilityState === "high" || atr > prevAtr || (bb.squeeze === false && (bb.upper - bb.lower) / bb.middle < 0.15); // Loose interpretation
+
+    // Condition B: Momentum Rising
+    // MACD hist > prev hist OR RSI 45-60 OR Stoch %K > %D (<90)
+    const condB = (macd.histogram > prevMacd.histogram) || (rsi >= 45 && rsi <= 60) || (stoch.k > stoch.d && stoch.k < 90);
+
+    // Condition C: Trend Bullish or Recovering
+    // price > EMA20 OR EMA20 > EMA50 OR ADX >= 20 and +DI > -DI
+    const condC = (price > ema20) || (ema20 > ema50) || (adx.adx >= 20 && adx.plusDI > adx.minusDI);
+
+    // Condition D: Volume Improved
+    // volume > avgVolume OR OBV slope positive OR Green > Red (last candle close > open and vol > prev vol)
+    const isGreen = closes[closes.length - 1] > closes[closes.length - 1 - 1]; // simplified open check
+    const condD = (volume > avgVolume) || (calculatedObvSlope > 0) || (isGreen && volume > prevVolume);
+
+    // Condition E: Room to Rise
+    const resistance = this.findNearestResistance(highs, price);
+    const condE = resistance !== null && resistance >= price * 1.10;
+
+    const conditions = {
+      volatilityExpanding: condA,
+      momentumRising: condB,
+      trendRecovering: condC,
+      volumeImproved: condD,
+      resistanceRoom: condE
+    };
+
+    const trueCount = Object.values(conditions).filter(Boolean).length;
+
+    return { likely: trueCount >= 4, conditions };
+  }
+
   public evaluateHighPotentialUserLogic(analysis: TechnicalAnalysis, avgVolume: number): { score: number; passes: boolean; details: any; passesDetail: any } {
     let score = 0;
     const indicators = analysis.indicators;
@@ -791,7 +901,14 @@ class TechnicalIndicators {
             volume: details.volume,
             avgVolume: details.avgVolume,
             volatilityState: details.volatility,
+            likely10PercentUpside: false, // Default
+            upsideConditions: undefined
           });
+
+          // Calculate Likely +10% Upside
+          const upsideAnalysis = this.evaluateLikely10PercentUpside(analysis, avgVolume);
+          results[results.length - 1].likely10PercentUpside = upsideAnalysis.likely;
+          results[results.length - 1].upsideConditions = upsideAnalysis.conditions;
         }
         // Rate limit
         await new Promise(r => setTimeout(r, 50));
