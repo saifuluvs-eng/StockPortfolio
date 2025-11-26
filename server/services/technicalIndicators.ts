@@ -640,51 +640,24 @@ class TechnicalIndicators {
     return "normal";
   }
 
-  public evaluateHighPotentialUserLogic(analysis: TechnicalAnalysis, avgVolume: number): { score: number; passes: boolean; details: any } {
+  public evaluateHighPotentialUserLogic(analysis: TechnicalAnalysis, avgVolume: number): { score: number; passes: boolean; details: any; passesDetail: any } {
     let score = 0;
     const indicators = analysis.indicators;
     const price = analysis.price;
 
-    // Extract values (assuming we have access to raw values or can derive them)
-    // Note: In a real scenario, we might need to store more raw data in 'analysis' or pass it in.
-    // For now, we will use the indicators we have.
-
-    // 1. Trend
-    // We need EMA20 and EMA50 values.
-    // Since we don't return raw EMA values in the 'indicators' map structure exactly as requested,
-    // we will rely on the 'ema_crossover' signal which is based on EMA20 - EMA50.
-    // And we need price > EMA20.
-    // Let's reconstruct or approximate.
-    // Ideally, analyzeSymbol should return these raw values.
-    // For this implementation, I will assume we can access them if we modify analyzeSymbol or just re-calculate here if needed.
-    // BUT, to be efficient, let's use the 'ema_crossover' score/value.
-    // Value = EMA20 - EMA50.
-    // If Value > 0, then EMA20 > EMA50.
-
-    // We also need Price > EMA20. We don't have raw EMA20 in the public interface of TechnicalAnalysis.
-    // I will add raw EMA values to the 'indicators' payload in analyzeSymbol to make this easier,
-    // or just re-calculate them here if I had the candles.
-    // Since 'analysis' has 'candles', I can re-calculate quickly.
-
+    // Extract values
     const closes = analysis.candles?.map(c => c.c) || [];
     const volumes = analysis.candles?.map(c => c.v) || [];
 
-    if (closes.length < 50) return { score: 0, passes: false, details: {} };
+    if (closes.length < 50) return { score: 0, passes: false, details: {}, passesDetail: {} };
 
     const ema20 = this.calculateEMA(closes, 20);
     const ema50 = this.calculateEMA(closes, 50);
     const rsi = indicators.rsi.value;
-    const macdHist = indicators.macd.value - (indicators.macd.value * 0.9); // Approx histogram if not stored
-    // Actually, analyzeSymbol stores 'macd' value as MACD line. It doesn't explicitly store histogram in the map value,
-    // but the calculateMACD method returns it.
-    // Let's re-calc to be safe and exact.
     const macdData = this.calculateMACD(closes);
-    const obv = this.calculateOBV(closes, volumes);
-    // We need OBV slope from last 5 candles.
-    // We need historical OBV. calculateOBV returns single number.
-    // Let's implement a quick historical OBV generator or just use the last 5 candles for a local OBV.
-    // Local OBV for last 5:
-    const last5Closes = closes.slice(-6); // need 6 to get 5 changes
+
+    // OBV Slope
+    const last5Closes = closes.slice(-6);
     const last5Vols = volumes.slice(-6);
     let localObv = 0;
     const localObvValues = [0];
@@ -699,34 +672,62 @@ class TechnicalIndicators {
     const bb = this.calculateBollingerBands(closes);
     const volatility = this.getVolatilityState(bb);
 
-    // --- Scoring ---
+    // --- Scoring & Detailed Pass/Fail ---
+    const passesDetail = {
+      trend: false,
+      rsi: false,
+      macd: false,
+      volume: false,
+      obv: false,
+      volatility: false
+    };
 
     // 1. Trend
-    const trendStrong = price > ema20 && ema20 > ema50;
-    if (trendStrong) score += 2;
-    else if (price > ema20) score += 1;
+    if (price > ema20) {
+      passesDetail.trend = true;
+      score += 1;
+    }
+    if (ema20 > ema50) {
+      passesDetail.trend = true;
+      score += 1;
+    }
 
     // 2. RSI Optimal Range
-    if (rsi >= 48 && rsi <= 65) score += 2;
+    if (rsi >= 48 && rsi <= 65) {
+      passesDetail.rsi = true;
+      score += 2;
+    }
 
     // 3. MACD Histogram rising
-    if (macdData.histogram > 0) score += 1;
+    if (macdData.histogram > 0) {
+      passesDetail.macd = true;
+      score += 1;
+    }
 
     // 4. Volume expansion
-    if (volume > avgVolume) score += 2;
+    if (volume > avgVolume) {
+      passesDetail.volume = true;
+      score += 2;
+    }
 
     // 5. OBV rising
-    if (obvSlope > 0) score += 1;
+    if (obvSlope > 0) {
+      passesDetail.obv = true;
+      score += 1;
+    }
 
     // 6. Volatility healthy
-    if (volatility === "normal") score += 1;
-    if (volatility === "high") score += 1;
+    if (volatility === "normal" || volatility === "high") {
+      passesDetail.volatility = true;
+      score += 1;
+    }
 
     const passes = score >= 5;
 
     return {
       score,
       passes,
+      passesDetail,
       details: {
         price, ema20, ema50, rsi, macdHist: macdData.histogram, obvSlope, volume, avgVolume, volatility
       }
@@ -764,19 +765,22 @@ class TechnicalIndicators {
           const volumes = analysis.candles.map(c => c.v);
           const avgVolume = this.calculateSMA(volumes, 20);
 
-          const { score, passes, details } = this.evaluateHighPotentialUserLogic(analysis, avgVolume);
+          const { score, passes, details, passesDetail } = this.evaluateHighPotentialUserLogic(analysis, avgVolume);
 
-          if (passes) {
+          // Include if it passes OR if we want to show all for debugging (let frontend filter)
+          // For now, let's return everything that has a decent score or just everything so frontend can filter "Show All"
+          // But to save bandwidth, maybe keep score > 0
+          if (score > 0) {
             results.push({
               symbol,
               score,
               passes,
+              passesDetail,
               price: analysis.price,
               rsi: details.rsi,
               volume: details.volume,
               avgVolume: details.avgVolume,
               volatilityState: details.volatility,
-              // Add other fields if needed for badges
             });
           }
           // Rate limit
