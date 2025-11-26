@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCcw } from "lucide-react";
 
 interface HighPotentialCoin {
     symbol: string;
@@ -40,29 +40,40 @@ export default function HighPotentialPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filters, setFilters] = useState(defaultFilters);
+    const [pendingFilters, setPendingFilters] = useState(defaultFilters);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await api("/api/high-potential", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}) // Backend scans top coins automatically
+            });
+            if (!res.ok) throw new Error("Failed to fetch high potential coins");
+            const data = await res.json();
+            console.log("High Potential API Response:", data);
+            setCoins(Array.isArray(data.data) ? data.data : []);
+        } catch (err) {
+            console.error("High Potential Page Error:", err);
+            setError("Failed to load high potential coins. Please try again later.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        async function fetchData() {
-            try {
-                setLoading(true);
-                const res = await api("/api/high-potential", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({}) // Backend scans top coins automatically
-                });
-                if (!res.ok) throw new Error("Failed to fetch high potential coins");
-                const data = await res.json();
-                console.log("High Potential API Response:", data);
-                setCoins(Array.isArray(data.data) ? data.data : []);
-            } catch (err) {
-                console.error("High Potential Page Error:", err);
-                setError("Failed to load high potential coins. Please try again later.");
-            } finally {
-                setLoading(false);
-            }
-        }
         fetchData();
     }, []);
+
+    const handleFilterChange = (key: string) => {
+        setPendingFilters(prev => ({ ...prev, [key]: !(prev as any)[key] }));
+    };
+
+    const applyFilters = () => {
+        setFilters(pendingFilters);
+    };
 
     // Safe check for coins
     const safeCoins = Array.isArray(coins) ? coins : [];
@@ -86,13 +97,24 @@ export default function HighPotentialPage() {
 
     return (
         <div className="p-4 sm:p-6 text-foreground min-h-screen">
-            <div className="mb-6">
-                <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
-                    🔥 High Potential Coins
-                </h1>
-                <p className="text-muted-foreground">
-                    Top coins filtered by Trend, RSI, Volume, and Volatility.
-                </p>
+            <div className="mb-6 flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
+                        🔥 High Potential Coins
+                    </h1>
+                    <p className="text-muted-foreground">
+                        Top coins filtered by Trend, RSI, Volume, and Volatility.
+                    </p>
+                </div>
+                <Button
+                    onClick={fetchData}
+                    disabled={loading}
+                    variant="outline"
+                    size="icon"
+                    className="ml-4"
+                >
+                    <RefreshCcw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
             </div>
 
             {/* Debug Filters Panel */}
@@ -102,16 +124,25 @@ export default function HighPotentialPage() {
                 borderRadius: "10px",
                 marginBottom: "20px"
             }}>
-                <h3 className="font-bold mb-2">Debug Filters</h3>
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-bold">Debug Filters</h3>
+                    <Button
+                        onClick={applyFilters}
+                        size="sm"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                        Submit Filters
+                    </Button>
+                </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {Object.keys(filters).map(key => (
+                    {Object.keys(pendingFilters).map(key => (
                         key !== "showAll" && (
                             <label key={key} className="flex items-center cursor-pointer">
                                 <input
                                     type="checkbox"
-                                    checked={(filters as any)[key]}
-                                    onChange={() => setFilters({ ...filters, [key]: !(filters as any)[key] })}
+                                    checked={(pendingFilters as any)[key]}
+                                    onChange={() => handleFilterChange(key)}
                                     className="accent-primary"
                                 />
                                 <span style={{ marginLeft: "8px" }}>{key.toUpperCase()} Filter</span>
@@ -123,8 +154,8 @@ export default function HighPotentialPage() {
                 <label style={{ display: "block", marginTop: "12px", cursor: "pointer" }} className="flex items-center">
                     <input
                         type="checkbox"
-                        checked={filters.showAll}
-                        onChange={() => setFilters({ ...filters, showAll: !filters.showAll })}
+                        checked={pendingFilters.showAll}
+                        onChange={() => setPendingFilters(prev => ({ ...prev, showAll: !prev.showAll }))}
                         className="accent-cyan-500"
                     />
                     <span style={{ marginLeft: "8px", fontWeight: "bold", color: "#0af" }}>SHOW ALL COINS</span>
