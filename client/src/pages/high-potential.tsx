@@ -33,7 +33,7 @@ const defaultFilters = {
     volume: true,
     obv: true,
     volatility: true,
-    showAll: false
+    showAll: true
 };
 
 const CACHE_KEY = "high_potential_data_cache";
@@ -150,9 +150,11 @@ export default function HighPotentialPage() {
                     <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
                         🔥 High Potential Coins
                     </h1>
-                    <p className="text-muted-foreground">
-                        Top coins filtered by Trend, RSI, Volume, and Volatility.
-                    </p>
+                    <div className="flex flex-col gap-1">
+                        <p className="text-muted-foreground">
+                            Top coins filtered by Trend, RSI, Volume, and Volatility.
+                        </p>
+                    </div>
                 </div>
                 <div className="flex flex-col items-end gap-1">
                     <button
@@ -189,7 +191,7 @@ export default function HighPotentialPage() {
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 gap-3 mb-4">
                     {Object.keys(pendingFilters).map(key => (
                         key !== "showAll" && (
                             <label key={key} className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors">
@@ -203,8 +205,10 @@ export default function HighPotentialPage() {
                             </label>
                         )
                     ))}
+                </div>
 
-                    <label className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors col-span-2 sm:col-span-1">
+                <div className="border-t border-white/10 pt-3">
+                    <label className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors">
                         <input
                             type="checkbox"
                             checked={pendingFilters.showAll}
