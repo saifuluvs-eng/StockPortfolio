@@ -173,36 +173,37 @@ export default function HighPotentialPage() {
                 </div>
             </div>
 
-            {/* Debug Filters Panel */}
+            {/* Choose your Technicals Panel */}
             <div style={{
                 background: "#111",
                 padding: "16px",
                 borderRadius: "10px",
                 marginBottom: "20px"
             }}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <h3 className="font-bold text-lg">Debug Filters</h3>
+                <h3 className="font-bold text-lg mb-4">Choose your Technicals</h3>
+
+                <div className="flex flex-col md:flex-row gap-6 items-start">
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+                        {Object.keys(pendingFilters).map(key => (
+                            <label key={key} className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors min-w-[140px]">
+                                <input
+                                    type="checkbox"
+                                    checked={(pendingFilters as any)[key]}
+                                    onChange={() => handleFilterChange(key)}
+                                    className="accent-primary w-4 h-4"
+                                />
+                                <span className="ml-2 text-sm font-medium">{key.toUpperCase()}</span>
+                            </label>
+                        ))}
+                    </div>
+
                     <Button
                         onClick={applyFilters}
-                        size="sm"
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto"
+                        size="default"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-[44px] self-start md:self-center"
                     >
                         Submit Filters
                     </Button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                    {Object.keys(pendingFilters).map(key => (
-                        <label key={key} className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors">
-                            <input
-                                type="checkbox"
-                                checked={(pendingFilters as any)[key]}
-                                onChange={() => handleFilterChange(key)}
-                                className="accent-primary w-4 h-4"
-                            />
-                            <span className="ml-2 text-sm font-medium">{key.toUpperCase()}</span>
-                        </label>
-                    ))}
                 </div>
             </div>
 
@@ -281,7 +282,7 @@ export default function HighPotentialPage() {
             <div className="mt-8 p-6 bg-card rounded-xl border border-border">
                 <h2 className="text-xl font-bold mb-4">How it works & Definitions</h2>
 
-                <div className="space-y-6">
+                <div className="space-y-8">
                     <div>
                         <h3 className="font-semibold text-lg mb-2 text-primary">How do coins populate in the list?</h3>
                         <p className="text-muted-foreground text-sm leading-relaxed">
@@ -293,7 +294,55 @@ export default function HighPotentialPage() {
                     </div>
 
                     <div>
-                        <h3 className="font-semibold text-lg mb-2 text-primary">Badge Definitions</h3>
+                        <h3 className="font-semibold text-lg mb-3 text-primary">Pass/Fail Criteria</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm">
+                            <div className="flex justify-between border-b border-border/40 pb-2">
+                                <span className="font-bold">Trend</span>
+                                <div className="text-right">
+                                    <div className="text-green-400">✓ Price &gt; EMA20 <span className="text-muted-foreground">OR</span> EMA20 &gt; EMA50</div>
+                                    <div className="text-red-400">✕ Price &lt; EMA20 <span className="text-muted-foreground">AND</span> EMA20 &lt; EMA50</div>
+                                </div>
+                            </div>
+                            <div className="flex justify-between border-b border-border/40 pb-2">
+                                <span className="font-bold">RSI</span>
+                                <div className="text-right">
+                                    <div className="text-green-400">✓ 48 ≤ RSI ≤ 65</div>
+                                    <div className="text-red-400">✕ RSI &lt; 48 <span className="text-muted-foreground">OR</span> RSI &gt; 65</div>
+                                </div>
+                            </div>
+                            <div className="flex justify-between border-b border-border/40 pb-2">
+                                <span className="font-bold">MACD</span>
+                                <div className="text-right">
+                                    <div className="text-green-400">✓ Histogram &gt; 0</div>
+                                    <div className="text-red-400">✕ Histogram ≤ 0</div>
+                                </div>
+                            </div>
+                            <div className="flex justify-between border-b border-border/40 pb-2">
+                                <span className="font-bold">Volume</span>
+                                <div className="text-right">
+                                    <div className="text-green-400">✓ Volume &gt; AvgVolume</div>
+                                    <div className="text-red-400">✕ Volume ≤ AvgVolume</div>
+                                </div>
+                            </div>
+                            <div className="flex justify-between border-b border-border/40 pb-2">
+                                <span className="font-bold">OBV</span>
+                                <div className="text-right">
+                                    <div className="text-green-400">✓ Slope &gt; 0</div>
+                                    <div className="text-red-400">✕ Slope ≤ 0</div>
+                                </div>
+                            </div>
+                            <div className="flex justify-between border-b border-border/40 pb-2">
+                                <span className="font-bold">Volatility</span>
+                                <div className="text-right">
+                                    <div className="text-green-400">✓ Normal <span className="text-muted-foreground">OR</span> High (Expanding)</div>
+                                    <div className="text-red-400">✕ Low (Compression)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 className="font-semibold text-lg mb-3 text-primary">Badge Definitions</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                             {/* Trend Badges */}
                             <div className="flex items-start gap-2">

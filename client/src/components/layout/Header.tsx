@@ -23,6 +23,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       "/account": "Account",
       "/ai-insights": "AI",
       "/news": "News",
+      "/high-potential": "High Potential",
     };
 
     for (const [route, title] of Object.entries(titles)) {
@@ -41,7 +42,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         >
           <Menu size={20} className="text-foreground" />
         </button>
-        
+
         <h1 className="text-base font-semibold tracking-tight text-foreground truncate flex-1 md:flex-none md:text-lg">
           {getPageTitle(pathname)}
         </h1>
