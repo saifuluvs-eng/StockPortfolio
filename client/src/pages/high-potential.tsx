@@ -173,37 +173,58 @@ export default function HighPotentialPage() {
                 </div>
             </div>
 
-            {/* Choose your Technicals Panel */}
-            <div style={{
-                background: "#111",
-                padding: "16px",
-                borderRadius: "10px",
-                marginBottom: "20px"
-            }}>
-                <h3 className="font-bold text-lg mb-4">Choose your Technicals</h3>
-
-                <div className="flex flex-col md:flex-row gap-6 items-start">
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-                        {Object.keys(pendingFilters).map(key => (
-                            <label key={key} className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors min-w-[140px]">
-                                <input
-                                    type="checkbox"
-                                    checked={(pendingFilters as any)[key]}
-                                    onChange={() => handleFilterChange(key)}
-                                    className="accent-primary w-4 h-4"
-                                />
-                                <span className="ml-2 text-sm font-medium">{key.toUpperCase()}</span>
-                            </label>
-                        ))}
+            {/* Top Section: Filters & Placeholder */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Left Card: Choose your Technicals */}
+                <div style={{
+                    background: "#111",
+                    padding: "20px",
+                    borderRadius: "10px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    minHeight: "200px"
+                }}>
+                    <div>
+                        <h3 className="font-bold text-lg mb-4">Choose your Technicals</h3>
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-6">
+                            {Object.keys(pendingFilters).map(key => (
+                                <label key={key} className="flex items-center cursor-pointer hover:bg-white/5 p-1 rounded transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={(pendingFilters as any)[key]}
+                                        onChange={() => handleFilterChange(key)}
+                                        className="accent-primary w-4 h-4"
+                                    />
+                                    <span className="ml-3 text-sm font-medium">{key.toUpperCase()}</span>
+                                </label>
+                            ))}
+                        </div>
                     </div>
 
                     <Button
                         onClick={applyFilters}
                         size="default"
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 h-[44px] self-start md:self-center"
+                        className="bg-[#ff3366] text-white hover:bg-[#ff3366]/90 w-full font-bold text-md h-10"
                     >
                         Submit Filters
                     </Button>
+                </div>
+
+                {/* Right Card: Placeholder */}
+                <div style={{
+                    background: "#111",
+                    padding: "20px",
+                    borderRadius: "10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minHeight: "200px",
+                    border: "1px solid #ff3366"
+                }}>
+                    <h3 className="font-bold text-xl text-[#ff3366] text-center px-4" style={{ textShadow: "0 0 10px rgba(255, 51, 102, 0.3)" }}>
+                        New Card Empty for now, We'll add something here later
+                    </h3>
                 </div>
             </div>
 
