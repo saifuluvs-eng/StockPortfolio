@@ -583,6 +583,20 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // High Potential Route
+  app.post('/api/high-potential', async (req: Request, res: Response) => {
+    try {
+      // We ignore req.body.coins for now and scan top pairs on backend as planned
+      // to ensure we have full candle history for calculations.
+      // If user provided coins, we could filter by them, but for now we scan top 30.
+      const results = await technicalIndicators.scanHighPotentialUser();
+      res.json({ data: results });
+    } catch (error) {
+      console.error("Error fetching high potential coins:", error);
+      res.status(500).json({ message: "Failed to fetch high potential coins" });
+    }
+  });
+
   // Watchlist routes
   app.get('/api/watchlist', isAuthenticated, async (req: Request, res: Response) => {
     try {

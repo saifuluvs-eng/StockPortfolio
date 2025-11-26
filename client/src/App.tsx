@@ -15,6 +15,7 @@ import Account from "@/pages/Account";
 import AIInsights from "@/pages/ai-insights";
 import News from "@/pages/news";
 import ResetPassword from "@/pages/ResetPassword";
+import HighPotentialPage from "@/pages/high-potential";
 
 function ShellLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);

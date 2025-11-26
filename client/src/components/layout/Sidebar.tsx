@@ -1,16 +1,26 @@
+
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
 import {
-  Home,
+  LayoutDashboard,
   Briefcase,
-  Activity,
-  BarChart2,
-  Bell,
-  User2,
+  Brain,
+  User,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X,
+  Settings,
+  LogOut,
   ListChecks,
   Newspaper,
   PanelLeft,
+  Flame,
+  Home,
+  Activity,
+  BarChart2,
+  Bell,
 } from "lucide-react";
 import HoverTooltip from "../ui/HoverTooltip";
 import { useAuth } from "@/auth/AuthContext";
@@ -30,6 +40,7 @@ const items: NavItem[] = [
   { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: (user) => !!user },
   { label: "Alerts", to: "/alerts", icon: <Bell size={20} />, visible: (user) => !!user },
   { label: "AI Insights", to: "/ai-insights", icon: <BarChart2 size={20} /> },
+  { label: "High Potential", to: "/high-potential", icon: <Flame size={20} className="text-orange-500" /> },
   { label: "News", to: "/news", icon: <Newspaper size={20} /> },
 ];
 
@@ -53,8 +64,8 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const labelClass = !isCollapsed
     ? "whitespace-nowrap transition-all opacity-100 w-auto"
     : expandOnHover
-    ? "whitespace-nowrap transition-all opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto"
-    : "whitespace-nowrap transition-all opacity-0 w-0";
+      ? "whitespace-nowrap transition-all opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto"
+      : "whitespace-nowrap transition-all opacity-0 w-0";
 
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
@@ -124,147 +135,147 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           !isMobile && expandOnHover && isCollapsed ? "hover:w-60" : "",
         ].join(" ")}
       >
-      {/* Brand */}
-      <div className="h-14 flex items-center justify-between px-3">
-        <Link
-          to="/dashboard"
-          className="text-white/90 font-semibold tracking-wide whitespace-nowrap overflow-hidden"
-          onClick={onClose}
-        >
-          {showStrictCollapsed ? "" : "CryptoTrader Pro"}
-        </Link>
-        {isMobile && isOpen && (
-          <button
+        {/* Brand */}
+        <div className="h-14 flex items-center justify-between px-3">
+          <Link
+            to="/dashboard"
+            className="text-white/90 font-semibold tracking-wide whitespace-nowrap overflow-hidden"
             onClick={onClose}
-            className="md:hidden text-white/60 hover:text-white"
-            aria-label="Close sidebar"
           >
-            ✕
-          </button>
-        )}
-      </div>
+            {showStrictCollapsed ? "" : "CryptoTrader Pro"}
+          </Link>
+          {isMobile && isOpen && (
+            <button
+              onClick={onClose}
+              className="md:hidden text-white/60 hover:text-white"
+              aria-label="Close sidebar"
+            >
+              ✕
+            </button>
+          )}
+        </div>
 
-      {/* Nav */}
-      <nav className="mt-2 space-y-1 px-2 flex-1 overflow-y-auto">
-        {items
-          .filter((item) => (loading ? true : item.visible ? item.visible(user) : true))
-          .map((item) => {
-            const isActive = item.to === "/analyse" 
-              ? currentPath.startsWith("/analyse")
-              : currentPath === item.to;
-            const handleClick = () => {
-              if (isMobile && isOpen) {
-                onClose?.();
-              }
-            };
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={handleClick}
-                className={[
-                  "relative group/item flex items-center gap-3 rounded-xl px-3 py-2 text-[15px]",
-                  "text-foreground hover:text-white hover:bg-white/5",
-                  isActive ? "bg-white/[0.07] text-white" : "",
-                ].join(" ")}
-                onMouseEnter={(event) => {
-                  if (showStrictCollapsed) {
-                    setHoverLabel(item.label);
-                    setHoverRef(event.currentTarget as HTMLElement);
-                  }
-                }}
-                onMouseLeave={() => {
-                  setHoverRef(null);
-                }}
-              >
-                <div className="shrink-0">{item.icon}</div>
-                <span className={labelClass}>
-                  {item.label}
-                </span>
-              </Link>
-            );
-          })}
-      </nav>
+        {/* Nav */}
+        <nav className="mt-2 space-y-1 px-2 flex-1 overflow-y-auto">
+          {items
+            .filter((item) => (loading ? true : item.visible ? item.visible(user) : true))
+            .map((item) => {
+              const isActive = item.to === "/analyse"
+                ? currentPath.startsWith("/analyse")
+                : currentPath === item.to;
+              const handleClick = () => {
+                if (isMobile && isOpen) {
+                  onClose?.();
+                }
+              };
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={handleClick}
+                  className={[
+                    "relative group/item flex items-center gap-3 rounded-xl px-3 py-2 text-[15px]",
+                    "text-foreground hover:text-white hover:bg-white/5",
+                    isActive ? "bg-white/[0.07] text-white" : "",
+                  ].join(" ")}
+                  onMouseEnter={(event) => {
+                    if (showStrictCollapsed) {
+                      setHoverLabel(item.label);
+                      setHoverRef(event.currentTarget as HTMLElement);
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setHoverRef(null);
+                  }}
+                >
+                  <div className="shrink-0">{item.icon}</div>
+                  <span className={labelClass}>
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+        </nav>
 
-      {/* Bottom-left floating control button */}
-      <div className="absolute bottom-3 left-2">
-        <button
-          ref={sbBtnRef}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setSbOpen((v) => !v);
-          }}
-          aria-label="Sidebar control"
-          className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-primary shadow-md flex items-center justify-center"
-        >
-          <PanelLeft size={18} className="text-white/90" />
-        </button>
-      </div>
-
-      {sbOpen &&
-        createPortal(
-          <div
-            ref={sbCardRef}
-            className="fixed z-[2147483647] w-80 rounded-2xl border border-primary/40 bg-background/95 backdrop-blur text-foreground shadow-2xl overflow-hidden"
-            style={{
-              left: sbPos?.left ?? 0,
-              top: sbPos?.top ?? -9999,
-              transform: "translate(-50%, -100%)",
-              visibility: sbPos ? "visible" : "hidden",
+        {/* Bottom-left floating control button */}
+        <div className="absolute bottom-3 left-2">
+          <button
+            ref={sbBtnRef}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSbOpen((v) => !v);
             }}
-            onClick={(e) => e.stopPropagation()}
+            aria-label="Sidebar control"
+            className="w-10 h-10 rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-primary shadow-md flex items-center justify-center"
           >
-            <div className="px-4 py-3 border-b border-primary/20 text-[15px] font-semibold text-primary">Sidebar control</div>
-            <div className="p-4 text-[15px] space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
-                <input
-                  type="radio"
-                  name="sb"
-                  className="accent-primary"
-                  checked={!isCollapsed && !expandOnHover}
-                  onChange={() => {
-                    setIsCollapsed(false);
-                    setExpandOnHover(false);
-                    setSbOpen(false);
-                  }}
-                />
-                <span>Expanded</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
-                <input
-                  type="radio"
-                  name="sb"
-                  className="accent-primary"
-                  checked={isCollapsed && !expandOnHover}
-                  onChange={() => {
-                    setIsCollapsed(true);
-                    setExpandOnHover(false);
-                    setSbOpen(false);
-                  }}
-                />
-                <span>Collapsed</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
-                <input
-                  type="radio"
-                  name="sb"
-                  className="accent-primary"
-                  checked={isCollapsed && expandOnHover}
-                  onChange={() => {
-                    setIsCollapsed(true);
-                    setExpandOnHover(true);
-                    setSbOpen(false);
-                  }}
-                />
-                <span>Expand on hover</span>
-              </label>
-            </div>
-          </div>,
-          document.body
-        )}
+            <PanelLeft size={18} className="text-white/90" />
+          </button>
+        </div>
 
-      <HoverTooltip anchor={hoverRef} label={hoverLabel} show={!!hoverRef && showStrictCollapsed} />
+        {sbOpen &&
+          createPortal(
+            <div
+              ref={sbCardRef}
+              className="fixed z-[2147483647] w-80 rounded-2xl border border-primary/40 bg-background/95 backdrop-blur text-foreground shadow-2xl overflow-hidden"
+              style={{
+                left: sbPos?.left ?? 0,
+                top: sbPos?.top ?? -9999,
+                transform: "translate(-50%, -100%)",
+                visibility: sbPos ? "visible" : "hidden",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 py-3 border-b border-primary/20 text-[15px] font-semibold text-primary">Sidebar control</div>
+              <div className="p-4 text-[15px] space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
+                  <input
+                    type="radio"
+                    name="sb"
+                    className="accent-primary"
+                    checked={!isCollapsed && !expandOnHover}
+                    onChange={() => {
+                      setIsCollapsed(false);
+                      setExpandOnHover(false);
+                      setSbOpen(false);
+                    }}
+                  />
+                  <span>Expanded</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
+                  <input
+                    type="radio"
+                    name="sb"
+                    className="accent-primary"
+                    checked={isCollapsed && !expandOnHover}
+                    onChange={() => {
+                      setIsCollapsed(true);
+                      setExpandOnHover(false);
+                      setSbOpen(false);
+                    }}
+                  />
+                  <span>Collapsed</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer hover:text-white transition-colors">
+                  <input
+                    type="radio"
+                    name="sb"
+                    className="accent-primary"
+                    checked={isCollapsed && expandOnHover}
+                    onChange={() => {
+                      setIsCollapsed(true);
+                      setExpandOnHover(true);
+                      setSbOpen(false);
+                    }}
+                  />
+                  <span>Expand on hover</span>
+                </label>
+              </div>
+            </div>,
+            document.body
+          )}
+
+        <HoverTooltip anchor={hoverRef} label={hoverLabel} show={!!hoverRef && showStrictCollapsed} />
       </aside>
     </>
   );

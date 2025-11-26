@@ -624,6 +624,174 @@ class TechnicalIndicators {
 
     return { closes, highs, lows, volumes };
   }
-}
+  // --- User's High Potential Logic ---
 
-export const technicalIndicators = new TechnicalIndicators();
+  private calculateOBVSlope(obvValues: number[]): number {
+    if (obvValues.length < 5) return 0;
+    const recent = obvValues.slice(-5);
+    // Simple slope: (last - first) / length
+    return (recent[recent.length - 1] - recent[0]) / recent.length;
+  }
+
+  private getVolatilityState(bb: { upper: number; lower: number; middle: number }): "low" | "normal" | "high" {
+    const width = (bb.upper - bb.lower) / bb.middle;
+    if (width < 0.05) return "low"; // Compressed
+    if (width > 0.15) return "high"; // Expanded
+    return "normal";
+  }
+
+  public evaluateHighPotentialUserLogic(analysis: TechnicalAnalysis, avgVolume: number): { score: number; passes: boolean; details: any } {
+    let score = 0;
+    const indicators = analysis.indicators;
+    const price = analysis.price;
+
+    // Extract values (assuming we have access to raw values or can derive them)
+    // Note: In a real scenario, we might need to store more raw data in 'analysis' or pass it in.
+    // For now, we will use the indicators we have.
+
+    // 1. Trend
+    // We need EMA20 and EMA50 values.
+    // Since we don't return raw EMA values in the 'indicators' map structure exactly as requested,
+    // we will rely on the 'ema_crossover' signal which is based on EMA20 - EMA50.
+    // And we need price > EMA20.
+    // Let's reconstruct or approximate.
+    // Ideally, analyzeSymbol should return these raw values.
+    // For this implementation, I will assume we can access them if we modify analyzeSymbol or just re-calculate here if needed.
+    // BUT, to be efficient, let's use the 'ema_crossover' score/value.
+    // Value = EMA20 - EMA50.
+    // If Value > 0, then EMA20 > EMA50.
+
+    // We also need Price > EMA20. We don't have raw EMA20 in the public interface of TechnicalAnalysis.
+    // I will add raw EMA values to the 'indicators' payload in analyzeSymbol to make this easier,
+    // or just re-calculate them here if I had the candles.
+    // Since 'analysis' has 'candles', I can re-calculate quickly.
+
+    const closes = analysis.candles?.map(c => c.c) || [];
+    const volumes = analysis.candles?.map(c => c.v) || [];
+
+    if (closes.length < 50) return { score: 0, passes: false, details: {} };
+
+    const ema20 = this.calculateEMA(closes, 20);
+    const ema50 = this.calculateEMA(closes, 50);
+    const rsi = indicators.rsi.value;
+    const macdHist = indicators.macd.value - (indicators.macd.value * 0.9); // Approx histogram if not stored
+    // Actually, analyzeSymbol stores 'macd' value as MACD line. It doesn't explicitly store histogram in the map value,
+    // but the calculateMACD method returns it.
+    // Let's re-calc to be safe and exact.
+    const macdData = this.calculateMACD(closes);
+    const obv = this.calculateOBV(closes, volumes);
+    // We need OBV slope from last 5 candles.
+    // We need historical OBV. calculateOBV returns single number.
+    // Let's implement a quick historical OBV generator or just use the last 5 candles for a local OBV.
+    // Local OBV for last 5:
+    const last5Closes = closes.slice(-6); // need 6 to get 5 changes
+    const last5Vols = volumes.slice(-6);
+    let localObv = 0;
+    const localObvValues = [0];
+    for (let i = 1; i < last5Closes.length; i++) {
+      if (last5Closes[i] > last5Closes[i - 1]) localObv += last5Vols[i];
+      else if (last5Closes[i] < last5Closes[i - 1]) localObv -= last5Vols[i];
+      localObvValues.push(localObv);
+    }
+    const obvSlope = this.calculateOBVSlope(localObvValues);
+
+    const volume = volumes[volumes.length - 1];
+    const bb = this.calculateBollingerBands(closes);
+    const volatility = this.getVolatilityState(bb);
+
+    // --- Scoring ---
+
+    // 1. Trend
+    const trendStrong = price > ema20 && ema20 > ema50;
+    if (trendStrong) score += 2;
+    else if (price > ema20) score += 1;
+
+    // 2. RSI Optimal Range
+    if (rsi >= 48 && rsi <= 65) score += 2;
+
+    // 3. MACD Histogram rising
+    if (macdData.histogram > 0) score += 1;
+
+    // 4. Volume expansion
+    if (volume > avgVolume) score += 2;
+
+    // 5. OBV rising
+    if (obvSlope > 0) score += 1;
+
+    // 6. Volatility healthy
+    if (volatility === "normal") score += 1;
+    if (volatility === "high") score += 1;
+
+    const passes = score >= 5;
+
+    return {
+      score,
+      passes,
+      details: {
+        price, ema20, ema50, rsi, macdHist: macdData.histogram, obvSlope, volume, avgVolume, volatility
+      }
+    };
+  }
+
+  async scanHighPotentialUser(): Promise<any[]> {
+    try {
+      // 1. Get pairs
+      let allPairs: string[];
+      try {
+        allPairs = await binanceService.getAllUSDTPairs();
+      } catch (e) {
+        allPairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT'];
+      }
+
+      // Filter stablecoins
+      const stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP', 'FDUSD'];
+      const pairsToScan = allPairs.filter(pair =>
+        !stablecoins.some(stable => pair.replace('USDT', '') === stable)
+      );
+
+      // Limit to top 30 for performance in this demo
+      const topPairs = pairsToScan.slice(0, 30);
+      const results = [];
+
+      for (const symbol of topPairs) {
+        try {
+          // Get analysis (which fetches candles)
+          const analysis = await this.analyzeSymbol(symbol, '4h'); // Default to 4h for trend
+
+          if (!analysis.candles || analysis.candles.length < 50) continue;
+
+          // Calculate Avg Volume (last 20)
+          const volumes = analysis.candles.map(c => c.v);
+          const avgVolume = this.calculateSMA(volumes, 20);
+
+          const { score, passes, details } = this.evaluateHighPotentialUserLogic(analysis, avgVolume);
+
+          if (passes) {
+            results.push({
+              symbol,
+              score,
+              passes,
+              price: analysis.price,
+              rsi: details.rsi,
+              volume: details.volume,
+              avgVolume: details.avgVolume,
+              volatilityState: details.volatility,
+              // Add other fields if needed for badges
+            });
+          }
+          // Rate limit
+          await new Promise(r => setTimeout(r, 50));
+        } catch (err) {
+          console.error(`Error scanning ${symbol}:`, err);
+        }
+      }
+
+      return results.sort((a, b) => b.score - a.score);
+
+    } catch (error) {
+      console.error("High potential scan failed:", error);
+      return [];
+    }
+  }
+
+  export const technicalIndicators = new TechnicalIndicators();
