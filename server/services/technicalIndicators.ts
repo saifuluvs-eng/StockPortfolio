@@ -26,6 +26,25 @@ interface ScanFilters {
   excludeStablecoins?: boolean;
 }
 
+interface HighPotentialCoin {
+  symbol: string;
+  score: number;
+  passes: boolean;
+  passesDetail: {
+    trend: boolean;
+    rsi: boolean;
+    macd: boolean;
+    volume: boolean;
+    obv: boolean;
+    volatility: boolean;
+  };
+  price: number;
+  rsi: number;
+  volume: number;
+  avgVolume: number;
+  volatilityState: "low" | "normal" | "high";
+}
+
 class TechnicalIndicators {
   // Simple Moving Average
   private calculateSMA(prices: number[], period: number): number {
@@ -734,68 +753,56 @@ class TechnicalIndicators {
     };
   }
 
-  async scanHighPotentialUser(): Promise<any[]> {
+
+
+  async scanHighPotentialUser(): Promise<HighPotentialCoin[]> {
+    // 1. Get top 50 gainers from Binance
+    let pairs: string[] = [];
     try {
-      // 1. Get pairs
-      let allPairs: string[];
-      try {
-        allPairs = await binanceService.getAllUSDTPairs();
-      } catch (e) {
-        allPairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT'];
-      }
-
-      // Filter stablecoins
-      const stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP', 'FDUSD'];
-      const pairsToScan = allPairs.filter(pair =>
-        !stablecoins.some(stable => pair.replace('USDT', '') === stable)
-      );
-
-      // Limit to top 30 for performance in this demo
-      const topPairs = pairsToScan.slice(0, 30);
-      const results = [];
-
-      for (const symbol of topPairs) {
-        try {
-          // Get analysis (which fetches candles)
-          const analysis = await this.analyzeSymbol(symbol, '4h'); // Default to 4h for trend
-
-          if (!analysis.candles || analysis.candles.length < 50) continue;
-
-          // Calculate Avg Volume (last 20)
-          const volumes = analysis.candles.map(c => c.v);
-          const avgVolume = this.calculateSMA(volumes, 20);
-
-          const { score, passes, details, passesDetail } = this.evaluateHighPotentialUserLogic(analysis, avgVolume);
-
-          // Include if it passes OR if we want to show all for debugging (let frontend filter)
-          // For now, let's return everything that has a decent score or just everything so frontend can filter "Show All"
-          // But to save bandwidth, maybe keep score > 0
-          if (score > 0) {
-            results.push({
-              symbol,
-              score,
-              passes,
-              passesDetail,
-              price: analysis.price,
-              rsi: details.rsi,
-              volume: details.volume,
-              avgVolume: details.avgVolume,
-              volatilityState: details.volatility,
-            });
-          }
-          // Rate limit
-          await new Promise(r => setTimeout(r, 50));
-        } catch (err) {
-          console.error(`Error scanning ${symbol}:`, err);
-        }
-      }
-
-      return results.sort((a, b) => b.score - a.score);
-
+      const topGainers = await binanceService.getTopGainers(50);
+      pairs = topGainers.map(t => t.symbol);
     } catch (error) {
-      console.error("High potential scan failed:", error);
-      return [];
+      console.error("Error fetching top gainers, falling back to default list", error);
+      pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT', 'NEARUSDT', 'FILUSDT', 'INJUSDT', 'OPUSDT', 'ARBUSDT'];
     }
+
+    const results: HighPotentialCoin[] = [];
+
+    // 2. Analyze each symbol
+    for (const symbol of pairs) {
+      try {
+        const analysis = await this.analyzeSymbol(symbol, '4h');
+
+        if (!analysis.candles || analysis.candles.length < 50) continue;
+
+        const volumes = analysis.candles.map(c => c.v);
+        const avgVolume = this.calculateSMA(volumes, 20);
+
+        const { score, passes, details, passesDetail } = this.evaluateHighPotentialUserLogic(analysis, avgVolume);
+
+        if (score > 0) {
+          results.push({
+            symbol,
+            score,
+            passes,
+            passesDetail,
+            price: analysis.price,
+            rsi: details.rsi,
+            volume: details.volume,
+            avgVolume: details.avgVolume,
+            volatilityState: details.volatility,
+          });
+        }
+        // Rate limit
+        await new Promise(r => setTimeout(r, 50));
+      } catch (err) {
+        console.error(`Error scanning ${symbol}:`, err);
+      }
+    }
+
+    return results.sort((a, b) => b.score - a.score);
   }
 
-  export const technicalIndicators = new TechnicalIndicators();
+}
+
+export const technicalIndicators = new TechnicalIndicators();

@@ -233,7 +233,27 @@ const bollingerBands = (closes: number[], period = 20, mult = 2) => {
 };
 
 async function highPotential(_req: any, res: any) {
-  const pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT', 'NEARUSDT', 'FILUSDT', 'INJUSDT', 'OPUSDT', 'ARBUSDT'];
+  let pairs: string[] = [];
+  try {
+    // Fetch top 50 gainers
+    const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`, { cache: "no-store" });
+    if (r.ok) {
+      const allTickers: any[] = await r.json();
+      pairs = allTickers
+        .filter((t: any) => t.symbol.endsWith("USDT") && parseFloat(t.quoteVolume) > 1000000)
+        .sort((a: any, b: any) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
+        .slice(0, 50)
+        .map((t: any) => t.symbol);
+    }
+  } catch (e) {
+    console.error("Error fetching gainers for high potential scan", e);
+  }
+
+  // Fallback if fetch fails
+  if (pairs.length === 0) {
+    pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT', 'NEARUSDT', 'FILUSDT', 'INJUSDT', 'OPUSDT', 'ARBUSDT'];
+  }
+
   const results = [];
 
   for (const symbol of pairs) {
@@ -270,7 +290,7 @@ async function highPotential(_req: any, res: any) {
       const upper = bb.upper.at(-1) || 0;
       const lower = bb.lower.at(-1) || 0;
       const middle = bb.middle.at(-1) || 0;
-      const bandwidth = (upper - lower) / middle;
+      const bandwidth = middle !== 0 ? (upper - lower) / middle : 0;
       let volatilityState = "normal";
       if (bandwidth < 0.05) volatilityState = "low";
       if (bandwidth > 0.15) volatilityState = "high";
@@ -320,7 +340,14 @@ async function highPotential(_req: any, res: any) {
 
 export default async function handler(req: any, res: any) {
   try {
-    const p = String((req.query?.path ?? "")).replace(/^\/+/, ""); // e.g. "market/ticker/BTCUSDT"
+    let p = String((req.query?.path ?? "")).replace(/^\/+/, "");
+    if (!p && req.url) {
+      const u = new URL(req.url, "http://localhost");
+      if (u.pathname.startsWith("/api/")) {
+        p = u.pathname.slice(5).replace(/^\/+/, "");
+      }
+    }
+
     if (!p) return alive(req, res);
     const seg = p.split("/").filter(Boolean);
 
