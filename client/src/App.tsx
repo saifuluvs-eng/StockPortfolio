@@ -97,6 +97,11 @@ export default function App() {
           <News />
         </ShellLayout>
       </Route>
+      <Route path="/high-potential">
+        <ShellLayout>
+          <HighPotentialPage />
+        </ShellLayout>
+      </Route>
 
       <Route>
         <Redirect to="/dashboard" />
