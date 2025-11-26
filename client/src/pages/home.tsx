@@ -13,6 +13,7 @@ import TopGainersCard from "@/components/dashboard/TopGainersCard";
 import { FearGreedGauge } from "@/components/dashboard/FearGreedGauge";
 import { getQueryFn } from "@/lib/queryClient";
 import { usePrices } from "@/lib/prices";
+import { openSpotTickerStream } from "@/lib/binanceWs";
 import { supabase } from "@/lib/supabase";
 import {
   TrendingUp,
@@ -73,62 +74,53 @@ export default function Home() {
 
   const containerClass = "w-full max-w-full overflow-hidden px-3 sm:px-4 md:px-6 py-4";
 
-  // ---------- Lower “Market Overview” (REST polling; WS disabled on Vercel) ----------
+  // ---------- Lower “Market Overview” (WebSockets) ----------
   const [btcChange, setBtcChange] = useState<{ priceChangePercent?: string | number }>({});
   const [ethChange, setEthChange] = useState<{ priceChangePercent?: string | number }>({});
   const { prices, setPrices } = usePrices();
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchMarketData() {
-      try {
-        // Fetch from backend to avoid CORS issues
-        const [btcRes, ethRes] = await Promise.all([
-          fetch("/api/market/ticker/BTCUSDT"),
-          fetch("/api/market/ticker/ETHUSDT"),
-        ]);
-
-        if (!cancelled) {
-          if (btcRes.ok) {
-            const btcData = (await btcRes.json()) as TickerResponse;
-            if (btcData?.price) {
-              setPrices({ BTCUSDT: Number(btcData.price) });
-            }
-            if (btcData?.priceChangePercent != null) {
-              setBtcChange({ priceChangePercent: btcData.priceChangePercent });
-            }
-          }
-
-          if (ethRes.ok) {
-            const ethData = (await ethRes.json()) as TickerResponse;
-            if (ethData?.price) {
-              setPrices({ ETHUSDT: Number(ethData.price) });
-            }
-            if (ethData?.priceChangePercent != null) {
-              setEthChange({ priceChangePercent: ethData.priceChangePercent });
-            }
-          }
-        }
-      } catch {
-        // Silently fail - using current prices or fallback
-      }
-    }
-
-    fetchMarketData();
-    const id = setInterval(fetchMarketData, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [setPrices]);
-
-  // Portfolio page handles WebSocket subscriptions for BTCUSDT/ETHUSDT and updates the shared price store
 
   // ---------- Tiles (React Query; disabled on Vercel without API_BASE) ----------
   const { data: positionsData = [] } = usePositions({ enabled: networkEnabled && !!user });
   const { setPrices: updatePortfolioPrices } = usePrices();
   const { market: totalMarketValue, pnlPct: totalPnlPercent } = usePortfolioStats();
+
+  useEffect(() => {
+    // 1. Determine symbols to track
+    // Always track BTC/ETH + any user positions
+    const trackSymbols = new Set(["BTCUSDT", "ETHUSDT"]);
+    if (Array.isArray(positionsData)) {
+      positionsData.forEach((p) => {
+        if (p.symbol) trackSymbols.add(p.symbol.toUpperCase());
+      });
+    }
+    const symbolList = Array.from(trackSymbols);
+
+    // 2. Open WebSocket stream
+    const closeStream = openSpotTickerStream(symbolList, {
+      onMessage: (ticker) => {
+        const sym = ticker.symbol.toUpperCase();
+        const price = parseFloat(ticker.lastPrice);
+        const change = parseFloat(ticker.priceChangePercent);
+
+        // Update global price store
+        if (!Number.isNaN(price)) {
+          setPrices({ [sym]: price });
+        }
+
+        // Update local state for BTC/ETH specific display
+        if (sym === "BTCUSDT") {
+          setBtcChange({ priceChangePercent: change });
+        } else if (sym === "ETHUSDT") {
+          setEthChange({ priceChangePercent: change });
+        }
+      },
+      onError: (err) => console.error("WS Error:", err),
+    });
+
+    return () => {
+      closeStream();
+    };
+  }, [positionsData, setPrices]);
 
   const symbols = useMemo(
     () => {
