@@ -507,8 +507,6 @@ export default function HighPotentialPage() {
                 </div>
             </div>
         </div>
-            </div >
-        </div >
     );
 }
 
