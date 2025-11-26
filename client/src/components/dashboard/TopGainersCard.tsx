@@ -115,7 +115,7 @@ export default function TopGainersCard() {
 
   return (
     <Link to="/gainers" className="block h-full">
-      <Card className="dashboard-card neon-hover bg-gradient-to-br from-lime-500/10 to-lime-500/20 h-auto sm:h-full cursor-pointer" style={{ "--neon-glow": "hsl(84, 100%, 50%)" } as React.CSSProperties}>
+      <Card className="dashboard-card neon-hover bg-gradient-to-br from-green-500/10 to-green-500/20 h-auto sm:h-full cursor-pointer" style={{ "--neon-glow": "hsl(120, 100%, 40%)" } as React.CSSProperties}>
         <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start h-full">
           <div className="flex items-start justify-between gap-2 mb-3">
             <div className="min-w-0 flex-1">

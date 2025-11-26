@@ -269,7 +269,7 @@ export default function Home() {
 
           {/* 2) Scanner */}
           <Link to="/analyse/BTCUSDT" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/10 to-emerald-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/10 to-blue-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(220, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -278,7 +278,7 @@ export default function Home() {
                     <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">15+</p>
                     <p className="text-xs text-muted-foreground">Indicators</p>
                   </div>
-                  <Search className="w-6 sm:w-8 h-6 sm:h-8 text-accent flex-shrink-0" />
+                  <Search className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -289,7 +289,7 @@ export default function Home() {
 
           {/* 4) Total P&L */}
           <Link to="/portfolio" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-pink-500/10 to-pink-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(330, 100%, 50%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-yellow-500/10 to-yellow-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(45, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -299,7 +299,7 @@ export default function Home() {
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">Overall performance</p>
                   </div>
-                  <Activity className="w-6 sm:w-8 h-6 sm:h-8 text-pink-500 flex-shrink-0" />
+                  <Activity className="w-6 sm:w-8 h-6 sm:h-8 text-yellow-500 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -307,7 +307,7 @@ export default function Home() {
 
           {/* 5) Watchlist */}
           <Link to="/watchlist" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/10 to-blue-500/20 h-auto sm:h-full" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-100/10 to-orange-100/20 h-auto sm:h-full" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(40, 50%, 70%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -316,7 +316,7 @@ export default function Home() {
                     <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">{watchDisplay}</p>
                     <p className="text-xs text-muted-foreground">Coins tracked</p>
                   </div>
-                  <Eye className="w-6 sm:w-8 h-6 sm:h-8 text-blue-500 flex-shrink-0" />
+                  <Eye className="w-6 sm:w-8 h-6 sm:h-8 text-orange-200 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
