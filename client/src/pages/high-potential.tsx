@@ -1,3 +1,4 @@
+
 import { TrendBadge, MomentumBadge, VolumeBadge, VolatilityBadge } from "@/components/high-potential/Badges";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
@@ -149,25 +150,25 @@ export default function HighPotentialPage() {
                     <h1 className="text-2xl sm:text-3xl font-bold mb-2 flex items-center gap-2">
                         🔥 High Potential Coins
                     </h1>
-                    <div className="flex flex-col gap-1">
-                        <p className="text-muted-foreground">
-                            Top coins filtered by Trend, RSI, Volume, and Volatility.
-                        </p>
-                        {lastUpdated && (
-                            <p className="text-xs text-muted-foreground">
-                                Last updated: {formatTimestamp(lastUpdated)}
-                            </p>
-                        )}
-                    </div>
+                    <p className="text-muted-foreground">
+                        Top coins filtered by Trend, RSI, Volume, and Volatility.
+                    </p>
                 </div>
-                <button
-                    onClick={() => fetchData(true)}
-                    disabled={isRefreshing}
-                    className="flex items-center gap-2 border-2 border-primary text-primary bg-transparent hover:bg-primary/10 active:bg-primary/20 rounded-lg px-3 py-1.5 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
-                >
-                    <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
-                    <span className="hidden sm:inline">{isRefreshing ? "Refreshing…" : "Refresh"}</span>
-                </button>
+                <div className="flex flex-col items-end gap-1">
+                    <button
+                        onClick={() => fetchData(true)}
+                        disabled={isRefreshing}
+                        className="flex items-center gap-2 border-2 border-primary text-primary bg-transparent hover:bg-primary/10 active:bg-primary/20 rounded-lg px-3 py-1.5 text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
+                    >
+                        <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+                        <span className="hidden sm:inline">{isRefreshing ? "Refreshing…" : "Refresh"}</span>
+                    </button>
+                    {lastUpdated && (
+                        <p className="text-xs text-muted-foreground">
+                            Last updated: {formatTimestamp(lastUpdated)}
+                        </p>
+                    )}
+                </div>
             </div>
 
             {/* Debug Filters Panel */}
@@ -228,62 +229,120 @@ export default function HighPotentialPage() {
                     No coins match the selected criteria. Try unchecking some filters or use "SHOW ALL COINS".
                 </div>
             ) : (
-                <div className="grid gap-4">
-                    {filteredCoins.map((coin) => (
-                        <Card key={coin.symbol} className="bg-card border-border hover:border-primary/50 transition-colors">
-                            <CardContent className="p-4 sm:p-5">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div className="w-full">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-3">
-                                                <h3 className="text-lg font-bold">{coin.symbol}</h3>
-                                                <span className="text-[#4aff4a] font-mono font-bold bg-[#4aff4a]/10 px-2 py-0.5 rounded text-sm">
-                                                    Score: {coin.score}/10
-                                                </span>
+                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                    <div className="h-[600px] overflow-y-auto">
+                        <table className="w-full text-sm">
+                            <thead className="sticky top-0 z-10 bg-muted/50 text-muted-foreground backdrop-blur">
+                                <tr className="border-b border-border">
+                                    <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">Symbol</th>
+                                    <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">Score</th>
+                                    <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">Badges</th>
+                                    <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">Pass/Fail Details</th>
+                                    <th className="whitespace-nowrap px-4 py-3 text-right font-semibold">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredCoins.map((coin, index) => (
+                                    <tr key={coin.symbol} className="border-t border-border hover:bg-muted/30 transition-colors">
+                                        <td className="px-4 py-3 font-bold">{coin.symbol}</td>
+                                        <td className="px-4 py-3">
+                                            <span className="text-[#4aff4a] font-mono font-bold bg-[#4aff4a]/10 px-2 py-0.5 rounded text-xs">
+                                                {coin.score}/10
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-wrap gap-2">
+                                                <TrendBadge score={coin.score} />
+                                                <MomentumBadge rsi={coin.rsi} />
+                                                <VolumeBadge volume={coin.volume} avgVolume={coin.avgVolume} />
+                                                <VolatilityBadge state={coin.volatilityState} />
                                             </div>
-                                            <Link href={`/analyse/${coin.symbol}`} className="sm:hidden">
-                                                <Button size="sm" className="bg-[#4aff4a] text-black hover:bg-[#4aff4a]/90 font-bold h-8">
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            {coin.passesDetail && (
+                                                <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                                                    <div className="flex items-center gap-1"><span>Trend:</span> <span className={coin.passesDetail.trend ? "text-green-400" : "text-red-400"}>{coin.passesDetail.trend ? "✓" : "✕"}</span></div>
+                                                    <div className="flex items-center gap-1"><span>RSI:</span> <span className={coin.passesDetail.rsi ? "text-green-400" : "text-red-400"}>{coin.passesDetail.rsi ? "✓" : "✕"}</span></div>
+                                                    <div className="flex items-center gap-1"><span>MACD:</span> <span className={coin.passesDetail.macd ? "text-green-400" : "text-red-400"}>{coin.passesDetail.macd ? "✓" : "✕"}</span></div>
+                                                    <div className="flex items-center gap-1"><span>Volume:</span> <span className={coin.passesDetail.volume ? "text-green-400" : "text-red-400"}>{coin.passesDetail.volume ? "✓" : "✕"}</span></div>
+                                                    <div className="flex items-center gap-1"><span>OBV:</span> <span className={coin.passesDetail.obv ? "text-green-400" : "text-red-400"}>{coin.passesDetail.obv ? "✓" : "✕"}</span></div>
+                                                    <div className="flex items-center gap-1"><span>Volatility:</span> <span className={coin.passesDetail.volatility ? "text-green-400" : "text-red-400"}>{coin.passesDetail.volatility ? "✓" : "✕"}</span></div>
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <Link href={`/ analyse / ${coin.symbol} `}>
+                                                <Button size="sm" className="bg-[#4aff4a] text-black hover:bg-[#4aff4a]/90 font-bold">
                                                     Analyse
                                                 </Button>
                                             </Link>
-                                        </div>
-
-                                        <div className="flex flex-wrap gap-y-2 gap-x-3 text-sm items-center mb-3">
-                                            <TrendBadge score={coin.score} />
-                                            <span className="text-muted-foreground/30 hidden sm:inline">•</span>
-                                            <MomentumBadge rsi={coin.rsi} />
-                                            <span className="text-muted-foreground/30 hidden sm:inline">•</span>
-                                            <VolumeBadge volume={coin.volume} avgVolume={coin.avgVolume} />
-                                            <span className="text-muted-foreground/30 hidden sm:inline">•</span>
-                                            <VolatilityBadge state={coin.volatilityState} />
-                                        </div>
-
-                                        {/* Pass/Fail Table */}
-                                        {coin.passesDetail && (
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs sm:text-sm text-muted-foreground bg-muted/20 p-3 rounded-lg">
-                                                <div className="flex justify-between sm:block"><span>Trend:</span> <span className={`ml-1 font-bold ${coin.passesDetail.trend ? "text-green-400" : "text-red-400"}`}>{coin.passesDetail.trend ? "✓" : "✕"}</span></div>
-                                                <div className="flex justify-between sm:block"><span>RSI:</span> <span className={`ml-1 font-bold ${coin.passesDetail.rsi ? "text-green-400" : "text-red-400"}`}>{coin.passesDetail.rsi ? "✓" : "✕"}</span></div>
-                                                <div className="flex justify-between sm:block"><span>MACD:</span> <span className={`ml-1 font-bold ${coin.passesDetail.macd ? "text-green-400" : "text-red-400"}`}>{coin.passesDetail.macd ? "✓" : "✕"}</span></div>
-                                                <div className="flex justify-between sm:block"><span>Volume:</span> <span className={`ml-1 font-bold ${coin.passesDetail.volume ? "text-green-400" : "text-red-400"}`}>{coin.passesDetail.volume ? "✓" : "✕"}</span></div>
-                                                <div className="flex justify-between sm:block"><span>OBV:</span> <span className={`ml-1 font-bold ${coin.passesDetail.obv ? "text-green-400" : "text-red-400"}`}>{coin.passesDetail.obv ? "✓" : "✕"}</span></div>
-                                                <div className="flex justify-between sm:block"><span>Volatility:</span> <span className={`ml-1 font-bold ${coin.passesDetail.volatility ? "text-green-400" : "text-red-400"}`}>{coin.passesDetail.volatility ? "✓" : "✕"}</span></div>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="hidden sm:flex items-center justify-end pl-4 border-l border-border/50">
-                                        <Link href={`/analyse/${coin.symbol}`}>
-                                            <Button className="bg-[#4aff4a] text-black hover:bg-[#4aff4a]/90 font-bold">
-                                                Analyse
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ))}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
+
+            {/* Explanations Section */}
+            <div className="mt-8 p-6 bg-card rounded-xl border border-border">
+                <h2 className="text-xl font-bold mb-4">How it works & Definitions</h2>
+
+                <div className="space-y-6">
+                    <div>
+                        <h3 className="font-semibold text-lg mb-2 text-primary">How do coins populate in the list?</h3>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                            The system automatically scans the <strong>Top 50 Daily Gainers</strong> from Binance every few minutes.
+                            It then applies a strict set of 6 technical filters (Trend, RSI, MACD, Volume, OBV, Volatility) to these coins.
+                            Only coins that pass the selected filters appear in the list above.
+                            This ensures you are looking at coins that are not only moving up but also have strong technical backing.
+                        </p>
+                    </div>
+
+                    <div>
+                        <h3 className="font-semibold text-lg mb-2 text-primary">Badge Definitions</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div className="flex items-start gap-2">
+                                <span className="text-green-400 mt-1">🟢</span>
+                                <div>
+                                    <span className="font-bold block">Strong Trend</span>
+                                    <span className="text-muted-foreground">Price is above both EMA 20 and EMA 50, indicating a solid uptrend.</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-green-400 mt-1">🟢</span>
+                                <div>
+                                    <span className="font-bold block">Momentum Rising</span>
+                                    <span className="text-muted-foreground">RSI is above 50 (bullish territory) and MACD histogram is positive (momentum increasing).</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-green-400 mt-1">🟢</span>
+                                <div>
+                                    <span className="font-bold block">Strong Volume</span>
+                                    <span className="text-muted-foreground">Recent volume is higher than the 20-period average, confirming interest.</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-gray-400 mt-1">⚪</span>
+                                <div>
+                                    <span className="font-bold block">Normal Volatility</span>
+                                    <span className="text-muted-foreground">Bollinger Bands are within a standard range, suggesting stable movement.</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-purple-400 mt-1">🟣</span>
+                                <div>
+                                    <span className="font-bold block">Volatility Expanding</span>
+                                    <span className="text-muted-foreground">Bollinger Bands are widening, often preceding a major price move.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
+
