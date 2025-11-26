@@ -418,10 +418,10 @@ export default function Portfolio() {
                 <Activity className="w-5 h-5 text-emerald-600" />
                 <div className="leading-tight">
                   <div className="text-sm font-semibold text-foreground">Total P&amp;L</div>
-                  <div className={`text-base font-bold ${totalPnL >= 0 ? "text-accent" : "text-destructive"}`}>
+                  <div className={`text-base font-bold ${totalPnL >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                     {totalPnL >= 0 ? "+" : ""}${totalPnL.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </div>
-                  <div className={`text-[11px] ${totalPnLPercent >= 0 ? "text-accent" : "text-destructive"}`}>
+                  <div className={`text-[11px] ${totalPnLPercent >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                     {totalPnLPercent >= 0 ? "+" : ""}
                     {totalPnLPercent.toFixed(2)}%
                   </div>
@@ -533,7 +533,7 @@ export default function Portfolio() {
                       const positionValue = quantity * currentPrice;
                       const pnlValue = positionValue - orderValue;
                       const pnlPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
-                      const pnlColor = pnlValue >= 0 ? "text-accent" : "text-destructive";
+                      const pnlColor = pnlValue >= 0 ? "text-emerald-500" : "text-red-500";
 
                       return (
                         <tr key={p.id} className="border-b border-border/50">

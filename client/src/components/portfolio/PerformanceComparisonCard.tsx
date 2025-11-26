@@ -31,7 +31,7 @@ export function PerformanceComparisonCard({ btcChange, totalPnlPct }: Performanc
                             <p className="text-xs text-muted-foreground">Benchmark</p>
                         </div>
                     </div>
-                    <div className={`text-sm font-bold ${btcChange >= 0 ? "text-accent" : "text-destructive"}`}>
+                    <div className={`text-sm font-bold ${btcChange >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                         {btcChange >= 0 ? "+" : ""}{btcChange.toFixed(2)}%
                     </div>
                 </div>
@@ -47,7 +47,7 @@ export function PerformanceComparisonCard({ btcChange, totalPnlPct }: Performanc
                             <p className="text-xs text-muted-foreground">All Time P&L</p>
                         </div>
                     </div>
-                    <div className={`text-sm font-bold ${totalPnlPct >= 0 ? "text-accent" : "text-destructive"}`}>
+                    <div className={`text-sm font-bold ${totalPnlPct >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                         {totalPnlPct >= 0 ? "+" : ""}{totalPnlPct.toFixed(2)}%
                     </div>
                 </div>
@@ -56,7 +56,7 @@ export function PerformanceComparisonCard({ btcChange, totalPnlPct }: Performanc
                 <div className="pt-2 text-center">
                     <p className="text-sm text-muted-foreground">
                         You are {isBeatingBtc ? "beating" : "trailing"} BTC by{" "}
-                        <span className={isBeatingBtc ? "text-accent font-bold" : "text-destructive font-bold"}>
+                        <span className={isBeatingBtc ? "text-emerald-500 font-bold" : "text-red-500 font-bold"}>
                             {Math.abs(diff).toFixed(2)}%
                         </span>
                     </p>
