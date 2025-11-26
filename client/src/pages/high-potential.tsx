@@ -205,7 +205,7 @@ export default function HighPotentialPage() {
                     <Button
                         onClick={applyFilters}
                         size="default"
-                        className="bg-[#ff3366] text-white hover:bg-[#ff3366]/90 w-full font-bold text-md h-10"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 w-full font-bold text-md h-10"
                     >
                         Submit Filters
                     </Button>
@@ -219,12 +219,9 @@ export default function HighPotentialPage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    minHeight: "200px",
-                    border: "1px solid #ff3366"
+                    minHeight: "200px"
                 }}>
-                    <h3 className="font-bold text-xl text-[#ff3366] text-center px-4" style={{ textShadow: "0 0 10px rgba(255, 51, 102, 0.3)" }}>
-                        New Card Empty for now, We'll add something here later
-                    </h3>
+                    {/* Empty for now */}
                 </div>
             </div>
 
