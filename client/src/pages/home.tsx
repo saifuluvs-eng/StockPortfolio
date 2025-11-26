@@ -66,7 +66,7 @@ export default function Home() {
   const { user } = useAuth();
   const backendStatus = useBackendHealth();
   const networkEnabled = backendStatus !== false; // Enable queries unless backend is explicitly down
-  
+
   // Extract name from Supabase user (email or metadata)
   const displayName = user?.user_metadata?.full_name?.trim() || user?.email?.split("@")[0] || "Trader";
   const firstName = displayName.split(" ")[0] || displayName;
@@ -248,7 +248,7 @@ export default function Home() {
         <div className="grid items-stretch grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 md:mb-8">
           {/* 1) Portfolio */}
           <Link to="/portfolio" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-primary/5 to-primary/10 h-auto sm:h-full" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(190, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -269,7 +269,7 @@ export default function Home() {
 
           {/* 2) Scanner */}
           <Link to="/analyse/BTCUSDT" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-accent/5 to-accent/10 h-auto sm:h-full" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/10 to-emerald-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -350,49 +350,49 @@ export default function Home() {
             </CardContent>
           </Card>
 
-        {/* 7) AI Signals */}
-        <Link to="/ai-insights" className="block h-full">
-          <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 h-auto sm:h-full" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
-            <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">AI Signals</h3>
-                  <p className="text-xs text-muted-foreground truncate">Market analysis</p>
-                  <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5" data-testid="text-ai-signals">{aiDisplay}</p>
-                  <p className="text-xs text-accent">Active insights</p>
+          {/* 7) AI Signals */}
+          <Link to="/ai-insights" className="block h-full">
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 h-auto sm:h-full" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
+              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">AI Signals</h3>
+                    <p className="text-xs text-muted-foreground truncate">Market analysis</p>
+                    <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5" data-testid="text-ai-signals">{aiDisplay}</p>
+                    <p className="text-xs text-accent">Active insights</p>
+                  </div>
+                  <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-indigo-500 flex-shrink-0" />
                 </div>
-                <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-indigo-500 flex-shrink-0" />
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+              </CardContent>
+            </Card>
+          </Link>
 
-        <BtcDominanceCard />
+          <BtcDominanceCard />
 
-        {/* 8) News & Insights */}
-        <Link to="/news" className="block h-full xl:col-span-2">
-          <Card className="dashboard-card neon-hover h-auto sm:h-full" style={{ "--neon-glow": "hsl(195, 100%, 60%)" } as React.CSSProperties}>
-            <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Curated market headlines and analyst takes to keep you ahead of the next move.
+          {/* 8) News & Insights */}
+          <Link to="/news" className="block h-full xl:col-span-2">
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-yellow-500/10 to-yellow-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(45, 100%, 50%)" } as React.CSSProperties}>
+              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Curated market headlines and analyst takes to keep you ahead of the next move.
+                    </p>
+                  </div>
+                  <Newspaper className="w-8 h-8 text-primary" />
+                </div>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p className="flex items-center justify-between text-foreground">
+                    <span className="font-medium">Morning Brief</span>
+                    <span className="text-xs text-muted-foreground">Updated 10 min ago</span>
                   </p>
+                  <p>US equities rally as inflation cools; crypto follows with strong altcoin bids.</p>
+                  <p className="text-xs text-primary mt-2 font-medium">Click to read latest →</p>
                 </div>
-                <Newspaper className="w-8 h-8 text-primary" />
-              </div>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p className="flex items-center justify-between text-foreground">
-                  <span className="font-medium">Morning Brief</span>
-                  <span className="text-xs text-muted-foreground">Updated 10 min ago</span>
-                </p>
-                <p>US equities rally as inflation cools; crypto follows with strong altcoin bids.</p>
-                <p className="text-xs text-primary mt-2 font-medium">Click to read latest →</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         {/* The 3 big boxes below */}
