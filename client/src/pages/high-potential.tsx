@@ -1,11 +1,11 @@
-
 import { TrendBadge, MomentumBadge, VolumeBadge, VolatilityBadge } from "@/components/high-potential/Badges";
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { Loader2, RefreshCw } from "lucide-react";
+import { go } from "@/lib/nav";
+import { useLoginGate } from "@/auth/useLoginGate";
 
 interface HighPotentialCoin {
     symbol: string;
@@ -27,13 +27,12 @@ interface HighPotentialCoin {
 }
 
 const defaultFilters = {
-    trend: true,
-    rsi: true,
-    macd: true,
-    volume: true,
-    obv: true,
-    volatility: true,
-    showAll: true
+    trend: false,
+    rsi: false,
+    macd: false,
+    volume: false,
+    obv: false,
+    volatility: false
 };
 
 const CACHE_KEY = "high_potential_data_cache";
@@ -47,6 +46,7 @@ export default function HighPotentialPage() {
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [filters, setFilters] = useState(defaultFilters);
     const [pendingFilters, setPendingFilters] = useState(defaultFilters);
+    const { requireLogin } = useLoginGate();
 
     const formatTimestamp = (date: Date) => {
         return date.toLocaleTimeString("en-US", {
@@ -54,6 +54,11 @@ export default function HighPotentialPage() {
             minute: "2-digit",
             second: "2-digit"
         });
+    };
+
+    const handleAnalyse = (symbol: string) => {
+        if (requireLogin("/high-potential")) return;
+        go(`#/analyse/${symbol}`);
     };
 
     const fetchData = async (isRefresh: boolean = false) => {
@@ -127,20 +132,15 @@ export default function HighPotentialPage() {
     const safeCoins = Array.isArray(coins) ? coins : [];
 
     const filteredCoins = safeCoins.filter(coin => {
-        if (filters.showAll) return true;
         if (!coin.passesDetail) return false; // Safety check
 
-        const { passesDetail } = coin;
-        let ok = true;
+        const activeFilters = Object.entries(filters).filter(([_, isActive]) => isActive);
 
-        if (filters.trend && !passesDetail.trend) ok = false;
-        if (filters.rsi && !passesDetail.rsi) ok = false;
-        if (filters.macd && !passesDetail.macd) ok = false;
-        if (filters.volume && !passesDetail.volume) ok = false;
-        if (filters.obv && !passesDetail.obv) ok = false;
-        if (filters.volatility && !passesDetail.volatility) ok = false;
+        // If no filters are active, show all coins
+        if (activeFilters.length === 0) return true;
 
-        return ok;
+        // Otherwise, coin must pass ALL active filters
+        return activeFilters.every(([key]) => (coin.passesDetail as any)[key]);
     });
 
     return (
@@ -191,32 +191,18 @@ export default function HighPotentialPage() {
                     </Button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="grid grid-cols-2 gap-3">
                     {Object.keys(pendingFilters).map(key => (
-                        key !== "showAll" && (
-                            <label key={key} className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors">
-                                <input
-                                    type="checkbox"
-                                    checked={(pendingFilters as any)[key]}
-                                    onChange={() => handleFilterChange(key)}
-                                    className="accent-primary w-4 h-4"
-                                />
-                                <span className="ml-2 text-sm font-medium">{key.toUpperCase()}</span>
-                            </label>
-                        )
+                        <label key={key} className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors">
+                            <input
+                                type="checkbox"
+                                checked={(pendingFilters as any)[key]}
+                                onChange={() => handleFilterChange(key)}
+                                className="accent-primary w-4 h-4"
+                            />
+                            <span className="ml-2 text-sm font-medium">{key.toUpperCase()}</span>
+                        </label>
                     ))}
-                </div>
-
-                <div className="border-t border-white/10 pt-3">
-                    <label className="flex items-center cursor-pointer p-2 rounded hover:bg-white/5 transition-colors">
-                        <input
-                            type="checkbox"
-                            checked={pendingFilters.showAll}
-                            onChange={() => setPendingFilters(prev => ({ ...prev, showAll: !prev.showAll }))}
-                            className="accent-cyan-500 w-4 h-4"
-                        />
-                        <span className="ml-2 text-sm font-bold text-[#0af]">SHOW ALL COINS</span>
-                    </label>
                 </div>
             </div>
 
@@ -230,7 +216,7 @@ export default function HighPotentialPage() {
                 </div>
             ) : filteredCoins.length === 0 ? (
                 <div className="text-center p-8 text-muted-foreground bg-card rounded-lg border border-border">
-                    No coins match the selected criteria. Try unchecking some filters or use "SHOW ALL COINS".
+                    No coins match the selected criteria. Try unchecking some filters.
                 </div>
             ) : (
                 <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -275,11 +261,13 @@ export default function HighPotentialPage() {
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            <Link href={`/ analyse / ${coin.symbol} `}>
-                                                <Button size="sm" className="bg-[#4aff4a] text-black hover:bg-[#4aff4a]/90 font-bold">
-                                                    Analyse
-                                                </Button>
-                                            </Link>
+                                            <Button
+                                                size="sm"
+                                                className="bg-[#4aff4a] text-black hover:bg-[#4aff4a]/90 font-bold"
+                                                onClick={() => handleAnalyse(coin.symbol)}
+                                            >
+                                                Analyse
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))}
@@ -307,39 +295,102 @@ export default function HighPotentialPage() {
                     <div>
                         <h3 className="font-semibold text-lg mb-2 text-primary">Badge Definitions</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            {/* Trend Badges */}
                             <div className="flex items-start gap-2">
-                                <span className="text-green-400 mt-1">🟢</span>
+                                <span className="text-[#0f0] mt-1">🟢</span>
                                 <div>
                                     <span className="font-bold block">Strong Trend</span>
-                                    <span className="text-muted-foreground">Price is above both EMA 20 and EMA 50, indicating a solid uptrend.</span>
+                                    <span className="text-muted-foreground">Score ≥ 8. Price significantly above EMAs with strong momentum.</span>
                                 </div>
                             </div>
                             <div className="flex items-start gap-2">
-                                <span className="text-green-400 mt-1">🟢</span>
+                                <span className="text-[#4aff4a] mt-1">🟩</span>
+                                <div>
+                                    <span className="font-bold block">Trend Strong</span>
+                                    <span className="text-muted-foreground">Score ≥ 6. Solid uptrend, price above key EMAs.</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-[#ffff55] mt-1">🟨</span>
+                                <div>
+                                    <span className="font-bold block">Trend Forming</span>
+                                    <span className="text-muted-foreground">Score ≥ 5. Early signs of a trend, potentially breaking out.</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-[#999] mt-1">⚪</span>
+                                <div>
+                                    <span className="font-bold block">Weak Trend</span>
+                                    <span className="text-muted-foreground">Score &lt; 5. No clear trend or consolidation.</span>
+                                </div>
+                            </div>
+
+                            {/* Momentum Badges */}
+                            <div className="flex items-start gap-2">
+                                <span className="text-[#0f0] mt-1">🟢</span>
                                 <div>
                                     <span className="font-bold block">Momentum Rising</span>
-                                    <span className="text-muted-foreground">RSI is above 50 (bullish territory) and MACD histogram is positive (momentum increasing).</span>
+                                    <span className="text-muted-foreground">RSI 55-65. Sweet spot for bullish momentum without being overbought.</span>
                                 </div>
                             </div>
                             <div className="flex items-start gap-2">
-                                <span className="text-green-400 mt-1">🟢</span>
+                                <span className="text-[#4aff4a] mt-1">🟩</span>
+                                <div>
+                                    <span className="font-bold block">Healthy Momentum</span>
+                                    <span className="text-muted-foreground">RSI &ge; 48. Positive momentum, room to grow.</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-[#999] mt-1">⚪</span>
+                                <div>
+                                    <span className="font-bold block">Momentum Neutral</span>
+                                    <span className="text-muted-foreground">RSI below 48 or weak momentum signals.</span>
+                                </div>
+                            </div>
+
+                            {/* Volume Badges */}
+                            <div className="flex items-start gap-2">
+                                <span className="text-[#0f0] mt-1">🟢</span>
                                 <div>
                                     <span className="font-bold block">Strong Volume</span>
-                                    <span className="text-muted-foreground">Recent volume is higher than the 20-period average, confirming interest.</span>
+                                    <span className="text-muted-foreground">Volume &gt; 1.5x average. High buying interest.</span>
                                 </div>
                             </div>
                             <div className="flex items-start gap-2">
-                                <span className="text-gray-400 mt-1">⚪</span>
+                                <span className="text-[#4aff4a] mt-1">🟩</span>
                                 <div>
-                                    <span className="font-bold block">Normal Volatility</span>
-                                    <span className="text-muted-foreground">Bollinger Bands are within a standard range, suggesting stable movement.</span>
+                                    <span className="font-bold block">Volume Rising</span>
+                                    <span className="text-muted-foreground">Volume &gt; Average. Increasing market participation.</span>
                                 </div>
                             </div>
                             <div className="flex items-start gap-2">
-                                <span className="text-purple-400 mt-1">🟣</span>
+                                <span className="text-[#999] mt-1">⚪</span>
+                                <div>
+                                    <span className="font-bold block">Neutral Volume</span>
+                                    <span className="text-muted-foreground">Volume at or below average levels.</span>
+                                </div>
+                            </div>
+
+                            {/* Volatility Badges */}
+                            <div className="flex items-start gap-2">
+                                <span className="text-[#c084fc] mt-1">🟣</span>
                                 <div>
                                     <span className="font-bold block">Volatility Expanding</span>
-                                    <span className="text-muted-foreground">Bollinger Bands are widening, often preceding a major price move.</span>
+                                    <span className="text-muted-foreground">Bollinger Bands widening. Expect large price moves.</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-white mt-1">⚪</span>
+                                <div>
+                                    <span className="font-bold block">Normal Volatility</span>
+                                    <span className="text-muted-foreground">Standard price fluctuation range.</span>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <span className="text-[#60a5fa] mt-1">🔵</span>
+                                <div>
+                                    <span className="font-bold block">Compression</span>
+                                    <span className="text-muted-foreground">Bollinger Bands squeezing. Potential breakout imminent.</span>
                                 </div>
                             </div>
                         </div>
