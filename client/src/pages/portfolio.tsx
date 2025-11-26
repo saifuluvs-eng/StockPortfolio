@@ -377,7 +377,7 @@ export default function Portfolio() {
         </div>
 
         {/* Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 h-[300px]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 h-[400px]">
           <div className="lg:col-span-2 h-full">
             <AssetAllocationChart positions={positions} prices={prices} />
           </div>
@@ -388,10 +388,10 @@ export default function Portfolio() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6">
-          <Card className={`${cardClampClass} bg-gradient-to-br from-primary/5 to-primary/10`} style={cardClampStyle}>
+          <Card className={`${cardClampClass} bg-gradient-to-br from-cyan-500/10 to-cyan-500/20`} style={cardClampStyle}>
             <CardContent className={rowContentClass}>
               <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
+                <TrendingUp className="w-5 h-5 text-cyan-500" />
                 <div className="leading-tight">
                   <div className="text-sm font-semibold text-foreground">Current Value</div>
                   <div className="text-base font-bold text-foreground">
