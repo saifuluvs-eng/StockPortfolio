@@ -75,7 +75,7 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="h-[250px] w-full">
+                <div className="h-[180px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie

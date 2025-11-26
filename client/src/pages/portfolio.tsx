@@ -373,7 +373,7 @@ export default function Portfolio() {
         {/* Live market strip - hidden on mobile */}
 
         {/* Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 h-[400px]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 h-[280px]">
           <div className="lg:col-span-2 h-full">
             <AssetAllocationChart positions={positions} prices={prices} />
           </div>
