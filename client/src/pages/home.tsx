@@ -289,7 +289,7 @@ export default function Home() {
 
           {/* 4) Total P&L */}
           <Link to="/portfolio" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-emerald-500/5 to-emerald-500/10 h-auto sm:h-full" style={{ "--neon-glow": "hsl(158, 100%, 50%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-pink-500/10 to-pink-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(330, 100%, 50%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -299,7 +299,7 @@ export default function Home() {
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">Overall performance</p>
                   </div>
-                  <Activity className="w-6 sm:w-8 h-6 sm:h-8 text-emerald-600 flex-shrink-0" />
+                  <Activity className="w-6 sm:w-8 h-6 sm:h-8 text-pink-500 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -307,7 +307,7 @@ export default function Home() {
 
           {/* 5) Watchlist */}
           <Link to="/watchlist" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/5 to-blue-500/10 h-auto sm:h-full" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/10 to-blue-500/20 h-auto sm:h-full" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(220, 100%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -323,7 +323,7 @@ export default function Home() {
           </Link>
 
           {/* 6) Market Fear & Greed */}
-          <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/5 to-orange-500/10 h-auto sm:h-full" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
+          <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/10 to-orange-500/20 h-auto sm:h-full" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
             <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
               {fearGreed ? (
                 <>
@@ -352,7 +352,7 @@ export default function Home() {
 
           {/* 7) AI Signals */}
           <Link to="/ai-insights" className="block h-full">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 h-auto sm:h-full" style={{ "--neon-glow": "hsl(240, 100%, 70%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-violet-500/10 to-violet-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(270, 100%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -361,7 +361,7 @@ export default function Home() {
                     <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5" data-testid="text-ai-signals">{aiDisplay}</p>
                     <p className="text-xs text-accent">Active insights</p>
                   </div>
-                  <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-indigo-500 flex-shrink-0" />
+                  <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-violet-500 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -371,7 +371,7 @@ export default function Home() {
 
           {/* 8) News & Insights */}
           <Link to="/news" className="block h-full xl:col-span-2">
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-yellow-500/10 to-yellow-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(45, 100%, 50%)" } as React.CSSProperties}>
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-rose-500/10 to-rose-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(350, 100%, 60%)" } as React.CSSProperties}>
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
