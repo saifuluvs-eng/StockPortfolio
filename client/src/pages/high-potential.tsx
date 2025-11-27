@@ -377,7 +377,7 @@ export default function HighPotentialPage() {
                 </p>
                 <ul className="list-disc list-inside text-sm text-muted-foreground space-y-2 ml-2">
                     <li><strong>Volatility Expanding:</strong> Expanding Bollinger Bands or rising ATR.</li>
-                    <li><strong>Momentum Rising:</strong> Rising MACD, healthy RSI (45-60), or bullish Stochastic.</li>
+                    <li><strong>Momentum Rising:</strong> Rising MACD, healthy RSI (45-80), or bullish Stochastic.</li>
                     <li><strong>Trend Bullish/Recovering:</strong> Price above EMAs or strong ADX trend.</li>
                     <li><strong>Volume Improved:</strong> Volume above average or rising OBV.</li>
                     <li><strong>Room to Rise:</strong> Nearest resistance level is at least +10% away.</li>

@@ -740,8 +740,8 @@ class TechnicalIndicators {
     const condA = volatilityState === "high" || atr > prevAtr || (bb.squeeze === false && (bb.upper - bb.lower) / bb.middle < 0.15); // Loose interpretation
 
     // Condition B: Momentum Rising
-    // MACD hist > prev hist OR RSI 45-60 OR Stoch %K > %D (<90)
-    const condB = (macd.histogram > prevMacd.histogram) || (rsi >= 45 && rsi <= 60) || (stoch.k > stoch.d && stoch.k < 90);
+    // MACD hist > prev hist OR RSI 45-80 OR Stoch %K > %D (<90)
+    const condB = (macd.histogram > prevMacd.histogram) || (rsi >= 45 && rsi <= 80) || (stoch.k > stoch.d && stoch.k < 90);
 
     // Condition C: Trend Bullish or Recovering
     // price > EMA20 OR EMA20 > EMA50 OR ADX >= 20 and +DI > -DI
