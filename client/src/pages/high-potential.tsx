@@ -184,19 +184,28 @@ export default function HighPotentialPage() {
                         onClick={() => {
                             // Trigger debug fetch
                             setLoading(true);
+                            setError(null); // Clear previous errors
                             api("/api/high-potential", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ debug: true })
                             })
-                                .then(res => res.json())
+                                .then(res => {
+                                    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+                                    return res.json();
+                                })
                                 .then(data => {
+                                    console.log("Simulate Response Data:", data);
+                                    if (!data.data || !Array.isArray(data.data)) {
+                                        throw new Error("Invalid data format received");
+                                    }
                                     setCoins(data.data);
                                     setLastUpdated(new Date());
                                     setLoading(false);
                                 })
                                 .catch(err => {
-                                    console.error(err);
+                                    console.error("Simulate Error:", err);
+                                    setError(err.message);
                                     setLoading(false);
                                 });
                         }}

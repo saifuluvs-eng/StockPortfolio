@@ -590,7 +590,10 @@ export function registerRoutes(app: Express): Server {
       // to ensure we have full candle history for calculations.
       // If user provided coins, we could filter by them, but for now we scan top 30.
 
+      console.log("High Potential Request Body:", req.body);
+
       if (req.body.debug) {
+        console.log("Debug mode enabled, returning mock data");
         const results = technicalIndicators.getDebugHighPotentialCoins();
         return res.json({ data: results });
       }
