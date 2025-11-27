@@ -578,7 +578,7 @@ export default function Portfolio() {
         </Card>
 
         {/* Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 h-[280px]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 h-[500px]">
           <div className="lg:col-span-2 h-full">
             <AssetAllocationChart positions={positions} prices={prices} />
           </div>
