@@ -1,28 +1,12 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-
-const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-
-async function callGemini(prompt: string, apiKey: string): Promise<string> {
-    const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-        }),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
-    }
-
-    const json = await response.json();
-    const result = json.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    if (!result) throw new Error("No response from Gemini API");
-    return result;
-}
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async (req: VercelRequest, res: VercelResponse) => {
+    // Allow GET for health check
+    if (req.method === "GET") {
+        return res.status(200).json({ status: "ok", message: "Portfolio Strategy API is ready" });
+    }
+
     if (req.method !== "POST") {
         return res.status(405).json({ error: "Method not allowed" });
     }
@@ -31,13 +15,16 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             console.error("Missing GEMINI_API_KEY");
-            return res.status(500).json({ error: "Configuration Error", message: "GEMINI_API_KEY is not set" });
+            return res.status(500).json({ error: "Configuration Error", message: "GEMINI_API_KEY is not set in Vercel environment variables." });
         }
 
         const { positions } = req.body;
         if (!positions || !Array.isArray(positions)) {
             return res.status(400).json({ error: "Invalid positions data" });
         }
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
         const prompt = `You are a ruthless hedge fund portfolio manager. Analyze this portfolio snapshot and provide strategic advice. Always respond with valid JSON format only.
 
@@ -65,16 +52,21 @@ Respond with ONLY valid JSON in this exact format:
   "detailedAnalysis": "Markdown formatted explanation."
 }`;
 
-        const responseText = await callGemini(prompt, apiKey);
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+
         let strategy;
         try {
-            strategy = JSON.parse(responseText);
+            // Clean up markdown code blocks if present
+            const cleanedText = text.replace(/```json/g, "").replace(/```/g, "").trim();
+            strategy = JSON.parse(cleanedText);
         } catch (e) {
-            console.error("Failed to parse Gemini response:", responseText);
+            console.error("Failed to parse Gemini response:", text);
             throw new Error("Invalid JSON response from AI");
         }
 
-        const result = {
+        const output = {
             healthScore: Math.max(0, Math.min(100, strategy.healthScore || 50)),
             topInsight: strategy.topInsight || "Analysis unavailable.",
             actionableMove: strategy.actionableMove || "Hold current positions.",
@@ -82,13 +74,14 @@ Respond with ONLY valid JSON in this exact format:
         };
 
         res.setHeader("Cache-Control", "private, max-age=300");
-        return res.json(result);
+        return res.json(output);
 
     } catch (error: any) {
         console.error("POST /api/ai/portfolio-strategy failed", error?.message || error);
         return res.status(500).json({
             error: "Internal Server Error",
             message: error instanceof Error ? error.message : String(error),
+            details: error?.toString()
         });
     }
 };
