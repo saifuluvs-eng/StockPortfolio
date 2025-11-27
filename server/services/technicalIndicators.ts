@@ -821,8 +821,8 @@ class TechnicalIndicators {
       score += 1;
     }
 
-    // 2. RSI Optimal Range
-    if (rsi >= 48 && rsi <= 65) {
+    // 2. RSI Optimal Range (Widened to capture momentum)
+    if (rsi >= 45 && rsi <= 80) {
       passesDetail.rsi = true;
       score += 2;
     }
@@ -833,8 +833,9 @@ class TechnicalIndicators {
       score += 1;
     }
 
-    // 4. Volume expansion
-    if (volume > avgVolume) {
+    // 4. Volume expansion (Relaxed: current > 80% avg OR prev > avg)
+    const prevVolume = volumes[volumes.length - 2] || 0;
+    if (volume > avgVolume * 0.8 || prevVolume > avgVolume) {
       passesDetail.volume = true;
       score += 2;
     }
@@ -849,6 +850,12 @@ class TechnicalIndicators {
     if (volatility === "normal" || volatility === "high") {
       passesDetail.volatility = true;
       score += 1;
+    }
+
+    // 7. Super Momentum Bonus (New)
+    // If RSI is high (>70) AND Volume is very high (>1.5x avg), give extra points
+    if (rsi > 70 && volume > avgVolume * 1.5) {
+      score += 2;
     }
 
     const passes = score >= 5;
