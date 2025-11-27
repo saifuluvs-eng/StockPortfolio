@@ -589,6 +589,12 @@ export function registerRoutes(app: Express): Server {
       // We ignore req.body.coins for now and scan top pairs on backend as planned
       // to ensure we have full candle history for calculations.
       // If user provided coins, we could filter by them, but for now we scan top 30.
+
+      if (req.body.debug) {
+        const results = technicalIndicators.getDebugHighPotentialCoins();
+        return res.json({ data: results });
+      }
+
       const results = await technicalIndicators.scanHighPotentialUser();
       res.json({ data: results });
     } catch (error) {

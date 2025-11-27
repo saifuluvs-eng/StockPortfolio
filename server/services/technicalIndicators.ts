@@ -927,6 +927,39 @@ class TechnicalIndicators {
     return results.sort((a, b) => b.score - a.score);
   }
 
+  getDebugHighPotentialCoins(): HighPotentialCoin[] {
+    return [
+      {
+        symbol: "TEST-BTC",
+        score: 10,
+        passes: true,
+        passesDetail: { trend: true, rsi: true, macd: true, volume: true, obv: true, volatility: true },
+        price: 95000,
+        rsi: 75,
+        volume: 5000000,
+        avgVolume: 1000000,
+        volatilityState: "high",
+        likely10PercentUpside: true,
+        upsideConditions: { volatilityExpanding: true, momentumRising: true, trendRecovering: true, volumeImproved: true, resistanceRoom: true }
+      },
+      {
+        symbol: "TEST-ETH",
+        score: 8,
+        passes: true,
+        passesDetail: { trend: true, rsi: true, macd: true, volume: true, obv: false, volatility: true },
+        price: 4500,
+        rsi: 60,
+        volume: 2000000,
+        avgVolume: 1500000,
+        volatilityState: "normal",
+        likely10PercentUpside: true,
+        upsideConditions: { volatilityExpanding: false, momentumRising: true, trendRecovering: true, volumeImproved: true, resistanceRoom: true }
+      }
+    ];
+  }
+
+
+
 }
 
 export const technicalIndicators = new TechnicalIndicators();

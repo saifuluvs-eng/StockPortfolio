@@ -180,6 +180,31 @@ export default function HighPotentialPage() {
                         <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
                         <span className="hidden sm:inline">{isRefreshing ? "Refreshing…" : "Refresh"}</span>
                     </button>
+                    <button
+                        onClick={() => {
+                            // Trigger debug fetch
+                            setLoading(true);
+                            api("/api/high-potential", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ debug: true })
+                            })
+                                .then(res => res.json())
+                                .then(data => {
+                                    setCoins(data.data);
+                                    setLastUpdated(new Date());
+                                    setLoading(false);
+                                })
+                                .catch(err => {
+                                    console.error(err);
+                                    setLoading(false);
+                                });
+                        }}
+                        className="flex items-center gap-2 border-2 border-yellow-500 text-yellow-500 bg-transparent hover:bg-yellow-500/10 active:bg-yellow-500/20 rounded-lg px-3 py-1.5 text-sm font-medium transition-all min-h-[44px]"
+                    >
+                        <span className="hidden sm:inline">Simulate</span>
+                        <span className="sm:hidden">Sim</span>
+                    </button>
                     {lastUpdated && (
                         <p className="text-xs text-muted-foreground">
                             Last updated: {formatTimestamp(lastUpdated)}
