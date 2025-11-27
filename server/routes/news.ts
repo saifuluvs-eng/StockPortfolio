@@ -31,7 +31,7 @@ news.get("/", async (req, res) => {
 
     const search = String(req.query.search || "").trim();
 
-    const key = JSON.stringify({ kind, filter, currencies, search, page, v: "2" }); // v2 to bust cache
+    const key = JSON.stringify({ kind, filter, currencies, search, page, v: "3" }); // v3 to bust cache
     const now = Date.now();
     (globalThis as any).__NEWS_CACHE ??= new Map();
     const cache = (globalThis as any).__NEWS_CACHE as Map<string, { at: number; data: any }>;
@@ -71,11 +71,9 @@ news.get("/", async (req, res) => {
       title: String(it?.title ?? ""),
       url: (() => {
         let u = String(it?.original_url || it?.url || "#");
-        // Remove trailing slash if present to avoid double slashes
-        if (u.endsWith("/")) u = u.slice(0, -1);
-
-        if (u.includes("cryptopanic.com/news") && !u.includes("/click")) {
-          return `${u}/click/`;
+        // Remove trailing slash if present
+        if (u.endsWith("/")) {
+          u = u.slice(0, -1);
         }
         return u;
       })(),
