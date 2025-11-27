@@ -227,6 +227,7 @@ export default function TVChart({
           details: false,
           allow_symbol_change: true,
           studies: ["RSI@tv-basicstudies"],
+          loading_screen: { backgroundColor: "#111113" },
         });
 
         widgetRef.current = widget;
@@ -466,7 +467,7 @@ export default function TVChart({
   return (
     <div ref={wrapperRef} className="h-[560px] w-full md:h-[620px] relative">
       {!isReady && (
-        <div className="absolute inset-0 bg-card/50 animate-pulse flex items-center justify-center">
+        <div className="absolute inset-0 bg-card/50 z-50 animate-pulse flex items-center justify-center">
           <div className="text-center">
             <div className="w-12 h-12 bg-muted rounded-lg mx-auto mb-2 animate-pulse" />
             <p className="text-xs text-muted-foreground">Loading chart...</p>
@@ -476,7 +477,7 @@ export default function TVChart({
       <div
         id={containerIdRef.current}
         ref={containerRef}
-        className="h-full w-full"
+        className="h-full w-full bg-card"
       />
     </div>
   );
