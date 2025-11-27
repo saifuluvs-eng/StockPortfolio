@@ -32,7 +32,7 @@ function ArticleCard({ article }: { article: NewsArticle }) {
 
   return (
     <a
-      href={article.url}
+      href={article.url.replace(/\/+$/, "")}
       target="_blank"
       rel="noreferrer"
       className="block rounded-xl border border-border bg-card p-4 transition hover:border-primary/50 hover:bg-card/80"
