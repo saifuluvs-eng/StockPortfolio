@@ -130,6 +130,13 @@ export default function TVChart({
   const containerIdRef = useRef(`tv-chart-${Math.random().toString(36).slice(2)}`);
   const [isReady, setIsReady] = useState(false);
 
+  // Safety timeout: force remove loader after 5s if TV doesn't report ready
+  useEffect(() => {
+    if (isReady) return;
+    const timer = setTimeout(() => setIsReady(true), 5000);
+    return () => clearTimeout(timer);
+  }, [isReady]);
+
   const applySymbolToChart = useCallback((resolvedSymbol: string, resolvedTf: string) => {
     const widget = widgetRef.current;
     if (!widget || typeof widget.activeChart !== "function") {
@@ -467,7 +474,7 @@ export default function TVChart({
   return (
     <div ref={wrapperRef} className="h-[560px] w-full md:h-[620px] relative">
       {!isReady && (
-        <div className="absolute inset-0 bg-card/50 z-50 animate-pulse flex items-center justify-center">
+        <div className="absolute inset-0 bg-card z-50 flex items-center justify-center">
           <div className="text-center">
             <div className="w-12 h-12 bg-muted rounded-lg mx-auto mb-2 animate-pulse" />
             <p className="text-xs text-muted-foreground">Loading chart...</p>
