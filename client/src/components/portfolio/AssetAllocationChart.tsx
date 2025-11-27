@@ -100,7 +100,7 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                 </div>
             </CardHeader>
 
-            <CardContent className="flex-1 p-0 overflow-hidden relative">
+            <CardContent className="flex-1 p-0 overflow-hidden relative flex flex-col">
                 {isLoading && !strategy ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-10">
                         <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
@@ -109,7 +109,7 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                 ) : null}
 
                 {strategy ? (
-                    <div className="flex flex-col h-full">
+                    <div className="flex flex-col flex-1 min-h-0">
                         {/* Top Section: Score & Key Insight */}
                         <div className="p-4 grid grid-cols-12 gap-4 bg-gradient-to-b from-background to-muted/10">
                             {/* Health Score */}
