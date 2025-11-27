@@ -35,7 +35,7 @@ news.get("/", async (req, res) => {
     const now = Date.now();
     (globalThis as any).__NEWS_CACHE ??= new Map();
     const cache = (globalThis as any).__NEWS_CACHE as Map<string, { at: number; data: any }>;
-    const TTL = 5 * 60 * 1000;
+    const TTL = 15 * 60 * 1000;
     const hit = cache.get(key);
     if (hit && now - hit.at < TTL) {
       return res.json(hit.data);

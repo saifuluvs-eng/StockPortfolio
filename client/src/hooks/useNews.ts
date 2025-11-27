@@ -85,8 +85,8 @@ export function useNews({
       console.log("[News Hook] Success, articles:", data.data?.length || 0);
       return data;
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 5 * 60 * 1000, // Reduce to 5 min so stale errors don't persist
+    staleTime: 15 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
