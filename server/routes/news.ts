@@ -31,7 +31,7 @@ news.get("/", async (req, res) => {
 
     const search = String(req.query.search || "").trim();
 
-    const key = JSON.stringify({ kind, filter, currencies, search, page });
+    const key = JSON.stringify({ kind, filter, currencies, search, page, v: "2" }); // v2 to bust cache
     const now = Date.now();
     (globalThis as any).__NEWS_CACHE ??= new Map();
     const cache = (globalThis as any).__NEWS_CACHE as Map<string, { at: number; data: any }>;
@@ -70,11 +70,12 @@ news.get("/", async (req, res) => {
       id: String(it?.id ?? ""),
       title: String(it?.title ?? ""),
       url: (() => {
-        const u = String(it?.original_url || it?.url || "#");
-        if (u.includes("cryptopanic.com/news/") && !u.endsWith("/click/")) {
-          const final = u.endsWith("/") ? `${u}click/` : `${u}/click/`;
-          console.log(`[News] Transformed ${u} -> ${final}`);
-          return final;
+        let u = String(it?.original_url || it?.url || "#");
+        // Remove trailing slash if present to avoid double slashes
+        if (u.endsWith("/")) u = u.slice(0, -1);
+
+        if (u.includes("cryptopanic.com/news") && !u.includes("/click")) {
+          return `${u}/click/`;
         }
         return u;
       })(),

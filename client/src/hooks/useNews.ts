@@ -75,7 +75,7 @@ export function useNews({
   return useQuery<NewsResponse, Error>({
     queryKey: ["news", { filter, kind, currencies: upperCurrencies, search: trimmedSearch, page }],
     queryFn: async () => {
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: "no-cache" });
       if (!response.ok) {
         const errorText = await response.text();
         console.error("[News Hook] API Error:", response.status, errorText);
