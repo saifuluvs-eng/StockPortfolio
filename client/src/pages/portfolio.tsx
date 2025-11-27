@@ -372,15 +372,7 @@ export default function Portfolio() {
 
         {/* Live market strip - hidden on mobile */}
 
-        {/* Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6 h-[280px]">
-          <div className="lg:col-span-2 h-full">
-            <AssetAllocationChart positions={positions} prices={prices} />
-          </div>
-          <div className="h-full">
-            <PerformanceComparisonCard btcChange={btcChange} totalPnlPct={totalPnLPercent} />
-          </div>
-        </div>
+
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6">
@@ -584,6 +576,16 @@ export default function Portfolio() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Analytics Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 h-[280px]">
+          <div className="lg:col-span-2 h-full">
+            <AssetAllocationChart positions={positions} prices={prices} />
+          </div>
+          <div className="h-full">
+            <PerformanceComparisonCard btcChange={btcChange} totalPnlPct={totalPnLPercent} />
+          </div>
+        </div>
       </div>
 
       {/* ---- Add Position Modal ---- */}
