@@ -140,7 +140,7 @@ export default function TVChart({
       widget.activeChart().setSymbol(
         `BINANCE:${resolvedSymbol}`,
         mapInterval(resolvedTf),
-        () => {},
+        () => { },
       );
       return true;
     } catch (error) {
@@ -212,7 +212,7 @@ export default function TVChart({
 
         try {
           widgetRef.current?.remove?.();
-        } catch {}
+        } catch { }
 
         const widget = new window.TradingView.widget({
           container_id: containerIdRef.current,
@@ -248,11 +248,11 @@ export default function TVChart({
         if (typeof ResizeObserver !== "undefined") {
           try {
             roRef.current?.disconnect();
-          } catch {}
+          } catch { }
           const observer = new ResizeObserver(() => {
             try {
               widgetRef.current?.resize?.();
-            } catch {}
+            } catch { }
           });
           roRef.current = observer;
           const target = wrapperRef.current ?? containerRef.current;
@@ -267,11 +267,11 @@ export default function TVChart({
       disposed = true;
       try {
         roRef.current?.disconnect();
-      } catch {}
+      } catch { }
       roRef.current = null;
       try {
         widgetRef.current?.remove?.();
-      } catch {}
+      } catch { }
       widgetRef.current = null;
       readyRef.current = false;
       pendingRef.current = null;
@@ -290,7 +290,7 @@ export default function TVChart({
         if (!normalized) return;
         const tfValue = tf && `${tf}`.trim() ? tf : latestTfRef.current || timeframe || "4h";
         queueSymbolAndTf(normalized, tfValue);
-      } catch {}
+      } catch { }
     };
 
     window.__tvSet = setter;
@@ -365,7 +365,7 @@ export default function TVChart({
             parsed.searchParams.get("tf") ??
             parsed.searchParams.get("timeframe") ??
             undefined;
-        } catch {}
+        } catch { }
 
         const methodUpper = (method || (initBody ? "POST" : "GET")).toUpperCase();
 
@@ -378,18 +378,18 @@ export default function TVChart({
               symbol = (candidate.symbol ?? candidate.pair ?? symbol) as string | undefined;
               timeframeValue =
                 (candidate.tf ?? candidate.timeframe ?? candidate.interval ?? timeframeValue) as
-                  | string
-                  | undefined;
+                | string
+                | undefined;
             }
             return;
-          } catch {}
+          } catch { }
 
           try {
             const params = new URLSearchParams(text);
             symbol = symbol ?? params.get("symbol") ?? params.get("pair") ?? undefined;
             timeframeValue =
               timeframeValue ?? params.get("tf") ?? params.get("timeframe") ?? undefined;
-          } catch {}
+          } catch { }
         };
 
         if (methodUpper !== "GET") {
@@ -397,7 +397,7 @@ export default function TVChart({
             try {
               const bodyText = await requestClone.text();
               await parseTextPayload(bodyText);
-            } catch {}
+            } catch { }
           } else if (initBody) {
             if (typeof initBody === "string") {
               await parseTextPayload(initBody);
@@ -444,7 +444,7 @@ export default function TVChart({
             }),
           );
         })
-        .catch(() => {});
+        .catch(() => { });
 
       return originalFetch(...(args as Parameters<typeof fetch>));
     };
@@ -458,7 +458,7 @@ export default function TVChart({
       disposed = true;
       try {
         restoreFetchRef.current?.();
-      } catch {}
+      } catch { }
       restoreFetchRef.current = null;
     };
   }, [queueSymbolAndTf]);
@@ -466,10 +466,10 @@ export default function TVChart({
   return (
     <div ref={wrapperRef} className="h-[560px] w-full md:h-[620px] relative">
       {!isReady && (
-        <div className="absolute inset-0 bg-slate-900/40 animate-pulse flex items-center justify-center">
+        <div className="absolute inset-0 bg-card/50 animate-pulse flex items-center justify-center">
           <div className="text-center">
-            <div className="w-12 h-12 bg-slate-700/60 rounded-lg mx-auto mb-2 animate-pulse" />
-            <p className="text-xs text-slate-400">Loading chart...</p>
+            <div className="w-12 h-12 bg-muted rounded-lg mx-auto mb-2 animate-pulse" />
+            <p className="text-xs text-muted-foreground">Loading chart...</p>
           </div>
         </div>
       )}

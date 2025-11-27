@@ -290,7 +290,7 @@ const MiniStat: React.FC<MiniStatProps> = ({ label, value, hint, tone = "default
         : "text-slate-200";
   return (
     <div
-      className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-800/40 px-3 py-1.5 shadow-sm ring-1 ring-black/5"
+      className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/20 px-3 py-1.5 shadow-sm ring-1 ring-black/5"
       role="status"
       aria-label={label}
       title={typeof value === "string" ? `${label}: ${value}` : label}
@@ -1127,7 +1127,7 @@ export default function Analyse() {
           </div>
         </header>
         {/* HEADER */}
-        <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 p-3 md:p-3">
+        <div className="rounded-xl border border-border bg-card p-3 md:p-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-[260px] grow lg:basis-[66%]">
               <div className="relative">
@@ -1303,7 +1303,7 @@ export default function Analyse() {
                   <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="h-[560px] min-w-0 overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/40 md:h-[620px]">
+                  <div className="h-[560px] min-w-0 overflow-hidden rounded-xl border border-border bg-card md:h-[620px]">
                     <div className="h-full w-full">
                       <TVChart
                         key={`${chartSymbol}-${chartTf}`}

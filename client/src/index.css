@@ -167,16 +167,16 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(222, 47%, 11%);
+    background: hsl(240, 10%, 10%);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(222, 30%, 25%);
+    background: hsl(240, 5%, 26%);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(190, 100%, 50%);
+    background: hsl(240, 5%, 40%);
   }
 
   /* Firefox scrollbar */
