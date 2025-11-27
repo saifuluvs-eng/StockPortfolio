@@ -69,7 +69,10 @@ news.get("/", async (req, res) => {
     const articles = (j?.results || []).map((it: any) => ({
       id: String(it?.id ?? ""),
       title: String(it?.title ?? ""),
-      url: String(it?.original_url || it?.url || "#"),
+      url: (() => {
+        const u = String(it?.original_url || it?.url || "#");
+        return u.includes("cryptopanic.com/news/") && !u.endsWith("/click/") ? `${u}/click/` : u;
+      })(),
       source: {
         name: it?.source?.title ?? "",
         domain: it?.source?.domain ?? "",
@@ -78,8 +81,8 @@ news.get("/", async (req, res) => {
       kind: typeof it?.kind === "string" ? it.kind : "news",
       currencies: Array.isArray(it?.instruments)
         ? it.instruments
-            .map((c: any) => String(c?.code || "").toUpperCase())
-            .filter(Boolean)
+          .map((c: any) => String(c?.code || "").toUpperCase())
+          .filter(Boolean)
         : [],
       image: it?.image || null,
       votes: it?.votes || undefined,
@@ -89,12 +92,12 @@ news.get("/", async (req, res) => {
       data: articles,
       paging: { next: j?.next || null, previous: j?.previous || null, page },
     };
-    
+
     // Don't cache empty results to prevent stale cache issues
     if (articles.length > 0) {
       cache.set(key, { at: now, data: out });
     }
-    
+
     // Add cache control headers to prevent browser caching empty responses
     res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
     return res.json(out);
