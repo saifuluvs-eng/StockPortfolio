@@ -75,3 +75,30 @@ ai.post("/summary", express.json({ limit: "1mb" }), async (req, res) => {
   }
 });
 
+ai.post("/portfolio-strategy", express.json(), async (req, res) => {
+  try {
+    const { positions } = req.body;
+    if (!positions || !Array.isArray(positions)) {
+      return res.status(400).json({ error: "Invalid positions data" });
+    }
+
+    // Simple cache key based on positions length and total value (approximate)
+    // In a real app, you'd hash the positions object
+    const totalValue = positions.reduce((sum: number, p: any) => sum + (p.value || 0), 0);
+    const key = `strategy:${positions.length}:${Math.round(totalValue)}`;
+
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.at < TTL_MS) {
+      return res.json(JSON.parse(cached.text));
+    }
+
+    const strategy = await aiService.generatePortfolioStrategy(positions);
+
+    cache.set(key, { at: Date.now(), text: JSON.stringify(strategy) });
+    return res.json(strategy);
+  } catch (error) {
+    console.error("Portfolio strategy error:", error);
+    return res.status(500).json({ error: "Failed to generate strategy" });
+  }
+});
+
