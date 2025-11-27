@@ -178,9 +178,9 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                             </div>
                         </div>
 
-                        {/* Scrollable Detailed Analysis - Flex Grow */}
-                        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
-                            <div className="prose prose-invert prose-sm max-w-none text-xs text-muted-foreground space-y-4">
+                        {/* Scrollable Detailed Analysis - Fixed Height to Force Scroll */}
+                        <div className="h-[340px] overflow-y-scroll px-4 py-4 scrollbar-thin scrollbar-thumb-zinc-500 scrollbar-track-zinc-900/20">
+                            <div className="prose prose-invert prose-sm max-w-none text-xs text-muted-foreground space-y-4 pb-8">
                                 <ReactMarkdown>{strategy.detailedAnalysis}</ReactMarkdown>
                             </div>
                         </div>
