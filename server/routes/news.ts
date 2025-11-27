@@ -73,7 +73,8 @@ news.get("/", async (req, res) => {
         let u = String(it?.original_url || it?.url || "#");
         // Aggressively remove all trailing slashes
         u = u.replace(/\/+$/, "");
-        return u;
+        // Append query param to force cache bust and verify change
+        return `${u}?redirect=1`;
       })(),
       source: {
         name: it?.source?.title ?? "",
