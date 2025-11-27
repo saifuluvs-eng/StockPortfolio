@@ -141,7 +141,7 @@ Respond with ONLY valid JSON in this exact format:
             detailedAnalysis: strategy.detailedAnalysis || "No detailed analysis available."
         };
 
-        res.setHeader("Cache-Control", "private, max-age=300");
+        res.setHeader("Cache-Control", "private, max-age=3600");
         return res.json(output);
 
     } catch (error: any) {
