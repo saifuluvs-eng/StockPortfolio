@@ -5,6 +5,7 @@ import { Brain, TrendingUp, AlertTriangle, CheckCircle2, Loader2, Sparkles, Refr
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
+import { usePoints } from "@/context/PointsContext";
 
 interface AssetAllocationChartProps {
     positions: any[];
@@ -81,8 +82,17 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
         );
     }
 
+    const { deductPoints } = usePoints();
+
+    const handleAnalyze = () => {
+        if (deductPoints(5)) {
+            refetch();
+        }
+    };
+
     return (
         <Card className="dashboard-card h-full flex flex-col overflow-hidden border-primary/20">
+            {/* ... header ... */}
             <CardHeader className="pb-2 border-b border-border/50 bg-muted/20 shrink-0">
                 <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-base">
@@ -94,9 +104,9 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            onClick={() => refetch()}
+                            onClick={handleAnalyze}
                             disabled={isLoading || isRefetching}
-                            title="Refresh Analysis"
+                            title="Refresh Analysis (-5 🪙)"
                         >
                             <RefreshCw className={`w-4 h-4 ${isLoading || isRefetching ? "animate-spin" : ""}`} />
                         </Button>
@@ -105,7 +115,7 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
             </CardHeader>
 
             <CardContent className="flex-1 p-0 overflow-hidden relative flex flex-col min-h-0">
-                {/* Loading / Empty State */}
+                {/* ... loading state ... */}
                 {isLoading || isRefetching ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm z-20">
                         <Loader2 className="w-8 h-8 text-primary animate-spin mb-2" />
@@ -126,9 +136,9 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                                 Get a comprehensive 7-step analysis of your portfolio's health, risks, and opportunities.
                             </p>
                         </div>
-                        <Button onClick={() => refetch()} className="gap-2">
+                        <Button onClick={handleAnalyze} className="gap-2">
                             <Sparkles className="w-4 h-4" />
-                            Analyze Portfolio
+                            Analyze Portfolio (-5 🪙)
                         </Button>
                     </div>
                 ) : strategy ? (
