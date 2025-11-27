@@ -181,7 +181,7 @@
 
   /* Firefox scrollbar */
   * {
-    scrollbar-color: hsl(222, 30%, 25%) hsl(222, 47%, 11%);
+    scrollbar-color: hsl(240, 5%, 26%) hsl(240, 10%, 10%);
     scrollbar-width: thin;
   }
 }
