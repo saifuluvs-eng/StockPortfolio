@@ -71,7 +71,12 @@ news.get("/", async (req, res) => {
       title: String(it?.title ?? ""),
       url: (() => {
         const u = String(it?.original_url || it?.url || "#");
-        return u.includes("cryptopanic.com/news/") && !u.endsWith("/click/") ? `${u}/click/` : u;
+        if (u.includes("cryptopanic.com/news/") && !u.endsWith("/click/")) {
+          const final = u.endsWith("/") ? `${u}click/` : `${u}/click/`;
+          console.log(`[News] Transformed ${u} -> ${final}`);
+          return final;
+        }
+        return u;
       })(),
       source: {
         name: it?.source?.title ?? "",
