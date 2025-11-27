@@ -219,17 +219,30 @@ export default function HighPotentialPage() {
                             console.log("Forcing Local Test Data");
                             setCoins([
                                 {
-                                    symbol: "LOCAL-BTC",
+                                    symbol: "PASS-COIN",
                                     score: 10,
                                     passes: true,
                                     passesDetail: { trend: true, rsi: true, macd: true, volume: true, obv: true, volatility: true },
-                                    price: 99999,
-                                    rsi: 80,
+                                    price: 100,
+                                    rsi: 75,
                                     volume: 1000000,
                                     avgVolume: 500000,
                                     volatilityState: "high",
                                     likely10PercentUpside: true,
                                     upsideConditions: { volatilityExpanding: true, momentumRising: true, trendRecovering: true, volumeImproved: true, resistanceRoom: true }
+                                },
+                                {
+                                    symbol: "FAIL-COIN",
+                                    score: 6,
+                                    passes: true,
+                                    passesDetail: { trend: true, rsi: false, macd: true, volume: false, obv: true, volatility: true },
+                                    price: 50,
+                                    rsi: 40,
+                                    volume: 100000,
+                                    avgVolume: 200000,
+                                    volatilityState: "normal",
+                                    likely10PercentUpside: false,
+                                    upsideConditions: undefined
                                 }
                             ]);
                             setLastUpdated(new Date());
