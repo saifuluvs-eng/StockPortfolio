@@ -116,7 +116,7 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                             <div className="col-span-3 flex flex-col items-center justify-center text-center border-r border-border/50 pr-2">
                                 <div className="relative flex items-center justify-center w-14 h-14 rounded-full border-4 border-muted mb-1">
                                     <span className={`text-lg font-bold ${strategy.healthScore >= 70 ? "text-emerald-500" :
-                                            strategy.healthScore >= 40 ? "text-amber-500" : "text-red-500"
+                                        strategy.healthScore >= 40 ? "text-amber-500" : "text-red-500"
                                         }`}>
                                         {strategy.healthScore}
                                     </span>
@@ -156,11 +156,11 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                         </div>
 
                         {/* Scrollable Detailed Analysis */}
-                        <ScrollArea className="flex-1 px-4 pb-4">
+                        <div className="flex-1 overflow-y-auto px-4 pb-4 min-h-0">
                             <div className="prose prose-invert prose-sm max-w-none text-xs text-muted-foreground">
                                 <ReactMarkdown>{strategy.detailedAnalysis}</ReactMarkdown>
                             </div>
-                        </ScrollArea>
+                        </div>
                     </div>
                 ) : (
                     <div className="flex items-center justify-center h-full text-sm text-muted-foreground p-4">
