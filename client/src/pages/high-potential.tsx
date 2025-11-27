@@ -214,6 +214,32 @@ export default function HighPotentialPage() {
                         <span className="hidden sm:inline">Simulate</span>
                         <span className="sm:hidden">Sim</span>
                     </button>
+                    <button
+                        onClick={() => {
+                            console.log("Forcing Local Test Data");
+                            setCoins([
+                                {
+                                    symbol: "LOCAL-BTC",
+                                    score: 10,
+                                    passes: true,
+                                    passesDetail: { trend: true, rsi: true, macd: true, volume: true, obv: true, volatility: true },
+                                    price: 99999,
+                                    rsi: 80,
+                                    volume: 1000000,
+                                    avgVolume: 500000,
+                                    volatilityState: "high",
+                                    likely10PercentUpside: true,
+                                    upsideConditions: { volatilityExpanding: true, momentumRising: true, trendRecovering: true, volumeImproved: true, resistanceRoom: true }
+                                }
+                            ]);
+                            setLastUpdated(new Date());
+                            setLoading(false);
+                        }}
+                        className="flex items-center gap-2 border-2 border-purple-500 text-purple-500 bg-transparent hover:bg-purple-500/10 active:bg-purple-500/20 rounded-lg px-3 py-1.5 text-sm font-medium transition-all min-h-[44px]"
+                    >
+                        <span className="hidden sm:inline">Local Test</span>
+                        <span className="sm:hidden">Loc</span>
+                    </button>
                     {lastUpdated && (
                         <p className="text-xs text-muted-foreground">
                             Last updated: {formatTimestamp(lastUpdated)}
