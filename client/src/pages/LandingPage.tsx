@@ -58,7 +58,7 @@ function HeroSection() {
             >
                 <h1 className="text-6xl md:text-9xl font-black tracking-tighter leading-[0.9]">
                     MASTER <br />
-                    THE <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">MARKET</span>
+                    THE <span className="text-transparent bg-clip-text bg-cover bg-center" style={{ backgroundImage: "url('/assets/images/chart_pattern.png')" }}>MARKET</span>
                 </h1>
                 <p className="text-xl md:text-2xl font-medium text-gray-400 max-w-2xl mx-auto">
                     Intelligent insights for the modern trader.
