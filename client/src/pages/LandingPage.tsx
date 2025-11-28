@@ -102,24 +102,36 @@ function ProblemSection() {
         offset: ["start start", "end end"],
     });
 
-    const opacity1 = useTransform(scrollYProgress, [0.1, 0.25], [0.2, 1]);
-    const opacity2 = useTransform(scrollYProgress, [0.35, 0.5], [0.2, 1]);
-    const opacity3 = useTransform(scrollYProgress, [0.6, 0.75], [0.2, 1]);
+    const words = [
+        { text: "Stop", highlight: false },
+        { text: "guessing.", highlight: false },
+        { text: "Most", highlight: false, break: true },
+        { text: "traders", highlight: false },
+        { text: "lose", highlight: false },
+        { text: "because", highlight: false },
+        { text: "they", highlight: false },
+        { text: "trade", highlight: false },
+        { text: "on", highlight: false },
+        { text: "emotion.", highlight: false },
+        { text: "You're", highlight: false, break: true },
+        { text: "₿etter", highlight: true },
+        { text: "than", highlight: false },
+        { text: "that.", highlight: false },
+    ];
 
     return (
         <section ref={containerRef} className="relative h-[300vh] bg-black">
             <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
-                <div className="container mx-auto px-6 max-w-4xl">
-                    <h2 className="text-5xl md:text-8xl font-bold leading-tight tracking-tight text-white">
-                        <motion.span style={{ opacity: opacity1 }} className="block">
-                            Stop guessing.
-                        </motion.span>
-                        <motion.span style={{ opacity: opacity2 }} className="block text-gray-200">
-                            Most traders lose because they trade on emotion.
-                        </motion.span>
-                        <motion.span style={{ opacity: opacity3 }} className="block text-purple-400">
-                            You're better than that.
-                        </motion.span>
+                <div className="container mx-auto px-6 max-w-5xl">
+                    <h2 className="text-5xl md:text-8xl font-bold leading-tight tracking-tight text-white flex flex-wrap justify-center gap-x-4 gap-y-2 text-center">
+                        {words.map((wordObj, i) => (
+                            <Word
+                                key={i}
+                                progress={scrollYProgress}
+                                range={[i / words.length, (i + 1) / words.length]}
+                                {...wordObj}
+                            />
+                        ))}
                     </h2>
                 </div>
             </div>
@@ -127,6 +139,20 @@ function ProblemSection() {
     );
 }
 
+const Word = ({ progress, range, text, highlight, break: isBreak }: any) => {
+    const opacity = useTransform(progress, range, [0.1, 1]);
+    return (
+        <>
+            {isBreak && <div className="basis-full h-0" />}
+            <motion.span
+                style={{ opacity }}
+                className={`inline-block ${highlight ? "text-purple-400" : "text-white"}`}
+            >
+                {text}
+            </motion.span>
+        </>
+    );
+};
 function RevealSection() {
     const containerRef = useRef(null);
     const { scrollYProgress } = useScroll({
