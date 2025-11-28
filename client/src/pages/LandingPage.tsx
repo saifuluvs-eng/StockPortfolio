@@ -96,23 +96,32 @@ function HeroSection() {
 }
 
 function ProblemSection() {
-    const ref = useRef(null);
-    const isInView = useInView(ref, { margin: "-100px" });
+    const containerRef = useRef(null);
+    const { scrollYProgress } = useScroll({
+        target: containerRef,
+        offset: ["start start", "end end"],
+    });
+
+    const opacity1 = useTransform(scrollYProgress, [0.2, 0.3], [0.3, 1]);
+    const opacity2 = useTransform(scrollYProgress, [0.4, 0.5], [0.3, 1]);
+    const opacity3 = useTransform(scrollYProgress, [0.6, 0.7], [0.3, 1]);
 
     return (
-        <section ref={ref} className="min-h-[80vh] flex items-center justify-center bg-black relative z-10 py-20">
-            <div className="container mx-auto px-6">
-                <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={isInView ? { opacity: 1, y: 0 } : {}}
-                    transition={{ duration: 0.8, ease: "easeOut" }}
-                    className="max-w-4xl"
-                >
-                    <h2 className="text-4xl md:text-7xl font-bold leading-tight tracking-tight">
-                        Stop guessing. <br />
-                        <span className="text-gray-500">Most traders lose because they trade on emotion. You're better than that.</span>
+        <section ref={containerRef} className="relative h-[200vh] bg-black">
+            <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
+                <div className="container mx-auto px-6 max-w-4xl">
+                    <h2 className="text-5xl md:text-8xl font-bold leading-tight tracking-tight text-white">
+                        <motion.span style={{ opacity: opacity1 }} className="block">
+                            Stop guessing.
+                        </motion.span>
+                        <motion.span style={{ opacity: opacity2 }} className="block text-gray-200">
+                            Most traders lose because they trade on emotion.
+                        </motion.span>
+                        <motion.span style={{ opacity: opacity3 }} className="block text-purple-400">
+                            You're better than that.
+                        </motion.span>
                     </h2>
-                </motion.div>
+                </div>
             </div>
         </section>
     );
