@@ -58,19 +58,23 @@ function HeroSection() {
             >
                 <h1 className="text-6xl md:text-9xl font-black tracking-tighter leading-[0.9]">
                     MASTER <br />
-                    THE <span className="relative inline-block">
-                        {/* Base Candle Layer */}
-                        <span className="absolute inset-0 text-transparent bg-clip-text bg-cover bg-center" style={{
-                            backgroundImage: "url('/assets/images/chart_pattern.png')",
-                            filter: "brightness(1.5) saturate(1.2)"
-                        }} aria-hidden="true">MARKET</span>
-
-                        {/* Liquid Glass Overlay */}
-                        <span className="relative text-transparent bg-clip-text bg-cover bg-center" style={{
-                            backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.1) 75%, rgba(255,255,255,0.6) 100%)",
-                            WebkitTextStroke: "1px rgba(255,255,255,0.5)",
-                            filter: "drop-shadow(0 10px 20px rgba(0,0,0,0.5)) drop-shadow(0 0 15px rgba(255,255,255,0.3))"
-                        }}>MARKET</span>
+                    THE <span className="relative inline-block text-transparent bg-clip-text bg-cover bg-center"
+                        style={{
+                            backgroundImage: `
+                                linear-gradient(180deg,
+                                    rgba(255,255,255,0.95) 0%,
+                                    rgba(255,255,255,0.5) 15%,
+                                    rgba(255,255,255,0) 40%,
+                                    rgba(255,255,255,0) 60%,
+                                    rgba(255,255,255,0.3) 85%,
+                                    rgba(255,255,255,0.8) 100%
+                                ),
+                                url('/assets/images/chart_pattern.png')
+                            `,
+                            WebkitTextStroke: "2px rgba(255,255,255,0.6)",
+                            filter: "drop-shadow(0 0 20px rgba(255,255,255,0.3)) drop-shadow(0 0 40px rgba(100,255,100,0.2)) brightness(1.2)"
+                        }}>
+                        MARKET
                     </span>
                 </h1>
                 <p className="text-xl md:text-2xl font-medium text-gray-400 max-w-2xl mx-auto">
