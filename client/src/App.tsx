@@ -16,6 +16,7 @@ import AIInsights from "@/pages/ai-insights";
 import News from "@/pages/news";
 import ResetPassword from "@/pages/ResetPassword";
 import HighPotentialPage from "@/pages/high-potential";
+import LandingPage from "@/pages/LandingPage";
 
 function ShellLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,9 +37,7 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Switch>
-      <Route path="/">
-        <Redirect to="/dashboard" />
-      </Route>
+      <Route path="/" component={LandingPage} />
 
       <Route path="/login">
         <Redirect to="/account" />
@@ -104,7 +103,7 @@ export default function App() {
       </Route>
 
       <Route>
-        <Redirect to="/dashboard" />
+        <Redirect to="/" />
       </Route>
     </Switch>
   );
