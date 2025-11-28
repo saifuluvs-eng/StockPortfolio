@@ -102,12 +102,12 @@ function ProblemSection() {
         offset: ["start start", "end end"],
     });
 
-    const opacity1 = useTransform(scrollYProgress, [0.2, 0.3], [0.3, 1]);
-    const opacity2 = useTransform(scrollYProgress, [0.4, 0.5], [0.3, 1]);
-    const opacity3 = useTransform(scrollYProgress, [0.6, 0.7], [0.3, 1]);
+    const opacity1 = useTransform(scrollYProgress, [0.1, 0.25], [0.2, 1]);
+    const opacity2 = useTransform(scrollYProgress, [0.35, 0.5], [0.2, 1]);
+    const opacity3 = useTransform(scrollYProgress, [0.6, 0.75], [0.2, 1]);
 
     return (
-        <section ref={containerRef} className="relative h-[200vh] bg-black">
+        <section ref={containerRef} className="relative h-[300vh] bg-black">
             <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden">
                 <div className="container mx-auto px-6 max-w-4xl">
                     <h2 className="text-5xl md:text-8xl font-bold leading-tight tracking-tight text-white">
