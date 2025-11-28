@@ -58,7 +58,14 @@ function HeroSection() {
             >
                 <h1 className="text-6xl md:text-9xl font-black tracking-tighter leading-[0.9]">
                     MASTER <br />
-                    THE <span className="text-transparent bg-clip-text bg-cover bg-center" style={{ backgroundImage: "url('/assets/images/candles_pattern_dense.png')" }}>MARKET</span>
+                    THE <span className="relative inline-block">
+                        <span className="absolute inset-0 text-transparent bg-clip-text bg-cover bg-center opacity-50 blur-sm" style={{ backgroundImage: "url('/assets/images/chart_pattern.png')" }} aria-hidden="true">MARKET</span>
+                        <span className="relative text-transparent bg-clip-text bg-cover bg-center" style={{
+                            backgroundImage: "linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0.1) 100%), url('/assets/images/chart_pattern.png')",
+                            WebkitTextStroke: "1px rgba(255,255,255,0.2)",
+                            filter: "drop-shadow(0 0 20px rgba(100,255,100,0.2))"
+                        }}>MARKET</span>
+                    </span>
                 </h1>
                 <p className="text-xl md:text-2xl font-medium text-gray-400 max-w-2xl mx-auto">
                     Intelligent insights for the modern trader.
