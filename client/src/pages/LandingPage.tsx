@@ -14,7 +14,7 @@ export default function LandingPage() {
     }, []);
 
     return (
-        <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black overflow-x-hidden">
+        <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black">
             {/* Navigation */}
             <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? "py-4 bg-black/80 backdrop-blur-md" : "py-6 bg-transparent"}`}>
                 <div className="container mx-auto px-6 flex items-center justify-between">
