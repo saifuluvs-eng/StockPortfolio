@@ -44,7 +44,6 @@ import {
 } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { openSpotTickerStream } from "@/lib/binanceWs";
-import { usePoints } from "@/context/PointsContext";
 
 
 interface PriceData {
@@ -311,7 +310,6 @@ const ANALYSE_CACHE_KEYS = {
 
 export default function Analyse() {
   const { toast } = useToast();
-  const { deductPoints } = usePoints();
   const queryClient = useQueryClient();
   const { signInWithGoogle } = useAuth();
   const { loading } = useSupabaseAuth();
@@ -599,13 +597,6 @@ export default function Analyse() {
         console.debug("[Analyse] Duplicate scan blocked:", key);
         return;
       }
-
-      // Points Logic: BTC is free, others cost 2 points
-      const isFree = normalizedSymbol === "BTC" || normalizedSymbol === "BTCUSDT";
-      if (!isFree) {
-        if (!deductPoints(2)) return;
-      }
-
       lastScanRef.current = key;
 
       try {
@@ -1179,7 +1170,7 @@ export default function Analyse() {
               className="ml-auto rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors"
               data-testid="button-scan"
             >
-              {isScanning ? "Scanning…" : (normalizeSymbol(selectedSymbol) === "BTC" || normalizeSymbol(selectedSymbol) === "BTCUSDT") ? "Run Analysis" : "Run Analysis (-2 🪙)"}
+              {isScanning ? "Scanning…" : "Run Analysis"}
             </button>
           </div>
 

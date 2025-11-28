@@ -1,5 +1,4 @@
 import { useAuth } from "@/auth/AuthContext";
-import { usePoints } from "@/context/PointsContext";
 import { useLocation } from "wouter";
 import { Menu } from "lucide-react";
 import { Suspense, lazy } from "react";
@@ -11,7 +10,6 @@ interface HeaderProps {
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
-  const { points } = usePoints();
   const [pathname] = useLocation();
 
   const getPageTitle = (path: string) => {
@@ -48,15 +46,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
         <h1 className="text-base font-semibold tracking-tight text-foreground truncate flex-1 md:flex-none md:text-lg">
           {getPageTitle(pathname)}
         </h1>
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-            <span className="text-lg">🪙</span>
-            <span className="font-medium text-primary">{points}</span>
-          </div>
-          <Suspense fallback={<div className="w-10 h-10" />}>
-            <AccountDropdown />
-          </Suspense>
-        </div>
+        <Suspense fallback={<div className="w-10 h-10" />}>
+          <AccountDropdown />
+        </Suspense>
       </div>
     </header>
   );

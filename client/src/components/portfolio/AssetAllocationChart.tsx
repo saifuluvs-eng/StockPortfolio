@@ -5,7 +5,6 @@ import { Brain, TrendingUp, AlertTriangle, CheckCircle2, Loader2, Sparkles, Refr
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactMarkdown from "react-markdown";
-import { usePoints } from "@/context/PointsContext";
 
 interface AssetAllocationChartProps {
     positions: any[];
@@ -82,14 +81,6 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
         );
     }
 
-    const { deductPoints } = usePoints();
-
-    const handleAnalyze = () => {
-        if (deductPoints(5)) {
-            refetch();
-        }
-    };
-
     return (
         <Card className="dashboard-card h-full flex flex-col overflow-hidden border-primary/20">
             {/* ... header ... */}
@@ -104,9 +95,9 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            onClick={handleAnalyze}
+                            onClick={() => refetch()}
                             disabled={isLoading || isRefetching}
-                            title="Refresh Analysis (-5 🪙)"
+                            title="Refresh Analysis"
                         >
                             <RefreshCw className={`w-4 h-4 ${isLoading || isRefetching ? "animate-spin" : ""}`} />
                         </Button>
@@ -136,9 +127,9 @@ export function AssetAllocationChart({ positions, prices }: AssetAllocationChart
                                 Get a comprehensive 7-step analysis of your portfolio's health, risks, and opportunities.
                             </p>
                         </div>
-                        <Button onClick={handleAnalyze} className="gap-2">
+                        <Button onClick={() => refetch()} className="gap-2">
                             <Sparkles className="w-4 h-4" />
-                            Analyze Portfolio (-5 🪙)
+                            Analyze Portfolio
                         </Button>
                     </div>
                 ) : strategy ? (
