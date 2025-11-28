@@ -233,19 +233,19 @@ function HorizontalScrollSection() {
     const features = [
         {
             title: "Real-time Signals",
-            desc: "Spot breakouts before they happen.",
+            desc: "Spot market breakouts before they happen. Our algorithms track volume spikes and momentum shifts in real-time.",
             icon: <Zap className="w-12 h-12 text-amber-400" />,
             color: "bg-amber-400/10 border-amber-400/20"
         },
         {
-            title: "Risk Management",
-            desc: "Protect your capital with smart alerts.",
-            icon: <ShieldCheck className="w-12 h-12 text-emerald-400" />,
-            color: "bg-emerald-400/10 border-emerald-400/20"
+            title: "AI Strategist",
+            desc: "Your personal investment intelligence. Get a 7-step comprehensive breakdown of risks and actionable moves.",
+            icon: <Brain className="w-12 h-12 text-purple-400" />,
+            color: "bg-purple-400/10 border-purple-400/20"
         },
         {
             title: "Portfolio Health",
-            desc: "Deep dive into your asset allocation.",
+            desc: "Deep dive into your asset allocation. Visualize your true exposure and rebalance your portfolio with confidence.",
             icon: <BarChart3 className="w-12 h-12 text-blue-400" />,
             color: "bg-blue-400/10 border-blue-400/20"
         }
