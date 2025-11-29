@@ -452,8 +452,8 @@ export default function Portfolio() {
           <button
             onClick={() => setActiveTab("holdings")}
             className={`flex-1 py-3 text-sm font-medium transition-all border-b-2 ${activeTab === "holdings"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
           >
             Holdings
@@ -461,8 +461,8 @@ export default function Portfolio() {
           <button
             onClick={() => setActiveTab("strategist")}
             className={`flex-1 py-3 text-sm font-medium transition-all border-b-2 ${activeTab === "strategist"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
           >
             AI Strategist
@@ -665,94 +665,95 @@ export default function Portfolio() {
                     </tbody>
                   )}
                 </table>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Analytics Section */}
-      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 h-[500px] ${activeTab === "strategist" ? "block" : "hidden lg:grid"}`}>
-        <div className="lg:col-span-2 h-full">
-          <AssetAllocationChart positions={positions} prices={prices} />
-        </div>
-        <div className="h-full hidden lg:block">
-          <PerformanceComparisonCard btcChange={btcChange} totalPnlPct={totalPnLPercent} />
-        </div>
-      </div>
-    </div>
-
-      {/* ---- Add Position Modal ---- */ }
-  {
-    open && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-        <div className="absolute inset-0 bg-black/80" onClick={closeAddModal} />
-        <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl max-h-[90vh] overflow-y-auto">
-          <div className="p-5 border-b border-white/10 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-foreground">Add Position</h3>
-            <button className="p-1 rounded-md hover:bg-white/5" onClick={closeAddModal} aria-label="Close">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="p-5">
-            <label className="text-sm text-muted-foreground">Symbol (e.g., BTCUSDT)</label>
-            <input
-              className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
-              placeholder="BTCUSDT"
-              value={form.symbol}
-              onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
-              autoComplete="off"
-            />
-
-            <label className="text-sm text-muted-foreground mt-4 block">Quantity</label>
-            <input
-              type="number"
-              min="0"
-              step="any"
-              className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
-              placeholder="e.g., 0.5"
-              value={form.qty}
-              onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
-              autoComplete="off"
-            />
-
-            <label className="text-sm text-muted-foreground mt-4 block">Average Entry Price (USDT)</label>
-            <input
-              type="number"
-              min="0"
-              step="any"
-              className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
-              placeholder="e.g., 42000"
-              value={form.avgPrice}
-              onChange={(e) => setForm((f) => ({ ...f, avgPrice: e.target.value }))}
-              autoComplete="off"
-            />
-
-            {formError && (
-              <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-                {formError}
               </div>
-            )}
+            </CardContent>
+          </Card>
+        </div>
 
-            <div className="flex justify-end gap-2 mt-6">
-              <Button variant="outline" onClick={closeAddModal} disabled={saving}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreate} disabled={!formValid || saving}>
-                {saving ? "Saving…" : "Add Position"}
-              </Button>
-            </div>
 
-            <p className="text-xs text-muted-foreground mt-3">
-              Tip: Use Binance spot symbols like <span className="font-mono">BTCUSDT</span>,{" "}
-              <span className="font-mono">ETHUSDT</span>.
-            </p>
+        {/* Analytics Section */}
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 h-[500px] ${activeTab === "strategist" ? "block" : "hidden lg:grid"}`}>
+          <div className="lg:col-span-2 h-full">
+            <AssetAllocationChart positions={positions} prices={prices} />
+          </div>
+          <div className="h-full hidden lg:block">
+            <PerformanceComparisonCard btcChange={btcChange} totalPnlPct={totalPnLPercent} />
           </div>
         </div>
       </div>
-    )
-  }
+
+      {/* ---- Add Position Modal ---- */}
+      {
+        open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-black/80" onClick={closeAddModal} />
+            <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl max-h-[90vh] overflow-y-auto">
+              <div className="p-5 border-b border-white/10 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-foreground">Add Position</h3>
+                <button className="p-1 rounded-md hover:bg-white/5" onClick={closeAddModal} aria-label="Close">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-5">
+                <label className="text-sm text-muted-foreground">Symbol (e.g., BTCUSDT)</label>
+                <input
+                  className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
+                  placeholder="BTCUSDT"
+                  value={form.symbol}
+                  onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+                  autoComplete="off"
+                />
+
+                <label className="text-sm text-muted-foreground mt-4 block">Quantity</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
+                  placeholder="e.g., 0.5"
+                  value={form.qty}
+                  onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
+                  autoComplete="off"
+                />
+
+                <label className="text-sm text-muted-foreground mt-4 block">Average Entry Price (USDT)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
+                  placeholder="e.g., 42000"
+                  value={form.avgPrice}
+                  onChange={(e) => setForm((f) => ({ ...f, avgPrice: e.target.value }))}
+                  autoComplete="off"
+                />
+
+                {formError && (
+                  <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                    {formError}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 mt-6">
+                  <Button variant="outline" onClick={closeAddModal} disabled={saving}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreate} disabled={!formValid || saving}>
+                    {saving ? "Saving…" : "Add Position"}
+                  </Button>
+                </div>
+
+                <p className="text-xs text-muted-foreground mt-3">
+                  Tip: Use Binance spot symbols like <span className="font-mono">BTCUSDT</span>,{" "}
+                  <span className="font-mono">ETHUSDT</span>.
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+      }
     </div >
   );
 }
