@@ -406,7 +406,7 @@ export default function Home() {
                   <>
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm">Market Fear & Greed</h3>
-                      <Gauge className="w-5 sm:w-6 h-5 sm:h-6 text-orange-500 flex-shrink-0" />
+                      <Gauge className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 flex-shrink-0" />
                     </div>
                     <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
                     <div className="mt-3 pt-2 border-t border-border/50">
@@ -467,7 +467,7 @@ export default function Home() {
                         Curated market headlines and analyst takes to keep you ahead of the next move.
                       </p>
                     </div>
-                    <Newspaper className="w-8 h-8 text-primary" />
+                    <Newspaper className="w-6 sm:w-8 h-6 sm:h-8 text-primary" />
                   </div>
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <p className="flex items-center justify-between text-foreground">

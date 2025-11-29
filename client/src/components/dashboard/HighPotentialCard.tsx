@@ -92,7 +92,7 @@ export default function HighPotentialCard() {
                             </h3>
                             <p className="text-xs text-muted-foreground">Top Opportunities</p>
                         </div>
-                        <Flame className="w-5 h-5 text-[#f7931a] flex-shrink-0 mt-0.5" />
+                        <Flame className="w-6 sm:w-8 h-6 sm:h-8 text-[#f7931a] flex-shrink-0" />
                     </div>
 
                     {/* Top 3 Coins List */}

@@ -124,7 +124,7 @@ export default function TopGainersCard() {
               </h3>
               <p className="text-xs text-muted-foreground">Market Leaders</p>
             </div>
-            <Award className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+            <Award className="w-6 sm:w-8 h-6 sm:h-8 text-green-500 flex-shrink-0" />
           </div>
 
           {/* Top 3 Gainers List */}
