@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
 import TopGainersCard from "@/components/dashboard/TopGainersCard";
+import HighPotentialCard from "@/components/dashboard/HighPotentialCard";
 import { FearGreedGauge } from "@/components/dashboard/FearGreedGauge";
 import { getQueryFn } from "@/lib/queryClient";
 import { usePrices } from "@/lib/prices";
@@ -249,7 +250,7 @@ export default function Home() {
     "scanner",
     "top-gainers",
     "total-pnl",
-    "watchlist",
+    "high-potential",
     "fear-greed",
     "ai-signals",
     "btc-dominance",
@@ -390,24 +391,10 @@ export default function Home() {
             </Link>
           </Wrapper>
         );
-      case "watchlist":
+      case "high-potential":
         return (
           <Wrapper {...props}>
-            <Link to="/watchlist" className="block h-full">
-              <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-100/10 to-orange-100/20 h-auto sm:h-full" data-testid="card-watchlist" style={{ "--neon-glow": "hsl(40, 50%, 70%)" } as React.CSSProperties}>
-                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Watchlist</h3>
-                      <p className="text-xs text-muted-foreground truncate">Track favorites</p>
-                      <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">{watchDisplay}</p>
-                      <p className="text-xs text-muted-foreground">Coins tracked</p>
-                    </div>
-                    <Eye className="w-6 sm:w-8 h-6 sm:h-8 text-orange-200 flex-shrink-0" />
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+            <HighPotentialCard />
           </Wrapper>
         );
       case "fear-greed":
