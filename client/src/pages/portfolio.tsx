@@ -87,6 +87,7 @@ export default function Portfolio() {
   } = usePortfolioStats();
 
   const [btcChange, setBtcChange] = useState<number>(0);
+  const [activeTab, setActiveTab] = useState<"holdings" | "strategist">("holdings");
 
   const positions = useMemo<Position[]>(
     () =>
@@ -350,7 +351,7 @@ export default function Portfolio() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground break-words">Your Portfolio</h1>
+            <h1 className="text-xl sm:text-3xl font-bold text-foreground break-words">Your Portfolio</h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">Positions, P&amp;L, and live performance.</p>
           </div>
 
@@ -375,7 +376,7 @@ export default function Portfolio() {
 
 
         {/* Stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-4 mb-6">
           <Card className={`${cardClampClass} bg-gradient-to-br from-cyan-500/10 to-cyan-500/20`} style={cardClampStyle}>
             <CardContent className={rowContentClass}>
               <div className="flex items-center gap-2">
@@ -431,7 +432,7 @@ export default function Portfolio() {
             </CardContent>
           </Card>
 
-          <Link href="/ai-insights" className="block">
+          <Link href="/ai-insights" className="hidden sm:block">
             <Card className={`${cardClampClass} bg-gradient-to-br from-indigo-500/5 to-indigo-500/10 cursor-pointer`} style={cardClampStyle}>
               <CardContent className={rowContentClass}>
                 <div className="flex items-center gap-2">
@@ -446,217 +447,312 @@ export default function Portfolio() {
           </Link>
         </div>
 
+        {/* Mobile Tabs */}
+        <div className="flex items-center mb-4 border-b border-border lg:hidden">
+          <button
+            onClick={() => setActiveTab("holdings")}
+            className={`flex-1 py-3 text-sm font-medium transition-all border-b-2 ${activeTab === "holdings"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+          >
+            Holdings
+          </button>
+          <button
+            onClick={() => setActiveTab("strategist")}
+            className={`flex-1 py-3 text-sm font-medium transition-all border-b-2 ${activeTab === "strategist"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+          >
+            AI Strategist
+          </button>
+        </div>
+
         {/* Holdings table */}
-        <Card className="border-border">
-          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-6">
-            <CardTitle>Holdings</CardTitle>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link href="/analyse/BTCUSDT">
-                <Button variant="outline" size="sm" className="min-h-[44px]">
-                  <Eye className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Scan Market</span>
+        <div className={`${activeTab === "holdings" ? "block" : "hidden lg:block"}`}>
+          <Card className="border-border">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-6">
+              <CardTitle>Holdings</CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Link href="/analyse/BTCUSDT">
+                  <Button variant="outline" size="sm" className="min-h-[44px]">
+                    <Eye className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Scan Market</span>
+                  </Button>
+                </Link>
+                <Button size="sm" onClick={openAdd} className="min-h-[44px]">
+                  <PlusCircle className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Add Position</span>
                 </Button>
-              </Link>
-              <Button size="sm" onClick={openAdd} className="min-h-[44px]">
-                <PlusCircle className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Add Position</span>
-              </Button>
-            </div>
-          </CardHeader>
+              </div>
+            </CardHeader>
 
-          <CardContent className="p-0 sm:p-6">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-full sm:min-w-[800px]">
-                <thead>
-                  <tr className="text-muted-foreground border-b border-border">
-                    <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">COIN</th>
-                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">QTY</th>
-                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ENTRY</th>
-                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">CURRENT</th>
-                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ORDER</th>
-                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">P&amp;L</th>
-                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">%</th>
-                    <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ACTIONS</th>
-                  </tr>
-                </thead>
-
+            <CardContent className="p-0 sm:p-6">
+              {/* Mobile Card View */}
+              <div className="block sm:hidden space-y-3 p-4 pt-0">
                 {isLoading ? (
-                  <tbody>
-                    <tr>
-                      <td colSpan={8} className="py-6 text-center text-muted-foreground">
-                        Loading your portfolio…
-                      </td>
-                    </tr>
-                  </tbody>
-                ) : loadError ? (
-                  <tbody>
-                    <tr>
-                      <td colSpan={8} className="py-6 text-center text-red-400">
-                        {loadErrorMessage}
-                      </td>
-                    </tr>
-                  </tbody>
+                  <div className="text-center text-muted-foreground py-8">Loading positions...</div>
                 ) : positions.length === 0 ? (
-                  <tbody>
-                    <tr>
-                      <td colSpan={8} className="py-6 text-center">
-                        <div className="inline-flex flex-col items-center">
-                          <p className="text-foreground font-medium">No positions yet</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Add your first position to start tracking P&amp;L.
-                          </p>
-                          <Button size="sm" className="mt-3" onClick={openAdd}>
-                            <PlusCircle className="w-4 h-4 mr-2" />
-                            Add Position
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
+                  <div className="text-center py-8">
+                    <p className="text-foreground font-medium">No positions yet</p>
+                    <Button size="sm" className="mt-3" onClick={openAdd}>
+                      <PlusCircle className="w-4 h-4 mr-2" />
+                      Add Position
+                    </Button>
+                  </div>
                 ) : (
-                  <tbody>
-                    {positions.map((p) => {
-                      const sym = p.symbol.toUpperCase();
-                      const current = currentPriceFor(sym, p.livePrice ?? p.avgPrice);
-                      const quantity = Number(p.qty) || 0;
-                      const entryPrice = Number(p.avgPrice) || 0;
-                      const currentPrice = Number.isFinite(current) ? current : entryPrice;
-                      const orderValue = quantity * entryPrice;
-                      const positionValue = quantity * currentPrice;
-                      const pnlValue = positionValue - orderValue;
-                      const pnlPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
-                      const pnlColor = pnlValue >= 0 ? "text-emerald-500" : "text-red-500";
+                  positions.map((p) => {
+                    const sym = p.symbol.toUpperCase();
+                    const current = currentPriceFor(sym, p.livePrice ?? p.avgPrice);
+                    const quantity = Number(p.qty) || 0;
+                    const entryPrice = Number(p.avgPrice) || 0;
+                    const currentPrice = Number.isFinite(current) ? current : entryPrice;
+                    const orderValue = quantity * entryPrice;
+                    const positionValue = quantity * currentPrice;
+                    const pnlValue = positionValue - orderValue;
+                    const pnlPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
+                    const pnlColor = pnlValue >= 0 ? "text-emerald-500" : "text-red-500";
 
-                      return (
-                        <tr key={p.id} className="border-b border-border/50">
-                          <td className="py-3 px-2 sm:px-4 font-medium text-foreground whitespace-nowrap">{sym}</td>
-                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">{p.qty}</td>
-                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">
-                            ${p.avgPrice.toLocaleString("en-US", { maximumFractionDigits: 6 })}
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">
-                            ${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">{fmt(orderValue)}</td>
-                          <td className={`py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm ${pnlColor}`}>
-                            {pnlValue >= 0 ? "+" : "-"}$
-                            {Math.abs(pnlValue).toLocaleString("en-US", { maximumFractionDigits: 2 })}
-                          </td>
-                          <td className={`py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm ${pnlColor}`}>
-                            {pnlPct >= 0 ? "+" : "-"}
-                            {Math.abs(pnlPct).toFixed(2)}%
-                          </td>
-                          <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1 sm:gap-2">
-                              <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan" className="hidden sm:inline-flex">
-                                <Search className="w-4 h-4 mr-1" /> Scan
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan" className="inline-flex sm:hidden min-h-[36px]">
-                                <Search className="w-4 h-4" />
-                              </Button>
-                              {sessionUser && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => handleDelete(p)}
-                                  title="Delete"
-                                  className="min-h-[36px]"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              )}
+                    return (
+                      <div key={p.id} className="rounded-xl border border-border bg-card/50 p-4">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <div className="font-bold text-lg">{sym}</div>
+                            <div className="text-xs text-muted-foreground">{quantity} units</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-medium">${positionValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}</div>
+                            <div className={`text-xs font-medium ${pnlColor}`}>
+                              {pnlValue >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%
                             </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="bg-muted/20 rounded p-2">
+                            <div className="text-[10px] text-muted-foreground uppercase">Avg Price</div>
+                            <div className="font-medium">${entryPrice.toLocaleString("en-US", { maximumFractionDigits: 6 })}</div>
+                          </div>
+                          <div className="bg-muted/20 rounded p-2">
+                            <div className="text-[10px] text-muted-foreground uppercase">Current</div>
+                            <div className="font-medium">${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}</div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 mt-3">
+                          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => goScan(sym)}>
+                            <Search className="w-3 h-3 mr-1.5" /> Analysis
+                          </Button>
+                          {sessionUser && (
+                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(p)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm min-w-full sm:min-w-[800px]">
+                  <thead>
+                    <tr className="text-muted-foreground border-b border-border">
+                      <th className="text-left py-3 px-2 sm:px-4 whitespace-nowrap">COIN</th>
+                      <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">QTY</th>
+                      <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ENTRY</th>
+                      <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">CURRENT</th>
+                      <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ORDER</th>
+                      <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">P&amp;L</th>
+                      <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">%</th>
+                      <th className="text-right py-3 px-2 sm:px-4 whitespace-nowrap">ACTIONS</th>
+                    </tr>
+                  </thead>
+
+                  {isLoading ? (
+                    <tbody>
+                      <tr>
+                        <td colSpan={8} className="py-6 text-center text-muted-foreground">
+                          Loading your portfolio…
+                        </td>
+                      </tr>
+                    </tbody>
+                  ) : loadError ? (
+                    <tbody>
+                      <tr>
+                        <td colSpan={8} className="py-6 text-center text-red-400">
+                          {loadErrorMessage}
+                        </td>
+                      </tr>
+                    </tbody>
+                  ) : positions.length === 0 ? (
+                    <tbody>
+                      <tr>
+                        <td colSpan={8} className="py-6 text-center">
+                          <div className="inline-flex flex-col items-center">
+                            <p className="text-foreground font-medium">No positions yet</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Add your first position to start tracking P&amp;L.
+                            </p>
+                            <Button size="sm" className="mt-3" onClick={openAdd}>
+                              <PlusCircle className="w-4 h-4 mr-2" />
+                              Add Position
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  ) : (
+                    <tbody>
+                      {positions.map((p) => {
+                        const sym = p.symbol.toUpperCase();
+                        const current = currentPriceFor(sym, p.livePrice ?? p.avgPrice);
+                        const quantity = Number(p.qty) || 0;
+                        const entryPrice = Number(p.avgPrice) || 0;
+                        const currentPrice = Number.isFinite(current) ? current : entryPrice;
+                        const orderValue = quantity * entryPrice;
+                        const positionValue = quantity * currentPrice;
+                        const pnlValue = positionValue - orderValue;
+                        const pnlPct = entryPrice > 0 ? ((currentPrice - entryPrice) / entryPrice) * 100 : 0;
+                        const pnlColor = pnlValue >= 0 ? "text-emerald-500" : "text-red-500";
+
+                        return (
+                          <tr key={p.id} className="border-b border-border/50">
+                            <td className="py-3 px-2 sm:px-4 font-medium text-foreground whitespace-nowrap">{sym}</td>
+                            <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">{p.qty}</td>
+                            <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">
+                              ${p.avgPrice.toLocaleString("en-US", { maximumFractionDigits: 6 })}
+                            </td>
+                            <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">
+                              ${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}
+                            </td>
+                            <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm">{fmt(orderValue)}</td>
+                            <td className={`py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm ${pnlColor}`}>
+                              {pnlValue >= 0 ? "+" : "-"}$
+                              {Math.abs(pnlValue).toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                            </td>
+                            <td className={`py-3 px-2 sm:px-4 text-right whitespace-nowrap text-xs sm:text-sm ${pnlColor}`}>
+                              {pnlPct >= 0 ? "+" : "-"}
+                              {Math.abs(pnlPct).toFixed(2)}%
+                            </td>
+                            <td className="py-3 px-2 sm:px-4 text-right whitespace-nowrap">
+                              <div className="inline-flex items-center gap-1 sm:gap-2">
+                                <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan" className="hidden sm:inline-flex">
+                                  <Search className="w-4 h-4 mr-1" /> Scan
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => goScan(sym)} title="Scan" className="inline-flex sm:hidden min-h-[36px]">
+                                  <Search className="w-4 h-4" />
+                                </Button>
+                                {sessionUser && (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleDelete(p)}
+                                    title="Delete"
+                                    className="min-h-[36px]"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  )}
+                </table>
               </table>
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {/* Analytics Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 h-[500px]">
-          <div className="lg:col-span-2 h-full">
-            <AssetAllocationChart positions={positions} prices={prices} />
+      {/* Analytics Section */}
+      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6 h-[500px] ${activeTab === "strategist" ? "block" : "hidden lg:grid"}`}>
+        <div className="lg:col-span-2 h-full">
+          <AssetAllocationChart positions={positions} prices={prices} />
+        </div>
+        <div className="h-full hidden lg:block">
+          <PerformanceComparisonCard btcChange={btcChange} totalPnlPct={totalPnLPercent} />
+        </div>
+      </div>
+    </div>
+
+      {/* ---- Add Position Modal ---- */ }
+  {
+    open && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+        <div className="absolute inset-0 bg-black/80" onClick={closeAddModal} />
+        <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className="p-5 border-b border-white/10 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">Add Position</h3>
+            <button className="p-1 rounded-md hover:bg-white/5" onClick={closeAddModal} aria-label="Close">
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div className="h-full">
-            <PerformanceComparisonCard btcChange={btcChange} totalPnlPct={totalPnLPercent} />
+
+          <div className="p-5">
+            <label className="text-sm text-muted-foreground">Symbol (e.g., BTCUSDT)</label>
+            <input
+              className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
+              placeholder="BTCUSDT"
+              value={form.symbol}
+              onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
+              autoComplete="off"
+            />
+
+            <label className="text-sm text-muted-foreground mt-4 block">Quantity</label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
+              placeholder="e.g., 0.5"
+              value={form.qty}
+              onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
+              autoComplete="off"
+            />
+
+            <label className="text-sm text-muted-foreground mt-4 block">Average Entry Price (USDT)</label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
+              placeholder="e.g., 42000"
+              value={form.avgPrice}
+              onChange={(e) => setForm((f) => ({ ...f, avgPrice: e.target.value }))}
+              autoComplete="off"
+            />
+
+            {formError && (
+              <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                {formError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={closeAddModal} disabled={saving}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreate} disabled={!formValid || saving}>
+                {saving ? "Saving…" : "Add Position"}
+              </Button>
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-3">
+              Tip: Use Binance spot symbols like <span className="font-mono">BTCUSDT</span>,{" "}
+              <span className="font-mono">ETHUSDT</span>.
+            </p>
           </div>
         </div>
       </div>
-
-      {/* ---- Add Position Modal ---- */}
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/80" onClick={closeAddModal} />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#0f1526] shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-5 border-b border-white/10 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-foreground">Add Position</h3>
-              <button className="p-1 rounded-md hover:bg-white/5" onClick={closeAddModal} aria-label="Close">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5">
-              <label className="text-sm text-muted-foreground">Symbol (e.g., BTCUSDT)</label>
-              <input
-                className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
-                placeholder="BTCUSDT"
-                value={form.symbol}
-                onChange={(e) => setForm((f) => ({ ...f, symbol: e.target.value }))}
-                autoComplete="off"
-              />
-
-              <label className="text-sm text-muted-foreground mt-4 block">Quantity</label>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
-                placeholder="e.g., 0.5"
-                value={form.qty}
-                onChange={(e) => setForm((f) => ({ ...f, qty: e.target.value }))}
-                autoComplete="off"
-              />
-
-              <label className="text-sm text-muted-foreground mt-4 block">Average Entry Price (USDT)</label>
-              <input
-                type="number"
-                min="0"
-                step="any"
-                className="mt-1 w-full rounded-md bg-[#12182a] border border-white/10 px-3 py-2 text-foreground outline-none"
-                placeholder="e.g., 42000"
-                value={form.avgPrice}
-                onChange={(e) => setForm((f) => ({ ...f, avgPrice: e.target.value }))}
-                autoComplete="off"
-              />
-
-              {formError && (
-                <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-                  {formError}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 mt-6">
-                <Button variant="outline" onClick={closeAddModal} disabled={saving}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreate} disabled={!formValid || saving}>
-                  {saving ? "Saving…" : "Add Position"}
-                </Button>
-              </div>
-
-              <p className="text-xs text-muted-foreground mt-3">
-                Tip: Use Binance spot symbols like <span className="font-mono">BTCUSDT</span>,{" "}
-                <span className="font-mono">ETHUSDT</span>.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    )
+  }
+    </div >
   );
 }
