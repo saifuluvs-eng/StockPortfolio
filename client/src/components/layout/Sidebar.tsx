@@ -37,7 +37,7 @@ const items: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: <Home size={20} /> },
   { label: "Portfolio", to: "/portfolio", icon: <Briefcase size={20} /> },
   { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
-  { label: "High Potential", to: "/high-potential", icon: <Flame size={20} className="text-white" /> },
+  { label: "High Potential", to: "/high-potential", icon: <Flame size={20} /> },
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
   { label: "News", to: "/news", icon: <Newspaper size={20} /> },
   { label: "AI Insights", to: "/ai-insights", icon: <Brain size={20} /> },
@@ -193,8 +193,8 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                       transition={{ type: "spring", stiffness: 500, damping: 30 }}
                     />
                   )}
-                  <div className={`relative flex items-center gap-3 px-3 py-2 text-[15px] transition-colors ${isActive ? "text-[#f7931a]" : "text-foreground hover:text-white"}`}>
-                    <div className="shrink-0">{item.icon}</div>
+                  <div className={`relative flex items-center gap-3 px-3 py-2 text-[15px] transition-colors ${isActive ? "text-white" : "text-foreground hover:text-white"}`}>
+                    <div className={`shrink-0 ${isActive ? "text-[#f7931a]" : ""}`}>{item.icon}</div>
                     <span className={labelClass}>
                       {item.label}
                     </span>
