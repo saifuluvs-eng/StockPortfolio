@@ -372,6 +372,7 @@ export default function Analyse() {
   const previousTimeframeRef = useRef<string>(initialTimeframe);
   const isFirstRenderRef = useRef(true);
   const initialExplicitSymbolRef = useRef(Boolean(params?.symbol || querySymbol));
+  const [activeTab, setActiveTab] = useState<"chart" | "technicals" | "ai">("chart");
 
   useEffect(() => {
     setIsScanning(false);
@@ -1118,7 +1119,7 @@ export default function Analyse() {
                 removeFromWatchlist.isPending ||
                 !networkEnabled
               }
-              className="w-full sm:w-auto"
+              className="hidden sm:flex w-full sm:w-auto"
             >
               <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
               <span className="ml-2">
@@ -1129,27 +1130,23 @@ export default function Analyse() {
         </header>
         {/* HEADER */}
         <div className="rounded-xl border border-border bg-card p-3 md:p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="min-w-[260px] grow lg:basis-[66%]">
-              <div className="relative">
-                <Input
-                  placeholder="Enter coin (BTC, ETH, SOL...)"
-                  value={symbolInput}
-                  onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
-                  onKeyPress={handleKeyPress}
-                  className="h-11 w-full min-w-0 pl-10"
-                  data-testid="input-search-symbol"
-                />
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative grow">
+              <Input
+                placeholder="Enter coin (BTC, ETH...)"
+                value={symbolInput}
+                onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
+                onKeyPress={handleKeyPress}
+                className="h-10 w-full min-w-0 pl-9"
+                data-testid="input-search-symbol"
+              />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground md:text-sm">
-              <Clock3 className="h-4 w-4" />
-              <span className="whitespace-nowrap">Timeframe</span>
+            <div className="flex items-center gap-2">
               <Select value={timeframe} onValueChange={setTimeframe}>
                 <SelectTrigger
-                  className="h-9 min-w-[140px] border-border/60 bg-background/70 text-left text-foreground"
+                  className="h-10 w-[80px] sm:w-[100px] border-border/60 bg-background/70 text-center text-foreground px-2"
                   data-testid="select-timeframe"
                 >
                   <SelectValue />
@@ -1162,29 +1159,31 @@ export default function Analyse() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
 
-            <button
-              type="button"
-              onClick={onRunAnalysis}
-              disabled={isScanning}
-              className="ml-auto rounded-lg bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors"
-              data-testid="button-scan"
-            >
-              {isScanning ? "Scanning…" : "Run Analysis"}
-            </button>
+              <button
+                type="button"
+                onClick={onRunAnalysis}
+                disabled={isScanning}
+                className="h-10 rounded-lg bg-primary text-primary-foreground px-4 text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors whitespace-nowrap flex-1 sm:flex-none"
+                data-testid="button-scan"
+              >
+                {isScanning ? "Scanning" : "Run Analysis"}
+              </button>
+            </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3 md:gap-4">
-            <MiniStat
-              label="Current Price"
-              value={
-                showLoadingState
-                  ? loadingMessage
-                  : formatPrice(latestPrice?.lastPrice)
-              }
-              icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
-            />
+          <div className="mt-3 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 md:gap-4">
+            <div className="col-span-2 sm:col-span-1">
+              <MiniStat
+                label="Current Price"
+                value={
+                  showLoadingState
+                    ? loadingMessage
+                    : formatPrice(latestPrice?.lastPrice)
+                }
+                icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
+              />
+            </div>
             <MiniStat
               label="24h Change"
               value={
@@ -1222,23 +1221,43 @@ export default function Analyse() {
               }
               icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
             />
-            <MiniStat
-              label="Today's Range"
-              value={
-                showLoadingState ? (
-                  loadingMessage
-                ) : (
-                  `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
-                )
-              }
-              icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
-            />
+            <div className="hidden sm:flex">
+              <MiniStat
+                label="Today's Range"
+                value={
+                  showLoadingState ? (
+                    loadingMessage
+                  ) : (
+                    `${formatPrice(latestPrice?.lowPrice)} - ${formatPrice(latestPrice?.highPrice)}`
+                  )
+                }
+                icon={<Clock3 className="h-3.5 w-3.5 text-amber-300" />}
+              />
+            </div>
           </div>
         </div>
 
         {false && priceSummaryCards}
 
         <div className="mt-4">
+          {/* Mobile Tabs */}
+          <div className="flex items-center p-1 mb-4 bg-muted/30 rounded-lg xl:hidden">
+            {(["chart", "technicals", "ai"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${activeTab === tab
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                  }`}
+              >
+                {tab === "chart" && "Chart"}
+                {tab === "technicals" && "Technicals"}
+                {tab === "ai" && "AI Summary"}
+              </button>
+            ))}
+          </div>
+
           <div
             className="
             grid gap-6 items-start content-start
@@ -1246,7 +1265,8 @@ export default function Analyse() {
             xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]
           "
           >
-            <section className="min-w-0 overflow-hidden">
+            {/* Technicals Section */}
+            <section className={`min-w-0 overflow-hidden ${activeTab === "technicals" ? "block" : "hidden xl:block"}`}>
               {scanResult ? (
                 (() => {
                   const item = scanResult;
@@ -1298,7 +1318,8 @@ export default function Analyse() {
               )}
             </section>
 
-            <section className="min-w-0 overflow-hidden">
+            {/* Chart Section */}
+            <section className={`min-w-0 overflow-hidden ${activeTab === "chart" ? "block" : "hidden xl:block"}`}>
               <Card className="flex h-full flex-col border-border/70 bg-card/70">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
@@ -1317,7 +1338,8 @@ export default function Analyse() {
               </Card>
             </section>
 
-            <section className="min-w-0 overflow-hidden">
+            {/* AI Summary Section */}
+            <section className={`min-w-0 overflow-hidden ${activeTab === "ai" ? "block" : "hidden xl:block"}`}>
               <AiSummaryPanel
                 symbol={selectedSymbol}
                 tf={timeframe}
