@@ -1131,46 +1131,45 @@ export default function Analyse() {
         </header>
         {/* HEADER */}
         <div className="rounded-xl border border-border bg-card p-2 sm:p-3">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-            <div className="relative grow">
+          <div className="flex flex-row items-center gap-2">
+            <div className="relative flex-1 min-w-0">
               <Input
-                placeholder="Enter coin..."
+                placeholder="Coin..."
                 value={symbolInput}
                 onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
                 onKeyPress={handleKeyPress}
-                className="h-9 sm:h-10 w-full min-w-0 pl-8 sm:pl-9 text-sm"
+                className="h-9 sm:h-10 w-full pl-7 sm:pl-9 text-xs sm:text-sm pr-1"
                 data-testid="input-search-symbol"
               />
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             </div>
 
-            <div className="flex items-center gap-2">
-              <Select value={timeframe} onValueChange={setTimeframe}>
-                <SelectTrigger
-                  className="h-9 sm:h-10 w-[70px] sm:w-[100px] border-border/60 bg-background/70 text-center text-foreground px-1 sm:px-2 text-xs sm:text-sm"
-                  data-testid="select-timeframe"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TIMEFRAMES.map((tf) => (
-                    <SelectItem key={tf.value} value={tf.value}>
-                      {tf.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <button
-                type="button"
-                onClick={onRunAnalysis}
-                disabled={isScanning}
-                className="h-9 sm:h-10 rounded-lg bg-primary text-primary-foreground px-3 sm:px-4 text-xs sm:text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors whitespace-nowrap flex-1 sm:flex-none"
-                data-testid="button-scan"
+            <Select value={timeframe} onValueChange={setTimeframe}>
+              <SelectTrigger
+                className="h-9 sm:h-10 w-[60px] sm:w-[100px] border-border/60 bg-background/70 text-center text-foreground px-1 sm:px-2 text-xs sm:text-sm"
+                data-testid="select-timeframe"
               >
-                {isScanning ? "Scanning" : "Run Analysis"}
-              </button>
-            </div>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEFRAMES.map((tf) => (
+                  <SelectItem key={tf.value} value={tf.value}>
+                    {tf.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <button
+              type="button"
+              onClick={onRunAnalysis}
+              disabled={isScanning}
+              className="h-9 sm:h-10 rounded-lg bg-primary text-primary-foreground px-3 sm:px-4 text-xs sm:text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors whitespace-nowrap flex-none"
+              data-testid="button-scan"
+            >
+              <span className="sm:hidden">{isScanning ? "..." : "Run"}</span>
+              <span className="hidden sm:inline">{isScanning ? "Scanning" : "Run Analysis"}</span>
+            </button>
           </div>
 
           <div className="mt-2 sm:mt-3 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
