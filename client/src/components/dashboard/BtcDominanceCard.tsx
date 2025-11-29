@@ -33,7 +33,7 @@ export default function BtcDominanceCard() {
   return (
     <Card className="dashboard-card neon-hover bg-gradient-to-br from-amber-500/10 to-amber-500/20 flex flex-col" style={cardStyle}>
       <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">BTC Dominance</h3>
             <p className="text-sm sm:text-lg md:text-2xl font-bold text-foreground mt-0.5">{isLoading ? "—" : display}</p>

@@ -404,7 +404,7 @@ export default function Home() {
               <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                 {fearGreed ? (
                   <>
-                    <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-start justify-between gap-2 mb-2">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm">Market Fear & Greed</h3>
                       <Gauge className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 flex-shrink-0" />
                     </div>
@@ -460,7 +460,7 @@ export default function Home() {
             <Link to="/news" className="block h-full">
               <Card className="dashboard-card neon-hover bg-gradient-to-br from-rose-500/10 to-rose-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(350, 100%, 60%)" } as React.CSSProperties}>
                 <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
                       <p className="text-sm text-muted-foreground">
