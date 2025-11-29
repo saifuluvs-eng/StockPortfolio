@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "wouter";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Briefcase,
@@ -36,12 +37,12 @@ const items: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: <Home size={20} /> },
   { label: "Portfolio", to: "/portfolio", icon: <Briefcase size={20} /> },
   { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
+  { label: "High Potential", to: "/high-potential", icon: <Flame size={20} className="text-white" /> },
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
+  { label: "News", to: "/news", icon: <Newspaper size={20} /> },
+  { label: "AI Insights", to: "/ai-insights", icon: <Brain size={20} /> },
   { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: (user) => !!user },
   { label: "Alerts", to: "/alerts", icon: <Bell size={20} />, visible: (user) => !!user },
-  { label: "AI Insights", to: "/ai-insights", icon: <BarChart2 size={20} /> },
-  { label: "High Potential", to: "/high-potential", icon: <Flame size={20} className="text-orange-500" /> },
-  { label: "News", to: "/news", icon: <Newspaper size={20} /> },
 ];
 
 interface SidebarProps {
@@ -173,11 +174,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                   key={item.to}
                   to={item.to}
                   onClick={handleClick}
-                  className={[
-                    "relative group/item flex items-center gap-3 rounded-xl px-3 py-2 text-[15px]",
-                    "text-foreground hover:text-white hover:bg-white/5",
-                    isActive ? "bg-white/[0.07] text-white" : "",
-                  ].join(" ")}
+                  className="relative group/item block"
                   onMouseEnter={(event) => {
                     if (showStrictCollapsed) {
                       setHoverLabel(item.label);
@@ -188,10 +185,20 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                     setHoverRef(null);
                   }}
                 >
-                  <div className="shrink-0">{item.icon}</div>
-                  <span className={labelClass}>
-                    {item.label}
-                  </span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeNav"
+                      className="absolute inset-0 bg-white/[0.07] rounded-xl"
+                      initial={false}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    />
+                  )}
+                  <div className={`relative flex items-center gap-3 px-3 py-2 text-[15px] transition-colors ${isActive ? "text-[#f7931a]" : "text-foreground hover:text-white"}`}>
+                    <div className="shrink-0">{item.icon}</div>
+                    <span className={labelClass}>
+                      {item.label}
+                    </span>
+                  </div>
                 </Link>
               );
             })}
