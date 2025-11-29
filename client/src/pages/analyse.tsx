@@ -279,9 +279,10 @@ type MiniStatProps = {
   hint?: string;
   tone?: "default" | "up" | "down";
   icon?: React.ReactNode;
+  compact?: boolean;
 };
 
-const MiniStat: React.FC<MiniStatProps> = ({ label, value, hint, tone = "default", icon }) => {
+const MiniStat: React.FC<MiniStatProps> = ({ label, value, hint, tone = "default", icon, compact }) => {
   const toneCls =
     tone === "up"
       ? "text-emerald-400"
@@ -290,14 +291,14 @@ const MiniStat: React.FC<MiniStatProps> = ({ label, value, hint, tone = "default
         : "text-slate-200";
   return (
     <div
-      className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/20 px-3 py-1.5 shadow-sm ring-1 ring-black/5"
+      className={`inline-flex items-center gap-2 rounded-full border border-border bg-muted/20 shadow-sm ring-1 ring-black/5 ${compact ? "px-2 py-1" : "px-3 py-1.5"}`}
       role="status"
       aria-label={label}
       title={typeof value === "string" ? `${label}: ${value}` : label}
     >
       {icon ? <span className="opacity-80">{icon}</span> : null}
-      <span className="text-xs text-slate-400">{label}</span>
-      <span className={`text-sm font-semibold ${toneCls}`}>{value}</span>
+      <span className={`text-slate-400 ${compact ? "text-[10px]" : "text-xs"}`}>{label}</span>
+      <span className={`font-semibold ${toneCls} ${compact ? "text-xs" : "text-sm"}`}>{value}</span>
       {hint ? <span className="text-[11px] text-slate-500">{hint}</span> : null}
     </div>
   );
@@ -1101,13 +1102,13 @@ export default function Analyse() {
       <div className="flex flex-col gap-5 py-6">
         <BackendWarningBanner status={backendStatus} />
         <header className="flex flex-col gap-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
             <div>
-              <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-3xl font-bold text-foreground">
-                <BarChart3 className="h-7 w-7 text-primary" />
+              <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-xl sm:text-3xl font-bold text-foreground">
+                <BarChart3 className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
                 <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">Decision Hub</span>
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
                 Real-time charts, quantitative scans, and idea discovery in one cockpit.
               </p>
             </div>
@@ -1129,24 +1130,24 @@ export default function Analyse() {
           </div>
         </header>
         {/* HEADER */}
-        <div className="rounded-xl border border-border bg-card p-3 md:p-3">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="rounded-xl border border-border bg-card p-2 sm:p-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <div className="relative grow">
               <Input
-                placeholder="Enter coin (BTC, ETH...)"
+                placeholder="Enter coin..."
                 value={symbolInput}
                 onChange={(e) => setSymbolInput(e.target.value.toUpperCase())}
                 onKeyPress={handleKeyPress}
-                className="h-10 w-full min-w-0 pl-9"
+                className="h-9 sm:h-10 w-full min-w-0 pl-8 sm:pl-9 text-sm"
                 data-testid="input-search-symbol"
               />
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             </div>
 
             <div className="flex items-center gap-2">
               <Select value={timeframe} onValueChange={setTimeframe}>
                 <SelectTrigger
-                  className="h-10 w-[80px] sm:w-[100px] border-border/60 bg-background/70 text-center text-foreground px-2"
+                  className="h-9 sm:h-10 w-[70px] sm:w-[100px] border-border/60 bg-background/70 text-center text-foreground px-1 sm:px-2 text-xs sm:text-sm"
                   data-testid="select-timeframe"
                 >
                   <SelectValue />
@@ -1164,7 +1165,7 @@ export default function Analyse() {
                 type="button"
                 onClick={onRunAnalysis}
                 disabled={isScanning}
-                className="h-10 rounded-lg bg-primary text-primary-foreground px-4 text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors whitespace-nowrap flex-1 sm:flex-none"
+                className="h-9 sm:h-10 rounded-lg bg-primary text-primary-foreground px-3 sm:px-4 text-xs sm:text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors whitespace-nowrap flex-1 sm:flex-none"
                 data-testid="button-scan"
               >
                 {isScanning ? "Scanning" : "Run Analysis"}
@@ -1172,7 +1173,7 @@ export default function Analyse() {
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 md:gap-4">
+          <div className="mt-2 sm:mt-3 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
             <div className="col-span-2 sm:col-span-1">
               <MiniStat
                 label="Current Price"
@@ -1181,7 +1182,8 @@ export default function Analyse() {
                     ? loadingMessage
                     : formatPrice(latestPrice?.lastPrice)
                 }
-                icon={<DollarSign className="h-3.5 w-3.5 text-emerald-300" />}
+                icon={<DollarSign className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-300" />}
+                compact
               />
             </div>
             <MiniStat
@@ -1202,15 +1204,16 @@ export default function Analyse() {
               }
               icon={
                 showLoadingState ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                  <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-300" />
                 ) : isPositive ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-300" />
+                  <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-300" />
                 ) : priceChange < 0 ? (
-                  <TrendingDown className="h-3.5 w-3.5 text-rose-300" />
+                  <TrendingDown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-300" />
                 ) : (
-                  <TrendingUp className="h-3.5 w-3.5 text-slate-300" />
+                  <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-300" />
                 )
               }
+              compact
             />
             <MiniStat
               label="24h Volume"
@@ -1219,7 +1222,8 @@ export default function Analyse() {
                   ? loadingMessage
                   : formatVolume(latestPrice?.quoteVolume)
               }
-              icon={<Target className="h-3.5 w-3.5 text-sky-300" />}
+              icon={<Target className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-sky-300" />}
+              compact
             />
             <div className="hidden sm:flex">
               <MiniStat
@@ -1247,8 +1251,8 @@ export default function Analyse() {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-3 text-sm font-medium transition-all border-b-2 ${activeTab === tab
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
               >
                 {tab === "chart" && "Chart"}
