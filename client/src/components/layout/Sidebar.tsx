@@ -160,6 +160,12 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         <nav className="mt-2 space-y-1 px-2 flex-1 overflow-y-auto">
           {items
             .filter((item) => (loading ? true : item.visible ? item.visible(user) : true))
+            .filter((item) => {
+              if (!isMobile) return true;
+              // On mobile, hide items that are already in the bottom nav
+              const bottomNavPaths = ["/dashboard", "/portfolio", "/gainers", "/analyse"];
+              return !bottomNavPaths.includes(item.to);
+            })
             .map((item) => {
               const isActive = item.to === "/analyse"
                 ? currentPath.startsWith("/analyse")
