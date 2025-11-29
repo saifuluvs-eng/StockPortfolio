@@ -28,11 +28,15 @@ const COLORS = {
 interface BreakdownSectionProps {
   rows?: BreakdownRow[];
   emptyState?: ReactNode;
+  symbol?: string;
+  timeframe?: string;
 }
 
 export function BreakdownSection({
   rows = [],
   emptyState,
+  symbol,
+  timeframe,
 }: BreakdownSectionProps) {
   const hasRows = rows.length > 0;
 
@@ -45,11 +49,16 @@ export function BreakdownSection({
       aria-label="Breakdown Technicals"
     >
       {/* sticky header stays visible while list scrolls */}
-      <header className="sticky top-0 z-10 bg-muted/60 backdrop-blur px-4 md:px-5 py-3 border-b border-border">
+      <header className="sticky top-0 z-10 bg-muted/60 backdrop-blur px-4 md:px-5 py-3 border-b border-border flex items-center justify-between">
         <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <span className="i-lucide-list-checks h-5 w-5 opacity-80" />
           Breakdown Technicals
         </h3>
+        {symbol && timeframe && (
+          <div className="text-sm font-medium text-muted-foreground uppercase">
+            {symbol} <span className="text-xs opacity-70">{timeframe}</span>
+          </div>
+        )}
       </header>
 
       {/* scrollable list area */}

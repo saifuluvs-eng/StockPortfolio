@@ -1241,14 +1241,14 @@ export default function Analyse() {
 
         <div className="mt-4">
           {/* Mobile Tabs */}
-          <div className="flex items-center p-1 mb-4 bg-muted/30 rounded-lg xl:hidden">
+          <div className="flex items-center mb-4 border-b border-border xl:hidden">
             {(["chart", "technicals", "ai"] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${activeTab === tab
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
+                className={`flex-1 py-3 text-sm font-medium transition-all border-b-2 ${activeTab === tab
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
               >
                 {tab === "chart" && "Chart"}
@@ -1297,14 +1297,16 @@ export default function Analyse() {
                     .filter((row: BreakdownRow) => row.title);
 
                   if (breakdownRows.length === 0) {
-                    return <BreakdownSection rows={[]} />;
+                    return <BreakdownSection rows={[]} symbol={displaySymbol(selectedSymbol)} timeframe={timeframe} />;
                   }
 
-                  return <BreakdownSection rows={breakdownRows} />;
+                  return <BreakdownSection rows={breakdownRows} symbol={displaySymbol(selectedSymbol)} timeframe={timeframe} />;
                 })()
               ) : (
                 <BreakdownSection
                   rows={[]}
+                  symbol={displaySymbol(selectedSymbol)}
+                  timeframe={timeframe}
                   emptyState={
                     <div className="py-12 text-center text-muted-foreground">
                       <Search className="mx-auto mb-4 h-12 w-12 opacity-40" />
