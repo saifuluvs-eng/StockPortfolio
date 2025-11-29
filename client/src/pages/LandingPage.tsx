@@ -3,9 +3,11 @@ import { Link } from "wouter";
 import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion";
 import { ArrowRight, BarChart3, Brain, ShieldCheck, Zap, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LandingPage() {
     const [isScrolled, setIsScrolled] = useState(false);
+    const { user } = useAuth();
 
     useEffect(() => {
         const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -25,12 +27,22 @@ export default function LandingPage() {
                         <span className="text-xl font-bold tracking-tighter">StockPortfolio</span>
                     </div>
                     <div className="hidden md:flex items-center gap-8">
-                        <Link href="/login" className="text-sm font-medium hover:opacity-70 transition-opacity">sign in</Link>
-                        <Link href="/signup">
-                            <Button className="rounded-full bg-white text-black hover:bg-gray-200 px-6 font-bold">
-                                Get Started
-                            </Button>
-                        </Link>
+                        {user ? (
+                            <Link href="/dashboard">
+                                <Button className="rounded-full bg-white text-black hover:bg-gray-200 px-6 font-bold">
+                                    Dashboard
+                                </Button>
+                            </Link>
+                        ) : (
+                            <>
+                                <Link href="/login" className="text-sm font-medium hover:opacity-70 transition-opacity">sign in</Link>
+                                <Link href="/signup">
+                                    <Button className="rounded-full bg-white text-black hover:bg-gray-200 px-6 font-bold">
+                                        Get Started
+                                    </Button>
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </nav>
@@ -46,6 +58,7 @@ export default function LandingPage() {
 
 function HeroSection() {
     const { scrollY } = useScroll();
+    const { user } = useAuth();
     const y1 = useTransform(scrollY, [0, 500], [0, 200]);
     const y2 = useTransform(scrollY, [0, 500], [0, -150]);
     const opacity = useTransform(scrollY, [0, 300], [1, 0]);
@@ -81,9 +94,9 @@ function HeroSection() {
                     Intelligent insights for the modern trader.
                 </p>
                 <div className="pt-8">
-                    <Link href="/signup">
+                    <Link href={user ? "/dashboard" : "/signup"}>
                         <Button size="lg" className="h-16 px-10 text-xl rounded-full bg-white text-black hover:bg-gray-200 font-bold transition-transform hover:scale-105">
-                            Start Free Trial <ArrowRight className="ml-2" />
+                            {user ? "Go to Dashboard" : "Start Free Trial"} <ArrowRight className="ml-2" />
                         </Button>
                     </Link>
                 </div>
@@ -279,15 +292,16 @@ function HorizontalScrollSection() {
 }
 
 function FooterSection() {
+    const { user } = useAuth();
     return (
         <footer className="bg-black py-20 border-t border-white/10">
             <div className="container mx-auto px-6 text-center">
                 <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8">
                     ready to <span className="text-[#f7931a]">upgrade?</span>
                 </h2>
-                <Link href="/signup">
+                <Link href={user ? "/dashboard" : "/signup"}>
                     <Button size="lg" className="h-20 px-12 text-2xl rounded-full bg-white text-black hover:bg-gray-200 font-bold mb-12">
-                        Create Free Account
+                        {user ? "Go to Dashboard" : "Create Free Account"}
                     </Button>
                 </Link>
                 <div className="flex justify-center gap-8 text-gray-500 text-sm">
