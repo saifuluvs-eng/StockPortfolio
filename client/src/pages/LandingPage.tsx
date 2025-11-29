@@ -69,7 +69,7 @@ function HeroSection() {
                                     rgba(255,255,255,0.1) 85%, 
                                     rgba(255,255,255,0.5) 100%
                                 ),
-                                url('/assets/images/chart_pattern.png')
+                                url('/assets/images/chart_pattern_v2.png')
                             `,
                             WebkitTextStroke: "1.5px rgba(255,255,255,0.5)",
                             filter: "drop-shadow(0 0 20px rgba(255,255,255,0.2)) drop-shadow(0 0 40px rgba(100,255,100,0.3)) brightness(1.5) saturate(1.5)"
