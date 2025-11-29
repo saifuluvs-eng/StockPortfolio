@@ -163,7 +163,7 @@ const Word = ({ progress, range, text, highlight, break: isBreak }: any) => {
             {isBreak && <div className="basis-full h-0" />}
             <motion.span
                 style={{ opacity }}
-                className={`inline-block ${highlight ? "text-purple-400" : "text-white"}`}
+                className={`inline-block ${highlight ? "text-[#f7931a]" : "text-white"}`}
             >
                 {text}
             </motion.span>
@@ -184,7 +184,7 @@ function RevealSection() {
     return (
         <section ref={containerRef} className="min-h-screen flex items-center justify-center bg-black py-20 overflow-hidden">
             <div className="container mx-auto px-6 relative">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-purple-600/20 blur-[120px] rounded-full pointer-events-none" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#f7931a]/20 blur-[120px] rounded-full pointer-events-none" />
 
                 <motion.div
                     style={{ scale, opacity, y }}
@@ -194,7 +194,7 @@ function RevealSection() {
                         <div className="space-y-8">
                             <h3 className="text-3xl md:text-5xl font-bold leading-tight">
                                 The Brain Behind <br />
-                                <span className="text-purple-400">Your Portfolio</span>
+                                <span className="text-[#f7931a]">Your Portfolio</span>
                             </h3>
                             <p className="text-lg text-gray-400 leading-relaxed">
                                 Our AI engine doesn't just show data. It interprets it. Get a 7-step comprehensive breakdown of your portfolio health, risks, and actionable moves.
@@ -202,7 +202,7 @@ function RevealSection() {
                             <div className="space-y-4">
                                 {['Trend Analysis', 'Momentum Scoring', 'Scenario Planning'].map((item, i) => (
                                     <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
-                                        <div className="w-3 h-3 rounded-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.8)]" />
+                                        <div className="w-3 h-3 rounded-full bg-[#f7931a] shadow-[0_0_10px_rgba(247,147,26,0.8)]" />
                                         <span className="font-medium">{item}</span>
                                     </div>
                                 ))}
@@ -240,8 +240,8 @@ function HorizontalScrollSection() {
         {
             title: "AI Strategist",
             desc: "Your personal investment intelligence. Get a 7-step comprehensive breakdown of risks and actionable moves.",
-            icon: <Brain className="w-12 h-12 text-purple-400" />,
-            color: "bg-purple-400/10 border-purple-400/20"
+            icon: <Brain className="w-12 h-12 text-[#f7931a]" />,
+            color: "bg-[#f7931a]/10 border-[#f7931a]/20"
         },
         {
             title: "Portfolio Health",
@@ -283,7 +283,7 @@ function FooterSection() {
         <footer className="bg-black py-20 border-t border-white/10">
             <div className="container mx-auto px-6 text-center">
                 <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-8">
-                    ready to <span className="text-purple-500">upgrade?</span>
+                    ready to <span className="text-[#f7931a]">upgrade?</span>
                 </h2>
                 <Link href="/signup">
                     <Button size="lg" className="h-20 px-12 text-2xl rounded-full bg-white text-black hover:bg-gray-200 font-bold mb-12">
