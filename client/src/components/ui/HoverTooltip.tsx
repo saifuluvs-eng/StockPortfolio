@@ -30,7 +30,7 @@ export default function HoverTooltip({ anchor, label, show }: HoverTooltipProps)
 
   return createPortal(
     <div
-      className="fixed -translate-y-1/2 z-[9999] px-2.5 py-1.5 rounded-lg bg-black text-white text-xs shadow-2xl pointer-events-none"
+      className="fixed -translate-y-1/2 z-[9999] px-2.5 py-1.5 rounded-lg bg-black text-[#f7931a] text-xs shadow-2xl pointer-events-none"
       style={{ top: pos.top, left: pos.left }}
     >
       {label}
