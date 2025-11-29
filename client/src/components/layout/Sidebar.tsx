@@ -205,7 +205,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         </nav>
 
         {/* Bottom-left floating control button */}
-        <div className="absolute bottom-3 left-2">
+        <div className="absolute bottom-3 left-2 hidden md:block">
           <button
             ref={sbBtnRef}
             type="button"

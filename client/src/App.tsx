@@ -18,6 +18,8 @@ import ResetPassword from "@/pages/ResetPassword";
 import HighPotentialPage from "@/pages/high-potential";
 import LandingPage from "@/pages/LandingPage";
 
+import MobileNav from "@/components/layout/MobileNav";
+
 function ShellLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -26,9 +28,10 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 overflow-y-auto bg-background text-foreground">
+        <main className="flex-1 overflow-y-auto bg-background text-foreground pb-20 md:pb-0">
           {children}
         </main>
+        <MobileNav onMenuClick={() => setSidebarOpen(true)} />
       </div>
     </div>
   );

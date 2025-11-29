@@ -92,7 +92,7 @@ export default function Home() {
   const displayName = user?.user_metadata?.full_name?.trim() || user?.email?.split("@")[0] || "Trader";
   const firstName = displayName.split(" ")[0] || displayName;
 
-  const containerClass = "w-full max-w-full overflow-hidden px-3 sm:px-4 md:px-6 py-4";
+  const containerClass = "w-full max-w-full overflow-hidden px-2 sm:px-4 md:px-6 py-3 sm:py-4";
 
   // ---------- Lower “Market Overview” (WebSockets) ----------
   const [btcChange, setBtcChange] = useState<{ priceChangePercent?: string | number }>({});
