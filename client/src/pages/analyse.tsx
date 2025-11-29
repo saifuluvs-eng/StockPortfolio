@@ -1099,9 +1099,9 @@ export default function Analyse() {
 
   return (
     <div className="w-full max-w-screen-2xl 2xl:max-w-[1800px] mx-auto px-4 lg:px-6">
-      <div className="flex flex-col gap-5 py-6">
+      <div className="flex flex-col gap-3 sm:gap-5 py-2 sm:py-6">
         <BackendWarningBanner status={backendStatus} />
-        <header className="flex flex-col gap-2">
+        <header className="hidden sm:flex flex-col gap-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
             <div>
               <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-xl sm:text-3xl font-bold text-foreground">
@@ -1242,9 +1242,9 @@ export default function Analyse() {
 
         {false && priceSummaryCards}
 
-        <div className="mt-4">
+        <div className="mt-2 sm:mt-4">
           {/* Mobile Tabs */}
-          <div className="flex items-center mb-4 border-b border-border xl:hidden">
+          <div className="flex items-center mb-2 sm:mb-4 border-b border-border xl:hidden">
             {(["chart", "technicals", "ai"] as const).map((tab) => (
               <button
                 key={tab}
@@ -1326,7 +1326,7 @@ export default function Analyse() {
             {/* Chart Section */}
             <section className={`min-w-0 overflow-hidden ${activeTab === "chart" ? "block" : "hidden xl:block"}`}>
               <Card className="flex h-full flex-col border-border/70 bg-card/70">
-                <CardHeader className="pb-2">
+                <CardHeader className="hidden sm:flex pb-2">
                   <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
