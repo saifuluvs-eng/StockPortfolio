@@ -61,18 +61,18 @@ function HeroSection() {
                     THE <span className="relative inline-block text-transparent bg-clip-text bg-cover bg-center"
                         style={{
                             backgroundImage: `
-                                linear-gradient(180deg,
-                                    rgba(255,255,255,0.95) 0%,
-                                    rgba(255,255,255,0.5) 15%,
-                                    rgba(255,255,255,0) 40%,
-                                    rgba(255,255,255,0) 60%,
-                                    rgba(255,255,255,0.3) 85%,
-                                    rgba(255,255,255,0.8) 100%
+                                linear-gradient(180deg, 
+                                    rgba(255,255,255,0.7) 0%, 
+                                    rgba(255,255,255,0.1) 15%, 
+                                    rgba(255,255,255,0) 30%, 
+                                    rgba(255,255,255,0) 70%, 
+                                    rgba(255,255,255,0.1) 85%, 
+                                    rgba(255,255,255,0.5) 100%
                                 ),
                                 url('/assets/images/chart_pattern.png')
                             `,
-                            WebkitTextStroke: "2px rgba(255,255,255,0.6)",
-                            filter: "drop-shadow(0 0 20px rgba(255,255,255,0.3)) drop-shadow(0 0 40px rgba(100,255,100,0.2)) brightness(1.2)"
+                            WebkitTextStroke: "1.5px rgba(255,255,255,0.5)",
+                            filter: "drop-shadow(0 0 20px rgba(255,255,255,0.2)) drop-shadow(0 0 40px rgba(100,255,100,0.3)) brightness(1.5) saturate(1.5)"
                         }}>
                         MARKET
                     </span>
