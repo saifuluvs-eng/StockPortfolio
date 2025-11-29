@@ -28,7 +28,7 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-        <main className="flex-1 overflow-y-auto bg-background text-foreground pb-20 md:pb-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background text-foreground pb-20 md:pb-0">
           {children}
         </main>
         <MobileNav onMenuClick={() => setSidebarOpen(true)} />

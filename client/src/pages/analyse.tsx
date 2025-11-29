@@ -1100,7 +1100,7 @@ export default function Analyse() {
       <div className="flex flex-col gap-5 py-6">
         <BackendWarningBanner status={backendStatus} />
         <header className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="flex min-w-0 items-center gap-2 break-keep whitespace-normal text-3xl font-bold text-foreground">
                 <BarChart3 className="h-7 w-7 text-primary" />
@@ -1118,6 +1118,7 @@ export default function Analyse() {
                 removeFromWatchlist.isPending ||
                 !networkEnabled
               }
+              className="w-full sm:w-auto"
             >
               <Star className={`h-4 w-4 ${symbolInWatchlist ? "fill-yellow-400 text-yellow-400" : ""}`} />
               <span className="ml-2">
