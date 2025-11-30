@@ -1,3 +1,4 @@
+// Force reload timestamp: 1
 /**
  * gemini_tech_summary.js
  *

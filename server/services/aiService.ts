@@ -415,8 +415,7 @@ Based on these four combined factors, provide trader-style analysis.`;
       console.log("[AI Summary] Indicators Override:", JSON.stringify(indicatorsOverride).slice(0, 200));
 
       // Dynamically import gemini_tech_summary module
-      // Append timestamp to force cache busting (Node.js ESM cache)
-      const gemimiModule = await import(`../gemini_tech_summary.js?t=${Date.now()}`);
+      const gemimiModule = await import("../gemini_tech_summary.js");
       const { runSummaryWithIndicators } = gemimiModule;
 
       // Call new gemini_tech_summary module
