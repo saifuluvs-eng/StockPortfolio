@@ -14,15 +14,17 @@ type AiSummaryPanelProps = {
   candles?: unknown[];
 };
 
-export interface AiSummaryPanelRef {
+export interface ChartAnalysisPanelRef {
   generate: () => void;
 }
 
-const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
+const ChartAnalysisPanel = forwardRef<ChartAnalysisPanelRef, AiSummaryPanelProps>(
   ({ symbol, tf, technicals, candles }, ref) => {
     const queryClient = useQueryClient();
     const { user } = useAuth();
-    const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals, candles });
+    // Hardcoded focus for this panel
+    const focusMode = 'chart';
+    const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals, candles, focus: focusMode });
     const [isGenerating, setIsGenerating] = useState(false);
 
     const COOLDOWN_MS = 60 * 1000; // 1 minute global cap
@@ -31,8 +33,8 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
     const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
     useEffect(() => {
-      const globalGenKey = "ai_global_last_gen";
-      const contentKey = `ai_summary_content_${symbol}_${tf}`;
+      const globalGenKey = "ai_chart_global_last_gen"; // Distinct key
+      const contentKey = `chart_analysis_content_${symbol}_${tf}`; // Distinct key
 
       // Load persisted content & timestamp for THIS coin
       const savedContent = localStorage.getItem(contentKey);
@@ -41,7 +43,7 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
           const parsed = JSON.parse(savedContent);
           const age = Date.now() - parsed.timestamp;
           if (age < PERSISTENCE_MS) {
-            queryClient.setQueryData(["aiSummary", symbol, tf], parsed.content);
+            queryClient.setQueryData(["aiSummary", symbol, tf, focusMode], parsed.content);
             setLastUpdated(new Date(parsed.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
           }
         } catch (e) {
@@ -75,11 +77,11 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
       return () => clearInterval(interval);
     }, [cooldownRemaining]);
 
-    const handleGenerate = async () => {
+    const generateSummary = async () => {
       if (cooldownRemaining > 0) return;
 
-      console.log("[DEBUG] Generate button clicked!");
-      console.log("[DEBUG] Props - symbol:", symbol, "tf:", tf);
+      console.log("[DEBUG] Chart Analysis Generate triggered!");
+      console.log("[DEBUG] Props - symbol:", symbol, "tf:", tf, "focus:", focusMode);
 
       if (!symbol || !tf) {
         console.error("[DEBUG] Cannot generate: missing symbol or tf", { symbol, tf });
@@ -89,26 +91,26 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
       setIsGenerating(true);
       try {
         // First, invalidate to mark as stale
-        await queryClient.invalidateQueries({ queryKey: ["aiSummary", symbol, tf] });
+        await queryClient.invalidateQueries({ queryKey: ["aiSummary", symbol, tf, focusMode] });
 
         const response = await (await import("@/lib/api")).apiFetch("/api/ai/summary", {
           method: "POST",
-          body: JSON.stringify({ symbol, tf, technicals, candles }),
+          body: JSON.stringify({ symbol, tf, technicals, candles, focus: focusMode }),
         });
 
         console.log("[DEBUG] API response received:", !!response?.data);
 
         if (response?.data) {
           // Set the data in cache
-          queryClient.setQueryData(["aiSummary", symbol, tf], response.data);
+          queryClient.setQueryData(["aiSummary", symbol, tf, focusMode], response.data);
           console.log("[DEBUG] Data set in cache successfully");
 
           const now = Date.now();
           // Set GLOBAL cooldown
-          localStorage.setItem("ai_global_last_gen", now.toString());
+          localStorage.setItem("ai_chart_global_last_gen", now.toString());
 
           // Save content for THIS coin
-          localStorage.setItem(`ai_summary_content_${symbol}_${tf}`, JSON.stringify({
+          localStorage.setItem(`chart_analysis_content_${symbol}_${tf}`, JSON.stringify({
             content: response.data,
             timestamp: now
           }));
@@ -123,24 +125,35 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
       }
     };
 
+    const handleGenerateClick = () => {
+      generateSummary();
+    };
+
     useImperativeHandle(ref, () => ({
-      generate: handleGenerate
+      generate: generateSummary
     }));
 
     const handleCopy = async () => {
       if (typeof navigator === "undefined" || !navigator?.clipboard) return;
-      try {
-        await navigator.clipboard.writeText(data || "");
-      } catch (error) {
-        console.warn("Failed to copy AI summary", error);
+      if (data) {
+        try {
+          await navigator.clipboard.writeText(data);
+          // Could add toast here
+        } catch (err) {
+          console.error('Failed to copy text: ', err);
+        }
       }
     };
 
+    // Parse markdown-like bolding for better display if needed, or just render as is
+    // The backend returns markdown, so we can just display it.
+    // We'll use a simple whitespace-pre-wrap to preserve formatting.
+
     const content = useMemo(() => {
-      if (!user) return "Sign in to use AI Summary.";
-      if (isLoading) return "Generating…";
-      if (isError) return "Failed to generate. Try again.";
-      if (!data) return "Click Generate to start analysis.";
+      if (!user) return "Sign in to use Chart Analysis.";
+      if (isLoading) return "Analyzing Chart Patterns…";
+      if (isError) return "Failed to analyze. Try again.";
+      if (!data) return "Click Analyze Chart to start.";
       return data;
     }, [data, isError, isLoading, user]);
 
@@ -153,21 +166,21 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
     return (
       <div className="flex flex-col rounded-2xl border border-border bg-card backdrop-blur overflow-hidden mb-8">
         <div className="sticky top-0 z-10 bg-muted/60 backdrop-blur px-4 md:px-5 py-3 border-b border-border flex items-center justify-between gap-2">
-          <h3 className="text-lg font-semibold">AI Summary</h3>
+          <h3 className="text-lg font-semibold">Chart Analysis</h3>
           <div className="flex flex-col items-center gap-1">
             <div className="flex items-center gap-2">
               {user ? (
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={handleGenerate}
+                  onClick={handleGenerateClick}
                   disabled={isFetching || isLoading || isGenerating || cooldownRemaining > 0}
                   className={cn(cooldownRemaining > 0 && "opacity-80")}
                 >
                   {cooldownRemaining > 0 ? (
                     <>
                       <Clock3 className="mr-2 h-4 w-4 animate-pulse" />
-                      Generate ({formatCooldown(cooldownRemaining)})
+                      Wait ({formatCooldown(cooldownRemaining)})
                     </>
                   ) : (
                     <>
@@ -177,7 +190,7 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
                           (isFetching || isLoading || isGenerating) && "animate-spin",
                         )}
                       />
-                      Generate
+                      Analyze
                     </>
                   )}
                 </Button>
@@ -205,7 +218,7 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
               size="icon"
               onClick={handleCopy}
               className="absolute top-2 right-2 h-8 w-8 bg-background/50 hover:bg-background/80 backdrop-blur"
-              aria-label="Copy summary"
+              aria-label="Copy analysis"
             >
               <CopyIcon className="h-4 w-4" />
             </Button>
@@ -220,7 +233,6 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
   }
 );
 
-AiSummaryPanel.displayName = "AiSummaryPanel";
+ChartAnalysisPanel.displayName = "ChartAnalysisPanel";
 
-export default AiSummaryPanel;
-
+export default ChartAnalysisPanel;

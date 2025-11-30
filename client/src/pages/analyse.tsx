@@ -25,6 +25,7 @@ import {
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
 import AiSummaryPanel, { type AiSummaryPanelRef } from "@/components/analyse/AiSummaryPanel";
+import ChartAnalysisPanel, { type ChartAnalysisPanelRef } from "@/components/analyse/ChartAnalysisPanel";
 import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
@@ -376,6 +377,7 @@ export default function Analyse() {
   const initialExplicitSymbolRef = useRef(Boolean(params?.symbol || querySymbol));
   const [activeTab, setActiveTab] = useState<"chart" | "technicals" | "ai">("chart");
   const aiPanelRef = useRef<AiSummaryPanelRef>(null);
+  const chartAnalysisPanelRef = useRef<ChartAnalysisPanelRef>(null);
 
   const handleAnalyzeChart = useCallback(() => {
     if (window.innerWidth < 1280) { // xl breakpoint
@@ -383,7 +385,7 @@ export default function Analyse() {
     }
     // Small delay to allow tab switch to render the component if it was hidden
     setTimeout(() => {
-      aiPanelRef.current?.generate('chart');
+      chartAnalysisPanelRef.current?.generate();
     }, 100);
   }, []);
 
@@ -1368,6 +1370,13 @@ export default function Analyse() {
             <section className={`min-w-0 overflow-hidden ${activeTab === "ai" ? "block" : "hidden xl:block"}`}>
               <AiSummaryPanel
                 ref={aiPanelRef}
+                symbol={selectedSymbol}
+                tf={timeframe}
+                technicals={scanResult?.indicators}
+                candles={scanResult?.candles as unknown[]}
+              />
+              <ChartAnalysisPanel
+                ref={chartAnalysisPanelRef}
                 symbol={selectedSymbol}
                 tf={timeframe}
                 technicals={scanResult?.indicators}
