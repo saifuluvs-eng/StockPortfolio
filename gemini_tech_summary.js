@@ -900,8 +900,8 @@ async function sendToGemini(prompt) {
  * - candles: array of {t,o,h,l,c,v}
  * returns Gemini response text + finalJson (for logs)
  */
-async function runSummary({ symbol, timeframe, candles }) {
-    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, candles });
+async function runSummary({ symbol, timeframe, candles, focus }) {
+    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, candles, focus });
     // debug log so you can inspect what is sent
     console.log("FINAL JSON sent to Gemini (truncated):", JSON.stringify(finalJson, null, 2).slice(0, 2000));
     const { raw, text } = await sendToGemini(prompt);
@@ -913,8 +913,8 @@ async function runSummary({ symbol, timeframe, candles }) {
  * - if you compute indicators in backend already, call this with override
  * - optional: pass candles for Support/Resistance engine
  */
-async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride, candles }) {
-    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride, candles });
+async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride, candles, focus }) {
+    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride, candles, focus });
     console.log("FINAL JSON sent to Gemini (override):", JSON.stringify(finalJson, null, 2));
     const { raw, text } = await sendToGemini(prompt);
     return { finalJson, geminiRaw: raw, geminiText: text };
