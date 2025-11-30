@@ -24,7 +24,7 @@ import {
   BreakdownSection,
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
-import AiSummaryPanel from "@/components/analyse/AiSummaryPanel";
+import AiSummaryPanel, { type AiSummaryPanelRef } from "@/components/analyse/AiSummaryPanel";
 import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
@@ -37,6 +37,7 @@ import {
   Clock3,
   DollarSign,
   Search,
+  Sparkles,
   Star,
   Target,
   TrendingDown,
@@ -374,6 +375,17 @@ export default function Analyse() {
   const isFirstRenderRef = useRef(true);
   const initialExplicitSymbolRef = useRef(Boolean(params?.symbol || querySymbol));
   const [activeTab, setActiveTab] = useState<"chart" | "technicals" | "ai">("chart");
+  const aiPanelRef = useRef<AiSummaryPanelRef>(null);
+
+  const handleAnalyzeChart = useCallback(() => {
+    if (window.innerWidth < 1280) { // xl breakpoint
+      setActiveTab("ai");
+    }
+    // Small delay to allow tab switch to render the component if it was hidden
+    setTimeout(() => {
+      aiPanelRef.current?.generate();
+    }, 100);
+  }, []);
 
   useEffect(() => {
     setIsScanning(false);
@@ -1326,8 +1338,17 @@ export default function Analyse() {
             {/* Chart Section */}
             <section className={`min-w-0 overflow-hidden ${activeTab === "chart" ? "block" : "hidden xl:block"}`}>
               <Card className="flex h-full flex-col border-border/70 bg-card/70">
-                <CardHeader className="hidden sm:flex pb-2">
+                <CardHeader className="hidden sm:flex pb-2 flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-2 text-xs"
+                    onClick={handleAnalyzeChart}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    Analyze Chart
+                  </Button>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="h-[560px] min-w-0 overflow-hidden rounded-xl border border-border bg-card md:h-[620px]">
@@ -1346,6 +1367,7 @@ export default function Analyse() {
             {/* AI Summary Section */}
             <section className={`min-w-0 overflow-hidden ${activeTab === "ai" ? "block" : "hidden xl:block"}`}>
               <AiSummaryPanel
+                ref={aiPanelRef}
                 symbol={selectedSymbol}
                 tf={timeframe}
                 technicals={scanResult?.indicators}
