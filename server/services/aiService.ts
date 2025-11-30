@@ -451,6 +451,9 @@ Based on these four combined factors, provide trader-style analysis.`;
       };
     } catch (error) {
       console.error("Error generating crypto insight:", error);
+      if (error instanceof Error) {
+        console.error("Stack trace:", error.stack);
+      }
 
       const fallbackSignal = technicalAnalysis.recommendation === "BUY" ? "bullish" :
         technicalAnalysis.recommendation === "SELL" ? "bearish" : "neutral";
