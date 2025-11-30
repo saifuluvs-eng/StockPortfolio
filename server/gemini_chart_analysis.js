@@ -657,7 +657,7 @@ Strong Bearish:
 OUTPUT FORMAT (MANDATORY)
 ====================
 
-### AI Summary — {{symbol}} {{timeframe}}
+### AI Summary [DEBUG: {{FOCUS_DEBUG}}] — {{symbol}} {{timeframe}}
 
 **Overall Bias:** {calculated final bias}
 
@@ -716,7 +716,7 @@ GOALS
 OUTPUT FORMAT
 ====================
 
-### 📊 Chart Analysis — {{symbol}} {{timeframe}}
+### 📊 Chart Analysis [DEBUG: {{FOCUS_DEBUG}}] — {{symbol}} {{timeframe}}
 
 **Visual Structure:**
 Describe the price action structure. Is it trending? Ranging? Volatile? Mention the relationship between price and key moving averages (EMA20, EMA50).
@@ -847,6 +847,7 @@ function buildFinalJSONAndPrompt({ symbol, timeframe, candles = null, indicators
     const prompt = template
         .replace("{{symbol}}", symbol)
         .replace("{{timeframe}}", timeframe)
+        .replace("{{FOCUS_DEBUG}}", focus)
         .replace("{{TECHNICALS_JSON}}", JSON.stringify(finalJson, null, 2));
 
     return { finalJson, prompt };
