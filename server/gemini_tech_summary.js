@@ -526,7 +526,7 @@ function computeUnifiedSupportResistance(candles) {
  * promptTemplate: short, strict instructions for Gemini
  * This template expects {{TECHNICALS_JSON}} to be replaced with final JSON.
  */
-const promptTemplate = `
+const institutionalPromptTemplate = `
 You are an institutional-grade crypto market analyst.  
 You will be given a JSON object with combined technical fields.  
 You must produce short, research-desk style analysis that sounds like a professional from Delphi, Nansen, GSR, or Binance Research.
@@ -695,12 +695,57 @@ JSON DATA:
 {{TECHNICALS_JSON}}
 `;
 
+const chartFocusPromptTemplate = `
+You are a professional technical analyst explaining a price chart to a trader.
+You will be given a JSON object with technical indicators and price data.
+Your goal is to "Explain the Chart" in a clear, educational, and actionable way.
+
+====================
+GOALS
+====================
+1. **Explain the Visuals**: Describe what the chart looks like (e.g., "The chart shows a clear uptrend," "Price is consolidating in a tight range," "We are seeing a rejection at resistance").
+2. **Mention Indicators**: Unlike the institutional summary, you SHOULD mention specific indicators (RSI, MACD, Bollinger Bands, EMAs) to explain *why* you see what you see.
+   - Example: "The RSI is currently at 75, indicating overbought conditions."
+   - Example: "Price has broken above the 20 EMA, confirming bullish momentum."
+   - Example: "The Bollinger Bands are squeezing, suggesting a big move is coming."
+3. **Identify Patterns**: Look for common patterns supported by the data (Double Top/Bottom, Bull/Bear Flag, Golden Cross, Death Cross, Divergences).
+4. **Be Conversational**: Use phrases like "Notice how...", "As you can see...", "The key thing to watch here is...".
+
+====================
+OUTPUT FORMAT
+====================
+
+### 📊 Chart Analysis — {{symbol}} {{timeframe}}
+
+**Visual Structure:**
+Describe the price action structure. Is it trending? Ranging? Volatile? Mention the relationship between price and key moving averages (EMA20, EMA50).
+
+**Key Indicators:**
+- **Momentum:** Mention RSI and MACD status. Are we overbought/oversold? Is there a crossover?
+- **Volatility:** Mention Bollinger Bands (wide vs narrow) and ATR.
+- **Volume:** Is volume confirming the move?
+
+**Signals & Patterns:**
+- Highlight any specific signals (e.g., "Bullish Divergence on RSI", "Golden Cross", "Rejection from VWAP").
+- If no strong patterns, say "No major chart patterns detected at this moment."
+
+**Verdict:**
+A single clear sentence summarizing the chart's message (e.g., "The chart suggests continuation of the uptrend but warns of short-term exhaustion.").
+
+====================
+JSON DATA:
+
+{{TECHNICALS_JSON}}
+`;
+
 /**
  * buildFinalJSONAndPrompt - accepts either raw candles OR precomputed indicator object
  * - candles: array of {t,o,h,l,c,v}
  * - indicatorsOverride: optional object with precomputed fields
+ * - focus: 'institutional' (default) or 'chart'
  */
-function buildFinalJSONAndPrompt({ symbol, timeframe, candles = null, indicatorsOverride = null }) {
+function buildFinalJSONAndPrompt({ symbol, timeframe, candles = null, indicatorsOverride = null, focus = 'institutional' }) {
+    console.log(`[Gemini Module] buildFinalJSONAndPrompt called with focus: '${focus}'`);
     // If indicatorsOverride provided, copy through, else compute from candles
     let indicators = {};
     if (indicatorsOverride && Object.keys(indicatorsOverride).length > 0) {
@@ -797,7 +842,8 @@ function buildFinalJSONAndPrompt({ symbol, timeframe, candles = null, indicators
     };
 
     // prompt assemble
-    const prompt = promptTemplate
+    const template = focus === 'chart' ? chartFocusPromptTemplate : institutionalPromptTemplate;
+    const prompt = template
         .replace("{{symbol}}", symbol)
         .replace("{{timeframe}}", timeframe)
         .replace("{{TECHNICALS_JSON}}", JSON.stringify(finalJson, null, 2));
@@ -855,8 +901,8 @@ async function sendToGemini(prompt) {
  * - candles: array of {t,o,h,l,c,v}
  * returns Gemini response text + finalJson (for logs)
  */
-async function runSummary({ symbol, timeframe, candles }) {
-    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, candles });
+async function runSummary({ symbol, timeframe, candles, focus }) {
+    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, candles, focus });
     // debug log so you can inspect what is sent
     console.log("FINAL JSON sent to Gemini (truncated):", JSON.stringify(finalJson, null, 2).slice(0, 2000));
     const { raw, text } = await sendToGemini(prompt);
@@ -868,8 +914,8 @@ async function runSummary({ symbol, timeframe, candles }) {
  * - if you compute indicators in backend already, call this with override
  * - optional: pass candles for Support/Resistance engine
  */
-async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride, candles }) {
-    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride, candles });
+async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride, candles, focus }) {
+    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride, candles, focus });
     console.log("FINAL JSON sent to Gemini (override):", JSON.stringify(finalJson, null, 2));
     const { raw, text } = await sendToGemini(prompt);
     return { finalJson, geminiRaw: raw, geminiText: text };
