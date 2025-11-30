@@ -745,6 +745,7 @@ JSON DATA:
  * - focus: 'institutional' (default) or 'chart'
  */
 function buildFinalJSONAndPrompt({ symbol, timeframe, candles = null, indicatorsOverride = null, focus = 'institutional' }) {
+    console.log(`[Gemini Module] buildFinalJSONAndPrompt called with focus: '${focus}'`);
     // If indicatorsOverride provided, copy through, else compute from candles
     let indicators = {};
     if (indicatorsOverride && Object.keys(indicatorsOverride).length > 0) {

@@ -474,6 +474,7 @@ export function registerRoutes(app: Express): Server {
   app.post('/api/ai/summary', async (req: Request, res: Response) => {
     try {
       const { symbol, tf, technicals, focus } = req.body;
+      console.log(`[API] /api/ai/summary called. Symbol: ${symbol}, Focus: ${focus}`);
       if (!symbol) {
         return res.status(400).json({ error: "symbol is required" });
       }
