@@ -919,7 +919,7 @@ async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride,
     const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride, candles, focus });
     console.log("FINAL JSON sent to Gemini (override):", JSON.stringify(finalJson, null, 2));
     const { raw, text } = await sendToGemini(prompt);
-    return { finalJson, geminiRaw: raw, geminiText: `[DEBUG: Focus=${focus}] \n\n` + text };
+    return { finalJson, geminiRaw: raw, geminiText: text };
 }
 
 /* ========== Example test harness (comment/uncomment to run locally) ========== */
