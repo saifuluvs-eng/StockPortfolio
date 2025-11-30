@@ -15,14 +15,15 @@ type AiSummaryPanelProps = {
 };
 
 export interface AiSummaryPanelRef {
-  generate: () => void;
+  generate: (focus?: 'institutional' | 'chart') => void;
 }
 
 const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
   ({ symbol, tf, technicals, candles }, ref) => {
     const queryClient = useQueryClient();
     const { user } = useAuth();
-    const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals, candles });
+    const [focusMode, setFocusMode] = useState<'institutional' | 'chart'>('institutional');
+    const { data, isLoading, isError, isFetching } = useAiSummary({ symbol, tf, technicals, candles, focus: focusMode });
     const [isGenerating, setIsGenerating] = useState(false);
 
     const COOLDOWN_MS = 60 * 1000; // 1 minute global cap
@@ -32,7 +33,7 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
 
     useEffect(() => {
       const globalGenKey = "ai_global_last_gen";
-      const contentKey = `ai_summary_content_${symbol}_${tf}`;
+      const contentKey = `ai_summary_content_${symbol}_${tf}_${focusMode}`;
 
       // Load persisted content & timestamp for THIS coin
       const savedContent = localStorage.getItem(contentKey);
@@ -41,7 +42,7 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
           const parsed = JSON.parse(savedContent);
           const age = Date.now() - parsed.timestamp;
           if (age < PERSISTENCE_MS) {
-            queryClient.setQueryData(["aiSummary", symbol, tf], parsed.content);
+            queryClient.setQueryData(["aiSummary", symbol, tf, focusMode], parsed.content);
             setLastUpdated(new Date(parsed.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
           }
         } catch (e) {
@@ -65,7 +66,7 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
       } else {
         setCooldownRemaining(0);
       }
-    }, [symbol, tf, queryClient]);
+    }, [symbol, tf, queryClient, focusMode]);
 
     useEffect(() => {
       if (cooldownRemaining <= 0) return;
@@ -75,12 +76,16 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
       return () => clearInterval(interval);
     }, [cooldownRemaining]);
 
-    const handleGenerate = async () => {
+    const generateSummary = async (overrideFocus?: 'institutional' | 'chart') => {
       if (cooldownRemaining > 0) return;
 
-      console.log("[DEBUG] Generate button clicked!");
-      console.log("[DEBUG] Props - symbol:", symbol, "tf:", tf, "hasUser:", !!user);
-      console.log("[DEBUG] Candles prop:", candles ? `Present (Length: ${candles.length})` : "Missing");
+      const activeFocus = overrideFocus || focusMode;
+      if (overrideFocus) {
+        setFocusMode(overrideFocus);
+      }
+
+      console.log("[DEBUG] Generate triggered!");
+      console.log("[DEBUG] Props - symbol:", symbol, "tf:", tf, "focus:", activeFocus);
 
       if (!symbol || !tf) {
         console.error("[DEBUG] Cannot generate: missing symbol or tf", { symbol, tf });
@@ -90,18 +95,18 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
       setIsGenerating(true);
       try {
         // First, invalidate to mark as stale
-        await queryClient.invalidateQueries({ queryKey: ["aiSummary", symbol, tf] });
+        await queryClient.invalidateQueries({ queryKey: ["aiSummary", symbol, tf, activeFocus] });
 
         const response = await (await import("@/lib/api")).apiFetch("/api/ai/summary", {
           method: "POST",
-          body: JSON.stringify({ symbol, tf, technicals, candles }),
+          body: JSON.stringify({ symbol, tf, technicals, candles, focus: activeFocus }),
         });
 
         console.log("[DEBUG] API response received:", !!response?.data);
 
         if (response?.data) {
           // Set the data in cache
-          queryClient.setQueryData(["aiSummary", symbol, tf], response.data);
+          queryClient.setQueryData(["aiSummary", symbol, tf, activeFocus], response.data);
           console.log("[DEBUG] Data set in cache successfully");
 
           const now = Date.now();
@@ -109,7 +114,7 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
           localStorage.setItem("ai_global_last_gen", now.toString());
 
           // Save content for THIS coin
-          localStorage.setItem(`ai_summary_content_${symbol}_${tf}`, JSON.stringify({
+          localStorage.setItem(`ai_summary_content_${symbol}_${tf}_${activeFocus}`, JSON.stringify({
             content: response.data,
             timestamp: now
           }));
@@ -124,8 +129,12 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
       }
     };
 
+    const handleGenerateClick = () => {
+      generateSummary();
+    };
+
     useImperativeHandle(ref, () => ({
-      generate: handleGenerate
+      generate: (focus) => generateSummary(focus)
     }));
 
     const handleCopy = async () => {
@@ -161,7 +170,7 @@ const AiSummaryPanel = forwardRef<AiSummaryPanelRef, AiSummaryPanelProps>(
                 <Button
                   variant="default"
                   size="sm"
-                  onClick={handleGenerate}
+                  onClick={handleGenerateClick}
                   disabled={isFetching || isLoading || isGenerating || cooldownRemaining > 0}
                   className={cn(cooldownRemaining > 0 && "opacity-80")}
                 >

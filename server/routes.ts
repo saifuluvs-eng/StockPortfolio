@@ -473,7 +473,7 @@ export function registerRoutes(app: Express): Server {
 
   app.post('/api/ai/summary', async (req: Request, res: Response) => {
     try {
-      const { symbol, tf, technicals } = req.body;
+      const { symbol, tf, technicals, focus } = req.body;
       if (!symbol) {
         return res.status(400).json({ error: "symbol is required" });
       }
@@ -513,7 +513,8 @@ export function registerRoutes(app: Express): Server {
         const aiSummary = await aiService.generateCryptoInsight(
           symbol,
           technicalAnalysis,
-          { timeframe }
+          { timeframe },
+          focus || 'institutional'
         );
         console.log("[AI Summary] Response:", aiSummary.reasoning.slice(0, 200));
         res.json({ data: aiSummary.reasoning || "No summary available." });

@@ -387,7 +387,8 @@ Based on these four combined factors, provide trader-style analysis.`;
   async generateCryptoInsight(
     symbol: string,
     technicalAnalysis: any,
-    marketData: any
+    marketData: any,
+    focus: 'institutional' | 'chart' = 'institutional'
   ): Promise<AICryptoInsight> {
     try {
       const timeframe = marketData.timeframe || "4h";
@@ -422,7 +423,8 @@ Based on these four combined factors, provide trader-style analysis.`;
         symbol,
         timeframe,
         indicatorsOverride,
-        candles: []
+        candles: [],
+        focus
       });
 
       console.log("GEMINI RESPONSE:");

@@ -383,7 +383,7 @@ export default function Analyse() {
     }
     // Small delay to allow tab switch to render the component if it was hidden
     setTimeout(() => {
-      aiPanelRef.current?.generate();
+      aiPanelRef.current?.generate('chart');
     }, 100);
   }, []);
 
