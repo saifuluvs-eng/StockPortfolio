@@ -8,6 +8,7 @@ import {
     Tooltip,
     ResponsiveContainer,
     ReferenceArea,
+    Bar,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -43,9 +44,8 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
-    // Sort data by RSI for better visualization if needed, or keep random for "cloud" look
-    // Coinglass sorts by RSI usually, or groups them. Let's sort by RSI descending.
-    const sortedData = useMemo(() => [...data].sort((a, b) => b.rsi - a.rsi), [data]);
+    // Use data as-is (sorted by volume from API) to create the "scattered" cloud effect
+    // const sortedData = useMemo(() => [...data].sort((a, b) => b.rsi - a.rsi), [data]);
 
     if (isLoading) {
         return (
@@ -76,7 +76,7 @@ export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
                 <div className="h-[600px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
-                            data={sortedData}
+                            data={data}
                             margin={{ top: 20, right: 20, bottom: 60, left: 20 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -102,7 +102,10 @@ export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
                             <ReferenceArea y1={30} y2={40} fill="#34d399" fillOpacity={0.05} label={{ value: "WEAK", position: 'insideRight', fill: '#34d399', fontSize: 12 }} />
                             <ReferenceArea y1={0} y2={30} fill="#10b981" fillOpacity={0.1} label={{ value: "OVERSOLD", position: 'insideBottomRight', fill: '#10b981', fontSize: 12 }} />
 
-                            {/* Data Points using Line for categorical X-axis support */}
+                            {/* Stems (Lollipop stick) */}
+                            <Bar dataKey="rsi" barSize={2} fill="#3f3f46" isAnimationActive={false} />
+
+                            {/* Data Points (Lollipop head) */}
                             <Line
                                 dataKey="rsi"
                                 stroke="none"
