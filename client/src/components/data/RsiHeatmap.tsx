@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface RsiDataPoint {
     symbol: string;
-    rsi: number;
+    rsi: Record<string, number>;
     price: number;
     change: number;
 }
@@ -26,16 +26,36 @@ interface RsiHeatmapProps {
     isLoading: boolean;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
         const data = payload[0].payload;
+        const rsiValues = data.rsi || {};
+
         return (
-            <div className="bg-zinc-900 border border-zinc-800 p-3 rounded-lg shadow-xl">
-                <p className="font-bold text-white mb-1">{data.symbol}</p>
-                <div className="space-y-1 text-sm">
-                    <p className="text-zinc-400">RSI: <span className={`font-mono ${data.rsi > 70 ? 'text-red-400' : data.rsi < 30 ? 'text-emerald-400' : 'text-white'}`}>{data.rsi}</span></p>
-                    <p className="text-zinc-400">Price: <span className="font-mono text-white">${data.price.toLocaleString()}</span></p>
-                    <p className="text-zinc-400">24h: <span className={`font-mono ${data.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{data.change > 0 ? '+' : ''}{data.change}%</span></p>
+            <div className="bg-zinc-950 border border-zinc-800 p-3 rounded-lg shadow-xl">
+                <p className="font-bold text-white mb-2">{label}</p>
+                <div className="space-y-1">
+                    {Object.entries(rsiValues).map(([tf, val]: [string, any]) => (
+                        <div key={tf} className="flex items-center justify-between gap-4 text-xs">
+                            <span className="text-zinc-400">RSI ({tf}):</span>
+                            <span className={`font-mono font-medium ${val >= 70 ? 'text-red-400' :
+                                val <= 30 ? 'text-emerald-400' : 'text-white'
+                                }`}>
+                                {val}
+                            </span>
+                        </div>
+                    ))}
+                    <div className="h-px bg-zinc-800 my-2" />
+                    <div className="flex items-center justify-between gap-4 text-xs">
+                        <span className="text-zinc-400">Price:</span>
+                        <span className="text-white font-mono">${data.price}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 text-xs">
+                        <span className="text-zinc-400">24h Change:</span>
+                        <span className={`font-mono ${data.change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {data.change > 0 ? '+' : ''}{data.change}%
+                        </span>
+                    </div>
                 </div>
             </div>
         );
@@ -44,8 +64,24 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
-    // Use data as-is (sorted by volume from API) to create the "scattered" cloud effect
-    // const sortedData = useMemo(() => [...data].sort((a, b) => b.rsi - a.rsi), [data]);
+    // Process data to find max RSI for the stem and flatten for chart if needed
+    // The API now returns rsi as an object: { "15m": 30, "1h": 45 }
+    const processedData = useMemo(() => {
+        return data.map(item => {
+            const rsiValues = Object.values(item.rsi || {});
+            const maxRsi = Math.max(...rsiValues, 0);
+            return {
+                ...item,
+                maxRsi, // For the stem height
+            };
+        });
+    }, [data]);
+
+    // Get all available timeframe keys from the first item (assuming consistent data)
+    const timeframeKeys = useMemo(() => {
+        if (!data.length || !data[0].rsi) return [];
+        return Object.keys(data[0].rsi);
+    }, [data]);
 
     if (isLoading) {
         return (
@@ -76,7 +112,7 @@ export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
                 <div className="h-[600px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart
-                            data={data}
+                            data={processedData}
                             margin={{ top: 20, right: 20, bottom: 60, left: 20 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
@@ -102,27 +138,35 @@ export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
                             <ReferenceArea y1={30} y2={40} fill="#34d399" fillOpacity={0.05} label={{ value: "WEAK", position: 'insideRight', fill: '#34d399', fontSize: 12 }} />
                             <ReferenceArea y1={0} y2={30} fill="#10b981" fillOpacity={0.1} label={{ value: "OVERSOLD", position: 'insideBottomRight', fill: '#10b981', fontSize: 12 }} />
 
-                            {/* Stems (Lollipop stick) */}
-                            <Bar dataKey="rsi" barSize={2} fill="#3f3f46" isAnimationActive={false} />
+                            {/* Stems (Lollipop stick) - goes up to the highest RSI value */}
+                            <Bar dataKey="maxRsi" barSize={2} fill="#3f3f46" isAnimationActive={false} />
 
-                            {/* Data Points (Lollipop head) */}
-                            <Line
-                                dataKey="rsi"
-                                stroke="none"
-                                isAnimationActive={false}
-                                dot={(props: any) => {
-                                    const { cx, cy, payload } = props;
-                                    let color = '#9ca3af'; // neutral
-                                    if (payload.rsi >= 70) color = '#ef4444';
-                                    else if (payload.rsi >= 60) color = '#f87171';
-                                    else if (payload.rsi <= 30) color = '#10b981';
-                                    else if (payload.rsi <= 40) color = '#34d399';
+                            {/* Data Points (Lollipop heads) - One for each timeframe */}
+                            {timeframeKeys.map((tf) => (
+                                <Line
+                                    key={tf}
+                                    dataKey={`rsi.${tf}`}
+                                    stroke="none"
+                                    isAnimationActive={false}
+                                    dot={(props: any) => {
+                                        const { cx, cy, payload } = props;
+                                        const val = payload.rsi?.[tf];
+                                        if (val === undefined) return <></>; // Skip if no data for this TF
 
-                                    return (
-                                        <circle cx={cx} cy={cy} r={4} fill={color} stroke="none" />
-                                    );
-                                }}
-                            />
+                                        let color = '#9ca3af'; // neutral
+                                        if (val >= 70) color = '#ef4444';
+                                        else if (val >= 60) color = '#f87171';
+                                        else if (val <= 30) color = '#10b981';
+                                        else if (val <= 40) color = '#34d399';
+
+                                        // Make dots slightly transparent if multiple to see overlaps better? 
+                                        // Or just solid. Solid is usually clearer.
+                                        return (
+                                            <circle cx={cx} cy={cy} r={4} fill={color} stroke="white" strokeWidth={1} />
+                                        );
+                                    }}
+                                />
+                            ))}
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>

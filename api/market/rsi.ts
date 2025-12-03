@@ -30,7 +30,8 @@ const calculateRSI = (closes: number[], period = 14) => {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const limit = Math.min(parseInt(String(req.query?.limit || "50"), 10) || 50, 100);
-        const timeframe = String(req.query?.timeframe || "4h");
+        const timeframeParam = String(req.query?.timeframe || "4h");
+        const timeframes = timeframeParam.split(',').filter(Boolean); // Support comma-separated
         const source = String(req.query?.source || "volume"); // 'volume' or 'gainers'
 
         // 1. Get top pairs
@@ -54,12 +55,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (source === 'gainers') {
             // Sort by 24h change % descending
             pairs = pairs
-                .filter((t: any) => parseFloat(t.quoteVolume) > 1_000_000) // Basic volume filter for gainers too
+                .filter((t: any) => parseFloat(t.quoteVolume) > 1_000_000)
                 .sort((a: any, b: any) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent));
         } else {
             // Default: Sort by Volume descending
             pairs = pairs
-                .filter((t: any) => parseFloat(t.quoteVolume) > 10_000_000) // Higher volume filter for main view
+                .filter((t: any) => parseFloat(t.quoteVolume) > 10_000_000)
                 .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume));
         }
 
@@ -74,20 +75,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const batch = pairs.slice(i, i + batchSize);
             const promises = batch.map(async (p: any) => {
                 try {
-                    const kRes = await fetch(`${BINANCE}/api/v3/klines?symbol=${p.symbol}&interval=${timeframe}&limit=30`, { cache: "no-store" });
-                    if (!kRes.ok) return null;
-                    const klines: any[] = await kRes.json();
-                    if (!Array.isArray(klines) || klines.length < 20) return null;
+                    const rsiValues: Record<string, number> = {};
 
-                    const closes = klines.map((k: any) => parseFloat(k[4]));
-                    const rsiArr = calculateRSI(closes, 14);
-                    const lastRsi = rsiArr.at(-1);
+                    // Fetch RSI for EACH requested timeframe
+                    for (const tf of timeframes) {
+                        const kRes = await fetch(`${BINANCE}/api/v3/klines?symbol=${p.symbol}&interval=${tf}&limit=30`, { cache: "no-store" });
+                        if (!kRes.ok) continue;
+                        const klines: any[] = await kRes.json();
+                        if (!Array.isArray(klines) || klines.length < 20) continue;
 
-                    if (lastRsi === undefined) return null;
+                        const closes = klines.map((k: any) => parseFloat(k[4]));
+                        const rsiArr = calculateRSI(closes, 14);
+                        const lastRsi = rsiArr.at(-1);
+                        if (lastRsi !== undefined) {
+                            rsiValues[tf] = parseFloat(lastRsi.toFixed(2));
+                        }
+                    }
+
+                    if (Object.keys(rsiValues).length === 0) return null;
 
                     return {
                         symbol: p.symbol.replace('USDT', ''),
-                        rsi: parseFloat(lastRsi.toFixed(2)),
+                        rsi: rsiValues, // Now an object { "15m": 30, "1h": 45 }
                         price: p.price,
                         change: p.change
                     };
@@ -101,13 +110,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
-
-        // If source is gainers, we might want to keep the gainers sort order (by change %), 
-        // but usually RSI heatmap is visualized better if sorted by something else or just the list.
-        // The user asked for "Gainers page" coins. 
-        // If we return them, the frontend currently sorts by Volume (implicit from API return order if we don't re-sort).
-        // Let's return them in the order we fetched them (which is sorted by source criteria).
-
         return res.status(200).json(results);
     } catch (e: any) {
         console.error("[api/market/rsi] Error:", e);
