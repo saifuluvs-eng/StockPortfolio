@@ -128,7 +128,7 @@ async function gainers(_req: any, res: any) {
       low: toNumber(t.lowPrice),
     }))
     .sort((a, b) => b.changePct - a.changePct)
-    .slice(0, 20);
+    .slice(0, 50);
   return ok(res, { rows });
 }
 async function scan(req: any, res: any) {

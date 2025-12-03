@@ -187,7 +187,7 @@ export default function Gainers() {
           volumeUSDT: num(t.volume),
         }))
         .filter((item) => item.symbol)
-        .slice(0, 20);
+        .slice(0, 50);
 
       if (top.length === 0)
         setError("No gainers data available.");
@@ -233,7 +233,7 @@ export default function Gainers() {
                   volumeUSDT: num(t.volume),
                 }))
                 .filter((item) => item.symbol)
-                .slice(0, 20);
+                .slice(0, 50);
               const now = new Date();
               setRows(top);
               setLastUpdated(now);

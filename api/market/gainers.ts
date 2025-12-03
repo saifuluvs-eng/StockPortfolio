@@ -19,14 +19,14 @@ type TickerData = {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     // Fetch all tickers from Binance
-    const response = await fetch("https://api.binance.com/api/v3/ticker/24hr", { 
-      cache: "no-store" 
+    const response = await fetch("https://api.binance.com/api/v3/ticker/24hr", {
+      cache: "no-store"
     });
 
     if (!response.ok) {
-      return res.status(response.status).json({ 
-        ok: false, 
-        error: `Binance API error: ${response.status}` 
+      return res.status(response.status).json({
+        ok: false,
+        error: `Binance API error: ${response.status}`
       });
     }
 
@@ -71,16 +71,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         low: toNumber(item.lowPrice ?? item.low),
       }));
 
-    res.status(200).json({ 
+    res.status(200).json({
       ok: true,
-      rows: gainers, 
-      timestamp: new Date().toISOString() 
+      rows: gainers,
+      timestamp: new Date().toISOString()
     });
   } catch (error: any) {
     console.error("[api/market/gainers] Error:", error);
-    res.status(500).json({ 
-      ok: false, 
-      error: error?.message || "Failed to fetch gainers" 
+    res.status(500).json({
+      ok: false,
+      error: error?.message || "Failed to fetch gainers"
     });
   }
 }
