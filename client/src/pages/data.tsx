@@ -15,7 +15,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TIMEFRAMES = [
@@ -51,7 +51,7 @@ export default function DataPage() {
         }
     };
 
-    const { data: rsiData, isLoading, error } = useQuery({
+    const { data: rsiData, isLoading, error, refetch, dataUpdatedAt } = useQuery({
         queryKey: ['marketRsi', selectedTimeframes.join(','), source],
         queryFn: async () => {
             const tfParam = selectedTimeframes.join(',');
@@ -76,7 +76,7 @@ export default function DataPage() {
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-3 items-start">
                         <div className="flex flex-col gap-1.5">
                             <label className="text-xs text-zinc-500 font-medium ml-1">Timeframe</label>
                             <Popover open={openTf} onOpenChange={setOpenTf}>
@@ -140,6 +140,24 @@ export default function DataPage() {
                                     <SelectItem value="gainers">Top Gainers</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 items-end">
+                            <label className="text-xs text-zinc-500 font-medium ml-1 opacity-0">Refresh</label>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => refetch()}
+                                className="bg-zinc-900 border-zinc-800 hover:bg-zinc-800 hover:text-white w-10"
+                                disabled={isLoading}
+                            >
+                                <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                            </Button>
+                            {dataUpdatedAt && (
+                                <span className="text-[10px] text-zinc-500 font-mono mt-1">
+                                    Updated: {new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            )}
                         </div>
                     </div>
                 </div>
