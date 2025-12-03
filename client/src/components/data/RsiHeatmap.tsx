@@ -8,8 +8,6 @@ import {
     Tooltip,
     ResponsiveContainer,
     ReferenceArea,
-    Scatter,
-    ZAxis
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -104,11 +102,12 @@ export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
                             <ReferenceArea y1={30} y2={40} fill="#34d399" fillOpacity={0.05} label={{ value: "WEAK", position: 'insideRight', fill: '#34d399', fontSize: 12 }} />
                             <ReferenceArea y1={0} y2={30} fill="#10b981" fillOpacity={0.1} label={{ value: "OVERSOLD", position: 'insideBottomRight', fill: '#10b981', fontSize: 12 }} />
 
-                            {/* Data Points */}
-                            <Scatter
+                            {/* Data Points using Line for categorical X-axis support */}
+                            <Line
                                 dataKey="rsi"
-                                fill="#fff"
-                                shape={(props: any) => {
+                                stroke="none"
+                                isAnimationActive={false}
+                                dot={(props: any) => {
                                     const { cx, cy, payload } = props;
                                     let color = '#9ca3af'; // neutral
                                     if (payload.rsi >= 70) color = '#ef4444';
@@ -120,15 +119,6 @@ export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
                                         <circle cx={cx} cy={cy} r={4} fill={color} stroke="none" />
                                     );
                                 }}
-                            />
-
-                            {/* Lollipop Lines (optional, makes it look more like the screenshot) */}
-                            <Line
-                                dataKey="rsi"
-                                stroke="none"
-                                dot={false}
-                                activeDot={false}
-                                isAnimationActive={false}
                             />
                         </ComposedChart>
                     </ResponsiveContainer>
