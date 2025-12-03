@@ -84,7 +84,7 @@ export function RsiTicker() {
                     100% { transform: translateX(-100%); }
                 }
                 .animate-scroll {
-                    animation: scroll 60s linear infinite;
+                    animation: scroll 120s linear infinite;
                 }
                 /* Pause on hover */
                 .group:hover .animate-scroll {
