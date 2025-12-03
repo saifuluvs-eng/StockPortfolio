@@ -798,165 +798,224 @@ class TechnicalIndicators {
     const obvSlope = this.calculateOBVSlope(localObvValues);
 
     const volume = volumes[volumes.length - 1];
-    const bb = this.calculateBollingerBands(closes);
-    const volatility = this.getVolatilityState(bb);
+    const avgVolume = this.calculateSMA(volumes, 20);
 
-    // --- Scoring & Detailed Pass/Fail ---
-    const passesDetail = {
-      trend: false,
-      rsi: false,
-      macd: false,
-      volume: false,
-      obv: false,
-      volatility: false
-    };
+    return { score, passes: false, details: {}, passesDetail: {} }; // Placeholder
+  }
 
-    // 1. Trend
-    if (price > ema20) {
-      passesDetail.trend = true;
-      score += 1;
-    }
-    if (ema20 > ema50) {
-      passesDetail.trend = true;
-      score += 1;
-    }
+  async getMarketRSI(limit: number = 50): Promise<any[]> {
+    try {
+      // 1. Get top pairs by volume
+      const allPairs = await binanceService.getAllUSDTPairs();
+      // In a real app, we would sort by 24h volume here. 
+      // For now, we take the top N from the list which is usually sorted by importance/volume by Binance
+      const pairs = allPairs.slice(0, limit);
 
-    // 2. RSI Optimal Range (Widened to capture momentum)
-    if (rsi >= 45 && rsi <= 80) {
-      passesDetail.rsi = true;
-      score += 2;
-    }
+      const results = [];
 
-    // 3. MACD Histogram rising
-    if (macdData.histogram > 0) {
-      passesDetail.macd = true;
-      score += 1;
-    }
+      // 2. Fetch data and calc RSI for each (in parallel batches to be nice to API)
+      const batchSize = 10;
+      for (let i = 0; i < pairs.length; i += batchSize) {
+        const batch = pairs.slice(i, i + batchSize);
+        const promises = batch.map(async (symbol) => {
+          try {
+            // Fetch just enough candles for RSI (14 + buffer)
+            const klines = await binanceService.getKlineData(symbol, '4h', 30);
+            if (klines.length < 20) return null;
 
-    // 4. Volume expansion (Relaxed: current > 80% avg OR prev > avg)
-    const prevVolume = volumes[volumes.length - 2] || 0;
-    if (volume > avgVolume * 0.8 || prevVolume > avgVolume) {
-      passesDetail.volume = true;
-      score += 2;
-    }
+            const closes = klines.map(k => parseFloat(k.close));
+            const currentPrice = closes[closes.length - 1];
+            const rsi = this.calculateRSI(closes, 14);
 
-    // 5. OBV rising
-    if (obvSlope > 0) {
-      passesDetail.obv = true;
-      score += 1;
-    }
+            // Calculate 24h change (approximate from these candles or fetch ticker)
+            // Using last candle vs first candle of the set as a proxy for recent trend
+            const openPrice = parseFloat(klines[0].open);
+            const change = ((currentPrice - openPrice) / openPrice) * 100;
 
-    // 6. Volatility healthy
-    if (volatility === "normal" || volatility === "high") {
-      passesDetail.volatility = true;
-      score += 1;
-    }
+            return {
+              symbol: symbol.replace('USDT', ''),
+              rsi: parseFloat(rsi.toFixed(2)),
+              price: currentPrice,
+              change: parseFloat(change.toFixed(2))
+            };
+          } catch (e) {
+            return null;
+          }
+        });
 
-    // 7. Super Momentum Bonus (New)
-    // If RSI is high (>70) AND Volume is very high (>1.5x avg), give extra points
-    if (rsi > 70 && volume > avgVolume * 1.5) {
-      score += 2;
-    }
+        const batchResults = await Promise.all(promises);
+        results.push(...batchResults.filter(r => r !== null));
 
-    const passes = score >= 5;
-
-    return {
-      score,
-      passes,
-      passesDetail,
-      details: {
-        price, ema20, ema50, rsi, macdHist: macdData.histogram, obvSlope, volume, avgVolume, volatility
+        // Small delay between batches
+        await new Promise(r => setTimeout(r, 50));
       }
-    };
+
+      // Sort by RSI descending
+      return results.sort((a, b) => b.rsi - a.rsi);
+    } catch (error) {
+      console.error("Error getting market RSI:", error);
+      return [];
+    }
+  }
+  const bb = this.calculateBollingerBands(closes);
+  const volatility = this.getVolatilityState(bb);
+
+  // --- Scoring & Detailed Pass/Fail ---
+  const passesDetail = {
+    trend: false,
+    rsi: false,
+    macd: false,
+    volume: false,
+    obv: false,
+    volatility: false
+  };
+
+  // 1. Trend
+  if(price > ema20) {
+  passesDetail.trend = true;
+  score += 1;
+}
+if (ema20 > ema50) {
+  passesDetail.trend = true;
+  score += 1;
+}
+
+// 2. RSI Optimal Range (Widened to capture momentum)
+if (rsi >= 45 && rsi <= 80) {
+  passesDetail.rsi = true;
+  score += 2;
+}
+
+// 3. MACD Histogram rising
+if (macdData.histogram > 0) {
+  passesDetail.macd = true;
+  score += 1;
+}
+
+// 4. Volume expansion (Relaxed: current > 80% avg OR prev > avg)
+const prevVolume = volumes[volumes.length - 2] || 0;
+if (volume > avgVolume * 0.8 || prevVolume > avgVolume) {
+  passesDetail.volume = true;
+  score += 2;
+}
+
+// 5. OBV rising
+if (obvSlope > 0) {
+  passesDetail.obv = true;
+  score += 1;
+}
+
+// 6. Volatility healthy
+if (volatility === "normal" || volatility === "high") {
+  passesDetail.volatility = true;
+  score += 1;
+}
+
+// 7. Super Momentum Bonus (New)
+// If RSI is high (>70) AND Volume is very high (>1.5x avg), give extra points
+if (rsi > 70 && volume > avgVolume * 1.5) {
+  score += 2;
+}
+
+const passes = score >= 5;
+
+return {
+  score,
+  passes,
+  passesDetail,
+  details: {
+    price, ema20, ema50, rsi, macdHist: macdData.histogram, obvSlope, volume, avgVolume, volatility
+  }
+};
   }
 
 
 
-  async scanHighPotentialUser(): Promise<HighPotentialCoin[]> {
-    // 1. Get top 50 gainers from Binance
-    let pairs: string[] = [];
-    try {
-      const topGainers = await binanceService.getTopGainers(50);
-      pairs = topGainers.map(t => t.symbol);
-    } catch (error) {
-      console.error("Error fetching top gainers, falling back to default list", error);
-      pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT', 'NEARUSDT', 'FILUSDT', 'INJUSDT', 'OPUSDT', 'ARBUSDT'];
-    }
+  async scanHighPotentialUser(): Promise < HighPotentialCoin[] > {
+  // 1. Get top 50 gainers from Binance
+  let pairs: string[] = [];
+  try {
+    const topGainers = await binanceService.getTopGainers(50);
+    pairs = topGainers.map(t => t.symbol);
+  } catch(error) {
+    console.error("Error fetching top gainers, falling back to default list", error);
+    pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT', 'NEARUSDT', 'FILUSDT', 'INJUSDT', 'OPUSDT', 'ARBUSDT'];
+  }
 
     const results: HighPotentialCoin[] = [];
 
-    // 2. Analyze each symbol
-    for (const symbol of pairs) {
-      try {
-        const analysis = await this.analyzeSymbol(symbol, '4h');
+  // 2. Analyze each symbol
+  for(const symbol of pairs) {
+    try {
+      const analysis = await this.analyzeSymbol(symbol, '4h');
 
-        if (!analysis.candles || analysis.candles.length < 50) continue;
+      if (!analysis.candles || analysis.candles.length < 50) continue;
 
-        const volumes = analysis.candles.map(c => c.v);
-        const avgVolume = this.calculateSMA(volumes, 20);
+      const volumes = analysis.candles.map(c => c.v);
+      const avgVolume = this.calculateSMA(volumes, 20);
 
-        const { score, passes, details, passesDetail } = this.evaluateHighPotentialUserLogic(analysis, avgVolume);
+      const { score, passes, details, passesDetail } = this.evaluateHighPotentialUserLogic(analysis, avgVolume);
 
-        if (score > 0) {
-          results.push({
-            symbol,
-            score,
-            passes,
-            passesDetail,
-            price: analysis.price,
-            rsi: details.rsi,
-            volume: details.volume,
-            avgVolume: details.avgVolume,
-            volatilityState: details.volatility,
-            likely10PercentUpside: false, // Default
-            upsideConditions: undefined
-          });
+      if (score > 0) {
+        results.push({
+          symbol,
+          score,
+          passes,
+          passesDetail,
+          price: analysis.price,
+          rsi: details.rsi,
+          volume: details.volume,
+          avgVolume: details.avgVolume,
+          volatilityState: details.volatility,
+          likely10PercentUpside: false, // Default
+          upsideConditions: undefined
+        });
 
-          // Calculate Likely +10% Upside
-          const upsideAnalysis = this.evaluateLikely10PercentUpside(analysis, avgVolume);
-          results[results.length - 1].likely10PercentUpside = upsideAnalysis.likely;
-          results[results.length - 1].upsideConditions = upsideAnalysis.conditions;
-        }
-        // Rate limit
-        await new Promise(r => setTimeout(r, 50));
-      } catch (err) {
-        console.error(`Error scanning ${symbol}:`, err);
+        // Calculate Likely +10% Upside
+        const upsideAnalysis = this.evaluateLikely10PercentUpside(analysis, avgVolume);
+        results[results.length - 1].likely10PercentUpside = upsideAnalysis.likely;
+        results[results.length - 1].upsideConditions = upsideAnalysis.conditions;
       }
+      // Rate limit
+      await new Promise(r => setTimeout(r, 50));
+    } catch (err) {
+      console.error(`Error scanning ${symbol}:`, err);
     }
+  }
 
     return results.sort((a, b) => b.score - a.score);
-  }
+}
 
-  getDebugHighPotentialCoins(): HighPotentialCoin[] {
-    return [
-      {
-        symbol: "TEST-BTC",
-        score: 10,
-        passes: true,
-        passesDetail: { trend: true, rsi: true, macd: true, volume: true, obv: true, volatility: true },
-        price: 95000,
-        rsi: 75,
-        volume: 5000000,
-        avgVolume: 1000000,
-        volatilityState: "high",
-        likely10PercentUpside: true,
-        upsideConditions: { volatilityExpanding: true, momentumRising: true, trendRecovering: true, volumeImproved: true, resistanceRoom: true }
-      },
-      {
-        symbol: "TEST-ETH",
-        score: 8,
-        passes: true,
-        passesDetail: { trend: true, rsi: true, macd: true, volume: true, obv: false, volatility: true },
-        price: 4500,
-        rsi: 60,
-        volume: 2000000,
-        avgVolume: 1500000,
-        volatilityState: "normal",
-        likely10PercentUpside: true,
-        upsideConditions: { volatilityExpanding: false, momentumRising: true, trendRecovering: true, volumeImproved: true, resistanceRoom: true }
-      }
-    ];
-  }
+getDebugHighPotentialCoins(): HighPotentialCoin[] {
+  return [
+    {
+      symbol: "TEST-BTC",
+      score: 10,
+      passes: true,
+      passesDetail: { trend: true, rsi: true, macd: true, volume: true, obv: true, volatility: true },
+      price: 95000,
+      rsi: 75,
+      volume: 5000000,
+      avgVolume: 1000000,
+      volatilityState: "high",
+      likely10PercentUpside: true,
+      upsideConditions: { volatilityExpanding: true, momentumRising: true, trendRecovering: true, volumeImproved: true, resistanceRoom: true }
+    },
+    {
+      symbol: "TEST-ETH",
+      score: 8,
+      passes: true,
+      passesDetail: { trend: true, rsi: true, macd: true, volume: true, obv: false, volatility: true },
+      price: 4500,
+      rsi: 60,
+      volume: 2000000,
+      avgVolume: 1500000,
+      volatilityState: "normal",
+      likely10PercentUpside: true,
+      upsideConditions: { volatilityExpanding: false, momentumRising: true, trendRecovering: true, volumeImproved: true, resistanceRoom: true }
+    }
+  ];
+}
 
 
 

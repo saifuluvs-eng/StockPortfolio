@@ -608,6 +608,18 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Market Data Routes
+  app.get('/api/market/rsi', async (req: Request, res: Response) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const data = await technicalIndicators.getMarketRSI(limit);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching market RSI:", error);
+      res.status(500).json({ message: "Failed to fetch market RSI data" });
+    }
+  });
+
   // Watchlist routes
   app.get('/api/watchlist', isAuthenticated, async (req: Request, res: Response) => {
     try {

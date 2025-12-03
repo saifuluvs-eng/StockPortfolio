@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Briefcase, Activity, BarChart2, Menu } from "lucide-react";
+import { LayoutDashboard, Wallet, LineChart, BarChart2, Newspaper, Menu, X, PieChart } from 'lucide-react';
 import { motion } from "framer-motion";
 
 interface MobileNavProps {
@@ -10,10 +10,12 @@ export default function MobileNav({ onMenuClick }: MobileNavProps) {
     const [location] = useLocation();
 
     const items = [
-        { label: "Home", to: "/dashboard", icon: <Home size={20} /> },
-        { label: "Portfolio", to: "/portfolio", icon: <Briefcase size={20} /> },
-        { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
+        { label: "Home", to: "/dashboard", icon: <LayoutDashboard size={20} /> },
+        { label: "Portfolio", to: "/portfolio", icon: <Wallet size={20} /> },
+        { label: "Gainers", to: "/gainers", icon: <LineChart size={20} /> },
         { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
+        { label: "Data", to: "/data", icon: <PieChart size={20} /> },
+        { label: "News", to: "/news", icon: <Newspaper size={20} /> },
     ];
 
     return (
