@@ -17,6 +17,7 @@ import News from "@/pages/news";
 import ResetPassword from "@/pages/ResetPassword";
 import HighPotentialPage from "@/pages/high-potential";
 import LandingPage from "@/pages/LandingPage";
+import DataPage from "@/pages/data";
 
 function ShellLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -99,6 +100,11 @@ export default function App() {
       <Route path="/high-potential">
         <ShellLayout>
           <HighPotentialPage />
+        </ShellLayout>
+      </Route>
+      <Route path="/data">
+        <ShellLayout>
+          <DataPage />
         </ShellLayout>
       </Route>
 
