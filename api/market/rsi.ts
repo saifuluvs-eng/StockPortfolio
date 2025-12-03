@@ -30,18 +30,40 @@ const calculateRSI = (closes: number[], period = 14) => {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         const limit = Math.min(parseInt(String(req.query?.limit || "50"), 10) || 50, 100);
+        const timeframe = String(req.query?.timeframe || "4h");
+        const source = String(req.query?.source || "volume"); // 'volume' or 'gainers'
 
-        // 1. Get top pairs by volume
+        // 1. Get top pairs
         const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`, { cache: "no-store" });
         if (!r.ok) {
             return res.status(r.status).json({ ok: false, error: "Binance API error" });
         }
 
         const allTickers: any[] = await r.json();
-        const pairs = allTickers
-            .filter((t: any) => t.symbol.endsWith("USDT") && parseFloat(t.quoteVolume) > 10000000) // Filter for decent volume
-            .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-            .slice(0, limit)
+
+        let pairs = allTickers
+            .filter((t: any) => {
+                const symbol = t.symbol;
+                return symbol.endsWith("USDT") &&
+                    !symbol.includes("DOWN") &&
+                    !symbol.includes("UP") &&
+                    !symbol.includes("BULL") &&
+                    !symbol.includes("BEAR");
+            });
+
+        if (source === 'gainers') {
+            // Sort by 24h change % descending
+            pairs = pairs
+                .filter((t: any) => parseFloat(t.quoteVolume) > 1_000_000) // Basic volume filter for gainers too
+                .sort((a: any, b: any) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent));
+        } else {
+            // Default: Sort by Volume descending
+            pairs = pairs
+                .filter((t: any) => parseFloat(t.quoteVolume) > 10_000_000) // Higher volume filter for main view
+                .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume));
+        }
+
+        pairs = pairs.slice(0, limit)
             .map((t: any) => ({ symbol: t.symbol, price: parseFloat(t.lastPrice), change: parseFloat(t.priceChangePercent) }));
 
         const results = [];
@@ -52,7 +74,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const batch = pairs.slice(i, i + batchSize);
             const promises = batch.map(async (p: any) => {
                 try {
-                    const kRes = await fetch(`${BINANCE}/api/v3/klines?symbol=${p.symbol}&interval=4h&limit=30`, { cache: "no-store" });
+                    const kRes = await fetch(`${BINANCE}/api/v3/klines?symbol=${p.symbol}&interval=${timeframe}&limit=30`, { cache: "no-store" });
                     if (!kRes.ok) return null;
                     const klines: any[] = await kRes.json();
                     if (!Array.isArray(klines) || klines.length < 20) return null;
@@ -79,7 +101,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
-        return res.status(200).json(results.sort((a: any, b: any) => b.rsi - a.rsi));
+
+        // If source is gainers, we might want to keep the gainers sort order (by change %), 
+        // but usually RSI heatmap is visualized better if sorted by something else or just the list.
+        // The user asked for "Gainers page" coins. 
+        // If we return them, the frontend currently sorts by Volume (implicit from API return order if we don't re-sort).
+        // Let's return them in the order we fetched them (which is sorted by source criteria).
+
+        return res.status(200).json(results);
     } catch (e: any) {
         console.error("[api/market/rsi] Error:", e);
         return res.status(500).json({ ok: false, error: "Failed to fetch market RSI" });
