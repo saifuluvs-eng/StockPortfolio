@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RsiHeatmap } from '@/components/data/RsiHeatmap';
-import { RsiTicker } from '@/components/data/RsiTicker';
 import { Page } from '@/components/layout/Layout';
 import {
     Select,
@@ -176,7 +175,6 @@ export default function DataPage() {
 
                 <RsiHeatmap data={rsiData || []} isLoading={isLoading} />
             </div>
-            <RsiTicker />
         </Page>
     );
 }

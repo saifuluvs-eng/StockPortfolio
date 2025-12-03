@@ -38,31 +38,24 @@ export function RsiTicker() {
             {/* Scrolling Marquee */}
             <div className="flex-1 overflow-hidden relative h-full flex items-center">
                 <div className="animate-marquee whitespace-nowrap flex items-center gap-8 px-4">
-                    {lowRsiCoins.map((coin) => (
-                        <div key={coin.symbol} className="flex items-center gap-2 text-xs">
+                    {[...lowRsiCoins, ...lowRsiCoins].map((coin, i) => (
+                        <div key={`${coin.symbol}-${i}`} className="flex items-center gap-2 text-xs">
                             <span className="font-bold text-white">{coin.symbol}</span>
                             <div className="flex items-center gap-1 text-zinc-400">
                                 {Object.entries(coin.rsi || {}).map(([tf, val]) => {
-                                    if (val >= 40) return null; // Only show the low values? Or show all if coin is qualified?
-                                    // User request: "RSI 40< : PARTI (15m) 26.84 | (1h) 41.7 ..." 
-                                    // The example shows a value > 40 (1h 41.7). So show ALL timeframes if the coin qualifies.
-                                    // Actually, let's show all timeframes to be safe, or just the ones < 40 if space is tight?
-                                    // The example shows "(1h) 41.7", so it implies showing context.
-                                    // Let's show all.
                                     return (
                                         <span key={tf} className="flex items-center">
                                             <span className="text-zinc-500 mr-1">({tf})</span>
-                                            <span className={val < 40 ? "text-emerald-400 font-mono" : "text-zinc-400 font-mono"}>
+                                            <span className={val < 40 ? "text-emerald-400 font-mono font-bold" : "text-zinc-500 font-mono"}>
                                                 {val}
                                             </span>
-                                            <span className="mx-1 text-zinc-700">|</span>
+                                            <span className="mx-1 text-zinc-800">|</span>
                                         </span>
                                     );
                                 })}
                             </div>
                         </div>
                     ))}
-                    {/* Duplicate for seamless loop if needed, though simple CSS animation usually just translates */}
                 </div>
             </div>
 
