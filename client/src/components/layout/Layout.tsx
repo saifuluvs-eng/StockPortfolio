@@ -1,5 +1,5 @@
 import React from "react";
-import "../styles/tokens.css";
+import "../../styles/token.css";
 
 export function Page(props: React.PropsWithChildren) {
   return (
