@@ -353,7 +353,9 @@ async function fearGreed(_req: any, res: any) {
 
 export default async function handler(req: any, res: any) {
   try {
-    console.log("[API Handler] Request:", req.url, "Query:", JSON.stringify(req.query));
+    console.log("[API Handler] Request:", req.url);
+    console.log("[API Handler] Query:", JSON.stringify(req.query));
+
     // Vercel catch-all route provides path segments in req.query.all
     let seg: string[] = [];
     if (req.query && req.query.all) {
@@ -374,6 +376,8 @@ export default async function handler(req: any, res: any) {
       seg = p.split("/").filter(Boolean);
     }
 
+    console.log("[API Handler] Segments:", seg);
+
     if (seg.length === 0) return alive(req, res);
 
     if (seg[0] === "health") return health(req, res);
@@ -384,12 +388,12 @@ export default async function handler(req: any, res: any) {
       if (seg[1] === "rsi") return marketRsi(req, res);
       if (seg[1] === "strategies" && seg[2] === "trend-dip") return trendDipStrategy(req, res);
       if (seg[1] === "fear-greed") return fearGreed(req, res);
-      return bad(res, 404, "Unknown market route", { path: p });
+      return bad(res, 404, "Unknown market route", { path: seg.join("/") });
     }
 
     if (seg[0] === "scanner") {
       if (seg[1] === "scan") return scan(req, res);
-      return bad(res, 404, "Unknown scanner route", { path: p });
+      return bad(res, 404, "Unknown scanner route", { path: seg.join("/") });
     }
 
     if (seg[0] === "high-potential") return highPotential(req, res);
@@ -397,9 +401,9 @@ export default async function handler(req: any, res: any) {
     if (seg[0] === "watchlist") return ok(res, { ok: true, items: [] });
     if (seg[0] === "portfolio") return ok(res, { ok: true, positions: [] });
 
-    return bad(res, 404, "Unknown API route", { path: p });
+    return bad(res, 404, "Unknown API route", { path: seg.join("/") });
   } catch (e: any) {
-    console.error("api/all error:", e);
-    return bad(res, 500, e?.message || "internal_error");
+    console.error("[API Handler] CRITICAL ERROR:", e);
+    return bad(res, 500, "Internal Server Error", { error: e.message, stack: e.stack });
   }
 }
