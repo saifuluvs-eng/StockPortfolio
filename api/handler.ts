@@ -851,38 +851,50 @@ async function marketRsi(req: any, res: any) {
   try {
     const limit = Math.min(parseInt(String(req.query?.limit || "50"), 10) || 50, 100);
 
-    // Parse timeframe - support multiple but for now just take the first one to avoid timeouts
-    // Frontend sends "15m,1h,4h" etc.
+    // Parse timeframes
     const tfParam = String(req.query?.timeframe || "4h");
-    const timeframes = tfParam.split(',').map(t => normTF(t));
-    const primaryTf = timeframes[0] || "4h";
+    const timeframes = tfParam.split(',').map(t => normTF(t)).filter(Boolean);
+    // Ensure we have at least one timeframe
+    if (timeframes.length === 0) timeframes.push("4h");
+
+    const primaryTf = timeframes[0];
 
     // Use binanceService to get top pairs (includes fallback)
     const topPairs = await binanceService.getTopVolumePairs(limit);
 
     const results: any[] = [];
-    const batchSize = 5;
+    const batchSize = 3; // Reduced batch size since we do more calls per coin
 
     for (let i = 0; i < topPairs.length; i += batchSize) {
       const batch = topPairs.slice(i, i + batchSize);
       const promises = batch.map(async (p: any) => {
         try {
-          // Use binanceService for klines (includes fallback)
-          const klines = await binanceService.getKlineData(p.symbol, primaryTf, 30);
+          const rsiMap: Record<string, number> = {};
 
-          if (!klines || klines.length < 20) return null;
+          // Fetch all timeframes in parallel for this coin
+          await Promise.all(timeframes.map(async (tf) => {
+            try {
+              const klines = await binanceService.getKlineData(p.symbol, tf, 30);
+              if (!klines || klines.length < 20) return;
 
-          const closes = klines.map((k: any) => parseFloat(k.close));
+              const closes = klines.map((k: any) => parseFloat(k.close));
+              const rsiArr = rsi(closes, 14);
+              const lastRsi = rsiArr.length ? rsiArr[rsiArr.length - 1] : undefined;
 
-          const rsiArr = rsi(closes, 14);
-          const lastRsi = rsiArr.length ? rsiArr[rsiArr.length - 1] : undefined;
+              if (lastRsi !== undefined) {
+                rsiMap[tf] = parseFloat(lastRsi.toFixed(2));
+              }
+            } catch (innerErr) {
+              // Ignore individual timeframe errors
+            }
+          }));
 
-          if (lastRsi === undefined) return null;
+          // If no RSI data found for any timeframe, skip this coin
+          if (Object.keys(rsiMap).length === 0) return null;
 
-          // Return RSI as an object keyed by timeframe, as expected by RsiHeatmap.tsx
           return {
             symbol: p.symbol.replace('USDT', ''),
-            rsi: { [primaryTf]: parseFloat(lastRsi.toFixed(2)) },
+            rsi: rsiMap,
             price: parseFloat(p.lastPrice),
             change: parseFloat(p.priceChangePercent)
           };
