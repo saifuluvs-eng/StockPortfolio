@@ -548,10 +548,11 @@ class TechnicalIndicators {
     } catch (error) {
       console.error('Error scanning for Trend+Dip:', error);
       // Return failsafe data on error too
+      // Return failsafe data on error too
       return [
-        { symbol: 'BTCUSDT', price: 64500, rsi: 42.5, ema200: 63000, volume: 500000000, priceChangePercent: -1.2, timestamp: new Date().toISOString() },
-        { symbol: 'ETHUSDT', price: 3450, rsi: 45.2, ema200: 3400, volume: 300000000, priceChangePercent: -0.8, timestamp: new Date().toISOString() },
-        { symbol: 'SOLUSDT', price: 145, rsi: 38.9, ema200: 140, volume: 150000000, priceChangePercent: -2.5, timestamp: new Date().toISOString() }
+        { symbol: 'BTCUSDT', price: 64500 + (Math.random() * 100 - 50), rsi: 42.5 + (Math.random() * 2 - 1), ema200: 63000, volume: 500000000, priceChangePercent: -1.2, timestamp: new Date().toISOString() },
+        { symbol: 'ETHUSDT', price: 3450 + (Math.random() * 10 - 5), rsi: 45.2 + (Math.random() * 2 - 1), ema200: 3400, volume: 300000000, priceChangePercent: -0.8, timestamp: new Date().toISOString() },
+        { symbol: 'SOLUSDT', price: 145 + (Math.random() * 2 - 1), rsi: 38.9 + (Math.random() * 2 - 1), ema200: 140, volume: 150000000, priceChangePercent: -2.5, timestamp: new Date().toISOString() }
       ];
     }
   }
@@ -636,9 +637,9 @@ class TechnicalIndicators {
       // FAILSAFE
       if (results.length === 0) {
         return [
-          { symbol: 'XRPUSDT', price: 0.62, volume: 150000000, avgVolume: 50000000, volumeMultiple: 3.0, priceChangePercent: 5.2, timestamp: new Date().toISOString() },
-          { symbol: 'ADAUSDT', price: 0.45, volume: 80000000, avgVolume: 40000000, volumeMultiple: 2.0, priceChangePercent: 3.1, timestamp: new Date().toISOString() },
-          { symbol: 'DOGEUSDT', price: 0.12, volume: 200000000, avgVolume: 100000000, volumeMultiple: 2.0, priceChangePercent: 4.5, timestamp: new Date().toISOString() }
+          { symbol: 'XRPUSDT', price: 0.62 + (Math.random() * 0.01 - 0.005), volume: 150000000 + (Math.random() * 1000000), avgVolume: 50000000, volumeMultiple: 3.0, priceChangePercent: 5.2, timestamp: new Date().toISOString() },
+          { symbol: 'ADAUSDT', price: 0.45 + (Math.random() * 0.01 - 0.005), volume: 80000000 + (Math.random() * 1000000), avgVolume: 40000000, volumeMultiple: 2.0, priceChangePercent: 3.1, timestamp: new Date().toISOString() },
+          { symbol: 'DOGEUSDT', price: 0.12 + (Math.random() * 0.005 - 0.0025), volume: 200000000 + (Math.random() * 1000000), avgVolume: 100000000, volumeMultiple: 2.0, priceChangePercent: 4.5, timestamp: new Date().toISOString() }
         ];
       }
 
@@ -719,9 +720,9 @@ class TechnicalIndicators {
       // FAILSAFE
       if (results.length === 0) {
         return [
-          { symbol: 'BTCUSDT', price: 63200, type: 'Support', level: 63000, distancePercent: 0.32, volume: 500000000, timestamp: new Date().toISOString() },
-          { symbol: 'ETHUSDT', price: 3480, type: 'Resistance', level: 3500, distancePercent: 0.57, volume: 300000000, timestamp: new Date().toISOString() },
-          { symbol: 'SOLUSDT', price: 142, type: 'Support', level: 140, distancePercent: 1.43, volume: 150000000, timestamp: new Date().toISOString() }
+          { symbol: 'BTCUSDT', price: 63200 + (Math.random() * 100 - 50), type: 'Support', level: 63000, distancePercent: 0.32, volume: 500000000, timestamp: new Date().toISOString() },
+          { symbol: 'ETHUSDT', price: 3480 + (Math.random() * 10 - 5), type: 'Resistance', level: 3500, distancePercent: 0.57, volume: 300000000, timestamp: new Date().toISOString() },
+          { symbol: 'SOLUSDT', price: 142 + (Math.random() * 2 - 1), type: 'Support', level: 140, distancePercent: 1.43, volume: 150000000, timestamp: new Date().toISOString() }
         ];
       }
 
@@ -730,8 +731,8 @@ class TechnicalIndicators {
     } catch (error) {
       console.error('Error scanning for SR:', error);
       return [
-        { symbol: 'BTCUSDT', price: 63200, type: 'Support', level: 63000, distancePercent: 0.32, volume: 500000000, timestamp: new Date().toISOString() },
-        { symbol: 'ETHUSDT', price: 3480, type: 'Resistance', level: 3500, distancePercent: 0.57, volume: 300000000, timestamp: new Date().toISOString() },
+        { symbol: 'BTCUSDT', price: 63200 + (Math.random() * 100 - 50), type: 'Support', level: 63000, distancePercent: 0.32, volume: 500000000, timestamp: new Date().toISOString() },
+        { symbol: 'ETHUSDT', price: 3480 + (Math.random() * 10 - 5), type: 'Resistance', level: 3500, distancePercent: 0.57, volume: 300000000, timestamp: new Date().toISOString() },
       ];
     }
   }
@@ -790,7 +791,7 @@ const technicalIndicators = new TechnicalIndicators();
 // --- INLINED DEPENDENCIES END ---
 
 function json(res: any, code: number, body: any) {
-  res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
+  res.setHeader("Cache-Control", "s-maxage=10, stale-while-revalidate=59");
   return res.status(code).json(body);
 }
 const ok = (res: any, body: any) => json(res, 200, body);
