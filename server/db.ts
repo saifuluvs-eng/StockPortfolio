@@ -2,14 +2,10 @@ import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import * as schema from "@shared/schema";
 
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL environment variable is required');
-}
-
 let db: any;
 
-if (process.env.DATABASE_URL.includes('dummy')) {
-  console.warn('[DB] Using mock database connection for development');
+if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('dummy')) {
+  console.warn('[DB] Using mock database connection (no DATABASE_URL provided or dummy used)');
   db = {
     select: () => ({ from: () => ({ where: () => ({ orderBy: () => ({ limit: () => [] }) }) }) }),
     insert: () => ({ values: () => ({ returning: () => [] }) }),
