@@ -3,11 +3,13 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "trailingSlash": false,
-  "regions": ["sin1"],
+  "regions": [
+    "sin1"
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "destination": "/api/handler"
     },
     {
       "source": "/((?!api/).*)",

@@ -353,6 +353,7 @@ async function fearGreed(_req: any, res: any) {
 
 export default async function handler(req: any, res: any) {
   try {
+    console.log("[API Handler] Request:", req.url, "Query:", JSON.stringify(req.query));
     // Vercel catch-all route provides path segments in req.query.all
     let seg: string[] = [];
     if (req.query && req.query.all) {
