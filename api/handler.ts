@@ -1,7 +1,622 @@
-// api/all.ts
+// api/handler.ts
 // Router via query param: /api/all?path=market/ticker/BTCUSDT
-import { technicalIndicators } from "./lib/technicalIndicators";
-import { binanceService } from "./lib/binanceService";
+
+// --- INLINED DEPENDENCIES START ---
+
+const MIN_USD_VOL = 1_000_000; // Minimum volume in USD
+
+interface TickerData {
+  symbol: string;
+  lastPrice: string;
+  priceChange: string;
+  priceChangePercent: string;
+  highPrice: string;
+  lowPrice: string;
+  volume: string;
+  quoteVolume: string;
+}
+
+interface CandlestickData {
+  openTime: number;
+  open: string;
+  high: string;
+  low: string;
+  close: string;
+  volume: string;
+  closeTime: number;
+  quoteVolume: string;
+}
+
+class BinanceService {
+  private baseUrl = 'https://api.binance.com/api/v3';
+
+  async getCurrentPrice(symbol: string): Promise<number> {
+    try {
+      const response = await fetch(`${this.baseUrl}/ticker/price?symbol=${symbol}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch price for ${symbol}`);
+      }
+      const data = await response.json();
+      return parseFloat(data.price);
+    } catch (error) {
+      console.error(`Error fetching price for ${symbol}:`, error);
+      throw error;
+    }
+  }
+
+  async getTickerData(symbol: string): Promise<TickerData> {
+    try {
+      const response = await fetch(`${this.baseUrl}/ticker/24hr?symbol=${symbol}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ticker data for ${symbol}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error(`Error fetching ticker data for ${symbol}, using fallback:`, error);
+      return this.generateFallbackTicker(symbol);
+    }
+  }
+
+  private generateFallbackTicker(symbol: string): TickerData {
+    const basePrice = 100 + Math.random() * 500;
+    const changePercent = (Math.random() - 0.5) * 20;
+    const change = (basePrice * changePercent) / 100;
+    const volume = 1000000 + Math.random() * 50000000;
+
+    return {
+      symbol,
+      lastPrice: basePrice.toFixed(4),
+      priceChange: change.toFixed(4),
+      priceChangePercent: changePercent.toFixed(2),
+      highPrice: (basePrice + Math.abs(change) * 1.2).toFixed(4),
+      lowPrice: (basePrice - Math.abs(change) * 0.8).toFixed(4),
+      volume: (volume * 0.8).toFixed(0),
+      quoteVolume: volume.toFixed(0)
+    };
+  }
+
+  async getTopGainers(limit: number = 50): Promise<TickerData[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/ticker/24hr`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch market data');
+      }
+
+      const allTickers: TickerData[] = await response.json();
+
+      const usdtPairs = allTickers
+        .filter(ticker => {
+          const volume = parseFloat(ticker.quoteVolume || '0');
+          return (
+            ticker.symbol.endsWith('USDT') &&
+            !ticker.symbol.includes('DOWN') &&
+            !ticker.symbol.includes('UP') &&
+            !ticker.symbol.includes('BULL') &&
+            !ticker.symbol.includes('BEAR') &&
+            volume >= MIN_USD_VOL
+          );
+        })
+        .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
+        .slice(0, limit);
+
+      if (usdtPairs.length > 0) {
+        return usdtPairs;
+      } else {
+        return this.generateFallbackGainers(limit);
+      }
+    } catch (error) {
+      console.error('Error fetching top gainers:', error);
+      return this.generateFallbackGainers(limit);
+    }
+  }
+
+  async getTopVolumePairs(limit: number = 50): Promise<TickerData[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/ticker/24hr`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch market data');
+      }
+
+      const allTickers: TickerData[] = await response.json();
+
+      const usdtPairs = allTickers
+        .filter(ticker => {
+          return (
+            ticker.symbol.endsWith('USDT') &&
+            !ticker.symbol.includes('DOWN') &&
+            !ticker.symbol.includes('UP') &&
+            !ticker.symbol.includes('BULL') &&
+            !ticker.symbol.includes('BEAR')
+          );
+        })
+        .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+        .slice(0, limit);
+
+      if (usdtPairs.length > 0) {
+        return usdtPairs;
+      } else {
+        return this.generateFallbackGainers(limit);
+      }
+    } catch (error) {
+      console.error('Error fetching top volume pairs:', error);
+      return this.generateFallbackGainers(limit);
+    }
+  }
+
+  private generateFallbackGainers(limit: number = 50): TickerData[] {
+    const symbols = [
+      'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'XRPUSDT', 'DOTUSDT', 'DOGEUSDT',
+      'AVAXUSDT', 'MATICUSDT', 'LINKUSDT', 'LTCUSDT', 'UNIUSDT', 'BCHUSDT', 'XLMUSDT', 'VETUSDT'
+    ];
+
+    return symbols.slice(0, limit).map((symbol, index) => {
+      const baseChangePercent = 25 - (index * 0.4);
+      const randomVariation = (Math.random() - 0.5) * 2;
+      const changePercent = Math.max(0.1, baseChangePercent + randomVariation);
+      const basePrice = 100 + Math.random() * 500;
+      const change = (basePrice * changePercent) / 100;
+      const volume = 1000000 + Math.random() * 50000000;
+
+      return {
+        symbol,
+        lastPrice: basePrice.toFixed(4),
+        priceChange: change.toFixed(4),
+        priceChangePercent: changePercent.toFixed(2),
+        highPrice: (basePrice + change * 1.2).toFixed(4),
+        lowPrice: (basePrice - change * 0.8).toFixed(4),
+        volume: (volume * 0.8).toFixed(0),
+        quoteVolume: volume.toFixed(0)
+      };
+    });
+  }
+
+  async getKlineData(symbol: string, interval: string, limit: number = 200): Promise<CandlestickData[]> {
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to fetch kline data for ${symbol}`);
+      }
+
+      const rawData = await response.json();
+
+      return rawData.map((kline: any[]) => ({
+        openTime: kline[0],
+        open: kline[1],
+        high: kline[2],
+        low: kline[3],
+        close: kline[4],
+        volume: kline[5],
+        closeTime: kline[6],
+        quoteVolume: kline[7],
+      }));
+    } catch (error) {
+      console.error(`Error fetching kline data for ${symbol}:`, error);
+      throw error;
+    }
+  }
+
+  async getExchangeInfo(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/exchangeInfo`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch exchange info');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching exchange info:', error);
+      throw error;
+    }
+  }
+
+  async getAllUSDTPairs(): Promise<string[]> {
+    try {
+      const exchangeInfo = await this.getExchangeInfo();
+      return exchangeInfo.symbols
+        .filter((symbol: any) =>
+          symbol.quoteAsset === 'USDT' &&
+          symbol.status === 'TRADING' &&
+          !symbol.symbol.includes('DOWN') &&
+          !symbol.symbol.includes('UP')
+        )
+        .map((symbol: any) => symbol.symbol);
+    } catch (error) {
+      console.error('Error fetching USDT pairs:', error);
+      throw error;
+    }
+  }
+}
+
+const binanceService = new BinanceService();
+
+interface TechnicalAnalysis {
+  symbol: string;
+  price: number;
+  indicators: {
+    [key: string]: {
+      value: number;
+      signal: 'bullish' | 'bearish' | 'neutral';
+      score: number;
+      tier: number;
+      description: string;
+    };
+  };
+  totalScore: number;
+  recommendation: 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell';
+  calculationTimestamp?: string;
+  latestDataTime?: string;
+  candles?: { t: number; o: number; h: number; l: number; c: number; v: number }[];
+}
+
+interface ScanFilters {
+  timeframe?: string;
+  minScore?: number;
+  minVolume?: number;
+  excludeStablecoins?: boolean;
+}
+
+class TechnicalIndicators {
+  private calculateSMA(prices: number[], period: number): number {
+    const slice = prices.slice(-period);
+    return slice.reduce((sum, price) => sum + price, 0) / slice.length;
+  }
+
+  private calculateEMA(prices: number[], period: number): number {
+    const multiplier = 2 / (period + 1);
+    let ema = prices[0];
+    for (let i = 1; i < prices.length; i++) {
+      ema = (prices[i] * multiplier) + (ema * (1 - multiplier));
+    }
+    return ema;
+  }
+
+  private calculateRSI(prices: number[], period: number = 14): number {
+    if (prices.length < period + 1) return 50;
+    const changes: number[] = [];
+    for (let i = 1; i < prices.length; i++) {
+      changes.push(prices[i] - prices[i - 1]);
+    }
+    let avgGain = 0;
+    let avgLoss = 0;
+    for (let i = 0; i < period; i++) {
+      if (changes[i] > 0) avgGain += changes[i];
+      else avgLoss += Math.abs(changes[i]);
+    }
+    avgGain /= period;
+    avgLoss /= period;
+    for (let i = period; i < changes.length; i++) {
+      const gain = changes[i] > 0 ? changes[i] : 0;
+      const loss = changes[i] < 0 ? Math.abs(changes[i]) : 0;
+      avgGain = (avgGain * (period - 1) + gain) / period;
+      avgLoss = (avgLoss * (period - 1) + loss) / period;
+    }
+    if (avgLoss === 0) return 100;
+    const rs = avgGain / avgLoss;
+    return 100 - (100 / (1 + rs));
+  }
+
+  private calculateMACD(prices: number[]): { macd: number; signal: number; histogram: number } {
+    const ema12 = this.calculateEMA(prices, 12);
+    const ema26 = this.calculateEMA(prices, 26);
+    const macd = ema12 - ema26;
+    const signal = macd * 0.9;
+    const histogram = macd - signal;
+    return { macd, signal, histogram };
+  }
+
+  private calculateBollingerBands(prices: number[], period: number = 20): { upper: number; middle: number; lower: number; squeeze: boolean; } {
+    const sma = this.calculateSMA(prices, period);
+    const slice = prices.slice(-period);
+    const variance = slice.reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / period;
+    const stdDev = Math.sqrt(variance);
+    const upper = sma + (2 * stdDev);
+    const lower = sma - (2 * stdDev);
+    const squeeze = (upper - lower) / sma < 0.1;
+    return { upper, middle: sma, lower, squeeze };
+  }
+
+  private calculateVWAP(prices: number[], volumes: number[]): number {
+    let totalPriceVolume = 0;
+    let totalVolume = 0;
+    for (let i = 0; i < Math.min(prices.length, volumes.length); i++) {
+      totalPriceVolume += prices[i] * volumes[i];
+      totalVolume += volumes[i];
+    }
+    return totalVolume > 0 ? totalPriceVolume / totalVolume : prices[prices.length - 1];
+  }
+
+  private calculateStochastic(highs: number[], lows: number[], closes: number[], kPeriod: number = 14): { k: number; d: number } {
+    const currentClose = closes[closes.length - 1];
+    const highestHigh = Math.max(...highs.slice(-kPeriod));
+    const lowestLow = Math.min(...lows.slice(-kPeriod));
+    const k = ((currentClose - lowestLow) / (highestHigh - lowestLow)) * 100;
+    return { k, d: k };
+  }
+
+  private calculateWilliamsR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
+    const currentClose = closes[closes.length - 1];
+    const highestHigh = Math.max(...highs.slice(-period));
+    const lowestLow = Math.min(...lows.slice(-period));
+    return ((highestHigh - currentClose) / (highestHigh - lowestLow)) * -100;
+  }
+
+  private calculateCCI(highs: number[], lows: number[], closes: number[], period: number = 20): number {
+    const typicalPrices = closes.map((close, i) => (highs[i] + lows[i] + close) / 3);
+    const sma = this.calculateSMA(typicalPrices, period);
+    const slice = typicalPrices.slice(-period);
+    const meanDeviation = slice.reduce((sum, tp) => sum + Math.abs(tp - sma), 0) / period;
+    const currentTP = typicalPrices[typicalPrices.length - 1];
+    return meanDeviation !== 0 ? (currentTP - sma) / (0.015 * meanDeviation) : 0;
+  }
+
+  private calculateMFI(highs: number[], lows: number[], closes: number[], volumes: number[], period: number = 14): number {
+    const typicalPrices = closes.map((close, i) => (highs[i] + lows[i] + close) / 3);
+    const rawMoneyFlows = typicalPrices.map((tp, i) => tp * volumes[i]);
+    let positiveFlow = 0;
+    let negativeFlow = 0;
+    for (let i = 1; i < Math.min(rawMoneyFlows.length, period + 1); i++) {
+      if (typicalPrices[i] > typicalPrices[i - 1]) positiveFlow += rawMoneyFlows[i];
+      else if (typicalPrices[i] < typicalPrices[i - 1]) negativeFlow += rawMoneyFlows[i];
+    }
+    if (negativeFlow === 0) return 100;
+    const moneyFlowRatio = positiveFlow / negativeFlow;
+    return 100 - (100 / (1 + moneyFlowRatio));
+  }
+
+  private calculateOBV(closes: number[], volumes: number[]): number {
+    let obv = 0;
+    for (let i = 1; i < closes.length; i++) {
+      if (closes[i] > closes[i - 1]) obv += volumes[i];
+      else if (closes[i] < closes[i - 1]) obv -= volumes[i];
+    }
+    return obv;
+  }
+
+  private calculateATR(highs: number[], lows: number[], closes: number[], period: number = 14): number {
+    const trueRanges: number[] = [];
+    for (let i = 1; i < closes.length; i++) {
+      const tr1 = highs[i] - lows[i];
+      const tr2 = Math.abs(highs[i] - closes[i - 1]);
+      const tr3 = Math.abs(lows[i] - closes[i - 1]);
+      trueRanges.push(Math.max(tr1, tr2, tr3));
+    }
+    return this.calculateSMA(trueRanges, Math.min(period, trueRanges.length));
+  }
+
+  private calculateParabolicSAR(highs: number[], lows: number[], closes: number[]): { sar: number; trend: 'bullish' | 'bearish' } {
+    const currentClose = closes[closes.length - 1];
+    const prevClose = closes[closes.length - 2] || currentClose;
+    const highestHigh = Math.max(...highs.slice(-10));
+    const lowestLow = Math.min(...lows.slice(-10));
+    const trend = currentClose > prevClose ? 'bullish' : 'bearish';
+    const sar = trend === 'bullish' ? lowestLow * 0.98 : highestHigh * 1.02;
+    return { sar, trend };
+  }
+
+  private calculateVolumeOscillator(volumes: number[], shortPeriod: number = 5, longPeriod: number = 10): number {
+    const shortSMA = this.calculateSMA(volumes, shortPeriod);
+    const longSMA = this.calculateSMA(volumes, longPeriod);
+    return longSMA !== 0 ? ((shortSMA - longSMA) / longSMA) * 100 : 0;
+  }
+
+  private calculateADX(highs: number[], lows: number[], closes: number[]): { adx: number; plusDI: number; minusDI: number; } {
+    let trueRanges: number[] = [];
+    let plusDMs: number[] = [];
+    let minusDMs: number[] = [];
+    for (let i = 1; i < closes.length; i++) {
+      const hl = highs[i] - lows[i];
+      const hc = Math.abs(highs[i] - closes[i - 1]);
+      const lc = Math.abs(lows[i] - closes[i - 1]);
+      trueRanges.push(Math.max(hl, hc, lc));
+      const hh = highs[i] - highs[i - 1];
+      const ll = lows[i - 1] - lows[i];
+      plusDMs.push(hh > ll && hh > 0 ? hh : 0);
+      minusDMs.push(ll > hh && ll > 0 ? ll : 0);
+    }
+    const avgTR = trueRanges.slice(-14).reduce((sum, tr) => sum + tr, 0) / 14;
+    const avgPlusDM = plusDMs.slice(-14).reduce((sum, dm) => sum + dm, 0) / 14;
+    const avgMinusDM = minusDMs.slice(-14).reduce((sum, dm) => sum + dm, 0) / 14;
+    const plusDI = avgTR > 0 ? (avgPlusDM / avgTR) * 100 : 0;
+    const minusDI = avgTR > 0 ? (avgMinusDM / avgTR) * 100 : 0;
+    const dx = Math.abs(plusDI - minusDI) / (plusDI + minusDI) * 100;
+    return { adx: dx, plusDI, minusDI };
+  }
+
+  async analyzeSymbol(symbol: string, timeframe: string = '1h'): Promise<TechnicalAnalysis> {
+    try {
+      const binanceInterval = this.convertTimeframeToBinance(timeframe);
+      let closes: number[], highs: number[], lows: number[], volumes: number[], currentPrice: number;
+      let klines: any[] = [];
+
+      try {
+        klines = await binanceService.getKlineData(symbol, binanceInterval, 200);
+        if (klines.length === 0) throw new Error('No kline data received');
+        closes = klines.map(k => parseFloat(k.close));
+        highs = klines.map(k => parseFloat(k.high));
+        lows = klines.map(k => parseFloat(k.low));
+        volumes = klines.map(k => parseFloat(k.volume));
+        currentPrice = closes[closes.length - 1];
+      } catch (apiError) {
+        console.warn(`Failed to fetch real market data for ${symbol}, using fallback data:`, apiError);
+        const fallbackData = this.generateFallbackData(symbol);
+        closes = fallbackData.closes;
+        highs = fallbackData.highs;
+        lows = fallbackData.lows;
+        volumes = fallbackData.volumes;
+        currentPrice = closes[closes.length - 1];
+        klines = closes.map((c, i) => ({
+          openTime: Date.now() - (closes.length - 1 - i) * 3600000,
+          open: c, high: highs[i], low: lows[i], close: c, volume: volumes[i]
+        }));
+      }
+
+      const calculationTimestamp = new Date().toISOString();
+      const latestCandleTime = klines?.length > 0 ? new Date(klines[klines.length - 1].closeTime).toISOString() : calculationTimestamp;
+
+      const rsi = this.calculateRSI(closes);
+      const macd = this.calculateMACD(closes);
+      const ema20 = this.calculateEMA(closes, 20);
+      const ema50 = this.calculateEMA(closes, 50);
+      const bb = this.calculateBollingerBands(closes);
+      const vwap = this.calculateVWAP(closes, volumes);
+      const adx = this.calculateADX(highs, lows, closes);
+      const stoch = this.calculateStochastic(highs, lows, closes);
+      const williamsR = this.calculateWilliamsR(highs, lows, closes);
+      const cci = this.calculateCCI(highs, lows, closes);
+      const mfi = this.calculateMFI(highs, lows, closes, volumes);
+      const obv = this.calculateOBV(closes, volumes);
+      const atr = this.calculateATR(highs, lows, closes);
+      const psar = this.calculateParabolicSAR(highs, lows, closes);
+      const volOsc = this.calculateVolumeOscillator(volumes);
+
+      const indicators: TechnicalAnalysis['indicators'] = {
+        vwap: { value: vwap, signal: currentPrice > vwap ? 'bullish' : 'bearish', score: currentPrice > vwap ? 1 : -1, tier: 3, description: `Price ${currentPrice > vwap ? 'above' : 'below'} VWAP` },
+        rsi: { value: rsi, signal: rsi > 30 && rsi < 70 ? 'neutral' : rsi >= 70 ? 'bearish' : 'bullish', score: rsi > 30 && rsi < 70 ? 0 : rsi >= 70 ? -2 : 2, tier: 2, description: `RSI: ${rsi.toFixed(1)}` },
+        macd: { value: macd.macd, signal: macd.macd > macd.signal ? 'bullish' : 'bearish', score: macd.macd > macd.signal ? 9 : -9, tier: 1, description: `MACD ${macd.macd > macd.signal ? 'above' : 'below'} signal` },
+        ema_crossover: { value: ema20 - ema50, signal: ema20 > ema50 ? 'bullish' : 'bearish', score: ema20 > ema50 ? 9 : -9, tier: 1, description: `EMA20 ${ema20 > ema50 ? 'above' : 'below'} EMA50` },
+        bb_squeeze: { value: bb.squeeze ? 1 : 0, signal: bb.squeeze ? 'bullish' : 'neutral', score: bb.squeeze ? 1 : 0, tier: 2, description: `BB ${bb.squeeze ? 'squeeze' : 'normal'}` },
+        adx: { value: adx.adx, signal: adx.adx > 25 ? 'bullish' : 'neutral', score: adx.adx > 25 ? 3 : 0, tier: 1, description: `ADX: ${adx.adx.toFixed(1)}` },
+        plus_di: { value: adx.plusDI, signal: adx.plusDI > adx.minusDI ? 'bullish' : 'bearish', score: adx.plusDI > adx.minusDI ? 2 : -2, tier: 2, description: `+DI vs -DI` },
+        stochastic: { value: stoch.k, signal: stoch.k > 80 ? 'bearish' : stoch.k < 20 ? 'bullish' : 'neutral', score: stoch.k > 80 ? -1 : stoch.k < 20 ? 2 : 0, tier: 2, description: `Stoch %K: ${stoch.k.toFixed(1)}` },
+        williams_r: { value: williamsR, signal: williamsR > -20 ? 'bearish' : williamsR < -80 ? 'bullish' : 'neutral', score: williamsR > -20 ? -1 : williamsR < -80 ? 2 : 0, tier: 2, description: `Will %R: ${williamsR.toFixed(1)}` },
+        cci: { value: cci, signal: cci > 100 ? 'bearish' : cci < -100 ? 'bullish' : 'neutral', score: cci > 100 ? -2 : cci < -100 ? 3 : 0, tier: 2, description: `CCI: ${cci.toFixed(1)}` },
+        mfi: { value: mfi, signal: mfi > 80 ? 'bearish' : mfi < 20 ? 'bullish' : 'neutral', score: mfi > 80 ? -2 : mfi < 20 ? 3 : 0, tier: 1, description: `MFI: ${mfi.toFixed(1)}` },
+        obv: { value: obv, signal: obv > 0 ? 'bullish' : 'bearish', score: obv > 0 ? 1 : -1, tier: 3, description: `OBV: ${obv.toFixed(0)}` },
+        atr: { value: atr, signal: 'neutral', score: 0, tier: 3, description: `ATR: ${atr.toFixed(4)}` },
+        parabolic_sar: { value: psar.sar, signal: psar.trend, score: psar.trend === 'bullish' ? 2 : -2, tier: 2, description: `PSAR: ${psar.sar.toFixed(2)}` },
+        volume_oscillator: { value: volOsc, signal: volOsc > 0 ? 'bullish' : 'bearish', score: volOsc > 5 ? 1 : volOsc < -5 ? -1 : 0, tier: 3, description: `Vol Osc: ${volOsc.toFixed(2)}%` }
+      };
+
+      const totalScore = Object.values(indicators).reduce((sum, indicator) => sum + indicator.score, 0);
+      let recommendation: TechnicalAnalysis['recommendation'];
+      if (totalScore >= 15) recommendation = 'strong_buy';
+      else if (totalScore >= 5) recommendation = 'buy';
+      else if (totalScore <= -15) recommendation = 'strong_sell';
+      else if (totalScore <= -5) recommendation = 'sell';
+      else recommendation = 'hold';
+
+      return {
+        symbol,
+        price: currentPrice,
+        indicators,
+        totalScore,
+        recommendation,
+        calculationTimestamp,
+        latestDataTime: latestCandleTime,
+        candles: klines.map(k => ({
+          t: k.openTime, o: parseFloat(k.open), h: parseFloat(k.high), l: parseFloat(k.low), c: parseFloat(k.close), v: parseFloat(k.volume)
+        }))
+      };
+    } catch (error) {
+      console.error(`Error analyzing ${symbol}:`, error);
+      throw error;
+    }
+  }
+
+  async scanTrendDip(limit: number = 20): Promise<any[]> {
+    try {
+      const topPairs = await binanceService.getTopVolumePairs(50);
+      const results: any[] = [];
+      for (const pair of topPairs) {
+        try {
+          const analysis = await this.analyzeSymbol(pair.symbol, '1h');
+          const closes = analysis.candles?.map(c => c.c) || [];
+          if (closes.length < 200) continue;
+          const currentPrice = analysis.price;
+          const rsi = analysis.indicators.rsi.value;
+          const ema200 = this.calculateEMA(closes, 200);
+          const isUptrend = currentPrice > ema200;
+          const isDip = rsi < 35;
+          if (isUptrend && isDip) {
+            results.push({
+              symbol: pair.symbol,
+              price: currentPrice,
+              rsi: rsi,
+              ema200: ema200,
+              volume: parseFloat(pair.quoteVolume),
+              priceChangePercent: parseFloat(pair.priceChangePercent),
+              timestamp: new Date().toISOString()
+            });
+          }
+          await new Promise(resolve => setTimeout(resolve, 50));
+        } catch (err) {
+          console.error(`Error analyzing ${pair.symbol} for TrendDip:`, err);
+        }
+      }
+      return results.sort((a, b) => a.rsi - b.rsi);
+    } catch (error) {
+      console.error('Error scanning for Trend+Dip:', error);
+      return [];
+    }
+  }
+
+  async scanHighPotential(filters: ScanFilters): Promise<TechnicalAnalysis[]> {
+    try {
+      let allPairs: string[];
+      try {
+        allPairs = await binanceService.getAllUSDTPairs();
+      } catch (apiError) {
+        console.warn('Failed to fetch USDT pairs, using fallback:', apiError);
+        allPairs = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'XRPUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT'];
+      }
+      const results: TechnicalAnalysis[] = [];
+      let pairsToScan = allPairs;
+      if (filters.excludeStablecoins) {
+        const stablecoins = ['USDT', 'USDC', 'BUSD', 'DAI', 'TUSD', 'USDP'];
+        pairsToScan = allPairs.filter(pair => !stablecoins.some(stable => pair.replace('USDT', '') === stable));
+      }
+      const topPairs = pairsToScan.slice(0, 15);
+      for (const symbol of topPairs) {
+        try {
+          const analysis = await this.analyzeSymbol(symbol, filters.timeframe || '1h');
+          if (filters.minScore && analysis.totalScore < filters.minScore) continue;
+          if (this.checkBullishCriteria(analysis)) results.push(analysis);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.error(`Error analyzing ${symbol}:`, error);
+          continue;
+        }
+      }
+      return results.sort((a, b) => b.totalScore - a.totalScore);
+    } catch (error) {
+      console.error('Error scanning coins:', error);
+      throw error;
+    }
+  }
+
+  private checkBullishCriteria(analysis: TechnicalAnalysis): boolean {
+    const indicators = analysis.indicators;
+    const emaPositive = indicators.ema_crossover?.signal === 'bullish';
+    const rsiHealthy = indicators.rsi?.value > 40 && indicators.rsi?.value < 70;
+    const macdPositive = indicators.macd?.signal === 'bullish';
+    const strongTrend = indicators.adx?.value > 25;
+    const criteriaCount = [emaPositive, rsiHealthy, macdPositive, strongTrend].filter(Boolean).length;
+    return criteriaCount >= 3 && analysis.totalScore > 10;
+  }
+
+  private convertTimeframeToBinance(timeframe: string): string {
+    const mapping: { [key: string]: string } = { '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d' };
+    return mapping[timeframe] || '1h';
+  }
+
+  private generateFallbackData(symbol: string): { closes: number[], highs: number[], lows: number[], volumes: number[] } {
+    const basePrice = 100;
+    const closes: number[] = [], highs: number[] = [], lows: number[] = [], volumes: number[] = [];
+    for (let i = 0; i < 100; i++) {
+      const price = basePrice * (1 + (i / 100) * 0.1);
+      closes.push(price);
+      highs.push(price * 1.02);
+      lows.push(price * 0.98);
+      volumes.push(100000);
+    }
+    return { closes, highs, lows, volumes };
+  }
+}
+
+const technicalIndicators = new TechnicalIndicators();
+
+// --- INLINED DEPENDENCIES END ---
 
 function json(res: any, code: number, body: any) {
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
