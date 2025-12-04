@@ -353,16 +353,27 @@ async function fearGreed(_req: any, res: any) {
 
 export default async function handler(req: any, res: any) {
   try {
-    let p = String((req.query?.path ?? "")).replace(/^\/+/, "");
-    if (!p && req.url) {
-      const u = new URL(req.url, "http://localhost");
-      if (u.pathname.startsWith("/api/")) {
-        p = u.pathname.slice(5).replace(/^\/+/, "");
+    // Vercel catch-all route provides path segments in req.query.all
+    let seg: string[] = [];
+    if (req.query && req.query.all) {
+      if (Array.isArray(req.query.all)) {
+        seg = req.query.all;
+      } else {
+        seg = [String(req.query.all)];
       }
+    } else {
+      // Fallback to parsing req.url if req.query.all is missing
+      let p = String((req.query?.path ?? "")).replace(/^\/+/, "");
+      if (!p && req.url) {
+        const u = new URL(req.url, "http://localhost");
+        if (u.pathname.startsWith("/api/")) {
+          p = u.pathname.slice(5).replace(/^\/+/, "");
+        }
+      }
+      seg = p.split("/").filter(Boolean);
     }
 
-    if (!p) return alive(req, res);
-    const seg = p.split("/").filter(Boolean);
+    if (seg.length === 0) return alive(req, res);
 
     if (seg[0] === "health") return health(req, res);
 
