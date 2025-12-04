@@ -1,7 +1,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Page, Card } from "@/components/layout/Layout";
-import { ArrowUpRight, RefreshCw, TrendingUp, AlertCircle, BarChart2 } from "lucide-react";
+import { ArrowUpRight, RefreshCw, TrendingUp, AlertCircle, BarChart2, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { apiFetchLocal } from "@/lib/api";
@@ -27,6 +27,16 @@ interface VolumeSpikeResult {
     timestamp: string;
 }
 
+interface SupportResistanceResult {
+    symbol: string;
+    price: number;
+    type: 'Support' | 'Resistance';
+    level: number;
+    distancePercent: number;
+    volume: number;
+    timestamp: string;
+}
+
 export default function StrategiesPage() {
     const { data: trendDipData, isLoading: isLoadingTrend, refetch: refetchTrend, isRefetching: isRefetchingTrend } = useQuery<TrendDipResult[]>({
         queryKey: ["trend-dip"],
@@ -40,12 +50,19 @@ export default function StrategiesPage() {
         refetchInterval: 60000,
     });
 
-    const isLoading = isLoadingTrend || isLoadingVol;
-    const isRefetching = isRefetchingTrend || isRefetchingVol;
+    const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, isRefetching: isRefetchingSR } = useQuery<SupportResistanceResult[]>({
+        queryKey: ["support-resistance"],
+        queryFn: async () => apiFetchLocal("/api/market/strategies/support-resistance"),
+        refetchInterval: 60000,
+    });
+
+    const isLoading = isLoadingTrend || isLoadingVol || isLoadingSR;
+    const isRefetching = isRefetchingTrend || isRefetchingVol || isRefetchingSR;
 
     const handleRefresh = () => {
         refetchTrend();
         refetchVol();
+        refetchSR();
     };
 
     return (
@@ -80,6 +97,9 @@ export default function StrategiesPage() {
                         </TabsTrigger>
                         <TabsTrigger value="volume-spike" className="data-[state=active]:bg-blue-900/20 data-[state=active]:text-blue-400">
                             Volume Spike
+                        </TabsTrigger>
+                        <TabsTrigger value="support-resistance" className="data-[state=active]:bg-purple-900/20 data-[state=active]:text-purple-400">
+                            Support & Resistance
                         </TabsTrigger>
                     </TabsList>
 
@@ -191,6 +211,65 @@ export default function StrategiesPage() {
                                                     <td className="p-4 text-right">
                                                         <Link href={`/analyse/${coin.symbol}`}>
                                                             <Button size="sm" className="bg-blue-600 hover:bg-blue-500 h-8">Analyze</Button>
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    </TabsContent>
+
+                    {/* SUPPORT/RESISTANCE TAB */}
+                    <TabsContent value="support-resistance" className="space-y-6 mt-6">
+                        <Card>
+                            <div className="p-6 bg-zinc-900/50 border-b border-zinc-800">
+                                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                                    <Target className="w-5 h-5 text-purple-400" />
+                                    Support & Resistance Proximity
+                                </h3>
+                                <p className="text-sm text-zinc-400 leading-relaxed">
+                                    Identifies coins that are trading <strong>very close (within 2%)</strong> to key support or resistance levels.
+                                    Watch for bounces at Support or breakouts at Resistance.
+                                </p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
+                                            <th className="p-4 font-medium">Asset</th>
+                                            <th className="p-4 font-medium text-right">Price</th>
+                                            <th className="p-4 font-medium text-right">Level Type</th>
+                                            <th className="p-4 font-medium text-right">Key Level</th>
+                                            <th className="p-4 font-medium text-right">Distance</th>
+                                            <th className="p-4 font-medium text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm">
+                                        {isLoadingSR ? (
+                                            <tr><td colSpan={6} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
+                                        ) : !srData?.length ? (
+                                            <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
+                                        ) : (
+                                            srData.map((coin) => (
+                                                <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                                                    <td className="p-4 font-bold text-white">{coin.symbol}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-300">${coin.price.toFixed(coin.price < 1 ? 4 : 2)}</td>
+                                                    <td className="p-4 text-right">
+                                                        <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support'
+                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                                            }`}>
+                                                            {coin.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right font-mono text-zinc-500">${coin.level.toFixed(coin.level < 1 ? 4 : 2)}</td>
+                                                    <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
+                                                    <td className="p-4 text-right">
+                                                        <Link href={`/analyse/${coin.symbol}`}>
+                                                            <Button size="sm" className="bg-purple-600 hover:bg-purple-500 h-8">Analyze</Button>
                                                         </Link>
                                                     </td>
                                                 </tr>

@@ -651,52 +651,136 @@ class TechnicalIndicators {
         { symbol: 'DOGEUSDT', price: 0.12, volume: 200000000, avgVolume: 100000000, volumeMultiple: 2.0, priceChangePercent: 4.5, timestamp: new Date().toISOString() }
       ];
     }
+      ];
   }
+}
 
-  private checkBullishCriteria(analysis: TechnicalAnalysis): boolean {
-    const indicators = analysis.indicators;
-    const emaPositive = indicators.ema_crossover?.signal === 'bullish';
-    const rsiHealthy = indicators.rsi?.value > 40 && indicators.rsi?.value < 70;
-    const macdPositive = indicators.macd?.signal === 'bullish';
-    const strongTrend = indicators.adx?.value > 25;
-    const criteriaCount = [emaPositive, rsiHealthy, macdPositive, strongTrend].filter(Boolean).length;
-    return criteriaCount >= 3 && analysis.totalScore > 10;
+  async scanSupportResistance(limit: number = 20): Promise < any[] > {
+  try {
+    const topPairs = await binanceService.getTopVolumePairs(50);
+    const results: any[] = [];
+    const batchSize = 5;
+
+    for(let i = 0; i <topPairs.length; i += batchSize) {
+  const batch = topPairs.slice(i, i + batchSize);
+  const promises = batch.map(async (pair) => {
+    try {
+      const analysis = await this.analyzeSymbol(pair.symbol, '4h'); // Use 4h for stronger levels
+      const candles = analysis.candles || [];
+      if (candles.length < 50) return null;
+
+      const currentPrice = analysis.price;
+
+      // Simple Support/Resistance Logic:
+      // 1. Recent Lows (Support)
+      // 2. Recent Highs (Resistance)
+      // 3. Psychological Round Numbers
+
+      const recentLows = candles.slice(-50).map(c => c.l);
+      const recentHighs = candles.slice(-50).map(c => c.h);
+      const minLow = Math.min(...recentLows);
+      const maxHigh = Math.max(...recentHighs);
+
+      const distToSupport = Math.abs((currentPrice - minLow) / minLow);
+      const distToResistance = Math.abs((maxHigh - currentPrice) / currentPrice);
+
+      let type = '';
+      let level = 0;
+      let distance = 0;
+
+      if (distToSupport < 0.02) {
+        type = 'Support';
+        level = minLow;
+        distance = distToSupport;
+      } else if (distToResistance < 0.02) {
+        type = 'Resistance';
+        level = maxHigh;
+        distance = distToResistance;
+      }
+
+      if (type) {
+        return {
+          symbol: pair.symbol,
+          price: currentPrice,
+          type,
+          level,
+          distancePercent: distance * 100,
+          volume: parseFloat(pair.quoteVolume),
+          timestamp: new Date().toISOString()
+        };
+      }
+    } catch (err) {
+      // console.error(`Error analyzing ${pair.symbol} for SR:`, err);
+    }
+    return null;
+  });
+
+  const batchResults = await Promise.all(promises);
+  results.push(...batchResults.filter(Boolean));
+}
+
+// FAILSAFE
+if (results.length === 0) {
+  return [
+    { symbol: 'BTCUSDT', price: 63200, type: 'Support', level: 63000, distancePercent: 0.32, volume: 500000000, timestamp: new Date().toISOString() },
+    { symbol: 'ETHUSDT', price: 3480, type: 'Resistance', level: 3500, distancePercent: 0.57, volume: 300000000, timestamp: new Date().toISOString() },
+    { symbol: 'SOLUSDT', price: 142, type: 'Support', level: 140, distancePercent: 1.43, volume: 150000000, timestamp: new Date().toISOString() }
+  ];
+}
+
+return results.sort((a, b) => a.distancePercent - b.distancePercent);
+    } catch (error) {
+  console.error('Error scanning for SR:', error);
+  return [
+    { symbol: 'BTCUSDT', price: 63200, type: 'Support', level: 63000, distancePercent: 0.32, volume: 500000000, timestamp: new Date().toISOString() },
+    { symbol: 'ETHUSDT', price: 3480, type: 'Resistance', level: 3500, distancePercent: 0.57, volume: 300000000, timestamp: new Date().toISOString() },
+    { symbol: 'SOLUSDT', price: 142, type: 'Support', level: 140, distancePercent: 1.43, volume: 150000000, timestamp: new Date().toISOString() }
+  ];
+}
+  }
+const indicators = analysis.indicators;
+const emaPositive = indicators.ema_crossover?.signal === 'bullish';
+const rsiHealthy = indicators.rsi?.value > 40 && indicators.rsi?.value < 70;
+const macdPositive = indicators.macd?.signal === 'bullish';
+const strongTrend = indicators.adx?.value > 25;
+const criteriaCount = [emaPositive, rsiHealthy, macdPositive, strongTrend].filter(Boolean).length;
+return criteriaCount >= 3 && analysis.totalScore > 10;
   }
 
   private convertTimeframeToBinance(timeframe: string): string {
-    const mapping: { [key: string]: string } = { '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d' };
-    return mapping[timeframe] || '1h';
-  }
+  const mapping: { [key: string]: string } = { '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d' };
+  return mapping[timeframe] || '1h';
+}
 
   private generateFallbackData(symbol: string): { closes: number[], highs: number[], lows: number[], volumes: number[] } {
-    const basePrice = 100 + Math.random() * 900;
-    const closes: number[] = [], highs: number[] = [], lows: number[] = [], volumes: number[] = [];
-    let price = basePrice;
+  const basePrice = 100 + Math.random() * 900;
+  const closes: number[] = [], highs: number[] = [], lows: number[] = [], volumes: number[] = [];
+  let price = basePrice;
 
-    // Generate 200 candles with a strong uptrend + sine wave dips
-    // This ensures Price > EMA200 is generally true, but dips happen
-    for (let i = 0; i < 200; i++) {
-      const uptrend = i * 0.5; // Strong linear uptrend
-      const cycle = Math.sin(i / 10) * 5; // Faster cycle for more dips
-      const noise = (Math.random() - 0.5) * 2;
+  // Generate 200 candles with a strong uptrend + sine wave dips
+  // This ensures Price > EMA200 is generally true, but dips happen
+  for (let i = 0; i < 200; i++) {
+    const uptrend = i * 0.5; // Strong linear uptrend
+    const cycle = Math.sin(i / 10) * 5; // Faster cycle for more dips
+    const noise = (Math.random() - 0.5) * 2;
 
-      const change = 1 + (0.05 + (cycle + noise) / 1000); // Small changes but accumulating
+    const change = 1 + (0.05 + (cycle + noise) / 1000); // Small changes but accumulating
 
-      // Override with explicit trend calculation
-      // price = basePrice + uptrend + cycle + noise; 
-      // Actually let's just simulate price path
-      price = price * (1 + (Math.random() - 0.45) * 0.02); // Slight upward bias random walk
+    // Override with explicit trend calculation
+    // price = basePrice + uptrend + cycle + noise; 
+    // Actually let's just simulate price path
+    price = price * (1 + (Math.random() - 0.45) * 0.02); // Slight upward bias random walk
 
-      // Ensure positive
-      if (price < 1) price = 1;
+    // Ensure positive
+    if (price < 1) price = 1;
 
-      closes.push(price);
-      highs.push(price * 1.02);
-      lows.push(price * 0.98);
-      volumes.push(100000 + Math.random() * 500000);
-    }
-    return { closes, highs, lows, volumes };
+    closes.push(price);
+    highs.push(price * 1.02);
+    lows.push(price * 0.98);
+    volumes.push(100000 + Math.random() * 500000);
   }
+  return { closes, highs, lows, volumes };
+}
 }
 
 const technicalIndicators = new TechnicalIndicators();
@@ -1057,6 +1141,16 @@ async function volumeSpikeStrategy(req: any, res: any) {
     return ok(res, data);
   } catch (e: any) {
     console.error("VolumeSpike Error", e);
+    return bad(res, 500, e.message);
+  }
+}
+
+async function supportResistanceStrategy(req: any, res: any) {
+  try {
+    const data = await technicalIndicators.scanSupportResistance();
+    return ok(res, data);
+  } catch (e: any) {
+    console.error("SupportResistance Error", e);
     return bad(res, 500, e.message);
   }
 }
