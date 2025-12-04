@@ -158,16 +158,16 @@ async function scan(req: any, res: any) {
   const { macd: macdLine, signal: sigLine, hist } = macd(closes, 12, 26, 9);
   const { k: stochK, d: stochD } = stochastic(highs, lows, closes, 14, 3);
 
-  const lastClose = closes.at(-1)!;
-  const lastRSI = rsiArr.at(-1) ?? null;
-  const lastMACD = macdLine.at(-1) ?? null;
-  const lastSignal = sigLine.at(-1) ?? null;
-  const lastHist = hist.at(-1) ?? null;
-  const lastEMA20 = ema20Arr.at(-1) ?? null;
-  const lastEMA50 = ema50Arr.at(-1) ?? null;
-  const lastEMA200 = ema200Arr.at(-1) ?? null;
-  const lastK = stochK.at(-1) ?? null;
-  const lastD = stochD.at(-1) ?? null;
+  const lastClose = closes[closes.length - 1];
+  const lastRSI = rsiArr.length ? rsiArr[rsiArr.length - 1] : null;
+  const lastMACD = macdLine.length ? macdLine[macdLine.length - 1] : null;
+  const lastSignal = sigLine.length ? sigLine[sigLine.length - 1] : null;
+  const lastHist = hist.length ? hist[hist.length - 1] : null;
+  const lastEMA20 = ema20Arr.length ? ema20Arr[ema20Arr.length - 1] : null;
+  const lastEMA50 = ema50Arr.length ? ema50Arr[ema50Arr.length - 1] : null;
+  const lastEMA200 = ema200Arr.length ? ema200Arr[ema200Arr.length - 1] : null;
+  const lastK = stochK.length ? stochK[stochK.length - 1] : null;
+  const lastD = stochD.length ? stochD[stochD.length - 1] : null;
 
   const isMACDBull = lastMACD !== null && lastSignal !== null ? lastMACD > lastSignal : false;
   const priceVs20 = lastEMA20 !== null ? (lastClose > lastEMA20 ? "above" : "below") : "unknown";
@@ -248,7 +248,7 @@ async function marketRsi(req: any, res: any) {
       .slice(0, limit)
       .map((t: any) => ({ symbol: t.symbol, price: parseFloat(t.lastPrice), change: parseFloat(t.priceChangePercent) }));
 
-    const results = [];
+    const results: any[] = [];
 
     // 2. Fetch candles and calc RSI (batching to avoid rate limits/timeouts)
     const batchSize = 5;
@@ -263,7 +263,7 @@ async function marketRsi(req: any, res: any) {
 
           const closes = klines.map((k: any) => parseFloat(k[4]));
           const rsiArr = rsi(closes, 14);
-          const lastRsi = rsiArr.at(-1);
+          const lastRsi = rsiArr.length ? rsiArr[rsiArr.length - 1] : undefined;
 
           if (lastRsi === undefined) return null;
 
@@ -311,7 +311,7 @@ async function highPotential(_req: any, res: any) {
     pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT', 'NEARUSDT', 'FILUSDT', 'INJUSDT', 'OPUSDT', 'ARBUSDT'];
   }
 
-  const results = [];
+  const results: any[] = [];
 
   for (const symbol of pairs) {
     try {
@@ -332,21 +332,21 @@ async function highPotential(_req: any, res: any) {
       const { hist } = macd(closes, 12, 26, 9);
       const obvArr = obv(closes, volumes);
       const bb = bollingerBands(closes, 20, 2);
-      const avgVolume = sma(volumes, 20).at(-1) || 0;
+      const avgVolume = sma(volumes, 20).length ? sma(volumes, 20)[sma(volumes, 20).length - 1] : 0;
 
-      const ema20 = ema20Arr.at(-1) || 0;
-      const ema50 = ema50Arr.at(-1) || 0;
-      const rsiVal = rsiArr.at(-1) || 0;
-      const macdHist = hist.at(-1) || 0;
+      const ema20 = ema20Arr.length ? ema20Arr[ema20Arr.length - 1] : 0;
+      const ema50 = ema50Arr.length ? ema50Arr[ema50Arr.length - 1] : 0;
+      const rsiVal = rsiArr.length ? rsiArr[rsiArr.length - 1] : 0;
+      const macdHist = hist.length ? hist[hist.length - 1] : 0;
 
       // OBV Slope (last 5)
       const last5Obv = obvArr.slice(-5);
       const obvSlope = (last5Obv[last5Obv.length - 1] - last5Obv[0]) / 5;
 
       // Volatility
-      const upper = bb.upper.at(-1) || 0;
-      const lower = bb.lower.at(-1) || 0;
-      const middle = bb.middle.at(-1) || 0;
+      const upper = bb.upper.length ? bb.upper[bb.upper.length - 1] : 0;
+      const lower = bb.lower.length ? bb.lower[bb.lower.length - 1] : 0;
+      const middle = bb.middle.length ? bb.middle[bb.middle.length - 1] : 0;
       const bandwidth = middle !== 0 ? (upper - lower) / middle : 0;
       let volatilityState = "normal";
       if (bandwidth < 0.05) volatilityState = "low";
