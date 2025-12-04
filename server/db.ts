@@ -6,5 +6,19 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL environment variable is required');
 }
 
-const sql = neon(process.env.DATABASE_URL);
-export const db = drizzle(sql, { schema });
+let db: any;
+
+if (process.env.DATABASE_URL.includes('dummy')) {
+  console.warn('[DB] Using mock database connection for development');
+  db = {
+    select: () => ({ from: () => ({ where: () => ({ orderBy: () => ({ limit: () => [] }) }) }) }),
+    insert: () => ({ values: () => ({ returning: () => [] }) }),
+    update: () => ({ set: () => ({ where: () => ({ returning: () => [] }) }) }),
+    delete: () => ({ where: () => [] }),
+  };
+} else {
+  const sql = neon(process.env.DATABASE_URL);
+  db = drizzle(sql, { schema });
+}
+
+export { db };
