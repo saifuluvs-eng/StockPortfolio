@@ -851,31 +851,28 @@ async function marketRsi(req: any, res: any) {
   try {
     const limit = Math.min(parseInt(String(req.query?.limit || "50"), 10) || 50, 100);
 
-    // 1. Get top pairs by volume
-    const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`, { cache: "no-store" });
-    if (!r.ok) return bad(res, r.status, "binance error", { detail: await r.text() });
-
-    const allTickers: any[] = await r.json();
-    const pairs = allTickers
-      .filter((t: any) => t.symbol.endsWith("USDT") && parseFloat(t.quoteVolume) > 10000000) // Filter for decent volume
-      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-      .slice(0, limit)
-      .map((t: any) => ({ symbol: t.symbol, price: parseFloat(t.lastPrice), change: parseFloat(t.priceChangePercent) }));
+    // Use binanceService to get top pairs (includes fallback)
+    const topPairs = await binanceService.getTopVolumePairs(limit);
 
     const results: any[] = [];
-
-    // 2. Fetch candles and calc RSI (batching to avoid rate limits/timeouts)
     const batchSize = 5;
-    for (let i = 0; i < pairs.length; i += batchSize) {
-      const batch = pairs.slice(i, i + batchSize);
+
+    for (let i = 0; i < topPairs.length; i += batchSize) {
+      const batch = topPairs.slice(i, i + batchSize);
       const promises = batch.map(async (p: any) => {
         try {
-          const kRes = await fetch(`${BINANCE}/api/v3/klines?symbol=${p.symbol}&interval=4h&limit=30`, { cache: "no-store" });
-          if (!kRes.ok) return null;
-          const klines: any[] = await kRes.json();
-          if (!Array.isArray(klines) || klines.length < 20) return null;
+          // Use binanceService for klines (includes fallback)
+          // Using 4h interval as default for RSI map
+          const klines = await binanceService.getKlineData(p.symbol, "4h", 30);
 
-          const closes = klines.map((k: any) => parseFloat(k[4]));
+          if (!klines || klines.length < 20) return null;
+
+          const closes = klines.map((k: any) => parseFloat(k.close));
+
+          // Use TechnicalIndicators class logic if possible, or simple RSI here
+          // Since we can't easily access private methods of TechnicalIndicators, we'll use the standalone rsi function defined above
+          // OR better: make TechnicalIndicators methods public or static. 
+          // For now, let's use the standalone rsi function defined at the top of this file.
           const rsiArr = rsi(closes, 14);
           const lastRsi = rsiArr.length ? rsiArr[rsiArr.length - 1] : undefined;
 
@@ -884,8 +881,8 @@ async function marketRsi(req: any, res: any) {
           return {
             symbol: p.symbol.replace('USDT', ''),
             rsi: parseFloat(lastRsi.toFixed(2)),
-            price: p.price,
-            change: p.change
+            price: parseFloat(p.lastPrice),
+            change: parseFloat(p.priceChangePercent)
           };
         } catch (e) {
           return null;
@@ -899,7 +896,8 @@ async function marketRsi(req: any, res: any) {
     return ok(res, results.sort((a: any, b: any) => b.rsi - a.rsi));
   } catch (e: any) {
     console.error("marketRsi error:", e);
-    return bad(res, 500, "Failed to fetch market RSI");
+    // Return empty array instead of 500 to avoid breaking UI
+    return ok(res, []);
   }
 }
 

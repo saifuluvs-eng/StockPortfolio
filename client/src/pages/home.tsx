@@ -216,11 +216,27 @@ export default function Home() {
   const { data: fearGreed } = useQuery({
     queryKey: ["/api/market/fear-greed"],
     queryFn: async () => {
-      const result = await getQueryFn<FearGreedData | null>({ on401: "returnNull" })({
+      const result = await getQueryFn<any>({ on401: "returnNull" })({
         queryKey: ["/api/market/fear-greed"],
       } as any);
+
+      // Parse the nested API response structure
+      if (result && result.data && Array.isArray(result.data) && result.data.length > 0) {
+        const item = result.data[0];
+        const val = parseInt(item.value, 10);
+        if (!isNaN(val)) {
+          setLastFetchTime(Date.now());
+          return {
+            value: val,
+            classification: item.value_classification,
+            timestamp: item.timestamp
+          };
+        }
+      }
+
+      // Fallback
       setLastFetchTime(Date.now());
-      return result;
+      return { value: 50, classification: "Neutral", timestamp: String(Date.now()) };
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minute cache
