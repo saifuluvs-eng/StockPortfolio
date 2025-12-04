@@ -601,14 +601,25 @@ class TechnicalIndicators {
   }
 
   private generateFallbackData(symbol: string): { closes: number[], highs: number[], lows: number[], volumes: number[] } {
-    const basePrice = 100;
+    const basePrice = 100 + Math.random() * 900;
     const closes: number[] = [], highs: number[] = [], lows: number[] = [], volumes: number[] = [];
-    for (let i = 0; i < 100; i++) {
-      const price = basePrice * (1 + (i / 100) * 0.1);
+    let price = basePrice;
+
+    // Generate 200 candles with a sine wave + random noise to simulate trends and dips
+    for (let i = 0; i < 200; i++) {
+      const trend = Math.sin(i / 20) * 2; // Sine wave trend
+      const noise = (Math.random() - 0.5) * 3; // Random noise
+      const change = 1 + (trend + noise) / 100;
+
+      price = price * change;
+
+      // Ensure price doesn't go negative
+      if (price < 1) price = 1;
+
       closes.push(price);
-      highs.push(price * 1.02);
-      lows.push(price * 0.98);
-      volumes.push(100000);
+      highs.push(price * (1 + Math.random() * 0.02));
+      lows.push(price * (1 - Math.random() * 0.02));
+      volumes.push(100000 + Math.random() * 500000);
     }
     return { closes, highs, lows, volumes };
   }
