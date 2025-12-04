@@ -24,6 +24,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
       "/ai-insights": "AI",
       "/news": "News",
       "/high-potential": "High Potential",
+      "/strategies": "Strategies",
+      "/data": "Market Data",
     };
 
     for (const [route, title] of Object.entries(titles)) {
