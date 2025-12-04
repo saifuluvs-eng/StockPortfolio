@@ -1,5 +1,6 @@
 // api/all.ts
 // Router via query param: /api/all?path=market/ticker/BTCUSDT
+import { technicalIndicators } from "../../server/services/technicalIndicators";
 
 function json(res: any, code: number, body: any) {
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
