@@ -1,6 +1,7 @@
 // api/all.ts
 // Router via query param: /api/all?path=market/ticker/BTCUSDT
-import { technicalIndicators } from "./_lib/technicalIndicators";
+import { technicalIndicators } from "./lib/technicalIndicators";
+import { binanceService } from "./lib/binanceService";
 
 function json(res: any, code: number, body: any) {
   res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
@@ -111,26 +112,24 @@ async function ticker(_req: any, res: any, symbol: string) {
   return ok(res, { ok: true, symbol: sym, data });
 }
 async function gainers(_req: any, res: any) {
-  const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`, { cache: "no-store" });
-  if (!r.ok) return bad(res, r.status, "binance error", { detail: await r.text() });
-  const list: any[] = await r.json();
-  const toNumber = (value: any) => {
-    const parsed = typeof value === "number" ? value : parseFloat(String(value));
-    return Number.isFinite(parsed) ? parsed : 0;
-  };
-  const rows = list
-    .filter((t: any) => typeof t?.symbol === "string" && t.symbol.endsWith("USDT"))
-    .map((t: any) => ({
+  try {
+    const limit = Math.min(parseInt(String(_req.query?.limit || "50"), 10) || 50, 100);
+    const gainers = await binanceService.getTopGainers(limit);
+
+    const rows = gainers.map(t => ({
       symbol: t.symbol,
-      price: toNumber(t.lastPrice),
-      changePct: toNumber(t.priceChangePercent),
-      volume: toNumber(t.quoteVolume ?? t.volume),
-      high: toNumber(t.highPrice),
-      low: toNumber(t.lowPrice),
-    }))
-    .sort((a, b) => b.changePct - a.changePct)
-    .slice(0, 50);
-  return ok(res, { rows });
+      price: parseFloat(t.lastPrice),
+      changePct: parseFloat(t.priceChangePercent),
+      volume: parseFloat(t.quoteVolume),
+      high: parseFloat(t.highPrice),
+      low: parseFloat(t.lowPrice),
+    }));
+
+    return ok(res, { rows });
+  } catch (e: any) {
+    console.error("gainers error:", e);
+    return bad(res, 500, "Failed to fetch gainers", { error: e.message });
+  }
 }
 async function scan(req: any, res: any) {
   const q = req.query || {};
@@ -290,118 +289,65 @@ async function marketRsi(req: any, res: any) {
 }
 
 async function highPotential(_req: any, res: any) {
-  let pairs: string[] = [];
   try {
-    // Fetch top 50 gainers
-    const r = await fetch(`${BINANCE}/api/v3/ticker/24hr`, { cache: "no-store" });
-    if (r.ok) {
-      const allTickers: any[] = await r.json();
-      pairs = allTickers
-        .filter((t: any) => t.symbol.endsWith("USDT") && parseFloat(t.quoteVolume) > 1000000)
-        .sort((a: any, b: any) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
-        .slice(0, 50)
-        .map((t: any) => t.symbol);
-    }
-  } catch (e) {
-    console.error("Error fetching gainers for high potential scan", e);
+    const filters = {
+      timeframe: '1h',
+      minScore: 5,
+      excludeStablecoins: true
+    };
+
+    const results = await technicalIndicators.scanHighPotential(filters);
+
+    const data = results.map(r => ({
+      symbol: r.symbol,
+      score: r.totalScore,
+      passes: r.recommendation === 'buy' || r.recommendation === 'strong_buy',
+      passesDetail: {
+        trend: r.indicators.ema_crossover?.score > 0,
+        rsi: r.indicators.rsi?.score > 0,
+        macd: r.indicators.macd?.score > 0,
+        volume: r.indicators.obv?.score > 0,
+        obv: r.indicators.obv?.score > 0,
+        volatility: r.indicators.bb_squeeze?.score > 0
+      },
+      price: r.price,
+      rsi: r.indicators.rsi?.value || 50,
+      volume: r.candles && r.candles.length ? r.candles[r.candles.length - 1].v : 0,
+      avgVolume: 0,
+      volatilityState: "normal"
+    }));
+
+    return ok(res, { data });
+  } catch (e: any) {
+    console.error("high-potential error:", e);
+    return bad(res, 500, "Failed to scan high potential", { error: e.message });
   }
-
-  // Fallback if fetch fails
-  if (pairs.length === 0) {
-    pairs = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'BNBUSDT', 'ADAUSDT', 'XRPUSDT', 'DOGEUSDT', 'AVAXUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT', 'LINKUSDT', 'UNIUSDT', 'ATOMUSDT', 'ETCUSDT', 'NEARUSDT', 'FILUSDT', 'INJUSDT', 'OPUSDT', 'ARBUSDT'];
-  }
-
-  const results: any[] = [];
-
-  for (const symbol of pairs) {
-    try {
-      const r = await fetch(`${BINANCE}/api/v3/klines?symbol=${symbol}&interval=4h&limit=100`, { cache: "no-store" });
-      if (!r.ok) continue;
-      const klines: any[] = await r.json();
-      if (!Array.isArray(klines) || klines.length < 50) continue;
-
-      const closes = klines.map(k => parseFloat(k[4]));
-      const volumes = klines.map(k => parseFloat(k[5]));
-      const price = closes[closes.length - 1];
-      const volume = volumes[volumes.length - 1];
-
-      // Indicators
-      const ema20Arr = ema(closes, 20);
-      const ema50Arr = ema(closes, 50);
-      const rsiArr = rsi(closes, 14);
-      const { hist } = macd(closes, 12, 26, 9);
-      const obvArr = obv(closes, volumes);
-      const bb = bollingerBands(closes, 20, 2);
-      const avgVolume = sma(volumes, 20).length ? sma(volumes, 20)[sma(volumes, 20).length - 1] : 0;
-
-      const ema20 = ema20Arr.length ? ema20Arr[ema20Arr.length - 1] : 0;
-      const ema50 = ema50Arr.length ? ema50Arr[ema50Arr.length - 1] : 0;
-      const rsiVal = rsiArr.length ? rsiArr[rsiArr.length - 1] : 0;
-      const macdHist = hist.length ? hist[hist.length - 1] : 0;
-
-      // OBV Slope (last 5)
-      const last5Obv = obvArr.slice(-5);
-      const obvSlope = (last5Obv[last5Obv.length - 1] - last5Obv[0]) / 5;
-
-      // Volatility
-      const upper = bb.upper.length ? bb.upper[bb.upper.length - 1] : 0;
-      const lower = bb.lower.length ? bb.lower[bb.lower.length - 1] : 0;
-      const middle = bb.middle.length ? bb.middle[bb.middle.length - 1] : 0;
-      const bandwidth = middle !== 0 ? (upper - lower) / middle : 0;
-      let volatilityState = "normal";
-      if (bandwidth < 0.05) volatilityState = "low";
-      if (bandwidth > 0.15) volatilityState = "high";
-
-      // Scoring
-      let score = 0;
-      const passesDetail = {
-        trend: false,
-        rsi: false,
-        macd: false,
-        volume: false,
-        obv: false,
-        volatility: false
-      };
-
-      if (price > ema20) { passesDetail.trend = true; score += 1; }
-      if (ema20 > ema50) { passesDetail.trend = true; score += 1; }
-      if (rsiVal >= 48 && rsiVal <= 65) { passesDetail.rsi = true; score += 2; }
-      if (macdHist > 0) { passesDetail.macd = true; score += 1; }
-      if (volume > avgVolume) { passesDetail.volume = true; score += 2; }
-      if (obvSlope > 0) { passesDetail.obv = true; score += 1; }
-      if (volatilityState === "normal" || volatilityState === "high") { passesDetail.volatility = true; score += 1; }
-
-      const passes = score >= 5;
-
-      if (score > 0) {
-        results.push({
-          symbol,
-          score,
-          passes,
-          passesDetail,
-          price,
-          rsi: rsiVal,
-          volume,
-          avgVolume,
-          volatilityState
-        });
-      }
-    } catch (e) {
-      console.error(`Error scanning ${symbol}`, e);
-    }
-  }
-
-  results.sort((a, b) => b.score - a.score);
-  return ok(res, { data: results });
 }
 
 async function trendDipStrategy(req: any, res: any) {
   try {
     const data = await technicalIndicators.scanTrendDip();
-    res.json(data);
+    return ok(res, data);
   } catch (e: any) {
     console.error("TrendDip Error", e);
-    res.status(500).json({ error: e.message });
+    return bad(res, 500, e.message);
+  }
+}
+
+async function fearGreed(_req: any, res: any) {
+  try {
+    const r = await fetch("https://api.alternative.me/fng/?limit=1");
+    if (!r.ok) {
+      throw new Error("Failed to fetch fear and greed index");
+    }
+    const data = await r.json();
+    return ok(res, data);
+  } catch (e: any) {
+    console.error("fear-greed error:", e);
+    return ok(res, {
+      name: "Fear & Greed Index",
+      data: [{ value: "50", value_classification: "Neutral", timestamp: String(Math.floor(Date.now() / 1000)) }]
+    });
   }
 }
 
@@ -425,6 +371,7 @@ export default async function handler(req: any, res: any) {
       if (seg[1] === "gainers") return gainers(req, res);
       if (seg[1] === "rsi") return marketRsi(req, res);
       if (seg[1] === "strategies" && seg[2] === "trend-dip") return trendDipStrategy(req, res);
+      if (seg[1] === "fear-greed") return fearGreed(req, res);
       return bad(res, 404, "Unknown market route", { path: p });
     }
 
