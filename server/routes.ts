@@ -620,6 +620,16 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get('/api/market/strategies/trend-dip', async (req: Request, res: Response) => {
+    try {
+      const data = await technicalIndicators.scanTrendDip();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching trend-dip strategy:", error);
+      res.status(500).json({ message: "Failed to fetch trend-dip strategy" });
+    }
+  });
+
   // Watchlist routes
   app.get('/api/watchlist', isAuthenticated, async (req: Request, res: Response) => {
     try {
