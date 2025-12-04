@@ -621,8 +621,10 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.get('/api/market/strategies/trend-dip', async (req: Request, res: Response) => {
+    console.log("[API] /api/market/strategies/trend-dip called");
     try {
       const data = await technicalIndicators.scanTrendDip();
+      console.log(`[API] trend-dip success. Found ${data.length} items.`);
       res.json(data);
     } catch (error) {
       console.error("Error fetching trend-dip strategy:", error);
