@@ -4,6 +4,7 @@ import { Page, Card } from "@/components/layout/Layout";
 import { ArrowUpRight, RefreshCw, TrendingUp, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { api } from "@/lib/api";
 
 interface TrendDipResult {
     symbol: string;
@@ -19,7 +20,7 @@ export default function StrategiesPage() {
     const { data, isLoading, error, refetch, isRefetching } = useQuery<TrendDipResult[]>({
         queryKey: ["trend-dip"],
         queryFn: async () => {
-            const res = await fetch("/api/market/strategies/trend-dip");
+            const res = await api("/api/market/strategies/trend-dip");
             if (!res.ok) throw new Error("Failed to fetch strategy data");
             return res.json();
         },
