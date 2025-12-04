@@ -11,6 +11,12 @@ const API_BASE = typeof envBase === "string" ? envBase.trim().replace(/\/+$/, ""
 function resolveUrl(path: string): string {
   if (/^https?:/i.test(path)) return path;
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  // Force local API if running on localhost, regardless of env vars
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return cleanPath;
+  }
+
   if (!API_BASE) return cleanPath;
   return `${API_BASE}${cleanPath}`;
 }
@@ -72,7 +78,7 @@ export async function apiFetch(path: string, init: RequestInit = {}, retries = 3
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const response = await api(path, { ...init, headers });
-      
+
       // Retry on 502 (Bad Gateway - usually means backend is rate limited/busy)
       if (response.status === 502 && attempt < retries - 1) {
         const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
@@ -80,7 +86,7 @@ export async function apiFetch(path: string, init: RequestInit = {}, retries = 3
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
-      
+
       if (!response.ok) {
         const text = await response.text().catch(() => "");
         throw new Error(`API ${response.status}: ${text || response.statusText}`);
@@ -121,7 +127,7 @@ export async function apiFetchLocal(path: string, init: RequestInit = {}) {
 
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const response = await fetch(cleanPath, { mode: "cors", credentials: "include", ...init, headers });
-  
+
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new Error(`API ${response.status}: ${text || response.statusText}`);
