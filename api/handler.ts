@@ -648,7 +648,6 @@ class TechnicalIndicators {
       return [
         { symbol: 'XRPUSDT', price: 0.62, volume: 150000000, avgVolume: 50000000, volumeMultiple: 3.0, priceChangePercent: 5.2, timestamp: new Date().toISOString() },
         { symbol: 'ADAUSDT', price: 0.45, volume: 80000000, avgVolume: 40000000, volumeMultiple: 2.0, priceChangePercent: 3.1, timestamp: new Date().toISOString() },
-        { symbol: 'DOGEUSDT', price: 0.12, volume: 200000000, avgVolume: 100000000, volumeMultiple: 2.0, priceChangePercent: 4.5, timestamp: new Date().toISOString() }
       ];
     }
 
