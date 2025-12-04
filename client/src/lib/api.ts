@@ -1,4 +1,3 @@
-```typescript
 import { auth } from "@/lib/firebase";
 import { readDemoUserId } from "@/lib/demo-user";
 
@@ -13,7 +12,7 @@ const API_BASE = typeof envBase === "string" ? envBase.trim().replace(/\/+$/, ""
 // The app is served by the same backend (Express + Vite middleware), so we don't need absolute URLs.
 function resolveUrl(path: string): string {
   if (/^https?:/i.test(path)) return path;
-  return path.startsWith("/") ? path : `/ ${ path } `;
+  return path.startsWith("/") ? path : `/${path}`;
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -21,7 +20,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     const user = auth?.currentUser;
     const token = await user?.getIdToken?.();
     if (typeof token === "string" && token.trim()) {
-      return { Authorization: `Bearer ${ token } ` };
+      return { Authorization: `Bearer ${token}` };
     }
   } catch (error) {
     console.warn("Failed to resolve Firebase ID token", error);
@@ -77,14 +76,14 @@ export async function apiFetch(path: string, init: RequestInit = {}, retries = 3
       // Retry on 502 (Bad Gateway - usually means backend is rate limited/busy)
       if (response.status === 502 && attempt < retries - 1) {
         const waitTime = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
-        console.warn(`[API] Got 502, retrying after ${ waitTime } ms(attempt ${ attempt + 1}/${retries})`);
+        console.warn(`[API] Got 502, retrying after ${waitTime}ms (attempt ${attempt + 1}/${retries})`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
 
       if (!response.ok) {
         const text = await response.text().catch(() => "");
-        throw new Error(`API ${ response.status }: ${ text || response.statusText } `);
+        throw new Error(`API ${response.status}: ${text || response.statusText}`);
       }
 
       if (response.status === 204) {
@@ -100,7 +99,7 @@ export async function apiFetch(path: string, init: RequestInit = {}, retries = 3
       if (attempt === retries - 1) {
         throw error;
       }
-      console.warn(`[API] Attempt ${ attempt + 1 } failed, retrying...`, error instanceof Error ? error.message : error);
+      console.warn(`[API] Attempt ${attempt + 1} failed, retrying...`, error instanceof Error ? error.message : error);
       await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
     }
   }
@@ -120,12 +119,12 @@ export async function apiFetchLocal(path: string, init: RequestInit = {}) {
   const authHeaders = await getAuthHeaders();
   const headers = { ...baseHeaders, ...authHeaders };
 
-  const cleanPath = path.startsWith("/") ? path : `/ ${ path } `;
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const response = await fetch(cleanPath, { mode: "cors", credentials: "include", ...init, headers });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`API ${ response.status }: ${ text || response.statusText } `);
+    throw new Error(`API ${response.status}: ${text || response.statusText}`);
   }
 
   if (response.status === 204) {
