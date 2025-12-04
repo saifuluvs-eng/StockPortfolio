@@ -58,7 +58,7 @@ class BinanceService {
     const changePercent = (Math.random() - 0.5) * 20; // -10% to +10%
     const change = (basePrice * changePercent) / 100;
     const volume = 1000000 + Math.random() * 50000000;
-    
+
     return {
       symbol,
       lastPrice: basePrice.toFixed(4),
@@ -77,15 +77,15 @@ class BinanceService {
       if (!response.ok) {
         throw new Error('Failed to fetch market data');
       }
-      
+
       const allTickers: TickerData[] = await response.json();
-      
+
       const usdtPairs = allTickers
         .filter(ticker => {
           const volume = parseFloat(ticker.quoteVolume || '0');
           return (
-            ticker.symbol.endsWith('USDT') && 
-            !ticker.symbol.includes('DOWN') && 
+            ticker.symbol.endsWith('USDT') &&
+            !ticker.symbol.includes('DOWN') &&
             !ticker.symbol.includes('UP') &&
             !ticker.symbol.includes('BULL') &&
             !ticker.symbol.includes('BEAR') &&
@@ -107,6 +107,40 @@ class BinanceService {
     }
   }
 
+  async getTopVolumePairs(limit: number = 50): Promise<TickerData[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/ticker/24hr`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch market data');
+      }
+
+      const allTickers: TickerData[] = await response.json();
+
+      const usdtPairs = allTickers
+        .filter(ticker => {
+          return (
+            ticker.symbol.endsWith('USDT') &&
+            !ticker.symbol.includes('DOWN') &&
+            !ticker.symbol.includes('UP') &&
+            !ticker.symbol.includes('BULL') &&
+            !ticker.symbol.includes('BEAR')
+          );
+        })
+        .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+        .slice(0, limit);
+
+      if (usdtPairs.length > 0) {
+        return usdtPairs;
+      } else {
+        console.log('No volume pairs found after filtering, returning fallback data.');
+        return this.generateFallbackGainers(limit); // Reuse fallback for now
+      }
+    } catch (error) {
+      console.error('Error fetching top volume pairs:', error);
+      return this.generateFallbackGainers(limit);
+    }
+  }
+
   private generateFallbackGainers(limit: number = 50): TickerData[] {
     const symbols = [
       'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'XRPUSDT', 'DOTUSDT', 'DOGEUSDT',
@@ -122,11 +156,11 @@ class BinanceService {
       const baseChangePercent = 25 - (index * 0.4);
       const randomVariation = (Math.random() - 0.5) * 2;
       const changePercent = Math.max(0.1, baseChangePercent + randomVariation);
-      
+
       const basePrice = 100 + Math.random() * 500;
       const change = (basePrice * changePercent) / 100;
       const volume = 1000000 + Math.random() * 50000000;
-      
+
       return {
         symbol,
         lastPrice: basePrice.toFixed(4),
@@ -148,9 +182,9 @@ class BinanceService {
       if (!response.ok) {
         throw new Error(`Failed to fetch kline data for ${symbol}`);
       }
-      
+
       const rawData = await response.json();
-      
+
       return rawData.map((kline: any[]) => ({
         openTime: kline[0],
         open: kline[1],
@@ -184,8 +218,8 @@ class BinanceService {
     try {
       const exchangeInfo = await this.getExchangeInfo();
       return exchangeInfo.symbols
-        .filter((symbol: any) => 
-          symbol.quoteAsset === 'USDT' && 
+        .filter((symbol: any) =>
+          symbol.quoteAsset === 'USDT' &&
           symbol.status === 'TRADING' &&
           !symbol.symbol.includes('DOWN') &&
           !symbol.symbol.includes('UP')

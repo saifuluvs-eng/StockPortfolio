@@ -523,6 +523,65 @@ class TechnicalIndicators {
     }
   }
 
+  async scanTrendDip(limit: number = 20): Promise<any[]> {
+    try {
+      // 1. Get top volume pairs to ensure liquidity
+      const topPairs = await binanceService.getTopVolumePairs(50);
+      const results: any[] = [];
+
+      for (const pair of topPairs) {
+        try {
+          // 2. Analyze each pair (using 4h or 1h timeframe for trend, let's use 1h for now as requested)
+          // Actually, "Trend + Dip" usually implies:
+          // - Long term trend (e.g. Daily or 4H EMA200)
+          // - Short term dip (e.g. 1H or 15m RSI)
+          // For simplicity in this single-timeframe architecture, we'll use 1h for both, 
+          // or we can fetch 1h data and calculate EMA200 on it.
+
+          const analysis = await this.analyzeSymbol(pair.symbol, '1h');
+          const closes = analysis.candles?.map(c => c.c) || [];
+
+          if (closes.length < 200) continue;
+
+          // 3. Calculate Indicators
+          const currentPrice = analysis.price;
+          const rsi = analysis.indicators.rsi.value;
+          const ema200 = this.calculateEMA(closes, 200);
+
+          // 4. Apply Strategy Logic
+          // - Uptrend: Price > EMA200
+          // - Dip: RSI < 35 (Oversold-ish)
+
+          const isUptrend = currentPrice > ema200;
+          const isDip = rsi < 35;
+
+          if (isUptrend && isDip) {
+            results.push({
+              symbol: pair.symbol,
+              price: currentPrice,
+              rsi: rsi,
+              ema200: ema200,
+              volume: parseFloat(pair.quoteVolume),
+              priceChangePercent: parseFloat(pair.priceChangePercent),
+              timestamp: new Date().toISOString()
+            });
+          }
+
+          // Rate limit protection
+          await new Promise(resolve => setTimeout(resolve, 50));
+
+        } catch (err) {
+          console.error(`Error analyzing ${pair.symbol} for TrendDip:`, err);
+        }
+      }
+
+      return results.sort((a, b) => a.rsi - b.rsi); // Sort by lowest RSI (deepest dip)
+    } catch (error) {
+      console.error('Error scanning for Trend+Dip:', error);
+      return [];
+    }
+  }
+
   async scanHighPotential(filters: ScanFilters): Promise<TechnicalAnalysis[]> {
     try {
       let allPairs: string[];

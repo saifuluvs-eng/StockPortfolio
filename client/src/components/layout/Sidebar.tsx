@@ -22,7 +22,8 @@ import {
   Activity,
   BarChart2,
   Bell,
-  PieChart, // Added PieChart
+  PieChart,
+  TrendingUp,
 } from "lucide-react";
 import HoverTooltip from "../ui/HoverTooltip";
 import { useAuth } from "@/auth/AuthContext";
@@ -40,7 +41,8 @@ const items: NavItem[] = [
   { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
   { label: "High Potential", to: "/high-potential", icon: <Flame size={20} /> },
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
-  { label: "Data", to: "/data", icon: <PieChart size={20} /> }, // Added Data link
+  { label: "Data", to: "/data", icon: <PieChart size={20} /> },
+  { label: "Strategies", to: "/strategies", icon: <TrendingUp size={20} /> },
   { label: "News", to: "/news", icon: <Newspaper size={20} /> },
   { label: "AI Insights", to: "/ai-insights", icon: <Brain size={20} /> },
   { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: (user) => !!user },

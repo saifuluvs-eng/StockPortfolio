@@ -18,6 +18,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import HighPotentialPage from "@/pages/high-potential";
 import LandingPage from "@/pages/LandingPage";
 import DataPage from "@/pages/data";
+import StrategiesPage from "@/pages/strategies";
 
 import { RsiTicker } from "@/components/data/RsiTicker";
 
@@ -108,6 +109,11 @@ export default function App() {
       <Route path="/data">
         <ShellLayout>
           <DataPage />
+        </ShellLayout>
+      </Route>
+      <Route path="/strategies">
+        <ShellLayout>
+          <StrategiesPage />
         </ShellLayout>
       </Route>
 

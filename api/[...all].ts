@@ -394,6 +394,16 @@ async function highPotential(_req: any, res: any) {
   return ok(res, { data: results });
 }
 
+async function trendDipStrategy(req: any, res: any) {
+  try {
+    const data = await technicalIndicators.scanTrendDip();
+    res.json(data);
+  } catch (e: any) {
+    console.error("TrendDip Error", e);
+    res.status(500).json({ error: e.message });
+  }
+}
+
 export default async function handler(req: any, res: any) {
   try {
     let p = String((req.query?.path ?? "")).replace(/^\/+/, "");
@@ -413,6 +423,7 @@ export default async function handler(req: any, res: any) {
       if (seg[1] === "ticker" && seg[2]) return ticker(req, res, seg[2]);
       if (seg[1] === "gainers") return gainers(req, res);
       if (seg[1] === "rsi") return marketRsi(req, res);
+      if (seg[1] === "strategies" && seg[2] === "trend-dip") return trendDipStrategy(req, res);
       return bad(res, 404, "Unknown market route", { path: p });
     }
 
