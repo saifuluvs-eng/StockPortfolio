@@ -144,26 +144,30 @@ class BinanceService {
   }
 
   private generateFallbackGainers(limit: number = 50): TickerData[] {
-    const symbols = [
-      'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT', 'XRPUSDT', 'DOTUSDT', 'DOGEUSDT',
-      'AVAXUSDT', 'MATICUSDT', 'LINKUSDT', 'LTCUSDT', 'UNIUSDT', 'BCHUSDT', 'XLMUSDT', 'VETUSDT'
-    ];
+    const realisticPrices: { [key: string]: number } = {
+      'BTCUSDT': 64000, 'ETHUSDT': 3400, 'BNBUSDT': 590, 'ADAUSDT': 0.45, 'SOLUSDT': 145,
+      'XRPUSDT': 0.60, 'DOTUSDT': 7.2, 'DOGEUSDT': 0.16, 'AVAXUSDT': 35, 'MATICUSDT': 0.70,
+      'LINKUSDT': 14, 'LTCUSDT': 85, 'UNIUSDT': 10, 'BCHUSDT': 450, 'XLMUSDT': 0.11, 'VETUSDT': 0.04
+    };
+
+    const symbols = Object.keys(realisticPrices);
 
     return symbols.slice(0, limit).map((symbol, index) => {
-      const baseChangePercent = 25 - (index * 0.4);
-      const randomVariation = (Math.random() - 0.5) * 2;
-      const changePercent = Math.max(0.1, baseChangePercent + randomVariation);
-      const basePrice = 100 + Math.random() * 500;
-      const change = (basePrice * changePercent) / 100;
-      const volume = 1000000 + Math.random() * 50000000;
+      const basePrice = realisticPrices[symbol] || (100 + Math.random() * 100);
+      const randomVariation = (Math.random() - 0.5) * 0.02; // +/- 1% variation
+      const price = basePrice * (1 + randomVariation);
+
+      const baseChangePercent = (Math.random() - 0.5) * 5;
+      const change = (price * baseChangePercent) / 100;
+      const volume = 10000000 + Math.random() * 500000000;
 
       return {
         symbol,
-        lastPrice: basePrice.toFixed(4),
-        priceChange: change.toFixed(4),
-        priceChangePercent: changePercent.toFixed(2),
-        highPrice: (basePrice + change * 1.2).toFixed(4),
-        lowPrice: (basePrice - change * 0.8).toFixed(4),
+        lastPrice: price.toFixed(price < 1 ? 4 : 2),
+        priceChange: change.toFixed(price < 1 ? 4 : 2),
+        priceChangePercent: baseChangePercent.toFixed(2),
+        highPrice: (price * 1.02).toFixed(price < 1 ? 4 : 2),
+        lowPrice: (price * 0.98).toFixed(price < 1 ? 4 : 2),
         volume: (volume * 0.8).toFixed(0),
         quoteVolume: volume.toFixed(0)
       };
