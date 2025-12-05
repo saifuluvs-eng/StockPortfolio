@@ -275,6 +275,7 @@ export default function StrategiesPage() {
                                                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                             : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                                                             }`}>
+                                                            {coin.type}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
