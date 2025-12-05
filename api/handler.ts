@@ -694,25 +694,24 @@ class TechnicalIndicators {
     try {
       const topPairs = await binanceService.getTopVolumePairs(50);
       const results: any[] = [];
-      const batchSize = 5;
+      const batchSize = 10; // slightly increased batch size
 
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
         const promises = batch.map(async (pair) => {
           try {
-            const analysis = await this.analyzeSymbol(pair.symbol, '4h'); // Use 4h for stronger levels
+            // Filter Stablecoins
+            if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR', 'XUSD'].some(s => pair.symbol.startsWith(s))) return null;
+
+            const analysis = await this.analyzeSymbol(pair.symbol, '4h');
             const candles = analysis.candles || [];
             if (candles.length < 50) return null;
 
             const currentPrice = analysis.price;
-
-            // Simple Support/Resistance Logic:
-            // 1. Recent Lows (Support)
-            // 2. Recent Highs (Resistance)
-            // 3. Psychological Round Numbers
-
-            const recentLows = candles.slice(-50).map(c => c.l);
-            const recentHighs = candles.slice(-50).map(c => c.h);
+            // Analyze last 50 candles
+            const recent = candles.slice(-50);
+            const recentLows = recent.map(c => c.l);
+            const recentHighs = recent.map(c => c.h);
             const minLow = Math.min(...recentLows);
             const maxHigh = Math.max(...recentHighs);
 
@@ -722,15 +721,35 @@ class TechnicalIndicators {
             let type = '';
             let level = 0;
             let distance = 0;
+            let tests = 0;
+            let riskReward: number | null = null;
 
+            // Threshold: 2% from level
             if (distToSupport < 0.02) {
               type = 'Support';
               level = minLow;
               distance = distToSupport;
+
+              // Count Tests for Support (touches within 1%)
+              tests = recent.filter(c => Math.abs((c.l - minLow) / minLow) < 0.01).length;
+
+              // Calculate R:R
+              const risk = distance; // Current distance to support is the risk (assuming stop loss below support)
+              const reward = (maxHigh - currentPrice) / currentPrice;
+              if (risk > 0.001) { // Avoid div by zero
+                riskReward = parseFloat((reward / risk).toFixed(2));
+              } else {
+                riskReward = 10; // Max out if sitting exactly on support
+              }
+
             } else if (distToResistance < 0.02) {
               type = 'Resistance';
               level = maxHigh;
               distance = distToResistance;
+
+              // Count Tests for Resistance (touches within 1%)
+              tests = recent.filter(c => Math.abs((c.h - maxHigh) / maxHigh) < 0.01).length;
+              // No R:R for shorting (unless we add that later), leave null
             }
 
             if (type) {
@@ -740,26 +759,24 @@ class TechnicalIndicators {
                 type,
                 level,
                 distancePercent: distance * 100,
+                tests,
+                riskReward,
                 volume: parseFloat(pair.quoteVolume),
                 timestamp: new Date().toISOString()
               };
             }
-          } catch (err) {
-            // console.error(`Error analyzing ${pair.symbol} for SR:`, err);
-          }
+          } catch (err) { }
           return null;
         });
 
         const batchResults = await Promise.all(promises);
         results.push(...batchResults.filter(Boolean));
+
+        // Rate limit
+        await new Promise(r => setTimeout(r, 100));
       }
 
-      // FAILSAFE
-      if (results.length === 0) {
-        console.log('[scanSupportResistance] No SR levels found in top pairs.');
-      }
-
-
+      // Sort by Closeness (Primary) but allow filtering by R:R on frontend
       return results.sort((a, b) => a.distancePercent - b.distancePercent);
     } catch (error) {
       console.error('Error scanning for SR:', error);
