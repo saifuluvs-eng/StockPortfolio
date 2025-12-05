@@ -71,6 +71,13 @@ export default function StrategiesPage() {
         return val.toFixed(0);
     };
 
+    const formatPrice = (price: number) => {
+        if (price < 0.00001) return price.toFixed(8);
+        if (price < 0.001) return price.toFixed(7);
+        if (price < 1) return price.toFixed(4);
+        return price.toFixed(2);
+    };
+
     return (
         <Page>
             <div className="max-w-7xl mx-auto space-y-6">
@@ -146,12 +153,12 @@ export default function StrategiesPage() {
                                                 return (
                                                     <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                         <td className="p-4 font-bold text-white">{coin.symbol}</td>
-                                                        <td className="p-4 text-right font-mono text-zinc-300">${coin.price.toFixed(coin.price < 1 ? 4 : 2)}</td>
+                                                        <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
                                                         <td className={`p-4 text-right font-mono ${coin.priceChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                                                             {coin.priceChangePercent > 0 ? "+" : ""}{coin.priceChangePercent.toFixed(2)}%
                                                         </td>
                                                         <td className="p-4 text-right"><span className="text-rose-400 font-bold">{coin.rsi.toFixed(1)}</span></td>
-                                                        <td className="p-4 text-right font-mono text-zinc-500">${coin.ema200.toFixed(coin.ema200 < 1 ? 4 : 2)}</td>
+                                                        <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.ema200)}</td>
                                                         <td className="p-4 text-right text-emerald-400">+{dist.toFixed(2)}%</td>
                                                         <td className="p-4 text-right">
                                                             <Link href={`/analyse/${coin.symbol}`}>
@@ -203,7 +210,7 @@ export default function StrategiesPage() {
                                             volSpikeData.map((coin) => (
                                                 <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                     <td className="p-4 font-bold text-white">{coin.symbol}</td>
-                                                    <td className="p-4 text-right font-mono text-zinc-300">${coin.price.toFixed(coin.price < 1 ? 4 : 2)}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
                                                     <td className={`p-4 text-right font-mono ${coin.priceChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                                                         {coin.priceChangePercent > 0 ? "+" : ""}{coin.priceChangePercent.toFixed(2)}%
                                                     </td>
@@ -262,16 +269,15 @@ export default function StrategiesPage() {
                                             srData.map((coin) => (
                                                 <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                     <td className="p-4 font-bold text-white">{coin.symbol}</td>
-                                                    <td className="p-4 text-right font-mono text-zinc-300">${coin.price.toFixed(coin.price < 1 ? 4 : 2)}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
                                                     <td className="p-4 text-right">
                                                         <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support'
                                                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                             : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                                                             }`}>
-                                                            {coin.type}
                                                         </span>
                                                     </td>
-                                                    <td className="p-4 text-right font-mono text-zinc-500">${coin.level.toFixed(coin.level < 1 ? 4 : 2)}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
                                                     <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
                                                     <td className="p-4 text-right">
                                                         <Link href={`/analyse/${coin.symbol}`}>
