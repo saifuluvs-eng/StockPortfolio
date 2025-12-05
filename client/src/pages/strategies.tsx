@@ -116,9 +116,9 @@ export default function StrategiesPage() {
                                     Great for catching bounces in a bull market.
                                 </p>
                             </div>
-                            <div className="overflow-x-auto">
+                            <div className="h-[65vh] overflow-auto">
                                 <table className="w-full text-left border-collapse">
-                                    <thead>
+                                    <thead className="sticky top-0 z-10 bg-zinc-900">
                                         <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
                                             <th className="p-4 font-medium">Asset</th>
                                             <th className="p-4 font-medium text-right">Price</th>
@@ -175,9 +175,9 @@ export default function StrategiesPage() {
                                     Often precedes a breakout or pump.
                                 </p>
                             </div>
-                            <div className="overflow-x-auto">
+                            <div className="h-[65vh] overflow-auto">
                                 <table className="w-full text-left border-collapse">
-                                    <thead>
+                                    <thead className="sticky top-0 z-10 bg-zinc-900">
                                         <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
                                             <th className="p-4 font-medium">Asset</th>
                                             <th className="p-4 font-medium text-right">Price</th>
@@ -235,9 +235,9 @@ export default function StrategiesPage() {
                                     Watch for bounces at Support or breakouts at Resistance.
                                 </p>
                             </div>
-                            <div className="overflow-x-auto">
+                            <div className="h-[65vh] overflow-auto">
                                 <table className="w-full text-left border-collapse">
-                                    <thead>
+                                    <thead className="sticky top-0 z-10 bg-zinc-900">
                                         <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
                                             <th className="p-4 font-medium">Asset</th>
                                             <th className="p-4 font-medium text-right">Price</th>
@@ -259,8 +259,8 @@ export default function StrategiesPage() {
                                                     <td className="p-4 text-right font-mono text-zinc-300">${coin.price.toFixed(coin.price < 1 ? 4 : 2)}</td>
                                                     <td className="p-4 text-right">
                                                         <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support'
-                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                                                             }`}>
                                                             {coin.type}
                                                         </span>
