@@ -701,7 +701,7 @@ class TechnicalIndicators {
         const promises = batch.map(async (pair) => {
           try {
             // Filter Stablecoins
-            if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR', 'XUSD'].some(s => pair.symbol.startsWith(s))) return null;
+            if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR', 'XUSD', 'BFUSD'].some(s => pair.symbol.startsWith(s))) return null;
 
             const analysis = await this.analyzeSymbol(pair.symbol, '4h');
             const candles = analysis.candles || [];
