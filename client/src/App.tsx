@@ -19,6 +19,8 @@ import HighPotentialPage from "@/pages/high-potential";
 import LandingPage from "@/pages/LandingPage";
 import DataPage from "@/pages/data";
 import StrategiesPage from "@/pages/strategies";
+import TrendDipPage from "@/pages/trend-dip";
+import VolumeSpikePage from "@/pages/volume-spike";
 
 import { RsiTicker } from "@/components/data/RsiTicker";
 
@@ -114,6 +116,16 @@ export default function App() {
       <Route path="/strategies">
         <ShellLayout>
           <StrategiesPage />
+        </ShellLayout>
+      </Route>
+      <Route path="/strategies/trend-dip">
+        <ShellLayout>
+          <TrendDipPage />
+        </ShellLayout>
+      </Route>
+      <Route path="/strategies/volume-spike">
+        <ShellLayout>
+          <VolumeSpikePage />
         </ShellLayout>
       </Route>
 

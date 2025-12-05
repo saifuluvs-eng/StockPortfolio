@@ -1,0 +1,125 @@
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Page, Card } from "@/components/layout/Layout";
+import { BarChart2, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
+import { apiFetchLocal } from "@/lib/api";
+
+interface VolumeSpikeResult {
+    symbol: string;
+    price: number;
+    volume: number;
+    avgVolume: number;
+    volumeMultiple: number;
+    priceChangePercent: number;
+    timestamp: string;
+}
+
+export default function VolumeSpikePage() {
+    const { data: volSpikeData, isLoading, refetch, isRefetching } = useQuery<VolumeSpikeResult[]>({
+        queryKey: ["volume-spike"],
+        queryFn: async () => apiFetchLocal("/api/market/strategies/volume-spike"),
+        refetchInterval: 60000,
+    });
+
+    const formatVolume = (val: number) => {
+        if (val >= 1_000_000) return (val / 1_000_000).toFixed(2) + "M";
+        if (val >= 1_000) return (val / 1_000).toFixed(0) + "K";
+        return val.toFixed(0);
+    };
+
+    const formatPrice = (price: number) => {
+        if (price < 0.00001) return price.toFixed(8);
+        if (price < 0.001) return price.toFixed(7);
+        if (price < 1) return price.toFixed(4);
+        return price.toFixed(2);
+    };
+
+    return (
+        <Page>
+            <div className="max-w-7xl mx-auto space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+                            <BarChart2 className="text-blue-400" />
+                            Volume Spike Detector
+                        </h1>
+                        <p className="text-zinc-400 mt-1">
+                            Detects unusual buying volume (&gt; 1.5x Avg) with price strength.
+                        </p>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => refetch()}
+                        disabled={isLoading || isRefetching}
+                        className="gap-2 min-w-[140px]"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
+                        {isRefetching ? "Scanning..." : "Refresh"}
+                    </Button>
+                </div>
+
+                <div className="space-y-6">
+                    <Card>
+                        <div className="p-6 bg-zinc-900/50 border-b border-zinc-800">
+                            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                                <BarChart2 className="w-5 h-5 text-blue-400" />
+                                Strategy Logic
+                            </h3>
+                            <p className="text-sm text-zinc-400 leading-relaxed">
+                                Detects coins with <strong>unusual buying volume</strong> (Current Vol &gt; 1.5x Avg Vol) accompanied by a price increase.
+                                Often precedes a breakout or pump.
+                            </p>
+                        </div>
+                        <div className="h-[65vh] overflow-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="sticky top-0 z-10 bg-zinc-900">
+                                    <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
+                                        <th className="p-4 font-medium">Asset</th>
+                                        <th className="p-4 font-medium text-right">Price</th>
+                                        <th className="p-4 font-medium text-right">24h Change</th>
+                                        <th className="p-4 font-medium text-right">Current Vol</th>
+                                        <th className="p-4 font-medium text-right">Avg Vol (20)</th>
+                                        <th className="p-4 font-medium text-right">Multiple</th>
+                                        <th className="p-4 font-medium text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {isLoading ? (
+                                        <tr><td colSpan={7} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
+                                    ) : !volSpikeData?.length ? (
+                                        <tr><td colSpan={7} className="p-8 text-center text-zinc-500">No volume spikes found.</td></tr>
+                                    ) : (
+                                        volSpikeData.map((coin) => (
+                                            <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                                                <td className="p-4 font-bold text-white">{coin.symbol}</td>
+                                                <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                <td className={`p-4 text-right font-mono ${coin.priceChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                                                    {coin.priceChangePercent > 0 ? "+" : ""}{coin.priceChangePercent.toFixed(2)}%
+                                                </td>
+                                                <td className="p-4 text-right font-mono text-zinc-300">${formatVolume(coin.volume * coin.price)}</td>
+                                                <td className="p-4 text-right font-mono text-zinc-500">${formatVolume(coin.avgVolume * coin.price)}</td>
+                                                <td className="p-4 text-right">
+                                                    <span className="inline-block px-2 py-1 rounded bg-blue-500/10 text-blue-400 font-bold font-mono text-xs border border-blue-500/20">
+                                                        {coin.volumeMultiple.toFixed(1)}x
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <Link href={`/analyse/${coin.symbol}`}>
+                                                        <Button size="sm" className="bg-blue-600 hover:bg-blue-500 h-8">Analyze</Button>
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                </div>
+            </div>
+        </Page>
+    );
+}
