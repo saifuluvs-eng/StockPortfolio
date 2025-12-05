@@ -65,6 +65,12 @@ export default function StrategiesPage() {
         refetchSR();
     };
 
+    const formatVolume = (val: number) => {
+        if (val >= 1_000_000) return (val / 1_000_000).toFixed(2) + "M";
+        if (val >= 1_000) return (val / 1_000).toFixed(0) + "K";
+        return val.toFixed(0);
+    };
+
     return (
         <Page>
             <div className="max-w-7xl mx-auto space-y-6">
@@ -201,8 +207,8 @@ export default function StrategiesPage() {
                                                     <td className={`p-4 text-right font-mono ${coin.priceChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                                                         {coin.priceChangePercent > 0 ? "+" : ""}{coin.priceChangePercent.toFixed(2)}%
                                                     </td>
-                                                    <td className="p-4 text-right font-mono text-zinc-300">{(coin.volume / 1000).toFixed(0)}K</td>
-                                                    <td className="p-4 text-right font-mono text-zinc-500">{(coin.avgVolume / 1000).toFixed(0)}K</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-300">{formatVolume(coin.volume)}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-500">{formatVolume(coin.avgVolume)}</td>
                                                     <td className="p-4 text-right">
                                                         <span className="inline-block px-2 py-1 rounded bg-blue-500/10 text-blue-400 font-bold font-mono text-xs border border-blue-500/20">
                                                             {coin.volumeMultiple.toFixed(1)}x
