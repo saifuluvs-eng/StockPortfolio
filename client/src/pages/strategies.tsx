@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Page, Card } from "@/components/layout/Layout";
-import { RefreshCw, Target, Info, HelpCircle } from "lucide-react";
+import { RefreshCw, Target, Info, HelpCircle, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { apiFetchLocal } from "@/lib/api";
@@ -19,12 +19,43 @@ interface SupportResistanceResult {
     timestamp: string;
 }
 
+type SortField = 'target' | 'tests' | 'riskReward';
+type SortDirection = 'asc' | 'desc';
+
 export default function StrategiesPage() {
     const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, isRefetching: isRefetchingSR } = useQuery<SupportResistanceResult[]>({
         queryKey: ["support-resistance"],
         queryFn: async () => apiFetchLocal("/api/market/strategies/support-resistance"),
         refetchInterval: 60000,
     });
+
+    const [sortField, setSortField] = useState<SortField | null>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('desc'); // Default to descending for numbers usually (highest profit, most tests)
+        }
+    };
+
+    const sortedData = React.useMemo(() => {
+        if (!srData) return [];
+        if (!sortField) return srData;
+
+        return [...srData].sort((a, b) => {
+            const aValue = a[sortField] || 0;
+            const bValue = b[sortField] || 0;
+
+            if (sortDirection === 'asc') {
+                return aValue > bValue ? 1 : -1;
+            } else {
+                return aValue < bValue ? 1 : -1;
+            }
+        });
+    }, [srData, sortField, sortDirection]);
 
     const formatPrice = (price: number) => {
         if (price < 0.00001) return price.toFixed(8);
@@ -33,42 +64,37 @@ export default function StrategiesPage() {
         return price.toFixed(2);
     };
 
+    const SortIcon = ({ field }: { field: SortField }) => {
+        if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 text-zinc-600 inline opacity-50" />;
+        return <ArrowUpDown className={`w-3 h-3 ml-1 inline ${sortDirection === 'asc' ? 'text-emerald-500' : 'text-rose-500'}`} />;
+    };
+
     return (
         <Page>
             <div className="max-w-7xl mx-auto space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-                            <Target className="text-purple-400" />
-                            Support & Resistance Scanner
-                        </h1>
-                        <p className="text-zinc-400 mt-1">
-                            Find coins trading near key levels with high R:R ratios.
-                        </p>
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => refetchSR()}
-                        disabled={isLoadingSR || isRefetchingSR}
-                        className="gap-2 min-w-[140px]"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${isRefetchingSR ? "animate-spin" : ""}`} />
-                        {isRefetchingSR ? "Scanning..." : "Refresh"}
-                    </Button>
-                </div>
-
                 <div className="space-y-6">
                     <Card>
-                        <div className="p-6 bg-zinc-900/50 border-b border-zinc-800">
-                            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                                <Target className="w-5 h-5 text-purple-400" />
-                                Support & Resistance Proximity
-                            </h3>
-                            <p className="text-sm text-zinc-400 leading-relaxed">
-                                Identifies coins that are trading <strong>close (within 5%)</strong> to key support or resistance levels.
-                                Look for <strong>High R:R</strong> ratios (&gt; 3.0) and multiple <strong>Tests</strong> (bounces).
-                            </p>
+                        <div className="p-6 bg-zinc-900/50 border-b border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                                    <Target className="w-5 h-5 text-purple-400" />
+                                    Support & Resistance Proximity
+                                </h3>
+                                <p className="text-sm text-zinc-400 leading-relaxed">
+                                    Identifies coins that are trading <strong>close (within 5%)</strong> to key support or resistance levels.
+                                    Look for <strong>High R:R</strong> ratios (&gt; 3.0) and multiple <strong>Tests</strong> (bounces).
+                                </p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => refetchSR()}
+                                disabled={isLoadingSR || isRefetchingSR}
+                                className="gap-2 min-w-[140px] shrink-0"
+                            >
+                                <RefreshCw className={`w-4 h-4 ${isRefetchingSR ? "animate-spin" : ""}`} />
+                                {isRefetchingSR ? "Scanning..." : "Refresh"}
+                            </Button>
                         </div>
                         <div className="h-[65vh] overflow-auto">
                             <table className="w-full text-left border-collapse">
@@ -79,19 +105,34 @@ export default function StrategiesPage() {
                                         <th className="p-4 font-medium text-right">Type</th>
                                         <th className="p-4 font-medium text-right">Level</th>
                                         <th className="p-4 font-medium text-right">Distance</th>
-                                        <th className="p-4 font-medium text-right">Target</th>
-                                        <th className="p-4 font-medium text-right">Strength</th>
-                                        <th className="p-4 font-medium text-right">Risk:Reward</th>
+                                        <th
+                                            className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                            onClick={() => handleSort('target')}
+                                        >
+                                            Target <SortIcon field="target" />
+                                        </th>
+                                        <th
+                                            className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                            onClick={() => handleSort('tests')}
+                                        >
+                                            Strength <SortIcon field="tests" />
+                                        </th>
+                                        <th
+                                            className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                            onClick={() => handleSort('riskReward')}
+                                        >
+                                            Risk:Reward <SortIcon field="riskReward" />
+                                        </th>
                                         <th className="p-4 font-medium text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm">
                                     {isLoadingSR ? (
-                                        <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
-                                    ) : !srData?.length ? (
-                                        <tr><td colSpan={8} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
+                                        <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
+                                    ) : !sortedData?.length ? (
+                                        <tr><td colSpan={9} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
                                     ) : (
-                                        srData.map((coin) => (
+                                        sortedData.map((coin) => (
                                             <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                 <td className="p-4 font-bold text-white">{coin.symbol}</td>
                                                 <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
