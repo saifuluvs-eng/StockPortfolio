@@ -32,7 +32,9 @@ class BinanceService {
 
   async getCurrentPrice(symbol: string): Promise<number> {
     try {
-      const response = await fetch(`${this.baseUrl}/ticker/price?symbol=${symbol}`);
+      const response = await fetch(`${this.baseUrl}/ticker/price?symbol=${symbol}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch price for ${symbol}`);
       }
@@ -46,7 +48,9 @@ class BinanceService {
 
   async getTickerData(symbol: string): Promise<TickerData> {
     try {
-      const response = await fetch(`${this.baseUrl}/ticker/24hr?symbol=${symbol}`);
+      const response = await fetch(`${this.baseUrl}/ticker/24hr?symbol=${symbol}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch ticker data for ${symbol}`);
       }
@@ -77,7 +81,9 @@ class BinanceService {
 
   async getTopGainers(limit: number = 50): Promise<TickerData[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/ticker/24hr`);
+      const response = await fetch(`${this.baseUrl}/ticker/24hr`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch market data');
       }
@@ -112,7 +118,9 @@ class BinanceService {
 
   async getTopVolumePairs(limit: number = 50): Promise<TickerData[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/ticker/24hr`);
+      const response = await fetch(`${this.baseUrl}/ticker/24hr`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch market data');
       }
@@ -176,8 +184,9 @@ class BinanceService {
 
   async getKlineData(symbol: string, interval: string, limit: number = 200): Promise<CandlestickData[]> {
     try {
-      const response = await fetch(
-        `${this.baseUrl}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+      `${this.baseUrl}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      }
       );
       if (!response.ok) {
         throw new Error(`Failed to fetch kline data for ${symbol}`);
