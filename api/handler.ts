@@ -112,7 +112,12 @@ class BinanceService {
       }
     } catch (error) {
       console.error('Error fetching top gainers:', error);
-      return this.generateFallbackGainers(limit);
+      try {
+        return await this.fetchCoinGeckoData(limit);
+      } catch (cgError) {
+        console.error('Error fetching from CoinGecko:', cgError);
+        return this.generateFallbackGainers(limit);
+      }
     }
   }
 
@@ -147,8 +152,40 @@ class BinanceService {
       }
     } catch (error) {
       console.error('Error fetching top volume pairs:', error);
-      return this.generateFallbackGainers(limit);
+      try {
+        return await this.fetchCoinGeckoData(limit);
+      } catch (cgError) {
+        console.error('Error fetching from CoinGecko:', cgError);
+        return this.generateFallbackGainers(limit);
+      }
     }
+  }
+
+  async fetchCoinGeckoData(limit: number = 50): Promise<TickerData[]> {
+    const ids = [
+      'bitcoin', 'ethereum', 'binancecoin', 'cardano', 'solana', 'ripple', 'polkadot', 'dogecoin',
+      'avalanche-2', 'matic-network', 'chainlink', 'litecoin', 'uniswap', 'bitcoin-cash', 'stellar', 'vechain'
+    ].join(',');
+
+    const response = await fetch(
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${ids}&order=market_cap_desc&per_page=${limit}&page=1&sparkline=false`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' } }
+    );
+
+    if (!response.ok) throw new Error('CoinGecko API failed');
+
+    const data = await response.json();
+
+    return data.map((coin: any) => ({
+      symbol: coin.symbol.toUpperCase() + 'USDT',
+      lastPrice: coin.current_price.toString(),
+      priceChange: coin.price_change_24h?.toString() || '0',
+      priceChangePercent: coin.price_change_percentage_24h?.toString() || '0',
+      highPrice: coin.high_24h?.toString() || coin.current_price.toString(),
+      lowPrice: coin.low_24h?.toString() || coin.current_price.toString(),
+      volume: coin.total_volume?.toString() || '0',
+      quoteVolume: coin.total_volume?.toString() || '0'
+    }));
   }
 
   private generateFallbackGainers(limit: number = 50): TickerData[] {
