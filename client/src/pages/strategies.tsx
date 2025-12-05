@@ -23,7 +23,7 @@ type SortField = 'target' | 'tests' | 'riskReward';
 type SortDirection = 'asc' | 'desc';
 
 export default function StrategiesPage() {
-    const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, isRefetching: isRefetchingSR } = useQuery<SupportResistanceResult[]>({
+    const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, isRefetching: isRefetchingSR, dataUpdatedAt } = useQuery<SupportResistanceResult[]>({
         queryKey: ["support-resistance"],
         queryFn: async () => apiFetchLocal("/api/market/strategies/support-resistance"),
         refetchInterval: 60000,
@@ -31,6 +31,11 @@ export default function StrategiesPage() {
 
     const [sortField, setSortField] = useState<SortField | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+    const handleRefresh = () => {
+        setSortField(null);
+        refetchSR();
+    };
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -69,6 +74,8 @@ export default function StrategiesPage() {
         return <ArrowUpDown className={`w-3 h-3 ml-1 inline ${sortDirection === 'asc' ? 'text-emerald-500' : 'text-rose-500'}`} />;
     };
 
+    const lastUpdatedTime = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+
     return (
         <Page>
             <div className="max-w-7xl mx-auto space-y-6">
@@ -85,16 +92,23 @@ export default function StrategiesPage() {
                                     Look for <strong>High R:R</strong> ratios (&gt; 3.0) and multiple <strong>Tests</strong> (bounces).
                                 </p>
                             </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => refetchSR()}
-                                disabled={isLoadingSR || isRefetchingSR}
-                                className="gap-2 min-w-[140px] shrink-0"
-                            >
-                                <RefreshCw className={`w-4 h-4 ${isRefetchingSR ? "animate-spin" : ""}`} />
-                                {isRefetchingSR ? "Scanning..." : "Refresh"}
-                            </Button>
+                            <div className="flex flex-col items-end gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleRefresh}
+                                    disabled={isLoadingSR || isRefetchingSR}
+                                    className="gap-2 min-w-[140px] shrink-0"
+                                >
+                                    <RefreshCw className={`w-4 h-4 ${isRefetchingSR ? "animate-spin" : ""}`} />
+                                    {isRefetchingSR ? "Scanning..." : "Refresh"}
+                                </Button>
+                                {lastUpdatedTime && (
+                                    <span className="text-xs text-zinc-500 font-mono">
+                                        Updated: {lastUpdatedTime}
+                                    </span>
+                                )}
+                            </div>
                         </div>
                         <div className="h-[65vh] overflow-auto">
                             <table className="w-full text-left border-collapse">
