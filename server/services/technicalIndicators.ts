@@ -548,6 +548,9 @@ class TechnicalIndicators {
 
         const promises = batch.map(async (pair) => {
           try {
+            // Filter Stablecoins
+            if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR'].some(s => pair.symbol.startsWith(s))) return null;
+
             // 2. Primary Trend Check (using 4h for robust long-term trend)
             // Fetch 4h candles
             const analysis = await this.analyzeSymbol(pair.symbol, '4h');
@@ -733,8 +736,8 @@ class TechnicalIndicators {
     const lows: number[] = [];
     const volumes: number[] = [];
 
-    // Generate 100 data points with some realistic price movement
-    for (let i = 0; i < 100; i++) {
+    // Generate 500 data points (Increased from 100 to support EMA200 calculation)
+    for (let i = 0; i < 500; i++) {
       const variation = (Math.random() - 0.5) * 0.05; // ±2.5% variation
       const price = basePrice * (1 + variation + (i / 100) * 0.1); // Slight upward trend
 
@@ -744,7 +747,7 @@ class TechnicalIndicators {
       let volume = Math.random() * 1000000 + 100000; // Random volume
 
       // Inject fake spikes in the last candle for demo purposes (30% chance)
-      if (i === 99 && Math.random() > 0.7) {
+      if (i === 499 && Math.random() > 0.7) {
         volume *= (2 + Math.random() * 3); // 2x-5x spike
       }
 
@@ -1192,6 +1195,9 @@ class TechnicalIndicators {
         const batch = topPairs.slice(i, i + batchSize);
         const promises = batch.map(async (pair) => {
           try {
+            // Filter Stablecoins
+            if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR'].some(s => pair.symbol.startsWith(s))) return null;
+
             const analysis = await this.analyzeSymbol(pair.symbol, '4h');
             const candles = analysis.candles || [];
             if (candles.length < 50) return null;

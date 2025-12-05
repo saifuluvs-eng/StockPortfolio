@@ -39,6 +39,8 @@ interface SupportResistanceResult {
     type: 'Support' | 'Resistance';
     level: number;
     distancePercent: number;
+    tests: number;
+    riskReward?: number;
     volume: number;
     timestamp: string;
 }
