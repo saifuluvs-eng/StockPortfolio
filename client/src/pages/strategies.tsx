@@ -282,7 +282,7 @@ export default function StrategiesPage() {
                                     Support & Resistance Proximity
                                 </h3>
                                 <p className="text-sm text-zinc-400 leading-relaxed">
-                                    Identifies coins that are trading <strong>very close (within 2%)</strong> to key support or resistance levels.
+                                    Identifies coins that are trading <strong>close (within 5%)</strong> to key support or resistance levels.
                                     Look for <strong>High R:R</strong> ratios (&gt; 3.0) and multiple <strong>Tests</strong> (bounces).
                                 </p>
                             </div>

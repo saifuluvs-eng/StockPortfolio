@@ -724,8 +724,8 @@ class TechnicalIndicators {
             let tests = 0;
             let riskReward: number | null = null;
 
-            // Threshold: 2% from level
-            if (distToSupport < 0.02) {
+            // Threshold: 5% from level
+            if (distToSupport < 0.05) {
               type = 'Support';
               level = minLow;
               distance = distToSupport;
@@ -742,7 +742,7 @@ class TechnicalIndicators {
                 riskReward = 10; // Max out if sitting exactly on support
               }
 
-            } else if (distToResistance < 0.02) {
+            } else if (distToResistance < 0.05) {
               type = 'Resistance';
               level = maxHigh;
               distance = distToResistance;
