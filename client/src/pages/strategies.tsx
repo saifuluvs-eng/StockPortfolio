@@ -125,8 +125,8 @@ export default function StrategiesPage() {
                                     Trend + Dip Strategy
                                 </h3>
                                 <p className="text-sm text-zinc-400 leading-relaxed">
-                                    Identifies coins in a <strong>long-term uptrend</strong> (Price &gt; EMA200) that are currently <strong>oversold</strong> (RSI &lt; 55).
-                                    Great for catching bounces in a bull market.
+                                    Identifies coins in a <strong>long-term uptrend</strong> (Price &gt; EMA200) that are currently experiencing a <strong>healthy pullback</strong> (RSI 40-55).
+                                    These are ideal <strong>"Buy the Dip"</strong> setups for 5-10% swing trades.
                                 </p>
                             </div>
                             <div className="h-[65vh] overflow-auto">
