@@ -8,7 +8,7 @@ async function run() {
         console.log(`Found ${results.length} results.`);
         if (results.length > 0) {
             console.log("Top 5 results:");
-            console.log(JSON.stringify(results.slice(0, 5), null, 2));
+            console.log(JSON.stringify(results.slice(0, 5).map(r => ({ ...r, target: r.target })), null, 2));
         }
     } catch (error) {
         console.error("Error:", error);

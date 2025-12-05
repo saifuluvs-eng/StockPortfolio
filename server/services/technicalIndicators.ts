@@ -1253,6 +1253,7 @@ class TechnicalIndicators {
                 price: currentPrice,
                 type,
                 level,
+                target: type === 'Support' ? maxHigh : minLow,
                 distancePercent: distance * 100,
                 tests,
                 riskReward,

@@ -38,6 +38,7 @@ interface SupportResistanceResult {
     price: number;
     type: 'Support' | 'Resistance';
     level: number;
+    target?: number;
     distancePercent: number;
     tests: number;
     riskReward?: number;
@@ -295,6 +296,7 @@ export default function StrategiesPage() {
                                             <th className="p-4 font-medium text-right">Type</th>
                                             <th className="p-4 font-medium text-right">Level</th>
                                             <th className="p-4 font-medium text-right">Distance</th>
+                                            <th className="p-4 font-medium text-right">Target</th>
                                             <th className="p-4 font-medium text-right">Strength</th>
                                             <th className="p-4 font-medium text-right">Risk:Reward</th>
                                             <th className="p-4 font-medium text-right">Action</th>
@@ -320,6 +322,9 @@ export default function StrategiesPage() {
                                                     </td>
                                                     <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
                                                     <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-400">
+                                                        {coin.target ? `$${formatPrice(coin.target)}` : '-'}
+                                                    </td>
                                                     <td className="p-4 text-right">
                                                         <span className={`text-xs px-2 py-0.5 rounded-full border ${coin.tests >= 2 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
                                                             {coin.tests} Tests
