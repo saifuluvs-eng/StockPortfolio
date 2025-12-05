@@ -278,7 +278,7 @@ export default function StrategiesPage() {
                                 </h3>
                                 <p className="text-sm text-zinc-400 leading-relaxed">
                                     Identifies coins that are trading <strong>very close (within 2%)</strong> to key support or resistance levels.
-                                    Watch for bounces at Support or breakouts at Resistance.
+                                    Look for <strong>High R:R</strong> ratios (&gt; 3.0) and multiple <strong>Tests</strong> (bounces).
                                 </p>
                             </div>
                             <div className="h-[65vh] overflow-auto">
@@ -287,17 +287,19 @@ export default function StrategiesPage() {
                                         <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
                                             <th className="p-4 font-medium">Asset</th>
                                             <th className="p-4 font-medium text-right">Price</th>
-                                            <th className="p-4 font-medium text-right">Level Type</th>
-                                            <th className="p-4 font-medium text-right">Key Level</th>
+                                            <th className="p-4 font-medium text-right">Type</th>
+                                            <th className="p-4 font-medium text-right">Level</th>
                                             <th className="p-4 font-medium text-right">Distance</th>
+                                            <th className="p-4 font-medium text-right">Strength</th>
+                                            <th className="p-4 font-medium text-right">Risk:Reward</th>
                                             <th className="p-4 font-medium text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
                                         {isLoadingSR ? (
-                                            <tr><td colSpan={6} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
+                                            <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
                                         ) : !srData?.length ? (
-                                            <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
+                                            <tr><td colSpan={8} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
                                         ) : (
                                             srData.map((coin) => (
                                                 <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
@@ -313,6 +315,20 @@ export default function StrategiesPage() {
                                                     </td>
                                                     <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
                                                     <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
+                                                    <td className="p-4 text-right">
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full border ${coin.tests >= 3 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
+                                                            {coin.tests} Tests
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        {coin.riskReward ? (
+                                                            <span className={`font-mono font-bold ${coin.riskReward >= 3 ? "text-emerald-400" : "text-zinc-400"}`}>
+                                                                1:{coin.riskReward.toFixed(1)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-zinc-600">-</span>
+                                                        )}
+                                                    </td>
                                                     <td className="p-4 text-right">
                                                         <Link href={`/analyse/${coin.symbol}`}>
                                                             <Button size="sm" className="bg-purple-600 hover:bg-purple-500 h-8">Analyze</Button>

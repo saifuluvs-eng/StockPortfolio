@@ -312,7 +312,7 @@ class TechnicalIndicators {
   }
 
   async analyzeSymbol(symbol: string, timeframe: string = '1h'): Promise<TechnicalAnalysis> {
-    console.log(`[TRACE] analyzeSymbol called for ${symbol} ${timeframe}`);
+    // console.log(`[TRACE] analyzeSymbol called for ${symbol} ${timeframe}`); // Reduce spam
     try {
       // Convert timeframe to Binance format
       const binanceInterval = this.convertTimeframeToBinance(timeframe);
@@ -321,8 +321,8 @@ class TechnicalIndicators {
       let klines: any[] = [];
 
       try {
-        // Get candlestick data (increased for better RSI accuracy)
-        klines = await binanceService.getKlineData(symbol, binanceInterval, 200);
+        // Get candlestick data (increased to 500 for better EMA200 accuracy)
+        klines = await binanceService.getKlineData(symbol, binanceInterval, 500);
 
         if (klines.length === 0) {
           throw new Error('No kline data received from API');
@@ -344,16 +344,18 @@ class TechnicalIndicators {
         volumes = fallbackData.volumes;
         currentPrice = closes[closes.length - 1];
 
-        // Construct mock klines for candles array
+        // Construct mock klines
         klines = closes.map((c, i) => ({
-          openTime: Date.now() - (closes.length - 1 - i) * 3600000, // Mock timestamps
-          open: c, // Simplified: open = close
+          openTime: Date.now() - (closes.length - 1 - i) * 3600000,
+          open: c,
           high: highs[i],
           low: lows[i],
           close: c,
           volume: volumes[i]
         }));
       }
+
+      // ... (rest of function)
 
       // Add timing info for accuracy
       const calculationTimestamp = new Date().toISOString();
@@ -527,40 +529,55 @@ class TechnicalIndicators {
     try {
       // 1. Get top volume pairs to ensure liquidity
       const topPairs = await binanceService.getTopVolumePairs(50);
+      console.log(`[TrendDip] Scanning ${topPairs.length} pairs for Uptrend > EMA200`);
       const results: any[] = [];
 
+      const safeGetKline = async (sym: string, interval: string) => {
+        try {
+          return await binanceService.getKlineData(sym, interval, 30);
+        } catch (e) {
+          // console.warn(`[TrendDip] Failed to fetch ${interval} for ${sym}`);
+          return [];
+        }
+      };
+
       // Use efficient batching
-      const batchSize = 5; // Reduced batch size to avoid rate limits with multi-tf calls
+      const batchSize = 5;
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
+
         const promises = batch.map(async (pair) => {
           try {
             // 2. Primary Trend Check (using 4h for robust long-term trend)
-            // User said "Price > EMA200". 4h EMA200 is a standard trend filter.
+            // Fetch 4h candles
             const analysis = await this.analyzeSymbol(pair.symbol, '4h');
             const closes = analysis.candles?.map(c => c.c) || [];
 
-            if (closes.length < 200) return null;
+            if (closes.length < 200) {
+              // console.log(`[TrendDip] Not enough data for ${pair.symbol} (len=${closes.length})`);
+              return null;
+            }
 
             const currentPrice = analysis.price;
             const ema200 = this.calculateEMA(closes, 200);
 
             // CHECK: Long Term Uptrend
             if (currentPrice > ema200) {
+              // console.log(`[TrendDip] FOUND UPTREND: ${pair.symbol} ($${currentPrice} > $${ema200})`);
+
               // 3. Fetch Multi-Timeframe Data (Only if uptrend)
-              // We already have 4h data from analysis
               const rsi4h = analysis.indicators.rsi.value;
 
-              // Fetch others in parallel
+              // Fetch others in parallel (Result is never null now)
               const [k15m, k1h, k1d, k1w] = await Promise.all([
-                binanceService.getKlineData(pair.symbol, '15m', 30),
-                binanceService.getKlineData(pair.symbol, '1h', 30),
-                binanceService.getKlineData(pair.symbol, '1d', 30),
-                binanceService.getKlineData(pair.symbol, '1w', 30) // 1w might be scarce, but ok
+                safeGetKline(pair.symbol, '15m'),
+                safeGetKline(pair.symbol, '1h'),
+                safeGetKline(pair.symbol, '1d'),
+                safeGetKline(pair.symbol, '1w')
               ]);
 
               const extractRSI = (k: any[]) => {
-                if (!k || k.length < 15) return 50;
+                if (!k || k.length < 15) return 50; // Default Neutral if missing
                 return this.calculateRSI(k.map(x => parseFloat(x.close)), 14);
               };
 
@@ -575,15 +592,17 @@ class TechnicalIndicators {
               return {
                 symbol: pair.symbol,
                 price: currentPrice,
-                rsi: rsiObj, // Return object instead of single value
+                rsi: rsiObj,
                 ema200: ema200,
                 volume: parseFloat(pair.quoteVolume),
                 priceChangePercent: parseFloat(pair.priceChangePercent),
                 timestamp: new Date().toISOString()
               };
+            } else {
+              // console.log(`[TrendDip] Skip ${pair.symbol}: Downtrend`);
             }
           } catch (err) {
-            // Silent fail
+            console.error(`[TrendDip] Error processing ${pair.symbol}:`, err);
           }
           return null;
         });
@@ -591,10 +610,11 @@ class TechnicalIndicators {
         const batchResults = await Promise.all(promises);
         results.push(...batchResults.filter(Boolean));
 
-        // Rate limit protection - heavier now
+        // Rate limit protection
         await new Promise(resolve => setTimeout(resolve, 200));
       }
 
+      console.log(`[TrendDip] Found ${results.length} uptrending coins.`);
       // Sort by 1h RSI ascending (Standard "Dip" metric)
       return results.sort((a, b) => a.rsi.h1 - b.rsi.h1);
     } catch (error) {
@@ -1166,7 +1186,7 @@ class TechnicalIndicators {
     try {
       const topPairs = await binanceService.getTopVolumePairs(50);
       const results: any[] = [];
-      const batchSize = 5;
+      const batchSize = 10; // slightly increased batch size
 
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
@@ -1177,8 +1197,10 @@ class TechnicalIndicators {
             if (candles.length < 50) return null;
 
             const currentPrice = analysis.price;
-            const recentLows = candles.slice(-50).map(c => c.l);
-            const recentHighs = candles.slice(-50).map(c => c.h);
+            // Analyze last 50 candles
+            const recent = candles.slice(-50);
+            const recentLows = recent.map(c => c.l);
+            const recentHighs = recent.map(c => c.h);
             const minLow = Math.min(...recentLows);
             const maxHigh = Math.max(...recentHighs);
 
@@ -1188,15 +1210,35 @@ class TechnicalIndicators {
             let type = '';
             let level = 0;
             let distance = 0;
+            let tests = 0;
+            let riskReward: number | null = null;
 
+            // Threshold: 2% from level
             if (distToSupport < 0.02) {
               type = 'Support';
               level = minLow;
               distance = distToSupport;
+
+              // Count Tests for Support (touches within 1%)
+              tests = recent.filter(c => Math.abs((c.l - minLow) / minLow) < 0.01).length;
+
+              // Calculate R:R
+              const risk = distance; // Current distance to support is the risk (assuming stop loss below support)
+              const reward = (maxHigh - currentPrice) / currentPrice;
+              if (risk > 0.001) { // Avoid div by zero
+                riskReward = parseFloat((reward / risk).toFixed(2));
+              } else {
+                riskReward = 10; // Max out if sitting exactly on support
+              }
+
             } else if (distToResistance < 0.02) {
               type = 'Resistance';
               level = maxHigh;
               distance = distToResistance;
+
+              // Count Tests for Resistance (touches within 1%)
+              tests = recent.filter(c => Math.abs((c.h - maxHigh) / maxHigh) < 0.01).length;
+              // No R:R for shorting (unless we add that later), leave null
             }
 
             if (type) {
@@ -1206,6 +1248,8 @@ class TechnicalIndicators {
                 type,
                 level,
                 distancePercent: distance * 100,
+                tests,
+                riskReward,
                 volume: parseFloat(pair.quoteVolume),
                 timestamp: new Date().toISOString()
               };
@@ -1216,8 +1260,12 @@ class TechnicalIndicators {
 
         const batchResults = await Promise.all(promises);
         results.push(...batchResults.filter(Boolean));
+
+        // Rate limit
+        await new Promise(r => setTimeout(r, 100));
       }
 
+      // Sort by Closeness (Primary) but allow filtering by R:R on frontend
       return results.sort((a, b) => a.distancePercent - b.distancePercent);
     } catch (error) {
       console.error('Error scanning for SR:', error);
