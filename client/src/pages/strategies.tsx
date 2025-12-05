@@ -366,6 +366,16 @@ export default function StrategiesPage() {
                                         </dd>
                                     </div>
                                     <div>
+                                        <dt className="text-sm font-medium text-zinc-300">Why this list? (Top 75)</dt>
+                                        <dd className="text-sm text-zinc-400 mt-1 space-y-1">
+                                            <p>We scan the <strong>Top 75 coins</strong> by 24h Volume.</p>
+                                            <ul className="list-disc list-inside pl-1 text-xs">
+                                                <li><strong>Liquidity:</strong> Most active coins, so you can easily enter/exit.</li>
+                                                <li><strong>Trends:</strong> Hot coins naturally enter this list when their volume spikes.</li>
+                                            </ul>
+                                        </dd>
+                                    </div>
+                                    <div>
                                         <dt className="text-sm font-medium text-zinc-300">Strength (Tests)</dt>
                                         <dd className="text-sm text-zinc-400 mt-1">
                                             How many times the price has bounced off this level recently. Higher is better.

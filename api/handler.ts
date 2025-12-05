@@ -692,7 +692,7 @@ class TechnicalIndicators {
 
   async scanSupportResistance(limit: number = 20): Promise<any[]> {
     try {
-      const topPairs = await binanceService.getTopVolumePairs(50);
+      const topPairs = await binanceService.getTopVolumePairs(75);
       const results: any[] = [];
       const batchSize = 10; // slightly increased batch size
 
