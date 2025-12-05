@@ -207,8 +207,8 @@ export default function StrategiesPage() {
                                                     <td className={`p-4 text-right font-mono ${coin.priceChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                                                         {coin.priceChangePercent > 0 ? "+" : ""}{coin.priceChangePercent.toFixed(2)}%
                                                     </td>
-                                                    <td className="p-4 text-right font-mono text-zinc-300">{formatVolume(coin.volume)}</td>
-                                                    <td className="p-4 text-right font-mono text-zinc-500">{formatVolume(coin.avgVolume)}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-300">${formatVolume(coin.volume * coin.price)}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-500">${formatVolume(coin.avgVolume * coin.price)}</td>
                                                     <td className="p-4 text-right">
                                                         <span className="inline-block px-2 py-1 rounded bg-blue-500/10 text-blue-400 font-bold font-mono text-xs border border-blue-500/20">
                                                             {coin.volumeMultiple.toFixed(1)}x
