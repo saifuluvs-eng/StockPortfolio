@@ -526,44 +526,56 @@ class TechnicalIndicators {
   async scanTrendDip(limit: number = 20): Promise<any[]> {
     try {
       // 1. Get top volume pairs to ensure liquidity
-      const topPairs = await binanceService.getTopVolumePairs(75);
+      const topPairs = await binanceService.getTopVolumePairs(50);
       const results: any[] = [];
 
       // Use efficient batching
-      const batchSize = 10;
+      const batchSize = 5; // Reduced batch size to avoid rate limits with multi-tf calls
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
         const promises = batch.map(async (pair) => {
           try {
-            // 2. Analyze each pair (using 1h for trend+dip is good for swing)
-            const analysis = await this.analyzeSymbol(pair.symbol, '1h');
+            // 2. Primary Trend Check (using 4h for robust long-term trend)
+            // User said "Price > EMA200". 4h EMA200 is a standard trend filter.
+            const analysis = await this.analyzeSymbol(pair.symbol, '4h');
             const closes = analysis.candles?.map(c => c.c) || [];
 
             if (closes.length < 200) return null;
 
-            // 3. Calculate Indicators
             const currentPrice = analysis.price;
-            const rsi = analysis.indicators.rsi.value;
             const ema200 = this.calculateEMA(closes, 200);
-            const ema50 = this.calculateEMA(closes, 50);
 
-            // 4. Apply Strategy Logic (Refined)
-            // - Uptrend: Price > EMA200 (Long term bull bias)
-            // - Stronger Uptrend Check: EMA50 > EMA200 implies the trend is established.
-            // - Dip: RSI < 55 (Classic "buy the dip" zone in a bull market is 40-55, not just <30)
-            // - Not Crashing: RSI > 30 (Avoid catching falling knives unless it's a sniper entry)
+            // CHECK: Long Term Uptrend
+            if (currentPrice > ema200) {
+              // 3. Fetch Multi-Timeframe Data (Only if uptrend)
+              // We already have 4h data from analysis
+              const rsi4h = analysis.indicators.rsi.value;
 
-            const isUptrend = currentPrice > ema200;
-            const isDip = rsi < 55; // Relaxed from 35 to 55
+              // Fetch others in parallel
+              const [k15m, k1h, k1d, k1w] = await Promise.all([
+                binanceService.getKlineData(pair.symbol, '15m', 30),
+                binanceService.getKlineData(pair.symbol, '1h', 30),
+                binanceService.getKlineData(pair.symbol, '1d', 30),
+                binanceService.getKlineData(pair.symbol, '1w', 30) // 1w might be scarce, but ok
+              ]);
 
-            // Optional: Check if we are "bouncing" (Price > Low of last 3 candles)? 
-            // For scanning, we just want to find the setup.
+              const extractRSI = (k: any[]) => {
+                if (!k || k.length < 15) return 50;
+                return this.calculateRSI(k.map(x => parseFloat(x.close)), 14);
+              };
 
-            if (isUptrend && isDip) {
+              const rsiObj = {
+                m15: extractRSI(k15m),
+                h1: extractRSI(k1h),
+                h4: rsi4h,
+                d1: extractRSI(k1d),
+                w1: extractRSI(k1w)
+              };
+
               return {
                 symbol: pair.symbol,
                 price: currentPrice,
-                rsi: rsi,
+                rsi: rsiObj, // Return object instead of single value
                 ema200: ema200,
                 volume: parseFloat(pair.quoteVolume),
                 priceChangePercent: parseFloat(pair.priceChangePercent),
@@ -571,7 +583,7 @@ class TechnicalIndicators {
               };
             }
           } catch (err) {
-            // Silent fail for individual pair
+            // Silent fail
           }
           return null;
         });
@@ -579,13 +591,12 @@ class TechnicalIndicators {
         const batchResults = await Promise.all(promises);
         results.push(...batchResults.filter(Boolean));
 
-        // Rate limit protection
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // Rate limit protection - heavier now
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      // Sort by RSI ascending (Lower RSI = Deeper dip/Better entry potentially)
-      // But maybe prioritize "Quality"? For now, lowest RSI in an uptrend is a standard sort.
-      return results.sort((a, b) => a.rsi - b.rsi);
+      // Sort by 1h RSI ascending (Standard "Dip" metric)
+      return results.sort((a, b) => a.rsi.h1 - b.rsi.h1);
     } catch (error) {
       console.error('Error scanning for Trend+Dip:', error);
       return [];

@@ -10,7 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 interface TrendDipResult {
     symbol: string;
     price: number;
-    rsi: number;
+    rsi: {
+        m15: number;
+        h1: number;
+        h4: number;
+        d1: number;
+        w1: number;
+    };
     ema200: number;
     volume: number;
     priceChangePercent: number;
@@ -36,6 +42,23 @@ interface SupportResistanceResult {
     volume: number;
     timestamp: string;
 }
+
+const RsiDot = ({ val }: { val: number }) => {
+    let colorClass = "bg-zinc-500";
+    if (val >= 70) colorClass = "bg-rose-500"; // Overbought
+    else if (val <= 30) colorClass = "bg-emerald-500"; // Oversold
+    else if (val <= 45) colorClass = "bg-emerald-500/50"; // Mildly Oversold
+    else if (val >= 60) colorClass = "bg-rose-500/50"; // Mildly Overbought
+
+    return (
+        <div className="flex items-center gap-2 justify-end">
+            <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+            <span className={`font-mono ${val <= 30 || val >= 70 ? "font-bold text-white" : "text-zinc-400"}`}>
+                {val === undefined ? '-' : val.toFixed(0)}
+            </span>
+        </div>
+    );
+};
 
 export default function StrategiesPage() {
     const { data: trendDipData, isLoading: isLoadingTrend, refetch: refetchTrend, isRefetching: isRefetchingTrend } = useQuery<TrendDipResult[]>({
@@ -125,8 +148,9 @@ export default function StrategiesPage() {
                                     Trend + Dip Strategy
                                 </h3>
                                 <p className="text-sm text-zinc-400 leading-relaxed">
-                                    Identifies coins in a <strong>long-term uptrend</strong> (Price &gt; EMA200) that are currently experiencing a <strong>healthy pullback</strong> (RSI 40-55).
-                                    These are ideal <strong>"Buy the Dip"</strong> setups for 5-10% swing trades.
+                                    Identifies coins in a <strong>long-term uptrend</strong> (Price &gt; EMA200).
+                                    <br />
+                                    <strong>Multi-Timeframe RSI</strong> helps pinpoint entry timing (Look for Green Dots / Low RSI).
                                 </p>
                             </div>
                             <div className="h-[65vh] overflow-auto">
@@ -136,30 +160,39 @@ export default function StrategiesPage() {
                                             <th className="p-4 font-medium">Asset</th>
                                             <th className="p-4 font-medium text-right">Price</th>
                                             <th className="p-4 font-medium text-right">24h Change</th>
-                                            <th className="p-4 font-medium text-right">RSI (1h)</th>
-                                            <th className="p-4 font-medium text-right">EMA 200</th>
-                                            <th className="p-4 font-medium text-right">Distance</th>
+                                            <th className="p-4 font-medium text-right">RSI 15m</th>
+                                            <th className="p-4 font-medium text-right">RSI 1H</th>
+                                            <th className="p-4 font-medium text-right">RSI 4H</th>
+                                            <th className="p-4 font-medium text-right">RSI 1D</th>
+                                            <th className="p-4 font-medium text-right">RSI 1W</th>
                                             <th className="p-4 font-medium text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
                                         {isLoadingTrend ? (
-                                            <tr><td colSpan={7} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
+                                            <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Scanning multi-timeframe data... this may take a moment.</td></tr>
                                         ) : !trendDipData?.length ? (
-                                            <tr><td colSpan={7} className="p-8 text-center text-zinc-500">No opportunities found.</td></tr>
+                                            <tr><td colSpan={9} className="p-8 text-center text-zinc-500">No uptrending coins found.</td></tr>
                                         ) : (
                                             trendDipData.map((coin) => {
                                                 const dist = ((coin.price - coin.ema200) / coin.ema200) * 100;
                                                 return (
                                                     <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                                                        <td className="p-4 font-bold text-white">{coin.symbol}</td>
+                                                        <td className="p-4 font-bold text-white">
+                                                            <div>{coin.symbol}</div>
+                                                            <div className="text-xs text-emerald-500/80 font-normal mt-0.5" title="Above EMA 200">
+                                                                EMA200: ${formatPrice(coin.ema200)}
+                                                            </div>
+                                                        </td>
                                                         <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
                                                         <td className={`p-4 text-right font-mono ${coin.priceChangePercent >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
                                                             {coin.priceChangePercent > 0 ? "+" : ""}{coin.priceChangePercent.toFixed(2)}%
                                                         </td>
-                                                        <td className="p-4 text-right"><span className="text-rose-400 font-bold">{coin.rsi.toFixed(1)}</span></td>
-                                                        <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.ema200)}</td>
-                                                        <td className="p-4 text-right text-emerald-400">+{dist.toFixed(2)}%</td>
+                                                        <td className="p-4 text-right"><RsiDot val={coin.rsi && coin.rsi.m15} /></td>
+                                                        <td className="p-4 text-right"><RsiDot val={coin.rsi && coin.rsi.h1} /></td>
+                                                        <td className="p-4 text-right"><RsiDot val={coin.rsi && coin.rsi.h4} /></td>
+                                                        <td className="p-4 text-right"><RsiDot val={coin.rsi && coin.rsi.d1} /></td>
+                                                        <td className="p-4 text-right"><RsiDot val={coin.rsi && coin.rsi.w1} /></td>
                                                         <td className="p-4 text-right">
                                                             <Link href={`/analyse/${coin.symbol}`}>
                                                                 <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 h-8">Analyze</Button>
