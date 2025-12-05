@@ -321,7 +321,7 @@ export default function StrategiesPage() {
                                                     <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
                                                     <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
                                                     <td className="p-4 text-right">
-                                                        <span className={`text-xs px-2 py-0.5 rounded-full border ${coin.tests >= 3 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full border ${coin.tests >= 2 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
                                                             {coin.tests} Tests
                                                         </span>
                                                     </td>
