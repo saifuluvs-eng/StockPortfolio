@@ -221,10 +221,9 @@ class BinanceService {
 
   async getKlineData(symbol: string, interval: string, limit: number = 200): Promise<CandlestickData[]> {
     try {
-      `${this.baseUrl}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`, {
+      const response = await fetch(`${this.baseUrl}/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`, {
         headers: { 'User-Agent': 'Mozilla/5.0' }
-      }
-      );
+      });
       if (!response.ok) {
         throw new Error(`Failed to fetch kline data for ${symbol}`);
       }
