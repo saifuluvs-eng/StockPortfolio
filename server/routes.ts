@@ -632,6 +632,26 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get('/api/market/strategies/volume-spike', async (req: Request, res: Response) => {
+    try {
+      const data = await technicalIndicators.scanVolumeSpike();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching volume-spike strategy:", error);
+      res.status(500).json({ message: "Failed to fetch volume-spike strategy" });
+    }
+  });
+
+  app.get('/api/market/strategies/support-resistance', async (req: Request, res: Response) => {
+    try {
+      const data = await technicalIndicators.scanSupportResistance();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching support-resistance strategy:", error);
+      res.status(500).json({ message: "Failed to fetch support-resistance strategy" });
+    }
+  });
+
   // Watchlist routes
   app.get('/api/watchlist', isAuthenticated, async (req: Request, res: Response) => {
     try {

@@ -1088,6 +1088,116 @@ class TechnicalIndicators {
 
 
 
+  async scanVolumeSpike(limit: number = 20): Promise<any[]> {
+    try {
+      const topPairs = await binanceService.getTopVolumePairs(50);
+      const results: any[] = [];
+      const batchSize = 5;
+
+      for (let i = 0; i < topPairs.length; i += batchSize) {
+        const batch = topPairs.slice(i, i + batchSize);
+        const promises = batch.map(async (pair) => {
+          try {
+            const analysis = await this.analyzeSymbol(pair.symbol, '1h');
+            const candles = analysis.candles || [];
+            if (candles.length < 25) return null;
+
+            const currentVol = candles[candles.length - 1].v;
+            const prevVols = candles.slice(candles.length - 21, candles.length - 1).map(c => c.v);
+            const avgVol = prevVols.reduce((a, b) => a + b, 0) / prevVols.length;
+
+            const isSpike = currentVol > (avgVol * 1.5);
+            const isGreen = candles[candles.length - 1].c > candles[candles.length - 1].o;
+
+            if (isSpike && isGreen) {
+              return {
+                symbol: pair.symbol,
+                price: analysis.price,
+                volume: currentVol,
+                avgVolume: avgVol,
+                volumeMultiple: currentVol / avgVol,
+                priceChangePercent: parseFloat(pair.priceChangePercent),
+                timestamp: new Date().toISOString()
+              };
+            }
+          } catch (err) { }
+          return null;
+        });
+
+        const batchResults = await Promise.all(promises);
+        results.push(...batchResults.filter(Boolean));
+      }
+
+      return results.sort((a, b) => b.volumeMultiple - a.volumeMultiple);
+    } catch (error) {
+      console.error('Error scanning for VolumeSpike:', error);
+      return [];
+    }
+  }
+
+  async scanSupportResistance(limit: number = 20): Promise<any[]> {
+    try {
+      const topPairs = await binanceService.getTopVolumePairs(50);
+      const results: any[] = [];
+      const batchSize = 5;
+
+      for (let i = 0; i < topPairs.length; i += batchSize) {
+        const batch = topPairs.slice(i, i + batchSize);
+        const promises = batch.map(async (pair) => {
+          try {
+            const analysis = await this.analyzeSymbol(pair.symbol, '4h');
+            const candles = analysis.candles || [];
+            if (candles.length < 50) return null;
+
+            const currentPrice = analysis.price;
+            const recentLows = candles.slice(-50).map(c => c.l);
+            const recentHighs = candles.slice(-50).map(c => c.h);
+            const minLow = Math.min(...recentLows);
+            const maxHigh = Math.max(...recentHighs);
+
+            const distToSupport = Math.abs((currentPrice - minLow) / minLow);
+            const distToResistance = Math.abs((maxHigh - currentPrice) / currentPrice);
+
+            let type = '';
+            let level = 0;
+            let distance = 0;
+
+            if (distToSupport < 0.02) {
+              type = 'Support';
+              level = minLow;
+              distance = distToSupport;
+            } else if (distToResistance < 0.02) {
+              type = 'Resistance';
+              level = maxHigh;
+              distance = distToResistance;
+            }
+
+            if (type) {
+              return {
+                symbol: pair.symbol,
+                price: currentPrice,
+                type,
+                level,
+                distancePercent: distance * 100,
+                volume: parseFloat(pair.quoteVolume),
+                timestamp: new Date().toISOString()
+              };
+            }
+          } catch (err) { }
+          return null;
+        });
+
+        const batchResults = await Promise.all(promises);
+        results.push(...batchResults.filter(Boolean));
+      }
+
+      return results.sort((a, b) => a.distancePercent - b.distancePercent);
+    } catch (error) {
+      console.error('Error scanning for SR:', error);
+      return [];
+    }
+  }
+
 }
 
 export const technicalIndicators = new TechnicalIndicators();
