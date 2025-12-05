@@ -90,6 +90,9 @@ export default function StrategiesPage() {
         refetchSR();
     };
 
+    // Debugging: Check if new fields are present
+    // useEffect(() => { if (srData) console.log("SR Data Received:", srData); }, [srData]);
+
     const formatVolume = (val: number) => {
         if (val >= 1_000_000) return (val / 1_000_000).toFixed(2) + "M";
         if (val >= 1_000) return (val / 1_000).toFixed(0) + "K";
@@ -121,10 +124,10 @@ export default function StrategiesPage() {
                         size="sm"
                         onClick={handleRefresh}
                         disabled={isLoading || isRefetching}
-                        className="gap-2"
+                        className="gap-2 min-w-[140px]"
                     >
                         <RefreshCw className={`w-4 h-4 ${isRefetching ? "animate-spin" : ""}`} />
-                        Refresh Scanners
+                        {isRefetching ? "Scanning..." : "Refresh Scanners"}
                     </Button>
                 </div>
 
