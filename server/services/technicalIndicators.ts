@@ -700,7 +700,12 @@ class TechnicalIndicators {
       const volatility = 0.02; // 2% volatility
       const high = price * (1 + Math.random() * volatility);
       const low = price * (1 - Math.random() * volatility);
-      const volume = Math.random() * 1000000 + 100000; // Random volume
+      let volume = Math.random() * 1000000 + 100000; // Random volume
+
+      // Inject fake spikes in the last candle for demo purposes (30% chance)
+      if (i === 99 && Math.random() > 0.7) {
+        volume *= (2 + Math.random() * 3); // 2x-5x spike
+      }
 
       closes.push(price);
       highs.push(high);
@@ -1090,7 +1095,8 @@ class TechnicalIndicators {
 
   async scanVolumeSpike(limit: number = 20): Promise<any[]> {
     try {
-      const topPairs = await binanceService.getTopVolumePairs(50);
+      // Increased scan limit to find more opportunities
+      const topPairs = await binanceService.getTopVolumePairs(75);
       const results: any[] = [];
       const batchSize = 5;
 
