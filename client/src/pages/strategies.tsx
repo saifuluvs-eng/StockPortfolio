@@ -23,6 +23,8 @@ interface SupportResistanceResult {
     tests: number;
     riskReward?: number;
     volume: number;
+    rsi?: number;
+    badges?: string[];
     timestamp: string;
 }
 
@@ -138,6 +140,7 @@ export default function StrategiesPage() {
                                         <th className="p-4 font-medium text-right">Price</th>
                                         <th className="p-4 font-medium text-left">Range Position</th>
                                         <th className="p-4 font-medium text-right">Type</th>
+                                        <th className="p-4 font-medium text-left pl-6">Confluence</th>
                                         <th className="p-4 font-medium text-right">Level</th>
                                         <th className="p-4 font-medium text-right">Distance</th>
                                         <th
@@ -160,6 +163,85 @@ export default function StrategiesPage() {
                                         </th>
                                         <th className="p-4 font-medium text-right">Action</th>
                                     </tr>
+                                </thead>
+                                <tbody className="text-sm">
+                                    {isLoadingSR ? (
+                                        <tr><td colSpan={11} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
+                                    ) : !sortedData?.length ? (
+                                        <tr><td colSpan={11} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
+                                    ) : (
+                                        sortedData.map((coin) => {
+                                            const min = Math.min(coin.level, coin.target || coin.level);
+                                            const max = Math.max(coin.level, coin.target || coin.level);
+                                            const range = max - min;
+                                            const position = range > 0 ? ((coin.price - min) / range) * 100 : 0;
+                                            const clampedPos = Math.max(0, Math.min(100, position));
+
+                                            return (
+                                                <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                                                    <td className="p-4 font-bold text-white">{coin.symbol}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                    <td className="p-4 w-[140px]">
+                                                        <div className="w-full h-1.5 bg-zinc-800 rounded-full relative overflow-hidden">
+                                                            {/* Range Bar Background gradient for context */}
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/40 via-zinc-800/20 to-rose-900/40 opacity-50"></div>
+
+                                                            {/* Position Dot */}
+                                                            <div
+                                                                className={`absolute top-0 bottom-0 w-2 rounded-full transform -translate-x-1/2 ${clampedPos < 20 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                                                                        clampedPos > 80 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
+                                                                            'bg-amber-400'
+                                                                    }`}
+                                                                style={{ left: `${clampedPos}%` }}
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support'
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                                            }`}>
+                                                            {coin.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 pl-6">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {coin.badges && coin.badges.length > 0 ? coin.badges.map(b => (
+                                                                <span key={b} className={`text-[10px] px-1.5 py-0.5 rounded border ${b === 'Golden Setup' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
+                                                                        b === 'Strong Support' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
+                                                                            b === 'Risky' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
+                                                                                'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                                    }`}>
+                                                                    {b === 'Golden Setup' && '💎 '}
+                                                                    {b === 'Strong Support' && '🛡️ '}
+                                                                    {b === 'Risky' && '⚠️ '}
+                                                                    {b}
+                                                                </span>
+                                                            )) : <span className="text-zinc-700 text-xs">-</span>}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
+                                                    <th className="p-4 font-medium text-right">Distance</th>
+                                                    <th
+                                                        className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                                        onClick={() => handleSort('target')}
+                                                    >
+                                                        Target <SortIcon field="target" />
+                                                    </th>
+                                                    <th
+                                                        className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                                        onClick={() => handleSort('tests')}
+                                                    >
+                                                        Strength <SortIcon field="tests" />
+                                                    </th>
+                                                    <th
+                                                        className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                                        onClick={() => handleSort('riskReward')}
+                                                    >
+                                                        Risk:Reward <SortIcon field="riskReward" />
+                                                    </th>
+                                                    <th className="p-4 font-medium text-right">Action</th>
+                                                </tr>
                                 </thead>
                                 <tbody className="text-sm">
                                     {isLoadingSR ? (
@@ -186,8 +268,8 @@ export default function StrategiesPage() {
                                                             {/* Position Dot */}
                                                             <div
                                                                 className={`absolute top-0 bottom-0 w-2 rounded-full transform -translate-x-1/2 ${clampedPos < 20 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                                                                        clampedPos > 80 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
-                                                                            'bg-amber-400'
+                                                                    clampedPos > 80 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
+                                                                        'bg-amber-400'
                                                                     }`}
                                                                 style={{ left: `${clampedPos}%` }}
                                                             />

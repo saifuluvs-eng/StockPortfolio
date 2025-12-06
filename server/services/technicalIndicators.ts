@@ -1250,6 +1250,30 @@ class TechnicalIndicators {
               // No R:R for shorting (unless we add that later), leave null
             }
 
+            const rsiVal = analysis.indicators.rsi.value;
+            const badges: string[] = [];
+
+            // Confluence Logic
+            if (type === 'Support') {
+              // Golden Setup: Near Support + Oversold RSI
+              if (rsiVal < 35 && distance < 0.03) {
+                badges.push('Golden Setup');
+              }
+              // Strong Support: Many tests
+              if (tests >= 3) {
+                badges.push('Strong Support');
+              }
+              // Risky: At support but RSI is not oversold (momentum is still bearish/high)
+              if (rsiVal > 50) {
+                badges.push('Risky');
+              }
+            } else if (type === 'Resistance') {
+              // Bearish Confluence: At Resistance + Overbought
+              if (rsiVal > 65) {
+                badges.push('Overbought');
+              }
+            }
+
             if (type) {
               return {
                 symbol: pair.symbol,
@@ -1260,6 +1284,8 @@ class TechnicalIndicators {
                 distancePercent: distance * 100,
                 tests,
                 riskReward,
+                rsi: rsiVal,
+                badges,
                 volume: parseFloat(pair.quoteVolume),
                 timestamp: new Date().toISOString()
               };
