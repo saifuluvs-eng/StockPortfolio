@@ -1310,7 +1310,7 @@ class TechnicalIndicators {
                   badges,
                   volume: parseFloat(pair.quoteVolume),
                   timestamp: new Date().toISOString(),
-                  _version: 'v2'
+                  _version: 'v3'
                 };
               }
             }
