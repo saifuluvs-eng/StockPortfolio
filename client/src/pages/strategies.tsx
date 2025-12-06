@@ -154,6 +154,11 @@ export default function StrategiesPage() {
                                 )}
                             </div>
                         </div>
+                        {/* DEBUG SECTION */}
+                        <div className="px-6 pb-2 text-xs font-mono text-zinc-500">
+                            Debug: Count={srData?.length ?? 'null'} | Strategy={strategy}
+                            {srData && srData.length > 0 && <div>First: {srData[0].symbol} Type:{srData[0].type} Dist:{srData[0].distancePercent}</div>}
+                        </div>
                         <div className="h-[65vh] overflow-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead className="sticky top-0 z-10 bg-zinc-900">
