@@ -1186,6 +1186,7 @@ class TechnicalIndicators {
   }
 
   async scanSupportResistance(limit: number = 20, lookbackDays: number = 8, strategy: 'bounce' | 'breakout' = 'bounce'): Promise<any[]> {
+    console.log(`[TechnicalIndicators] scanSupportResistance called. Strategy: ${strategy}, Lookback: ${lookbackDays}`);
     try {
       const topPairs = await binanceService.getTopVolumePairs(75);
       const results: any[] = [];
