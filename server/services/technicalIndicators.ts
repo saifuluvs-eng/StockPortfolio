@@ -1345,7 +1345,8 @@ class TechnicalIndicators {
                 rsi: rsiVal,
                 badges,
                 volume: parseFloat(pair.quoteVolume),
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                _version: 'v2'
               };
             }
           } catch (err) { }

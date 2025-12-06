@@ -156,7 +156,7 @@ export default function StrategiesPage() {
                         </div>
                         {/* DEBUG SECTION */}
                         <div className="px-6 pb-2 text-xs font-mono text-zinc-500">
-                            Debug: Count={srData?.length ?? 'null'} | Strategy={strategy}
+                            Debug: Count={srData?.length ?? 'null'} | Strategy={strategy} | Ver: {(srData && srData.length > 0 && (srData[0] as any)._version) || 'v1'}
                             {srData && srData.length > 0 && <div>First: {srData[0].symbol} Type:{srData[0].type} Dist:{srData[0].distancePercent}</div>}
                         </div>
                         <div className="h-[65vh] overflow-auto">
