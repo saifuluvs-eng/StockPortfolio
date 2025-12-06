@@ -644,7 +644,12 @@ export function registerRoutes(app: Express): Server {
 
   app.get('/api/market/strategies/support-resistance', async (req: Request, res: Response) => {
     try {
-      const data = await technicalIndicators.scanSupportResistance();
+      const limit = parseInt(String(req.query?.limit || "20"), 10);
+      const days = parseInt(String(req.query?.days || "8"), 10);
+
+      console.log(`[API routes.ts] /support-resistance called with limit=${limit}, days=${days}`);
+
+      const data = await technicalIndicators.scanSupportResistance(limit, days);
       res.json(data);
     } catch (error) {
       console.error("Error fetching support-resistance strategy:", error);
