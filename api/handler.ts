@@ -1200,7 +1200,11 @@ async function supportResistanceStrategy(req: any, res: any) {
   try {
     const limit = parseInt(String(req.query?.limit || "20"), 10);
     const days = parseInt(String(req.query?.days || "8"), 10);
-    const results = await technicalIndicators.scanSupportResistance(limit, days);
+    const strategy = String(req.query?.strategy || "bounce") as 'bounce' | 'breakout';
+
+    console.log(`[API Handler] /support-resistance called with limit=${limit}, days=${days}, strategy=${strategy}`);
+
+    const results = await technicalIndicators.scanSupportResistance(limit, days, strategy);
     return ok(res, results);
   } catch (e: any) {
     return bad(res, 500, "Error scanning support/resistance", e);
