@@ -265,64 +265,66 @@ export default function StrategiesPage() {
                                     </tbody>
                                 </table>
                             </div>
-                    </Card>
 
-                    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <Info className="w-5 h-5 text-indigo-400" />
-                                Scanner Logic
-                            </h4>
-                            <dl className="space-y-4">
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Target Price</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        The highest price reached in the last ~8 days. We assume price moves in a range, so this is the "Ceiling" the coin might return to.
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Why this list? (Top 75)</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1 space-y-1">
-                                        <p>We scan the <strong>Top 75 coins</strong> by 24h Volume.</p>
-                                        <ul className="list-disc list-inside pl-1 text-xs">
-                                            <li><strong>Liquidity:</strong> Most active coins, so you can easily enter/exit.</li>
-                                            <li><strong>Trends:</strong> Hot coins naturally enter this list when their volume spikes.</li>
-                                        </ul>
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Strength (Tests)</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        How many times the price has bounced off this level recently. Higher is better.
-                                    </dd>
-                                </div>
-                            </dl>
-                        </div>
 
-                        <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <HelpCircle className="w-5 h-5 text-emerald-400" />
-                                Trading Tips
-                            </h4>
-                            <dl className="space-y-4">
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Risk : Reward (R:R)</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        Potential Profit vs. Potential Loss. <strong>1:10</strong> means for every $1 you risk losing (if it breaks support), you could make $10 (if it hits target).
-                                    </dd>
+                            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
+                                    <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                        <Info className="w-5 h-5 text-indigo-400" />
+                                        Scanner Logic
+                                    </h4>
+                                    <dl className="space-y-4">
+                                        <div>
+                                            <dt className="text-sm font-medium text-zinc-300">Target Price</dt>
+                                            <dd className="text-sm text-zinc-400 mt-1">
+                                                The highest price reached in the last ~8 days. We assume price moves in a range, so this is the "Ceiling" the coin might return to.
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-sm font-medium text-zinc-300">Why this list? (Top 75)</dt>
+                                            <dd className="text-sm text-zinc-400 mt-1 space-y-1">
+                                                <p>We scan the <strong>Top 75 coins</strong> by 24h Volume.</p>
+                                                <ul className="list-disc list-inside pl-1 text-xs">
+                                                    <li><strong>Liquidity:</strong> Most active coins, so you can easily enter/exit.</li>
+                                                    <li><strong>Trends:</strong> Hot coins naturally enter this list when their volume spikes.</li>
+                                                </ul>
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-sm font-medium text-zinc-300">Strength (Tests)</dt>
+                                            <dd className="text-sm text-zinc-400 mt-1">
+                                                How many times the price has bounced off this level recently. Higher is better.
+                                            </dd>
+                                        </div>
+                                    </dl>
                                 </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Why did a coin disappear?</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        Coins are only listed when they are <strong>within 5%</strong> of the support line. If a coin bounces up (Good!) or crashes down (Bad), it leaves the "Setup Zone" and is removed.
-                                    </dd>
+
+                                <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
+                                    <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                        <HelpCircle className="w-5 h-5 text-emerald-400" />
+                                        Trading Tips
+                                    </h4>
+                                    <dl className="space-y-4">
+                                        <div>
+                                            <dt className="text-sm font-medium text-zinc-300">Risk : Reward (R:R)</dt>
+                                            <dd className="text-sm text-zinc-400 mt-1">
+                                                Potential Profit vs. Potential Loss. <strong>1:10</strong> means for every $1 you risk losing (if it breaks support), you could make $10 (if it hits target).
+                                            </dd>
+                                        </div>
+                                        <div>
+                                            <dt className="text-sm font-medium text-zinc-300">Why did a coin disappear?</dt>
+                                            <dd className="text-sm text-zinc-400 mt-1">
+                                                Coins are only listed when they are <strong>within 5%</strong> of the support line. If a coin bounces up (Good!) or crashes down (Bad), it leaves the "Setup Zone" and is removed.
+                                            </dd>
+                                        </div>
+                                    </dl>
                                 </div>
-                            </dl>
+                            </div>
                         </div>
-                    </div>
-                </Card>
-            </div>
+                </div>
+            </Card>
         </div>
+            </div >
         </Page >
     );
 }
