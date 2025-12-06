@@ -1185,11 +1185,14 @@ class TechnicalIndicators {
     }
   }
 
-  async scanSupportResistance(limit: number = 20): Promise<any[]> {
+  async scanSupportResistance(limit: number = 20, lookbackDays: number = 8): Promise<any[]> {
     try {
       const topPairs = await binanceService.getTopVolumePairs(75);
       const results: any[] = [];
       const batchSize = 10; // slightly increased batch size
+
+      // Calculate candles needed: (Days * 24h) / 4h timeframe = 6 candles per day
+      const candlesNeeded = Math.ceil(lookbackDays * 6);
 
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
@@ -1200,11 +1203,11 @@ class TechnicalIndicators {
 
             const analysis = await this.analyzeSymbol(pair.symbol, '4h');
             const candles = analysis.candles || [];
-            if (candles.length < 50) return null;
+            if (candles.length < candlesNeeded) return null;
 
             const currentPrice = analysis.price;
-            // Analyze last 50 candles
-            const recent = candles.slice(-50);
+            // Analyze requested lookback period
+            const recent = candles.slice(-candlesNeeded);
             const recentLows = recent.map(c => c.l);
             const recentHighs = recent.map(c => c.h);
             const minLow = Math.min(...recentLows);

@@ -1,8 +1,15 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Page, Card } from "@/components/layout/Layout";
-import { RefreshCw, Target, Info, HelpCircle, ArrowUpDown } from "lucide-react";
+import { RefreshCw, Target, Info, HelpCircle, ArrowUpDown, Crosshair } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue
+} from "@/components/ui/select";
 import { Link } from "wouter";
 import { apiFetchLocal } from "@/lib/api";
 
@@ -23,14 +30,15 @@ type SortField = 'target' | 'tests' | 'riskReward';
 type SortDirection = 'asc' | 'desc';
 
 export default function StrategiesPage() {
-    const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, isRefetching: isRefetchingSR, dataUpdatedAt } = useQuery<SupportResistanceResult[]>({
-        queryKey: ["support-resistance"],
-        queryFn: async () => apiFetchLocal("/api/market/strategies/support-resistance"),
-        refetchInterval: 60000,
-    });
-
     const [sortField, setSortField] = useState<SortField | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+    const [lookbackDays, setLookbackDays] = useState<string>("8");
+
+    const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, isRefetching: isRefetchingSR, dataUpdatedAt } = useQuery<SupportResistanceResult[]>({
+        queryKey: ["support-resistance", lookbackDays],
+        queryFn: async () => apiFetchLocal(`/api/market/strategies/support-resistance?days=${lookbackDays}`),
+        refetchInterval: 60000,
+    });
 
     const handleRefresh = () => {
         setSortField(null);
@@ -46,7 +54,7 @@ export default function StrategiesPage() {
         }
     };
 
-    const sortedData = React.useMemo(() => {
+    const sortedData = useMemo(() => {
         if (!srData) return [];
         if (!sortField) return srData;
 
@@ -93,16 +101,28 @@ export default function StrategiesPage() {
                                 </p>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleRefresh}
-                                    disabled={isLoadingSR || isRefetchingSR}
-                                    className="gap-2 min-w-[140px] shrink-0"
-                                >
-                                    <RefreshCw className={`w-4 h-4 ${isRefetchingSR ? "animate-spin" : ""}`} />
-                                    {isRefetchingSR ? "Scanning..." : "Refresh"}
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Select value={lookbackDays} onValueChange={setLookbackDays}>
+                                        <SelectTrigger className="w-[110px] h-8 text-xs bg-zinc-900 border-zinc-800">
+                                            <SelectValue placeholder="Lookback" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="8">8 Days</SelectItem>
+                                            <SelectItem value="15">15 Days</SelectItem>
+                                            <SelectItem value="30">30 Days</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleRefresh}
+                                        disabled={isLoadingSR || isRefetchingSR}
+                                        className="gap-2 min-w-[140px] shrink-0"
+                                    >
+                                        <RefreshCw className={`w-4 h-4 ${isRefetchingSR ? "animate-spin" : ""}`} />
+                                        {isRefetchingSR ? "Scanning..." : "Refresh"}
+                                    </Button>
+                                </div>
                                 {lastUpdatedTime && (
                                     <span className="text-xs text-zinc-500 font-mono">
                                         Updated: {lastUpdatedTime}

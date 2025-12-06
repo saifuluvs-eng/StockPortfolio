@@ -1198,11 +1198,12 @@ async function volumeSpikeStrategy(req: any, res: any) {
 
 async function supportResistanceStrategy(req: any, res: any) {
   try {
-    const data = await technicalIndicators.scanSupportResistance();
-    return ok(res, data);
+    const limit = parseInt(String(req.query?.limit || "20"), 10);
+    const days = parseInt(String(req.query?.days || "8"), 10);
+    const results = await technicalIndicators.scanSupportResistance(limit, days);
+    return ok(res, results);
   } catch (e: any) {
-    console.error("SupportResistance Error", e);
-    return bad(res, 500, e.message);
+    return bad(res, 500, "Error scanning support/resistance", e);
   }
 }
 
