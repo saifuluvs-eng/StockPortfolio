@@ -10,6 +10,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
+import { format } from "date-fns";
 import { Link } from "wouter";
 import { apiFetchLocal } from "@/lib/api";
 
@@ -89,74 +90,57 @@ export default function StrategiesPage() {
         return <ArrowUpDown className={`w-3 h-3 ml-1 inline ${sortDirection === 'asc' ? 'text-emerald-500' : 'text-rose-500'}`} />;
     };
 
-    const lastUpdatedTime = dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+    const lastUpdatedTime = dataUpdatedAt ? format(new Date(dataUpdatedAt), 'HH:mm:ss') : null;
 
     return (
         <Page>
             <div className="max-w-7xl mx-auto space-y-6">
                 <div className="space-y-6">
                     <Card>
-                        <div className="p-6 bg-zinc-900/50 border-b border-zinc-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                                    <Target className="w-5 h-5 text-purple-400" />
-                                    Support & Resistance Proximity
-                                </h3>
-                                <p className="text-sm text-zinc-400 leading-relaxed">
-                                    Identifies coins that are trading <strong>close (within 5%)</strong> to key support or resistance levels.
-                                    Look for <strong>High R:R</strong> ratios (&gt; 3.0) and multiple <strong>Tests</strong> (bounces).
-                                </p>
-                            </div>
-                            <div className="flex flex-col items-end gap-2">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex bg-zinc-900 rounded-md p-1 border border-zinc-800">
-                                        <button
-                                            onClick={() => setStrategy('bounce')}
-                                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${strategy === 'bounce' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-                                        >
-                                            🛡️ Bounce
-                                        </button>
-                                        <button
-                                            onClick={() => setStrategy('breakout')}
-                                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${strategy === 'breakout' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
-                                        >
-                                            🚀 Breakout
-                                        </button>
+                        <div className="space-y-6">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
+                                            <Target className="h-6 w-6" />
+                                        </div>
+                                        <h1 className="text-2xl font-bold tracking-tight text-white/90">Support & Resistance Scanner</h1>
                                     </div>
-
-                                    <div className="h-6 w-px bg-zinc-800 hidden md:block"></div>
-
-                                    <Select value={lookbackDays} onValueChange={setLookbackDays}>
-                                        <SelectTrigger className="w-[110px] h-8 text-xs bg-zinc-900 border-zinc-800">
-                                            <SelectValue placeholder="Lookback" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="8">8 Days</SelectItem>
-                                            <SelectItem value="15">15 Days</SelectItem>
-                                            <SelectItem value="30">30 Days</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleRefresh}
-                                        disabled={isLoadingSR || isRefetchingSR}
-                                        className="gap-2 min-w-[140px] shrink-0"
-                                    >
-                                        <RefreshCw className={`w-4 h-4 ${isRefetchingSR ? "animate-spin" : ""}`} />
-                                        {isRefetchingSR ? "Scanning..." : "Refresh"}
-                                    </Button>
+                                    <p className="text-sm text-zinc-400 max-w-2xl">
+                                        Identifies coins near key levels (Support, Resistance) or breaking out (Breakout, Breakdown).
+                                    </p>
                                 </div>
-                                {lastUpdatedTime && (
-                                    <span className="text-xs text-zinc-500 font-mono">
-                                        Updated: {lastUpdatedTime}
-                                    </span>
-                                )}
+
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        value={lookbackDays}
+                                        onChange={(e) => setLookbackDays(parseInt(e.target.value))}
+                                        className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+                                    >
+                                        <option value={8}>8 Days</option>
+                                        <option value={14}>14 Days</option>
+                                        <option value={30}>30 Days</option>
+                                    </select>
+
+                                    <button
+                                        onClick={() => refetchSR()}
+                                        disabled={isRefetchingSR}
+                                        className="flex items-center gap-2 px-4 py-1.5 bg-transparent border border-zinc-700 text-zinc-300 rounded-full hover:bg-zinc-800 transition-colors text-sm font-medium disabled:opacity-50"
+                                    >
+                                        <RefreshCw className={`h-3 w-3 ${isRefetchingSR ? 'animate-spin' : ''}`} />
+                                        Refresh
+                                    </button>
+                                    {lastUpdatedTime && (
+                                        <span className="text-xs text-zinc-500 font-mono">
+                                            Updated: {lastUpdatedTime}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                         {/* DEBUG SECTION */}
                         <div className="px-6 pb-2 text-xs font-mono text-zinc-500">
-                            Debug: Count={srData?.length ?? 'null'} | Strategy={strategy} | Ver: {(srData && srData.length > 0 && (srData[0] as any)._version) || 'v1'}
+                            Debug: Count={srData?.length ?? 'null'} | Ver: {(srData && srData.length > 0 && (srData[0] as any)._version) || 'v1'}
                             {srData && srData.length > 0 && <div>First: {srData[0].symbol} Type:{srData[0].type} Dist:{srData[0].distancePercent}</div>}
                         </div>
                         <div className="h-[65vh] overflow-auto">
