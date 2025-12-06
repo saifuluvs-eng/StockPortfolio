@@ -143,37 +143,37 @@ export default function StrategiesPage() {
                                 <table className="w-full text-left border-collapse">
                                     <thead className="sticky top-0 z-10 bg-zinc-900">
                                         <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
-                                            <th className="p-4 font-medium">Asset</th>
-                                            <th className="p-4 font-medium text-right">Price</th>
-                                            <th className="p-4 font-medium text-left">Range Position</th>
+                                            <th className="p-4 font-medium text-center">Asset</th>
+                                            <th className="p-4 font-medium text-center">Price</th>
+                                            <th className="p-4 font-medium text-center">Range Position</th>
                                             <th
-                                                className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                                className="p-4 font-medium text-center cursor-pointer hover:text-zinc-300 transition-colors select-none"
                                                 onClick={() => handleSort('type')}
                                             >
                                                 Type <SortIcon field="type" />
                                             </th>
-                                            <th className="p-4 font-medium text-left pl-6">Confluence</th>
-                                            <th className="p-4 font-medium text-right">{strategy === 'breakout' ? 'Break Level' : 'Level'}</th>
-                                            <th className="p-4 font-medium text-right">Distance</th>
+                                            <th className="p-4 font-medium text-center">Confluence</th>
+                                            <th className="p-4 font-medium text-center">{strategy === 'breakout' ? 'Break Level' : 'Level'}</th>
+                                            <th className="p-4 font-medium text-center">Distance</th>
                                             <th
-                                                className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                                className="p-4 font-medium text-center cursor-pointer hover:text-zinc-300 transition-colors select-none"
                                                 onClick={() => handleSort('target')}
                                             >
                                                 Target <SortIcon field="target" />
                                             </th>
                                             <th
-                                                className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                                className="p-4 font-medium text-center cursor-pointer hover:text-zinc-300 transition-colors select-none"
                                                 onClick={() => handleSort('tests')}
                                             >
                                                 Strength <SortIcon field="tests" />
                                             </th>
                                             <th
-                                                className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
+                                                className="p-4 font-medium text-center cursor-pointer hover:text-zinc-300 transition-colors select-none"
                                                 onClick={() => handleSort('riskReward')}
                                             >
                                                 Risk:Reward <SortIcon field="riskReward" />
                                             </th>
-                                            <th className="p-4 font-medium text-right">Action</th>
+                                            <th className="p-4 font-medium text-center">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
@@ -191,8 +191,8 @@ export default function StrategiesPage() {
 
                                                 return (
                                                     <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                                                        <td className="p-4 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
-                                                        <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                        <td className="p-4 font-bold text-white text-center">{coin.symbol.replace('USDT', '')}</td>
+                                                        <td className="p-4 text-center font-mono text-zinc-300">${formatPrice(coin.price)}</td>
                                                         <td className="p-4 w-[140px]">
                                                             <div className="w-full h-1.5 bg-zinc-800 rounded-full relative overflow-hidden">
                                                                 {/* Range Bar Background gradient for context */}
@@ -208,7 +208,7 @@ export default function StrategiesPage() {
                                                                 />
                                                             </div>
                                                         </td>
-                                                        <td className="p-4 text-right">
+                                                        <td className="p-4 text-center">
                                                             <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support' || coin.type === 'Breakout'
                                                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                                                 : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
@@ -216,7 +216,7 @@ export default function StrategiesPage() {
                                                                 {coin.type}
                                                             </span>
                                                         </td>
-                                                        <td className="p-4 pl-6">
+                                                        <td className="p-4 text-center flex justify-center">
                                                             <div className="flex flex-col gap-1.5 w-32">
                                                                 {coin.badges && coin.badges.length > 0 ? coin.badges.map(b => (
                                                                     <span key={b} className={`text-[10px] px-2 py-1 rounded-sm border font-medium text-center w-full ${b === 'Golden Setup' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
@@ -234,17 +234,17 @@ export default function StrategiesPage() {
                                                                 )) : <span className="text-zinc-700 text-xs">-</span>}
                                                             </div>
                                                         </td>
-                                                        <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
-                                                        <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
-                                                        <td className="p-4 text-right font-mono text-zinc-400">
+                                                        <td className="p-4 text-center font-mono text-zinc-500">${formatPrice(coin.level)}</td>
+                                                        <td className="p-4 text-center font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
+                                                        <td className="p-4 text-center font-mono text-zinc-400">
                                                             {coin.target ? `$${formatPrice(coin.target)}` : '-'}
                                                         </td>
-                                                        <td className="p-4 text-right">
+                                                        <td className="p-4 text-center">
                                                             <span className={`text-xs px-2 py-0.5 rounded-full border ${coin.tests >= 2 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
                                                                 {coin.tests} Tests
                                                             </span>
                                                         </td>
-                                                        <td className="p-4 text-right">
+                                                        <td className="p-4 text-center">
                                                             {coin.riskReward ? (
                                                                 <span className={`font-mono font-bold ${coin.riskReward >= 3 ? "text-emerald-400" : "text-zinc-400"}`}>
                                                                     1:{coin.riskReward.toFixed(1)}
@@ -253,7 +253,7 @@ export default function StrategiesPage() {
                                                                 <span className="text-zinc-600">-</span>
                                                             )}
                                                         </td>
-                                                        <td className="p-4 text-right">
+                                                        <td className="p-4 text-center">
                                                             <Link href={`/analyse/${coin.symbol}`}>
                                                                 <Button size="sm" className="bg-purple-600 hover:bg-purple-500 h-8">Analyze</Button>
                                                             </Link>
