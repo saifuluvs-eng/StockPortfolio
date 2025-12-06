@@ -690,11 +690,14 @@ class TechnicalIndicators {
   }
 
 
-  async scanSupportResistance(limit: number = 20): Promise<any[]> {
+  async scanSupportResistance(limit: number = 20, lookbackDays: number = 8, strategy: 'bounce' | 'breakout' = 'bounce'): Promise<any[]> {
+    console.log(`[TechnicalIndicators] scanSupportResistance called. Strategy: ${strategy}, Lookback: ${lookbackDays}`);
     try {
       const topPairs = await binanceService.getTopVolumePairs(75);
       const results: any[] = [];
-      const batchSize = 10; // slightly increased batch size
+      const batchSize = 10;
+
+      const candlesNeeded = Math.ceil(lookbackDays * 6);
 
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
@@ -705,18 +708,16 @@ class TechnicalIndicators {
 
             const analysis = await this.analyzeSymbol(pair.symbol, '4h');
             const candles = analysis.candles || [];
-            if (candles.length < 50) return null;
+            if (candles.length < candlesNeeded) return null;
 
             const currentPrice = analysis.price;
-            // Analyze last 50 candles
-            const recent = candles.slice(-50);
+            // Analyze requested lookback period
+            const recent = candles.slice(-candlesNeeded);
+
             const recentLows = recent.map(c => c.l);
             const recentHighs = recent.map(c => c.h);
             const minLow = Math.min(...recentLows);
             const maxHigh = Math.max(...recentHighs);
-
-            const distToSupport = Math.abs((currentPrice - minLow) / minLow);
-            const distToResistance = Math.abs((maxHigh - currentPrice) / currentPrice);
 
             let type = '';
             let level = 0;
@@ -724,32 +725,85 @@ class TechnicalIndicators {
             let tests = 0;
             let riskReward: number | null = null;
 
-            // Threshold: 5% from level
-            if (distToSupport < 0.05) {
-              type = 'Support';
-              level = minLow;
-              distance = distToSupport;
+            const rsiVal = analysis.indicators.rsi.value;
+            const badges: string[] = [];
 
-              // Count Tests for Support (touches within 1%)
-              tests = recent.filter(c => Math.abs((c.l - minLow) / minLow) < 0.01).length;
+            if (strategy === 'bounce') {
+              // --- BOUNCE / REVERSAL LOGIC (Original) ---
+              const distToSupport = Math.abs((currentPrice - minLow) / minLow);
+              const distToResistance = Math.abs((maxHigh - currentPrice) / currentPrice);
 
-              // Calculate R:R
-              const risk = distance; // Current distance to support is the risk (assuming stop loss below support)
-              const reward = (maxHigh - currentPrice) / currentPrice;
-              if (risk > 0.001) { // Avoid div by zero
-                riskReward = parseFloat((reward / risk).toFixed(2));
-              } else {
-                riskReward = 10; // Max out if sitting exactly on support
+              // Threshold: 5% from level
+              if (distToSupport < 0.05) {
+                type = 'Support';
+                level = minLow;
+                distance = distToSupport;
+
+                // Count Tests for Support (touches within 1%)
+                tests = recent.filter(c => Math.abs((c.l - minLow) / minLow) < 0.01).length;
+
+                // Calculate R:R
+                const risk = distance; // Current distance to support is the risk (assuming stop loss below support)
+                const reward = (maxHigh - currentPrice) / currentPrice;
+                if (risk > 0.001) { // Avoid div by zero
+                  riskReward = parseFloat((reward / risk).toFixed(2));
+                } else {
+                  riskReward = 10; // Max out if sitting exactly on support
+                }
+
+                // Bounce Badges
+                if (rsiVal < 40 && distance < 0.03) {
+                  badges.push('Golden Setup');
+                }
+                if (tests >= 2) {
+                  badges.push('Strong Support');
+                }
+                if (rsiVal > 50) {
+                  badges.push('Risky');
+                }
+
+              } else if (distToResistance < 0.05) {
+                type = 'Resistance';
+                level = maxHigh;
+                distance = distToResistance;
+
+                tests = recent.filter(c => Math.abs((c.h - maxHigh) / maxHigh) < 0.01).length;
+                if (rsiVal > 65) {
+                  badges.push('Overbought');
+                }
               }
+            } else {
+              // --- BREAKOUT LOGIC (New) ---
+              const previousCandles = recent.slice(0, -1);
+              if (previousCandles.length > 5) {
+                const prevHigh = Math.max(...previousCandles.map(c => c.h));
+                const prevLow = Math.min(...previousCandles.map(c => c.l));
 
-            } else if (distToResistance < 0.05) {
-              type = 'Resistance';
-              level = maxHigh;
-              distance = distToResistance;
+                const distAboveRes = (currentPrice - prevHigh) / prevHigh;
+                const distBelowSup = (prevLow - currentPrice) / prevLow;
 
-              // Count Tests for Resistance (touches within 1%)
-              tests = recent.filter(c => Math.abs((c.h - maxHigh) / maxHigh) < 0.01).length;
-              // No R:R for shorting (unless we add that later), leave null
+                // If Price > Previous High (by at least 0.1% but not too extended like 20%)
+                if (currentPrice > prevHigh && distAboveRes < 0.15) {
+                  type = 'Breakout';
+                  level = prevHigh; // The level we broke
+                  distance = distAboveRes; // How far we are past the breakout
+                  tests = previousCandles.filter(c => Math.abs((c.h - prevHigh) / prevHigh) < 0.01).length;
+
+                  if (rsiVal > 50) badges.push('High Momentum');
+                  if (analysis.indicators.rsi.value > 75) badges.push('Overextended');
+
+                }
+                // If Price < Previous Low
+                else if (currentPrice < prevLow && distBelowSup < 0.15) {
+                  type = 'Breakdown';
+                  level = prevLow;
+                  distance = distBelowSup;
+                  tests = previousCandles.filter(c => Math.abs((c.l - prevLow) / prevLow) < 0.01).length;
+
+                  if (rsiVal < 50) badges.push('Bearish Momentum');
+                  if (rsiVal < 25) badges.push('Oversold Dump');
+                }
+              }
             }
 
             if (type) {
@@ -758,10 +812,12 @@ class TechnicalIndicators {
                 price: currentPrice,
                 type,
                 level,
-                target: type === 'Support' ? maxHigh : minLow,
+                target: strategy === 'bounce' ? (type === 'Support' ? maxHigh : minLow) : (type === 'Breakout' ? level * 1.2 : level * 0.8),
                 distancePercent: distance * 100,
                 tests,
                 riskReward,
+                rsi: rsiVal,
+                badges,
                 volume: parseFloat(pair.quoteVolume),
                 timestamp: new Date().toISOString()
               };
@@ -777,10 +833,9 @@ class TechnicalIndicators {
         await new Promise(r => setTimeout(r, 100));
       }
 
-      // Sort by Closeness (Primary) but allow filtering by R:R on frontend
-      return results.sort((a, b) => a.distancePercent - b.distancePercent);
+      return results.sort((a, b) => b.volumeMultiple - a.volumeMultiple);
     } catch (error) {
-      console.error('Error scanning for SR:', error);
+      console.error('Error scanning for Support/Resistance:', error);
       return [];
     }
   }
