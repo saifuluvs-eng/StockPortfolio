@@ -136,6 +136,7 @@ export default function StrategiesPage() {
                                     <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
                                         <th className="p-4 font-medium">Asset</th>
                                         <th className="p-4 font-medium text-right">Price</th>
+                                        <th className="p-4 font-medium text-left">Range Position</th>
                                         <th className="p-4 font-medium text-right">Type</th>
                                         <th className="p-4 font-medium text-right">Level</th>
                                         <th className="p-4 font-medium text-right">Distance</th>
@@ -162,48 +163,71 @@ export default function StrategiesPage() {
                                 </thead>
                                 <tbody className="text-sm">
                                     {isLoadingSR ? (
-                                        <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
+                                        <tr><td colSpan={10} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
                                     ) : !sortedData?.length ? (
-                                        <tr><td colSpan={9} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
+                                        <tr><td colSpan={10} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
                                     ) : (
-                                        sortedData.map((coin) => (
-                                            <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                                                <td className="p-4 font-bold text-white">{coin.symbol}</td>
-                                                <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
-                                                <td className="p-4 text-right">
-                                                    <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support'
-                                                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                        : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                                        }`}>
-                                                        {coin.type}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
-                                                <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
-                                                <td className="p-4 text-right font-mono text-zinc-400">
-                                                    {coin.target ? `$${formatPrice(coin.target)}` : '-'}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <span className={`text-xs px-2 py-0.5 rounded-full border ${coin.tests >= 2 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
-                                                        {coin.tests} Tests
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    {coin.riskReward ? (
-                                                        <span className={`font-mono font-bold ${coin.riskReward >= 3 ? "text-emerald-400" : "text-zinc-400"}`}>
-                                                            1:{coin.riskReward.toFixed(1)}
+                                        sortedData.map((coin) => {
+                                            const min = Math.min(coin.level, coin.target || coin.level);
+                                            const max = Math.max(coin.level, coin.target || coin.level);
+                                            const range = max - min;
+                                            const position = range > 0 ? ((coin.price - min) / range) * 100 : 0;
+                                            const clampedPos = Math.max(0, Math.min(100, position));
+
+                                            return (
+                                                <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                                                    <td className="p-4 font-bold text-white">{coin.symbol}</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                    <td className="p-4 w-[140px]">
+                                                        <div className="w-full h-1.5 bg-zinc-800 rounded-full relative overflow-hidden">
+                                                            {/* Range Bar Background gradient for context */}
+                                                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/40 via-zinc-800/20 to-rose-900/40 opacity-50"></div>
+
+                                                            {/* Position Dot */}
+                                                            <div
+                                                                className={`absolute top-0 bottom-0 w-2 rounded-full transform -translate-x-1/2 ${clampedPos < 20 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                                                                        clampedPos > 80 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
+                                                                            'bg-amber-400'
+                                                                    }`}
+                                                                style={{ left: `${clampedPos}%` }}
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support'
+                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                                            }`}>
+                                                            {coin.type}
                                                         </span>
-                                                    ) : (
-                                                        <span className="text-zinc-600">-</span>
-                                                    )}
-                                                </td>
-                                                <td className="p-4 text-right">
-                                                    <Link href={`/analyse/${coin.symbol}`}>
-                                                        <Button size="sm" className="bg-purple-600 hover:bg-purple-500 h-8">Analyze</Button>
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        ))
+                                                    </td>
+                                                    <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
+                                                    <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
+                                                    <td className="p-4 text-right font-mono text-zinc-400">
+                                                        {coin.target ? `$${formatPrice(coin.target)}` : '-'}
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <span className={`text-xs px-2 py-0.5 rounded-full border ${coin.tests >= 2 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
+                                                            {coin.tests} Tests
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        {coin.riskReward ? (
+                                                            <span className={`font-mono font-bold ${coin.riskReward >= 3 ? "text-emerald-400" : "text-zinc-400"}`}>
+                                                                1:{coin.riskReward.toFixed(1)}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-zinc-600">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <Link href={`/analyse/${coin.symbol}`}>
+                                                            <Button size="sm" className="bg-purple-600 hover:bg-purple-500 h-8">Analyze</Button>
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })
                                     )}
                                 </tbody>
                             </table>
