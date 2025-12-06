@@ -270,84 +270,86 @@ export default function StrategiesPage() {
                             </div>
 
 
-                            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
-                                    <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                        <Info className="w-5 h-5 text-indigo-400" />
-                                        Scanner Logic & Definitions
-                                    </h4>
-                                    <dl className="space-y-4">
-                                        <div>
-                                            <dt className="text-sm font-medium text-zinc-300">Strategy & Timeframes</dt>
-                                            <dd className="text-sm text-zinc-400 mt-1">
-                                                We scan for <strong>Support/Resistance</strong> (Bounces) and <strong>Breakout/Breakdown</strong> events over <strong>8, 14, or 30 days</strong>.
-                                                <ul className="list-disc list-inside pl-1 text-xs mt-1 text-zinc-500">
-                                                    <li><strong>8 Days:</strong> Quick scalps/swings.</li>
-                                                    <li><strong>30 Days:</strong> Major structural levels.</li>
-                                                </ul>
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-sm font-medium text-zinc-300">Confluence Tags</dt>
-                                            <dd className="text-sm text-zinc-400 mt-1 space-y-1">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                                    <div className="flex items-center gap-2"><span className="text-amber-400">💎 Golden Setup</span> <span>Oversold + Strong Level</span></div>
-                                                    <div className="flex items-center gap-2"><span className="text-indigo-400">🛡️ Strong Level</span> <span>Tested 3+ times</span></div>
-                                                    <div className="flex items-center gap-2"><span className="text-rose-400">⚠️ Weak Level</span> <span>Few tests (Unreliable)</span></div>
-                                                    <div className="flex items-center gap-2"><span className="text-emerald-400">📉 Oversold</span> <span>RSI &lt; 30 (Buy signal)</span></div>
-                                                    <div className="flex items-center gap-2"><span className="text-rose-400">📈 Overbought</span> <span>RSI &gt; 70 (Sell signal)</span></div>
-                                                </div>
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-sm font-medium text-zinc-300">Target Price (Ceiling)</dt>
-                                            <dd className="text-sm text-zinc-400 mt-1">
-                                                The calculated exit point based on the recent trading range. For Support plays, this is the next Resistance.
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                </div>
-
-                                <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
-                                    <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                        <HelpCircle className="w-5 h-5 text-emerald-400" />
-                                        Trading Tips
-                                    </h4>
-                                    <dl className="space-y-4">
-                                        <div>
-                                            <dt className="text-sm font-medium text-zinc-300">Risk : Reward (R:R)</dt>
-                                            <dd className="text-sm text-zinc-400 mt-1">
-                                                Potential Profit vs. Potential Loss. <strong>1:3+</strong> is ideal.
-                                                <br />
-                                                <span className="text-xs text-zinc-500">Example: Risk $1 (Stop Loss below support) to make $3 (Target).</span>
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-sm font-medium text-zinc-300">Strength (Tests)</dt>
-                                            <dd className="text-sm text-zinc-400 mt-1">
-                                                The number of times price has touched this level and respected it.
-                                                <br />
-                                                <strong>Higher Tests = Stronger Level.</strong> A level tested 5 times is much more significant than one tested once.
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-sm font-medium text-zinc-300">Interpreting "Type"</dt>
-                                            <dd className="text-sm text-zinc-400 mt-1">
-                                                <ul className="grid grid-cols-2 gap-2 text-xs">
-                                                    <li><strong className="text-emerald-400">Support:</strong> Price is at the floor. Look for buys.</li>
-                                                    <li><strong className="text-rose-400">Resistance:</strong> Price is at the ceiling. Look for sells.</li>
-                                                    <li><strong className="text-emerald-400">Breakout:</strong> Price smashed the ceiling. Bullish!</li>
-                                                    <li><strong className="text-rose-400">Breakdown:</strong> Price smashed the floor. Bearish!</li>
-                                                </ul>
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                </div>
-                            </div>
                         </div>
                     </Card>
+
+                    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
+                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <Info className="w-5 h-5 text-indigo-400" />
+                                Scanner Logic & Definitions
+                            </h4>
+                            <dl className="space-y-4">
+                                <div>
+                                    <dt className="text-sm font-medium text-zinc-300">Strategy & Timeframes</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1">
+                                        We scan for <strong>Support/Resistance</strong> (Bounces) and <strong>Breakout/Breakdown</strong> events over <strong>8, 14, or 30 days</strong>.
+                                        <ul className="list-disc list-inside pl-1 text-xs mt-1 text-zinc-500">
+                                            <li><strong>8 Days:</strong> Quick scalps/swings.</li>
+                                            <li><strong>30 Days:</strong> Major structural levels.</li>
+                                        </ul>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-sm font-medium text-zinc-300">Confluence Tags</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1 space-y-1">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                            <div className="flex items-center gap-2"><span className="text-amber-400">💎 Golden Setup</span> <span>Oversold + Strong Level</span></div>
+                                            <div className="flex items-center gap-2"><span className="text-indigo-400">🛡️ Strong Level</span> <span>Tested 3+ times</span></div>
+                                            <div className="flex items-center gap-2"><span className="text-rose-400">⚠️ Weak Level</span> <span>Few tests (Unreliable)</span></div>
+                                            <div className="flex items-center gap-2"><span className="text-emerald-400">📉 Oversold</span> <span>RSI &lt; 30 (Buy signal)</span></div>
+                                            <div className="flex items-center gap-2"><span className="text-rose-400">📈 Overbought</span> <span>RSI &gt; 70 (Sell signal)</span></div>
+                                        </div>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-sm font-medium text-zinc-300">Target Price (Ceiling)</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1">
+                                        The calculated exit point based on the recent trading range. For Support plays, this is the next Resistance.
+                                    </dd>
+                                </div>
+                            </dl>
+                        </div>
+
+                        <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
+                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                                <HelpCircle className="w-5 h-5 text-emerald-400" />
+                                Trading Tips
+                            </h4>
+                            <dl className="space-y-4">
+                                <div>
+                                    <dt className="text-sm font-medium text-zinc-300">Risk : Reward (R:R)</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1">
+                                        Potential Profit vs. Potential Loss. <strong>1:3+</strong> is ideal.
+                                        <br />
+                                        <span className="text-xs text-zinc-500">Example: Risk $1 (Stop Loss below support) to make $3 (Target).</span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-sm font-medium text-zinc-300">Strength (Tests)</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1">
+                                        The number of times price has touched this level and respected it.
+                                        <br />
+                                        <strong>Higher Tests = Stronger Level.</strong> A level tested 5 times is much more significant than one tested once.
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-sm font-medium text-zinc-300">Interpreting "Type"</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1">
+                                        <ul className="grid grid-cols-2 gap-2 text-xs">
+                                            <li><strong className="text-emerald-400">Support:</strong> Price is at the floor. Look for buys.</li>
+                                            <li><strong className="text-rose-400">Resistance:</strong> Price is at the ceiling. Look for sells.</li>
+                                            <li><strong className="text-emerald-400">Breakout:</strong> Price smashed the ceiling. Bullish!</li>
+                                            <li><strong className="text-rose-400">Breakdown:</strong> Price smashed the floor. Bearish!</li>
+                                        </ul>
+                                    </dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </Page>
+        </div>
+        </Page >
     );
 }
