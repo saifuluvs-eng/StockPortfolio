@@ -221,69 +221,6 @@ export default function StrategiesPage() {
                                                         </div>
                                                     </td>
                                                     <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
-                                                    <th className="p-4 font-medium text-right">Distance</th>
-                                                    <th
-                                                        className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
-                                                        onClick={() => handleSort('target')}
-                                                    >
-                                                        Target <SortIcon field="target" />
-                                                    </th>
-                                                    <th
-                                                        className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
-                                                        onClick={() => handleSort('tests')}
-                                                    >
-                                                        Strength <SortIcon field="tests" />
-                                                    </th>
-                                                    <th
-                                                        className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
-                                                        onClick={() => handleSort('riskReward')}
-                                                    >
-                                                        Risk:Reward <SortIcon field="riskReward" />
-                                                    </th>
-                                                    <th className="p-4 font-medium text-right">Action</th>
-                                                </tr>
-                                </thead>
-                                <tbody className="text-sm">
-                                    {isLoadingSR ? (
-                                        <tr><td colSpan={10} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
-                                    ) : !sortedData?.length ? (
-                                        <tr><td colSpan={10} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
-                                    ) : (
-                                        sortedData.map((coin) => {
-                                            const min = Math.min(coin.level, coin.target || coin.level);
-                                            const max = Math.max(coin.level, coin.target || coin.level);
-                                            const range = max - min;
-                                            const position = range > 0 ? ((coin.price - min) / range) * 100 : 0;
-                                            const clampedPos = Math.max(0, Math.min(100, position));
-
-                                            return (
-                                                <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                                                    <td className="p-4 font-bold text-white">{coin.symbol}</td>
-                                                    <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
-                                                    <td className="p-4 w-[140px]">
-                                                        <div className="w-full h-1.5 bg-zinc-800 rounded-full relative overflow-hidden">
-                                                            {/* Range Bar Background gradient for context */}
-                                                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/40 via-zinc-800/20 to-rose-900/40 opacity-50"></div>
-
-                                                            {/* Position Dot */}
-                                                            <div
-                                                                className={`absolute top-0 bottom-0 w-2 rounded-full transform -translate-x-1/2 ${clampedPos < 20 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                                                                    clampedPos > 80 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
-                                                                        'bg-amber-400'
-                                                                    }`}
-                                                                style={{ left: `${clampedPos}%` }}
-                                                            />
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-4 text-right">
-                                                        <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support'
-                                                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                                            }`}>
-                                                            {coin.type}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 text-right font-mono text-zinc-500">${formatPrice(coin.level)}</td>
                                                     <td className="p-4 text-right font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
                                                     <td className="p-4 text-right font-mono text-zinc-400">
                                                         {coin.target ? `$${formatPrice(coin.target)}` : '-'}
