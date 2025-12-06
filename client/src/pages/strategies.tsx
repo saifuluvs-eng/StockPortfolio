@@ -349,7 +349,6 @@ export default function StrategiesPage() {
                     </div>
                 </div>
             </div>
-        </div>
-        </Page >
+        </Page>
     );
 }
