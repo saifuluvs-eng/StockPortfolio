@@ -1253,6 +1253,9 @@ class TechnicalIndicators {
             const rsiVal = analysis.indicators.rsi.value;
             const badges: string[] = [];
 
+            // console.log(`[DEBUG] ${pair.symbol} Type: ${type} RSI: ${rsiVal} Dist: ${distance} Tests: ${tests}`);
+
+
             // Confluence Logic
             if (type === 'Support') {
               // Golden Setup: Near Support + Oversold RSI
