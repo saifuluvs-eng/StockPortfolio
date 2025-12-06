@@ -21,7 +21,7 @@ import DataPage from "@/pages/data";
 import StrategiesPage from "@/pages/strategies";
 
 
-import { RsiTicker } from "@/components/data/RsiTicker";
+
 
 function ShellLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,7 +34,7 @@ function ShellLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background text-foreground pb-10">
           {children}
         </main>
-        <RsiTicker />
+
       </div>
     </div>
   );
