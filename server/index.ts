@@ -3,6 +3,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+// Force restart for strategies update
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
