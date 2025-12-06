@@ -320,11 +320,9 @@ export default function StrategiesPage() {
                                     </dl>
                                 </div>
                             </div>
-                        </div>
+                    </Card>
                 </div>
-            </Card>
-        </div>
-            </div >
-        </Page >
+            </div>
+        </Page>
     );
 }
