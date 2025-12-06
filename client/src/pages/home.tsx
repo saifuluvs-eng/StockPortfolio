@@ -117,11 +117,12 @@ export default function Home() {
     const symbolList = Array.from(trackSymbols);
 
     // 2. Open WebSocket stream
+    if (symbolList.length === 0) return;
+
     const closeStream = openSpotTickerStream(symbolList, {
       onMessage: (ticker) => {
         const sym = ticker.symbol.toUpperCase();
         const price = parseFloat(ticker.lastPrice);
-        const change = parseFloat(ticker.priceChangePercent);
 
         // Update global price store
         setPrices({ [sym]: price });
