@@ -646,10 +646,11 @@ export function registerRoutes(app: Express): Server {
     try {
       const limit = parseInt(String(req.query?.limit || "20"), 10);
       const days = parseInt(String(req.query?.days || "8"), 10);
+      const strategy = String(req.query?.strategy || "bounce") as 'bounce' | 'breakout';
 
-      console.log(`[API routes.ts] /support-resistance called with limit=${limit}, days=${days}`);
+      console.log(`[API routes.ts] /support-resistance called with limit=${limit}, days=${days}, strategy=${strategy}`);
 
-      const data = await technicalIndicators.scanSupportResistance(limit, days);
+      const data = await technicalIndicators.scanSupportResistance(limit, days, strategy);
       res.json(data);
     } catch (error) {
       console.error("Error fetching support-resistance strategy:", error);

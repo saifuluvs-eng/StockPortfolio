@@ -34,12 +34,17 @@ type SortDirection = 'asc' | 'desc';
 export default function StrategiesPage() {
     const [sortField, setSortField] = useState<SortField | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-    const [lookbackDays, setLookbackDays] = useState<string>("8");
+    const [lookbackDays, setLookbackDays] = useState("8");
+    const [strategy, setStrategy] = useState<'bounce' | 'breakout'>('bounce');
 
+    // Auto-refresh every 30 seconds
     const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, isRefetching: isRefetchingSR, dataUpdatedAt } = useQuery<SupportResistanceResult[]>({
-        queryKey: ["support-resistance", lookbackDays],
-        queryFn: async () => apiFetchLocal(`/api/market/strategies/support-resistance?days=${lookbackDays}`),
-        refetchInterval: 60000,
+        queryKey: ['support-resistance', lookbackDays, strategy],
+        queryFn: async () => {
+            const res = await fetch(`/api/market/strategies/support-resistance?limit=75&days=${lookbackDays}&strategy=${strategy}`);
+            return res.json() as Promise<SupportResistanceResult[]>;
+        },
+        refetchInterval: 30000,
     });
 
     const handleRefresh = () => {
@@ -104,6 +109,23 @@ export default function StrategiesPage() {
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 <div className="flex items-center gap-2">
+                                    <div className="flex bg-zinc-900 rounded-md p-1 border border-zinc-800">
+                                        <button
+                                            onClick={() => setStrategy('bounce')}
+                                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${strategy === 'bounce' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                        >
+                                            🛡️ Bounce
+                                        </button>
+                                        <button
+                                            onClick={() => setStrategy('breakout')}
+                                            className={`px-3 py-1 text-xs font-medium rounded transition-colors ${strategy === 'breakout' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                                        >
+                                            🚀 Breakout
+                                        </button>
+                                    </div>
+
+                                    <div className="h-6 w-px bg-zinc-800 hidden md:block"></div>
+
                                     <Select value={lookbackDays} onValueChange={setLookbackDays}>
                                         <SelectTrigger className="w-[110px] h-8 text-xs bg-zinc-900 border-zinc-800">
                                             <SelectValue placeholder="Lookback" />
@@ -141,7 +163,7 @@ export default function StrategiesPage() {
                                         <th className="p-4 font-medium text-left">Range Position</th>
                                         <th className="p-4 font-medium text-right">Type</th>
                                         <th className="p-4 font-medium text-left pl-6">Confluence</th>
-                                        <th className="p-4 font-medium text-right">Level</th>
+                                        <th className="p-4 font-medium text-right">{strategy === 'breakout' ? 'Break Level' : 'Level'}</th>
                                         <th className="p-4 font-medium text-right">Distance</th>
                                         <th
                                             className="p-4 font-medium text-right cursor-pointer hover:text-zinc-300 transition-colors select-none"
@@ -189,8 +211,8 @@ export default function StrategiesPage() {
                                                             {/* Position Dot */}
                                                             <div
                                                                 className={`absolute top-0 bottom-0 w-2 rounded-full transform -translate-x-1/2 ${clampedPos < 20 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                                                                        clampedPos > 80 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
-                                                                            'bg-amber-400'
+                                                                    clampedPos > 80 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
+                                                                        'bg-amber-400'
                                                                     }`}
                                                                 style={{ left: `${clampedPos}%` }}
                                                             />
@@ -208,9 +230,9 @@ export default function StrategiesPage() {
                                                         <div className="flex flex-wrap gap-1">
                                                             {coin.badges && coin.badges.length > 0 ? coin.badges.map(b => (
                                                                 <span key={b} className={`text-[10px] px-1.5 py-0.5 rounded border ${b === 'Golden Setup' ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' :
-                                                                        b === 'Strong Support' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
-                                                                            b === 'Risky' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
-                                                                                'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                                    b === 'Strong Support' ? 'bg-blue-500/20 text-blue-300 border-blue-500/40' :
+                                                                        b === 'Risky' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
+                                                                            'bg-zinc-800 text-zinc-400 border-zinc-700'
                                                                     }`}>
                                                                     {b === 'Golden Setup' && '💎 '}
                                                                     {b === 'Strong Support' && '🛡️ '}
