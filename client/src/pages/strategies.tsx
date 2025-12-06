@@ -220,15 +220,18 @@ export default function StrategiesPage() {
                                                             <div className="flex flex-col gap-1.5 w-32">
                                                                 {coin.badges && coin.badges.length > 0 ? coin.badges.map(b => (
                                                                     <span key={b} className={`text-[10px] px-2 py-1 rounded-sm border font-medium text-center w-full ${b === 'Golden Setup' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
-                                                                        b === 'Strong Support' ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30' :
-                                                                            b === 'Risky' ? 'bg-rose-500/10 text-rose-300 border-rose-500/30' :
-                                                                                b === 'Approaching' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' :
-                                                                                    b === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
-                                                                                        'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                                        b === 'Strong Support' || b === 'Strong Res' ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30' :
+                                                                            b === 'Weak Level' ? 'bg-amber-500/10 text-amber-300/80 border-amber-500/20' :
+                                                                                b === 'Risky' ? 'bg-rose-500/10 text-rose-300 border-rose-500/30' :
+                                                                                    b === 'Overbought' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
+                                                                                        b === 'Oversold' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
+                                                                                            b === 'Approaching' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' :
+                                                                                                b === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
+                                                                                                    'bg-zinc-800 text-zinc-400 border-zinc-700'
                                                                         }`}>
                                                                         {b === 'Golden Setup' && '💎 '}
-                                                                        {b === 'Strong Support' && '🛡️ '}
-                                                                        {b === 'Risky' && '⚠️ '}
+                                                                        {(b === 'Strong Support' || b === 'Strong Res') && '🛡️ '}
+                                                                        {(b === 'Risky' || b === 'Weak Level') && '⚠️ '}
                                                                         {b}
                                                                     </span>
                                                                 )) : <span className="text-zinc-700 text-xs">-</span>}
@@ -288,11 +291,11 @@ export default function StrategiesPage() {
                                             <dt className="text-sm font-medium text-zinc-300">Confluence Tags</dt>
                                             <dd className="text-sm text-zinc-400 mt-1 space-y-1">
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                                    <div className="flex items-center gap-2"><span className="text-amber-400">💎 Golden Setup</span> <span>3+ Tests & High R:R</span></div>
-                                                    <div className="flex items-center gap-2"><span className="text-indigo-400">🛡️ Strong Support</span> <span>Tested 3+ times</span></div>
-                                                    <div className="flex items-center gap-2"><span className="text-rose-400">⚠️ Risky</span> <span>Unstable or few tests</span></div>
-                                                    <div className="flex items-center gap-2"><span className="text-blue-400">🔵 Approaching</span> <span>Within 2% of level</span></div>
-                                                    <div className="flex items-center gap-2"><span className="text-emerald-400">🟢 Confirmed</span> <span>Breakout Verified</span></div>
+                                                    <div className="flex items-center gap-2"><span className="text-amber-400">💎 Golden Setup</span> <span>Oversold + Strong Level</span></div>
+                                                    <div className="flex items-center gap-2"><span className="text-indigo-400">🛡️ Strong Level</span> <span>Tested 3+ times</span></div>
+                                                    <div className="flex items-center gap-2"><span className="text-rose-400">⚠️ Weak Level</span> <span>Few tests (Unreliable)</span></div>
+                                                    <div className="flex items-center gap-2"><span className="text-emerald-400">📉 Oversold</span> <span>RSI &lt; 30 (Buy signal)</span></div>
+                                                    <div className="flex items-center gap-2"><span className="text-rose-400">📈 Overbought</span> <span>RSI &gt; 70 (Sell signal)</span></div>
                                                 </div>
                                             </dd>
                                         </div>

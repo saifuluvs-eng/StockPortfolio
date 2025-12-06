@@ -1279,15 +1279,17 @@ class TechnicalIndicators {
                   else riskReward = 10;
 
                   if (rsiVal < 40 && distance < 0.03) badges.push('Golden Setup');
-                  if (tests >= 2) badges.push('Strong Support');
-                  if (rsiVal > 50) badges.push('Risky');
+                  if (rsiVal < 30) badges.push('Oversold');
+                  if (tests >= 3) badges.push('Strong Support');
+                  if (tests < 2) badges.push('Weak Level');
                 }
                 else if (distToResistance < 0.05) {
                   type = 'Resistance';
                   level = maxHigh;
                   distance = distToResistance;
                   tests = recent.filter(c => Math.abs((c.h - maxHigh) / maxHigh) < 0.01).length;
-                  if (rsiVal > 65) badges.push('Overbought');
+                  if (rsiVal > 70) badges.push('Overbought');
+                  if (tests >= 3) badges.push('Strong Res');
                 }
               }
 
