@@ -1281,15 +1281,8 @@ class TechnicalIndicators {
               }
             } else {
               // --- BREAKOUT LOGIC (New) ---
-              // Bullish Breakout: Price is ABOVE the recent High (Resistance)
-              // Bearish Breakdown: Price is BELOW the recent Low (Support)
-
-              // We verify if we are currently "breaking out" or just "broke out recently"
-              // Let's define Breakout as: Current Price > (MaxHigh of previous N-1 candles)
-
-              // Recalculate High/Low excluding the current active candle to verify the break?
-              // Actually, 'recent' includes the current candle usually if it's open.
-              // Limit the "Period High" to NOT include the current price action, otherwise maxHigh always equals currentPrice if we are making a new high.
+              // Bullish Breakout: Price is ABOVE the recent High (Resistance) OR Approaching it
+              // Bearish Breakdown: Price is BELOW the recent Low (Support) OR Approaching it
 
               // Use candles excluding the last one to define the "Barrier"
               const previousCandles = recent.slice(0, -1);
@@ -1297,28 +1290,38 @@ class TechnicalIndicators {
                 const prevHigh = Math.max(...previousCandles.map(c => c.h));
                 const prevLow = Math.min(...previousCandles.map(c => c.l));
 
+                // Distance to levels (Positive = Past the level, Negative = Approaching)
                 const distAboveRes = (currentPrice - prevHigh) / prevHigh;
                 const distBelowSup = (prevLow - currentPrice) / prevLow;
 
-                // If Price > Previous High (by at least 0.1% but not too extended like 20%)
-                if (currentPrice > prevHigh && distAboveRes < 0.15) {
+                // BULLISH BREAKOUT Check
+                // 1. Confirmed: Price > High (distAboveRes > 0)
+                // 2. Approaching: Price within 2% of High (distAboveRes > -0.02)
+                if (distAboveRes > -0.02 && distAboveRes < 0.15) {
                   type = 'Breakout';
-                  level = prevHigh; // The level we broke
-                  distance = distAboveRes; // How far we are past the breakout
-                  tests = previousCandles.filter(c => Math.abs((c.h - prevHigh) / prevHigh) < 0.01).length; // How many times we hit it before breaking
+                  level = prevHigh;
+                  distance = distAboveRes; // Will be negative if approaching
+                  tests = previousCandles.filter(c => Math.abs((c.h - prevHigh) / prevHigh) < 0.01).length;
 
-                  // Breakout context
+                  // Badges
+                  if (distAboveRes < 0) badges.push('Approaching');
+                  else badges.push('Confirmed');
+
                   if (rsiVal > 50) badges.push('High Momentum');
-                  if (analysis.indicators.rsi.value > 75) badges.push('Overextended');
-
-                  // Fakeout check? (Volume?)
+                  if (rsiVal > 75) badges.push('Overextended');
                 }
-                // If Price < Previous Low
-                else if (currentPrice < prevLow && distBelowSup < 0.15) {
+                // BEARISH BREAKDOWN Check
+                // 1. Confirmed: Price < Low (distBelowSup > 0)
+                // 2. Approaching: Price within 2% of Low (distBelowSup > -0.02)
+                else if (distBelowSup > -0.02 && distBelowSup < 0.15) {
                   type = 'Breakdown';
                   level = prevLow;
-                  distance = distBelowSup;
+                  distance = distBelowSup; // Will be negative if approaching
                   tests = previousCandles.filter(c => Math.abs((c.l - prevLow) / prevLow) < 0.01).length;
+
+                  // Badges
+                  if (distBelowSup < 0) badges.push('Approaching');
+                  else badges.push('Confirmed');
 
                   if (rsiVal < 50) badges.push('Bearish Momentum');
                   if (rsiVal < 25) badges.push('Oversold Dump');
