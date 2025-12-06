@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Page, Card } from "@/components/layout/Layout";
 import { RefreshCw, Target, Info, HelpCircle, ArrowUpDown, Crosshair } from "lucide-react";
