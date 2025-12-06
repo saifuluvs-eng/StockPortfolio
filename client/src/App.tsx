@@ -9,10 +9,10 @@ import Dashboard from "@/pages/home";
 import Portfolio from "@/pages/portfolio";
 import Gainers from "@/pages/gainers";
 import Analyse from "@/pages/analyse";
-import Watchlist from "@/pages/watchlist";
-import Alerts from "@/pages/alerts";
+// import Watchlist from "@/pages/watchlist";
+// import Alerts from "@/pages/alerts";
 import Account from "@/pages/Account";
-import AIInsights from "@/pages/ai-insights";
+// import AIInsights from "@/pages/ai-insights";
 import News from "@/pages/news";
 import ResetPassword from "@/pages/ResetPassword";
 
@@ -73,7 +73,7 @@ export default function App() {
           <Analyse />
         </ShellLayout>
       </Route>
-      <Route path="/watchlist">
+      {/* <Route path="/watchlist">
         <ShellLayout>
           <RequireAuth>
             <Watchlist />
@@ -86,17 +86,17 @@ export default function App() {
             <Alerts />
           </RequireAuth>
         </ShellLayout>
-      </Route>
+      </Route> */}
       <Route path="/account">
         <ShellLayout>
           <Account />
         </ShellLayout>
       </Route>
-      <Route path="/ai-insights">
+      {/* <Route path="/ai-insights">
         <ShellLayout>
           <AIInsights />
         </ShellLayout>
-      </Route>
+      </Route> */}
       <Route path="/news">
         <ShellLayout>
           <News />

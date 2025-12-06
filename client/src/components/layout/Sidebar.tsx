@@ -39,14 +39,14 @@ const items: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: <Home size={20} /> },
   { label: "Portfolio", to: "/portfolio", icon: <Briefcase size={20} /> },
   { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
-  { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
+  // { label: "High Potential", to: "/high-potential", icon: <Flame size={20} /> },
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
   { label: "Data", to: "/data", icon: <PieChart size={20} /> },
   { label: "Strategies", to: "/strategies", icon: <TrendingUp size={20} /> },
   { label: "News", to: "/news", icon: <Newspaper size={20} /> },
-  { label: "AI Insights", to: "/ai-insights", icon: <Brain size={20} /> },
-  { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: (user) => !!user },
-  { label: "Alerts", to: "/alerts", icon: <Bell size={20} />, visible: (user) => !!user },
+  // { label: "AI Insights", to: "/ai-insights", icon: <Brain size={20} /> },
+  // { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: (user) => !!user },
+  // { label: "Alerts", to: "/alerts", icon: <Bell size={20} />, visible: (user) => !!user },
 ];
 
 interface SidebarProps {
