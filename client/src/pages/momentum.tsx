@@ -76,6 +76,8 @@ export default function MomentumPage() {
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center gap-1 w-fit"><Activity className="w-3 h-3" /> HEATED</span>;
             case 'TOPPED':
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1 w-fit"><AlertTriangle className="w-3 h-3" /> TOPPED OUT</span>;
+            case 'CAUTION':
+                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center gap-1 w-fit"><AlertTriangle className="w-3 h-3" /> CAUTION</span>;
             default:
                 return <span className="px-3 py-1 rounded-full text-xs font-medium bg-zinc-800 text-zinc-400 border border-zinc-700 w-fit">{signal}</span>;
         }
@@ -131,10 +133,10 @@ export default function MomentumPage() {
                                     <thead className="sticky top-0 bg-zinc-900 z-10 shadow-sm shadow-zinc-800">
                                         <tr className="border-b border-zinc-800 text-left text-xs uppercase tracking-wider text-zinc-500">
                                             <th className="p-4 font-medium">Asset</th>
-                                            <th className="p-4 font-medium text-right">Price</th>
                                             <th className="p-4 font-medium text-right">24h Change</th>
                                             <th className="p-4 font-medium text-center">Volume Factor</th>
                                             <th className="p-4 font-medium text-center">RSI (14)</th>
+                                            <th className="p-4 font-medium text-right">Price</th>
                                             <th className="p-4 font-medium text-right">
                                                 <TooltipProvider>
                                                     <Tooltip>
@@ -166,7 +168,6 @@ export default function MomentumPage() {
                                                 return (
                                                     <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                         <td className="p-4 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
-                                                        <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
                                                         <td className="p-4 text-right font-mono font-bold text-emerald-400">+{coin.change24h.toFixed(2)}%</td>
                                                         <td className="p-4 text-center">
                                                             <div className="inline-flex flex-col items-center">
@@ -181,6 +182,7 @@ export default function MomentumPage() {
                                                                 {coin.rsi}
                                                             </span>
                                                         </td>
+                                                        <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
                                                         <td className="p-4 text-right font-mono text-zinc-400">
                                                             {coin.stopLoss ? '$' + formatPrice(coin.stopLoss) : '-'}
                                                         </td>
@@ -239,6 +241,10 @@ export default function MomentumPage() {
                                     <div className="flex items-center gap-2 text-emerald-400 font-bold"><Rocket className="w-4 h-4" /> RIDE THE WAVE</div>
                                     <span className="text-zinc-400 text-xs">Strong Vol + Price + Room to run (RSI &lt; 75)</span>
                                 </div>
+                                <div className="flex items-center justify-between p-2 rounded bg-blue-500/10 border border-blue-500/20">
+                                    <div className="flex items-center gap-2 text-blue-400 font-bold"><Zap className="w-4 h-4" /> GAINING SPEED</div>
+                                    <span className="text-zinc-400 text-xs">Good Volume + Momentum. Early move.</span>
+                                </div>
                                 <div className="flex items-center justify-between p-2 rounded bg-orange-500/10 border border-orange-500/20">
                                     <div className="flex items-center gap-2 text-orange-400 font-bold"><Activity className="w-4 h-4" /> HEATED</div>
                                     <span className="text-zinc-400 text-xs">Strong move, but RSI &gt; 75. High Risk.</span>
@@ -247,10 +253,13 @@ export default function MomentumPage() {
                                     <div className="flex items-center gap-2 text-rose-400 font-bold"><AlertTriangle className="w-4 h-4" /> TOPPED</div>
                                     <span className="text-zinc-400 text-xs">RSI &gt; 85. Likely correction incoming.</span>
                                 </div>
+                                <div className="flex items-center justify-between p-2 rounded bg-yellow-500/10 border border-yellow-500/20">
+                                    <div className="flex items-center gap-2 text-yellow-400 font-bold"><AlertTriangle className="w-4 h-4" /> CAUTION</div>
+                                    <span className="text-zinc-400 text-xs">Trend stalling or Vol fading. Tighten stops.</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </Page>
