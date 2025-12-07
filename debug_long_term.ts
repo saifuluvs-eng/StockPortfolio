@@ -10,8 +10,9 @@ async function testLongTerm() {
     if (res90.length > 0) {
         console.log("Sample Result:", JSON.stringify(res90[0], null, 2));
     } else {
-        console.log("No results found for 90 days.");
+        console.log("No results found for 90 days. Checking logic will require internal logging in technicalIndicators.ts or here.");
     }
+
 }
 
 testLongTerm().catch(console.error);

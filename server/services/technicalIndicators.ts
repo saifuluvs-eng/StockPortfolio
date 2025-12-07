@@ -1276,7 +1276,11 @@ class TechnicalIndicators {
                   if (rsiVal < 30) badges.push('Oversold');
                   if (tests >= 3) badges.push('Strong Support');
                   if (tests < 2) badges.push('Weak Level');
-                } else if (distToResistance < tolerance) {
+                }
+                if (i < 5) { // Only log first 5 pairs of first batch
+                  // console.log(`[DEBUG_90D] ${pair.symbol} Price:${currentPrice} Min:${minLow} Max:${maxHigh} DistSup:${distToSupport.toFixed(4)} DistRes:${distToResistance.toFixed(4)} Tol:${tolerance}`);
+                }
+                if (distToResistance < tolerance) {
                   type = 'Resistance';
                   level = maxHigh;
                   distance = distToResistance;
