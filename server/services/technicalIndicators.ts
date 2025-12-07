@@ -1220,7 +1220,10 @@ class TechnicalIndicators {
             // Check if we have enough data (using the calculated expected count)
             const requiredDataPoints = scanTimeframe === '1d' ? lookbackDays : candlesNeeded;
 
-            if (candles.length < requiredDataPoints) return null;
+            if (candles.length < requiredDataPoints) {
+              // if (i < 5) console.log(`[DEBUG] ${pair.symbol} REJECTED: Not enough data. Has ${candles.length}, Need ${requiredDataPoints}`);
+              return null;
+            }
 
             const currentPrice = analysis.price;
             // Analyze requested lookback period
