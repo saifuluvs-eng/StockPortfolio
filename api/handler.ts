@@ -758,9 +758,7 @@ class TechnicalIndicators {
                 if (tests >= 2) {
                   badges.push('Strong Support');
                 }
-                if (rsiVal > 50) {
-                  badges.push('Risky');
-                }
+                // Risky logic removed
 
               } else if (distToResistance < 0.05) {
                 type = 'Resistance';
