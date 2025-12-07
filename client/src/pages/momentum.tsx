@@ -30,6 +30,10 @@ export default function MomentumPage() {
         refetchInterval: 30000,
     });
 
+    // State for Position Sizing
+    const [accountSize, setAccountSize] = useState<number>(1000);
+    const [riskPerTrade, setRiskPerTrade] = useState<number>(1.0);
+
     const formatPrice = (price: number) => {
         if (price < 0.00001) return price.toFixed(8);
         if (price < 0.001) return price.toFixed(7);
@@ -42,6 +46,20 @@ export default function MomentumPage() {
         if (vol > 1000000) return "$" + (vol / 1000000).toFixed(1) + "M";
         if (vol > 1000) return "$" + (vol / 1000).toFixed(1) + "K";
         return "$" + vol.toFixed(0);
+    };
+
+    // Calculate Position Size
+    const getPositionSizing = (price: number, riskPct?: number) => {
+        if (!riskPct || riskPct <= 0 || !price) return { size: null, qty: null };
+
+        const riskDollars = accountSize * (riskPerTrade / 100);
+        const positionDollars = riskDollars / (riskPct / 100);
+        const quantity = positionDollars / price;
+
+        return {
+            size: positionDollars,
+            qty: quantity
+        };
     };
 
     const getSignalBadge = (signal: string) => {
@@ -67,7 +85,7 @@ export default function MomentumPage() {
                 <div className="space-y-6">
                     <Card>
                         <div className="space-y-6">
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
                                 <div>
                                     <div className="flex items-center gap-3 mb-2">
                                         <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
@@ -75,11 +93,47 @@ export default function MomentumPage() {
                                         </div>
                                         <h1 className="text-2xl font-bold tracking-tight text-white/90">Momentum Scanner</h1>
                                     </div>
-                                    <p className="text-sm text-zinc-400 max-w-2xl">
+                                    <p className="text-sm text-zinc-400 max-w-2xl mb-4">
                                         Identifies coins with <strong>High Velocity</strong> and <strong>Surging Volume</strong>. Catch the move before it tops out.
                                     </p>
+
+                                    {/* Position Sizing Inputs */}
+                                    <div className="flex flex-wrap items-end gap-4 p-4 rounded-lg bg-zinc-900/50 border border-zinc-800">
+                                        <div>
+                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Account Size ($)</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    value={accountSize}
+                                                    onChange={(e) => setAccountSize(Number(e.target.value))}
+                                                    className="w-32 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-7 pr-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Risk Per Trade (%)</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    min="0.1"
+                                                    step="0.1"
+                                                    max="5"
+                                                    value={riskPerTrade}
+                                                    onChange={(e) => setRiskPerTrade(Number(e.target.value))}
+                                                    className="w-24 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all text-right"
+                                                />
+                                                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">%</span>
+                                            </div>
+                                        </div>
+                                        <div className="h-full pb-2">
+                                            <span className="text-xs text-zinc-500">Risking <strong>${(accountSize * (riskPerTrade / 100)).toFixed(0)}</strong> per trade</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="text-right">
+
+                                <div className="text-right w-full xl:w-auto">
                                     {lastUpdatedTime && (
                                         <span className="text-xs text-zinc-500 flex items-center justify-end gap-2">
                                             {isRefetching && <span className="block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
@@ -114,48 +168,59 @@ export default function MomentumPage() {
                                                 </TooltipProvider>
                                             </th>
                                             <th className="p-4 font-medium text-right">Risk</th>
+                                            <th className="p-4 font-medium text-right text-emerald-400/80">Size ($)</th>
+                                            <th className="p-4 font-medium text-right text-emerald-400/80">Qty</th>
                                             <th className="p-4 font-medium text-left">Signal</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
                                         {isLoading ? (
-                                            <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Scanning for Momentum...</td></tr>
+                                            <tr><td colSpan={10} className="p-8 text-center text-zinc-500">Scanning for Momentum...</td></tr>
                                         ) : !data?.length ? (
-                                            <tr><td colSpan={8} className="p-8 text-center text-zinc-500">No high-momentum setups found right now. Market might be chop.</td></tr>
+                                            <tr><td colSpan={10} className="p-8 text-center text-zinc-500">No high-momentum setups found right now. Market might be chop.</td></tr>
                                         ) : (
-                                            data.map((coin) => (
-                                                <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                                                    <td className="p-4 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
-                                                    <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
-                                                    <td className="p-4 text-right font-mono font-bold text-emerald-400">+{coin.change24h.toFixed(2)}%</td>
-                                                    <td className="p-4 text-center">
-                                                        <div className="inline-flex flex-col items-center">
-                                                            <span className={`text-sm font-bold ${coin.volumeFactor > 2 ? 'text-emerald-400' : 'text-zinc-300'}`}>
-                                                                {coin.volumeFactor}x
+                                            data.map((coin) => {
+                                                const { size, qty } = getPositionSizing(coin.price, coin.riskPct);
+                                                return (
+                                                    <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
+                                                        <td className="p-4 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
+                                                        <td className="p-4 text-right font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                        <td className="p-4 text-right font-mono font-bold text-emerald-400">+{coin.change24h.toFixed(2)}%</td>
+                                                        <td className="p-4 text-center">
+                                                            <div className="inline-flex flex-col items-center">
+                                                                <span className={`text-sm font-bold ${coin.volumeFactor > 2 ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                                                                    {coin.volumeFactor}x
+                                                                </span>
+                                                                <span className="text-[10px] text-zinc-500">{formatVolume(coin.volume)}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-4 text-center">
+                                                            <span className={`font-mono ${coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                                                                {coin.rsi}
                                                             </span>
-                                                            <span className="text-[10px] text-zinc-500">{formatVolume(coin.volume)}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-4 text-center">
-                                                        <span className={`font-mono ${coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
-                                                            {coin.rsi}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 text-right font-mono text-zinc-400">
-                                                        {coin.stopLoss ? '$' + formatPrice(coin.stopLoss) : '-'}
-                                                    </td>
-                                                    <td className="p-4 text-right font-mono">
-                                                        {coin.riskPct ? (
-                                                            <span className={`${coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400'}`}>
-                                                                {coin.riskPct.toFixed(1)}%
-                                                            </span>
-                                                        ) : '-'}
-                                                    </td>
-                                                    <td className="p-4">
-                                                        {getSignalBadge(coin.signal)}
-                                                    </td>
-                                                </tr>
-                                            ))
+                                                        </td>
+                                                        <td className="p-4 text-right font-mono text-zinc-400">
+                                                            {coin.stopLoss ? '$' + formatPrice(coin.stopLoss) : '-'}
+                                                        </td>
+                                                        <td className="p-4 text-right font-mono">
+                                                            {coin.riskPct ? (
+                                                                <span className={`${coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                                                    {coin.riskPct.toFixed(1)}%
+                                                                </span>
+                                                            ) : '-'}
+                                                        </td>
+                                                        <td className="p-4 text-right font-mono text-emerald-100">
+                                                            {size ? '$' + Math.floor(size).toLocaleString() : '-'}
+                                                        </td>
+                                                        <td className="p-4 text-right font-mono text-emerald-100/70">
+                                                            {qty ? (qty < 1000 ? qty.toFixed(1) : Math.floor(qty).toLocaleString()) : '-'}
+                                                        </td>
+                                                        <td className="p-4">
+                                                            {getSignalBadge(coin.signal)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>
