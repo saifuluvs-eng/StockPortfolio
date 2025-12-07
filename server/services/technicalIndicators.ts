@@ -1282,7 +1282,8 @@ class TechnicalIndicators {
                   if (rsiVal < 30) badges.push('Oversold');
                   if (tests >= 3) {
                     badges.push('Strong Support');
-                  } if (tests < 3) badges.push('Weak Level');
+                  }
+                  if (tests < 2) badges.push('Weak Level');
                 }
                 else if (distToResistance < 0.05) {
                   type = 'Resistance';

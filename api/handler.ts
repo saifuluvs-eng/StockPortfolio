@@ -758,6 +758,9 @@ class TechnicalIndicators {
                 if (tests >= 3) {
                   badges.push('Strong Support');
                 }
+                if (tests < 2) {
+                  badges.push('Weak Level');
+                }
                 // Risky logic removed
 
               } else if (distToResistance < 0.05) {
