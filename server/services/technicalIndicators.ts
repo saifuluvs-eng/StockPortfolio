@@ -1256,10 +1256,13 @@ class TechnicalIndicators {
 
               // 1. Bounce Checks (Support/Resistance) - Priority for 'bounce' strategy
               if (strategy === 'bounce') {
+                // Dynamic tolerance: 5% for 4h, 10% for 1d (Daily levels are wider)
+                const tolerance = scanTimeframe === '1d' ? 0.10 : 0.05;
+
                 const distToSupport = Math.abs((currentPrice - minLow) / minLow);
                 const distToResistance = Math.abs((maxHigh - currentPrice) / currentPrice);
 
-                if (distToSupport < 0.05) {
+                if (distToSupport < tolerance) {
                   type = 'Support';
                   level = minLow;
                   distance = distToSupport;
@@ -1273,7 +1276,7 @@ class TechnicalIndicators {
                   if (rsiVal < 30) badges.push('Oversold');
                   if (tests >= 3) badges.push('Strong Support');
                   if (tests < 2) badges.push('Weak Level');
-                } else if (distToResistance < 0.05) {
+                } else if (distToResistance < tolerance) {
                   type = 'Resistance';
                   level = maxHigh;
                   distance = distToResistance;
