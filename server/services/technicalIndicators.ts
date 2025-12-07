@@ -1217,17 +1217,22 @@ class TechnicalIndicators {
             const analysis = await this.analyzeSymbol(pair.symbol, scanTimeframe, scanLimit);
             const candles = analysis.candles || [];
 
-            // Check if we have enough data (using the calculated expected count)
+            // Check if we have enough data
             const requiredDataPoints = scanTimeframe === '1d' ? lookbackDays : candlesNeeded;
 
-            if (candles.length < requiredDataPoints) {
-              // if (i < 5) console.log(`[DEBUG] ${pair.symbol} REJECTED: Not enough data. Has ${candles.length}, Need ${requiredDataPoints}`);
-              return null;
+            // Allow Partial Data for 1D Timeframe (Best Effort for new coins)
+            // If we asked for 365 days but coin only has 200, we should still scan those 200.
+            if (scanTimeframe === '1d') {
+              if (candles.length < 30) return null; // Minimum 30 days required for meaningful daily analysis
+            } else {
+              // Strict check for shorter timeframes (4h) to ensure full pattern validity
+              if (candles.length < requiredDataPoints) return null;
             }
 
             const currentPrice = analysis.price;
-            // Analyze requested lookback period
-            const recent = candles.slice(-requiredDataPoints);
+            // Analyze requested lookback period (or max available)
+            const sliceCount = Math.min(candles.length, requiredDataPoints);
+            const recent = candles.slice(-sliceCount);
 
             // For Breakout: Look at Highs/Lows excluding the very last closed candle to see if we just broke it? 
             // Or just generic High/Low of the period.
