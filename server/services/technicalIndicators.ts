@@ -1253,30 +1253,9 @@ class TechnicalIndicators {
               const distBelowSup = (prevLow - currentPrice) / prevLow;
 
               // UNIFIED LOGIC: Check for both Bounce and Breakout
-              // Priority: Breakout/Breakdown > Support/Resistance
 
-              // 1. Breakout/Breakdown Checks (Active Moves)
-              if (distAboveRes > -0.02 && distAboveRes < 0.15) {
-                type = 'Breakout';
-                level = prevHigh;
-                distance = distAboveRes;
-                tests = previousCandles.filter(c => Math.abs((c.h - prevHigh) / prevHigh) < 0.01).length;
-                if (distAboveRes < 0) badges.push('Approaching'); else badges.push('Confirmed');
-                if (rsiVal > 50) badges.push('High Momentum');
-                if (rsiVal > 75) badges.push('Overextended');
-              }
-              else if (distBelowSup > -0.02 && distBelowSup < 0.15) {
-                type = 'Breakdown';
-                level = prevLow;
-                distance = distBelowSup;
-                tests = previousCandles.filter(c => Math.abs((c.l - prevLow) / prevLow) < 0.01).length;
-                if (distBelowSup < 0) badges.push('Approaching'); else badges.push('Confirmed');
-                if (rsiVal < 50) badges.push('Bearish Momentum');
-                if (rsiVal < 25) badges.push('Oversold Dump');
-              }
-
-              // 2. Bounce Checks (Support/Resistance Tests) - Only if not already a Breakout
-              if (!type) {
+              // 1. Bounce Checks (Support/Resistance) - Priority for 'bounce' strategy
+              if (strategy === 'bounce') {
                 const distToSupport = Math.abs((currentPrice - minLow) / minLow);
                 const distToResistance = Math.abs((maxHigh - currentPrice) / currentPrice);
 
@@ -1285,21 +1264,16 @@ class TechnicalIndicators {
                   level = minLow;
                   distance = distToSupport;
                   tests = recent.filter(c => Math.abs((c.l - minLow) / minLow) < 0.01).length;
-
-                  // R:R Calculation
+                  // ... (Add R:R and Badges logic here or refactor)
+                  // Copying logic for now to ensure safety
                   const risk = distance;
                   const reward = (maxHigh - currentPrice) / currentPrice;
-                  if (risk > 0.001) riskReward = parseFloat((reward / risk).toFixed(2));
-                  else riskReward = 10;
-
+                  if (risk > 0.001) riskReward = parseFloat((reward / risk).toFixed(2)); else riskReward = 10;
                   if (rsiVal < 40 && distance < 0.03) badges.push('Golden Setup');
                   if (rsiVal < 30) badges.push('Oversold');
-                  if (tests >= 3) {
-                    badges.push('Strong Support');
-                  }
+                  if (tests >= 3) badges.push('Strong Support');
                   if (tests < 2) badges.push('Weak Level');
-                }
-                else if (distToResistance < 0.05) {
+                } else if (distToResistance < 0.05) {
                   type = 'Resistance';
                   level = maxHigh;
                   distance = distToResistance;
@@ -1309,15 +1283,39 @@ class TechnicalIndicators {
                 }
               }
 
+              // 2. Breakout Checks - Priority for 'breakout' strategy OR if not found in bounce
+              if ((strategy === 'breakout') || (!type && strategy !== 'bounce')) {
+                // ... Breakout logic ...
+                // Refactor: We need to avoid code duplication if possible, but splitting by strategy is cleaner for 90d fix.
+                const distAboveRes = (currentPrice - prevHigh) / prevHigh;
+                const distBelowSup = (prevLow - currentPrice) / prevLow;
+
+                if (distAboveRes > -0.02 && distAboveRes < 0.15) {
+                  type = 'Breakout';
+                  level = prevHigh;
+                  distance = distAboveRes;
+                  tests = previousCandles.filter(c => Math.abs((c.h - prevHigh) / prevHigh) < 0.01).length;
+                  if (distAboveRes < 0) badges.push('Approaching'); else badges.push('Confirmed');
+                  if (rsiVal > 50) badges.push('High Momentum');
+                  if (analysis.indicators.rsi.value > 75) badges.push('Overextended');
+                } else if (distBelowSup > -0.02 && distBelowSup < 0.15) {
+                  type = 'Breakdown';
+                  level = prevLow;
+                  distance = distBelowSup;
+                  tests = previousCandles.filter(c => Math.abs((c.l - prevLow) / prevLow) < 0.01).length;
+                  if (distBelowSup < 0) badges.push('Approaching'); else badges.push('Confirmed');
+                  if (rsiVal < 50) badges.push('Bearish Momentum');
+                  if (rsiVal < 25) badges.push('Oversold Dump');
+                }
+              }
+
+
               // debug log
               // console.log(`[DEBUG] ${pair.symbol} Mode:${strategy} Type:${type} Price:${currentPrice} Level:${level}`);
 
               if (type) {
-                // Filter by Strategy
-                if (strategy === 'bounce' && (type === 'Breakout' || type === 'Breakdown')) return null;
-                if (strategy === 'breakout' && (type === 'Support' || type === 'Resistance')) return null;
-
                 return {
+
                   symbol: pair.symbol,
                   price: currentPrice,
                   type,
