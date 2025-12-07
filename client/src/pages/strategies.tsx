@@ -330,6 +330,22 @@ export default function StrategiesPage() {
                                     </dd>
                                 </div>
                                 <div>
+                                    <dt className="text-sm font-medium text-zinc-300">How, Why & When?</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1 space-y-2">
+                                        <p><strong>How:</strong> The algorithm scans the <strong>Top 75 Coins</strong> by 24h Volume every minute.</p>
+                                        <p><strong>Why:</strong> A coin appears here ONLY if it is <strong>within 5%</strong> of a major Support or Resistance level.</p>
+                                        <p><strong>When:</strong> Real-time. If a coin moves 6% away, it vanishes. If it enters the 5% zone, it appears.</p>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-sm font-medium text-zinc-300">Why this list? (Top 75)</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1">
+                                        The number of times price has touched this level and respected it.
+                                        <br />
+                                        <strong>Higher Tests = Stronger Level.</strong> A level tested 5 times is much more significant than one tested once.
+                                    </dd>
+                                </div>
+                                <div>
                                     <dt className="text-sm font-medium text-zinc-300">Strength (Tests)</dt>
                                     <dd className="text-sm text-zinc-400 mt-1">
                                         The number of times price has touched this level and respected it.
