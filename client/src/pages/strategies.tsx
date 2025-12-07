@@ -43,7 +43,9 @@ export default function StrategiesPage() {
         queryKey: ['support-resistance', lookbackDays, strategy],
         queryFn: async () => {
             const res = await fetch(`/api/market/strategies/support-resistance?limit=75&days=${lookbackDays}&strategy=${strategy}`);
-            return res.json() as Promise<SupportResistanceResult[]>;
+            const data = await res.json();
+            console.log(`[Frontend] Received ${data.length} coins for ${lookbackDays} days (${strategy})`);
+            return data as Promise<SupportResistanceResult[]>;
         },
         refetchInterval: 30000,
     });
