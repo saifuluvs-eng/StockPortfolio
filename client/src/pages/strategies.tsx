@@ -291,11 +291,16 @@ export default function StrategiesPage() {
                                             <li><strong>8 Days:</strong> Quick scalps/swings.</li>
                                             <li><strong>30 Days:</strong> Major structural levels.</li>
                                         </ul>
+                                        <p><strong>Timeframe Logic:</strong></p>
+                                        <ul className="list-disc pl-4 space-y-1">
+                                            <li><strong>Short Term (8-30 Days):</strong> Uses <strong>4-Hour</strong> candles for precision.</li>
+                                            <li><strong>Long Term (90+ Days):</strong> Switches to <strong>Daily (1D)</strong> candles to find major structural levels.</li>
+                                        </ul>
                                     </dd>
                                 </div>
                                 <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Confluence Tags</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1 space-y-1">
+                                    <dt className="text-sm font-medium text-zinc-300">Definitions</dt>
+                                    <dd className="text-sm text-zinc-400 mt-1 space-y-2">
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                                             <div className="flex items-center gap-2"><span className="text-amber-400">💎 Golden Setup</span> <span>Oversold + Strong Level</span></div>
                                             <div className="flex items-center gap-2"><span className="text-indigo-400">🛡️ Strong Level</span> <span>Tested 3+ times</span></div>

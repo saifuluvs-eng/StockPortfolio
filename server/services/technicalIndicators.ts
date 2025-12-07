@@ -1185,8 +1185,8 @@ class TechnicalIndicators {
     }
   }
 
-  async scanSupportResistance(limit: number = 20, lookbackDays: number = 8): Promise<any[]> {
-    console.log(`[TechnicalIndicators] scanSupportResistance called. Lookback: ${lookbackDays}`);
+  async scanSupportResistance(limit: number = 20, lookbackDays: number = 8, strategy: 'bounce' | 'breakout' = 'bounce'): Promise<any[]> {
+    console.log(`[TechnicalIndicators] scanSupportResistance called. Strategy: ${strategy}, Lookback: ${lookbackDays}`);
     try {
       const topPairs = await binanceService.getTopVolumePairs(75);
       const results: any[] = [];
@@ -1313,6 +1313,10 @@ class TechnicalIndicators {
               // console.log(`[DEBUG] ${pair.symbol} Mode:${strategy} Type:${type} Price:${currentPrice} Level:${level}`);
 
               if (type) {
+                // Filter by Strategy
+                if (strategy === 'bounce' && (type === 'Breakout' || type === 'Breakdown')) return null;
+                if (strategy === 'breakout' && (type === 'Support' || type === 'Resistance')) return null;
+
                 return {
                   symbol: pair.symbol,
                   price: currentPrice,
