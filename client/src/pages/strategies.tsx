@@ -123,9 +123,6 @@ export default function StrategiesPage() {
                                             <option value={8}>8 Days</option>
                                             <option value={14}>14 Days</option>
                                             <option value={30}>30 Days</option>
-                                            <option value={90}>3 Months (90d)</option>
-                                            <option value={180}>6 Months (180d)</option>
-                                            <option value={365}>1 Year (365d)</option>
                                         </select>
 
                                         <button
@@ -292,11 +289,6 @@ export default function StrategiesPage() {
                                         <ul className="list-disc list-inside pl-1 text-xs mt-1 text-zinc-500">
                                             <li><strong>8 Days:</strong> Quick scalps/swings.</li>
                                             <li><strong>30 Days:</strong> Major structural levels.</li>
-                                        </ul>
-                                        <p><strong>Timeframe Logic:</strong></p>
-                                        <ul className="list-disc pl-4 space-y-1">
-                                            <li><strong>Short Term (8-30 Days):</strong> Uses <strong>4-Hour</strong> candles for precision.</li>
-                                            <li><strong>Long Term (90+ Days):</strong> Switches to <strong>Daily (1D)</strong> candles to find major structural levels.</li>
                                         </ul>
                                     </dd>
                                 </div>
