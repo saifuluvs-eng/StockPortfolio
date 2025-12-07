@@ -25,6 +25,7 @@ import {
   PieChart,
   TrendingUp,
   Zap,
+  Target,
 } from "lucide-react";
 import HoverTooltip from "../ui/HoverTooltip";
 import { useAuth } from "@/auth/AuthContext";
@@ -40,7 +41,8 @@ const items: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: <Home size={20} /> },
   { label: "Portfolio", to: "/portfolio", icon: <Briefcase size={20} /> },
   { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
-  // { label: "High Potential", to: "/high-potential", icon: <Flame size={20} /> },
+  { label: "High Potential", to: "/high-potential", icon: <Flame size={20} /> },
+  { label: "Top Picks", to: "/top-picks", icon: <Target size={20} /> },
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
   { label: "Data", to: "/data", icon: <PieChart size={20} /> },
   { label: "Strategies", to: "/strategies", icon: <TrendingUp size={20} /> },
