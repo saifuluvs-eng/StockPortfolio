@@ -1211,6 +1211,8 @@ class TechnicalIndicators {
               // For 1D, 1 candle = 1 day. So we need lookbackDays + buffer
               scanLimit = lookbackDays + 50;
             }
+            // console.log(`[TRACE] Analyzing ${pair.symbol} TF:${scanTimeframe} Limit:${scanLimit}`);
+
 
             const analysis = await this.analyzeSymbol(pair.symbol, scanTimeframe, scanLimit);
             const candles = analysis.candles || [];
