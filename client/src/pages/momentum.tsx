@@ -31,8 +31,8 @@ export default function MomentumPage() {
     });
 
     // State for Position Sizing
-    const [accountSize, setAccountSize] = useState<number>(1000);
-    const [riskPerTrade, setRiskPerTrade] = useState<number>(1.0);
+    const [tradeSize, setTradeSize] = useState<number>(1000);
+    const [riskMaxPct, setRiskMaxPct] = useState<number>(1.0);
 
     const formatPrice = (price: number) => {
         if (price < 0.00001) return price.toFixed(8);
@@ -48,16 +48,21 @@ export default function MomentumPage() {
         return "$" + vol.toFixed(0);
     };
 
-    // Calculate Position Size
-    const getPositionSizing = (price: number, riskPct?: number) => {
-        if (!riskPct || riskPct <= 0 || !price) return { size: null, qty: null };
+    // Calculate Risk Amount & Quantity based on Fixed Trade Size
+    const getTradeMetrics = (price: number, riskPct?: number) => {
+        if (!price || !tradeSize) return { riskDollars: null, qty: null };
 
-        const riskDollars = accountSize * (riskPerTrade / 100);
-        const positionDollars = riskDollars / (riskPct / 100);
-        const quantity = positionDollars / price;
+        // Quantity is strictly based on how much the user wants to invest (Trade Size)
+        const quantity = tradeSize / price;
+
+        // Risk Dollars is how much they lose if Stop is hit
+        // If riskPct is missing, we can't calculate risk dollars
+        const riskDollars = (riskPct && riskPct > 0)
+            ? tradeSize * (riskPct / 100)
+            : null;
 
         return {
-            size: positionDollars,
+            riskDollars,
             qty: quantity
         };
     };
@@ -78,6 +83,9 @@ export default function MomentumPage() {
     };
 
     const lastUpdatedTime = dataUpdatedAt ? format(new Date(dataUpdatedAt), 'HH:mm:ss') : null;
+
+    // Max allowed loss for display purposes
+    const maxAllowedLoss = tradeSize * (riskMaxPct / 100);
 
     return (
         <Page>
@@ -100,35 +108,40 @@ export default function MomentumPage() {
                                     {/* Position Sizing Inputs */}
                                     <div className="flex flex-wrap items-end gap-4 p-4 rounded-lg bg-zinc-900/50 border border-zinc-800">
                                         <div>
-                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Account Size ($)</label>
+                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Trade Size ($)</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
                                                 <input
                                                     type="number"
                                                     min="0"
-                                                    value={accountSize}
-                                                    onChange={(e) => setAccountSize(Number(e.target.value))}
+                                                    value={tradeSize}
+                                                    onChange={(e) => setTradeSize(Number(e.target.value))}
                                                     className="w-32 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-7 pr-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700"
                                                 />
                                             </div>
+                                            <p className="text-[10px] text-zinc-500 mt-1">Amount to invest per trade</p>
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Risk Per Trade (%)</label>
+                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Max Risk (%)</label>
                                             <div className="relative">
                                                 <input
                                                     type="number"
                                                     min="0.1"
                                                     step="0.1"
-                                                    max="5"
-                                                    value={riskPerTrade}
-                                                    onChange={(e) => setRiskPerTrade(Number(e.target.value))}
+                                                    max="100"
+                                                    value={riskMaxPct}
+                                                    onChange={(e) => setRiskMaxPct(Number(e.target.value))}
                                                     className="w-24 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all text-right"
                                                 />
                                                 <span className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">%</span>
                                             </div>
+                                            <p className="text-[10px] text-zinc-500 mt-1">Max % willing to lose</p>
                                         </div>
-                                        <div className="h-full pb-2">
-                                            <span className="text-xs text-zinc-500">Risking <strong>${(accountSize * (riskPerTrade / 100)).toFixed(0)}</strong> per trade</span>
+                                        <div className="h-full pb-3 flex items-center">
+                                            <span className="text-xs text-zinc-400">
+                                                Investing <strong>${tradeSize.toLocaleString()}</strong> per trade. <br />
+                                                Max loss tolerance: <strong className="text-rose-400">${maxAllowedLoss.toFixed(0)}</strong>
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -167,8 +180,8 @@ export default function MomentumPage() {
                                                     </Tooltip>
                                                 </TooltipProvider>
                                             </th>
-                                            <th className="p-4 font-medium text-right">Risk</th>
-                                            <th className="p-4 font-medium text-right text-emerald-400/80">Size ($)</th>
+                                            <th className="p-4 font-medium text-right">Risk %</th>
+                                            <th className="p-4 font-medium text-right text-rose-400/80">Risk ($)</th>
                                             <th className="p-4 font-medium text-right text-emerald-400/80">Qty</th>
                                             <th className="p-4 font-medium text-left">Signal</th>
                                         </tr>
@@ -180,7 +193,7 @@ export default function MomentumPage() {
                                             <tr><td colSpan={10} className="p-8 text-center text-zinc-500">No high-momentum setups found right now. Market might be chop.</td></tr>
                                         ) : (
                                             data.map((coin) => {
-                                                const { size, qty } = getPositionSizing(coin.price, coin.riskPct);
+                                                const { riskDollars, qty } = getTradeMetrics(coin.price, coin.riskPct);
                                                 return (
                                                     <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                         <td className="p-4 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
@@ -209,8 +222,8 @@ export default function MomentumPage() {
                                                                 </span>
                                                             ) : '-'}
                                                         </td>
-                                                        <td className="p-4 text-right font-mono text-emerald-100">
-                                                            {size ? '$' + Math.floor(size).toLocaleString() : '-'}
+                                                        <td className="p-4 text-right font-mono text-rose-300">
+                                                            {riskDollars !== null ? '$' + Math.round(riskDollars).toLocaleString() : '-'}
                                                         </td>
                                                         <td className="p-4 text-right font-mono text-emerald-100/70">
                                                             {qty ? (qty < 1000 ? qty.toFixed(1) : Math.floor(qty).toLocaleString()) : '-'}
