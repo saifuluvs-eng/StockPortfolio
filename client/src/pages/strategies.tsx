@@ -121,6 +121,9 @@ export default function StrategiesPage() {
                                             <option value={8}>8 Days</option>
                                             <option value={14}>14 Days</option>
                                             <option value={30}>30 Days</option>
+                                            <option value={90}>3 Months (90d)</option>
+                                            <option value={180}>6 Months (180d)</option>
+                                            <option value={365}>1 Year (365d)</option>
                                         </select>
 
                                         <button

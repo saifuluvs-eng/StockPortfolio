@@ -472,14 +472,14 @@ class TechnicalIndicators {
     return { adx: dx, plusDI, minusDI };
   }
 
-  async analyzeSymbol(symbol: string, timeframe: string = '1h'): Promise<TechnicalAnalysis> {
+  async analyzeSymbol(symbol: string, timeframe: string = '1h', limit: number = 200): Promise<TechnicalAnalysis> {
     try {
       const binanceInterval = this.convertTimeframeToBinance(timeframe);
       let closes: number[], highs: number[], lows: number[], volumes: number[], currentPrice: number;
       let klines: any[] = [];
 
       try {
-        klines = await binanceService.getKlineData(symbol, binanceInterval, 200);
+        klines = await binanceService.getKlineData(symbol, binanceInterval, limit);
         if (klines.length === 0) throw new Error('No kline data received');
         closes = klines.map(k => parseFloat(k.close));
         highs = klines.map(k => parseFloat(k.high));
@@ -706,13 +706,27 @@ class TechnicalIndicators {
             // Filter Stablecoins
             if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR', 'XUSD', 'BFUSD'].some(s => pair.symbol.startsWith(s))) return null;
 
-            const analysis = await this.analyzeSymbol(pair.symbol, '4h');
+            // Determine Timeframe & Limit based on Lookback
+            let scanTimeframe = '4h';
+            let scanLimit = candlesNeeded;
+
+            if (lookbackDays > 30) {
+              scanTimeframe = '1d';
+              // For 1D, 1 candle = 1 day. So we need lookbackDays + buffer
+              scanLimit = lookbackDays + 50;
+            }
+
+            const analysis = await this.analyzeSymbol(pair.symbol, scanTimeframe, scanLimit);
             const candles = analysis.candles || [];
-            if (candles.length < candlesNeeded) return null;
+
+            // Check if we have enough data (using the calculated expected count)
+            const requiredDataPoints = scanTimeframe === '1d' ? lookbackDays : candlesNeeded;
+
+            if (candles.length < requiredDataPoints) return null;
 
             const currentPrice = analysis.price;
             // Analyze requested lookback period
-            const recent = candles.slice(-candlesNeeded);
+            const recent = candles.slice(-requiredDataPoints);
 
             const recentLows = recent.map(c => c.l);
             const recentHighs = recent.map(c => c.h);

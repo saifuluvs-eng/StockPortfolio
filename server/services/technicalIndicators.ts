@@ -311,7 +311,7 @@ class TechnicalIndicators {
     return { adx, plusDI, minusDI };
   }
 
-  async analyzeSymbol(symbol: string, timeframe: string = '1h'): Promise<TechnicalAnalysis> {
+  async analyzeSymbol(symbol: string, timeframe: string = '1h', limit: number = 500): Promise<TechnicalAnalysis> {
     // console.log(`[TRACE] analyzeSymbol called for ${symbol} ${timeframe}`); // Reduce spam
     try {
       // Convert timeframe to Binance format
@@ -321,8 +321,8 @@ class TechnicalIndicators {
       let klines: any[] = [];
 
       try {
-        // Get candlestick data (increased to 500 for better EMA200 accuracy)
-        klines = await binanceService.getKlineData(symbol, binanceInterval, 500);
+        // Get candlestick data (use dynamic limit)
+        klines = await binanceService.getKlineData(symbol, binanceInterval, limit);
 
         if (klines.length === 0) {
           throw new Error('No kline data received from API');
@@ -1202,13 +1202,27 @@ class TechnicalIndicators {
             // Filter Stablecoins
             if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR', 'XUSD', 'BFUSD'].some(s => pair.symbol.startsWith(s))) return null;
 
-            const analysis = await this.analyzeSymbol(pair.symbol, '4h');
+            // Determine Timeframe & Limit based on Lookback
+            let scanTimeframe = '4h';
+            let scanLimit = candlesNeeded;
+
+            if (lookbackDays > 30) {
+              scanTimeframe = '1d';
+              // For 1D, 1 candle = 1 day. So we need lookbackDays + buffer
+              scanLimit = lookbackDays + 50;
+            }
+
+            const analysis = await this.analyzeSymbol(pair.symbol, scanTimeframe, scanLimit);
             const candles = analysis.candles || [];
-            if (candles.length < candlesNeeded) return null;
+
+            // Check if we have enough data (using the calculated expected count)
+            const requiredDataPoints = scanTimeframe === '1d' ? lookbackDays : candlesNeeded;
+
+            if (candles.length < requiredDataPoints) return null;
 
             const currentPrice = analysis.price;
             // Analyze requested lookback period
-            const recent = candles.slice(-candlesNeeded);
+            const recent = candles.slice(-requiredDataPoints);
 
             // For Breakout: Look at Highs/Lows excluding the very last closed candle to see if we just broke it? 
             // Or just generic High/Low of the period.
