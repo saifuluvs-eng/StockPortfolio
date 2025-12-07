@@ -38,12 +38,12 @@ export default function TopPicksPage() {
         <Page>
             <div className="max-w-7xl mx-auto space-y-8">
                 {/* Hero Section */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900/50 via-zinc-900 to-zinc-950 border border-zinc-800 p-8 md:p-12">
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-900/50 via-zinc-900 to-zinc-950 border border-zinc-800 p-6 md:p-8">
                     <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
                         <Sparkles className="w-64 h-64 text-indigo-400" />
                     </div>
                     <div className="relative z-10 max-w-2xl">
-                        <div className="flex items-center gap-3 mb-4">
+                        <div className="flex items-center gap-3 mb-3">
                             <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold uppercase tracking-wider">
                                 Artificial Intelligence
                             </span>
@@ -51,10 +51,10 @@ export default function TopPicksPage() {
                                 Beta
                             </span>
                         </div>
-                        <h1 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
+                        <h1 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
                             Market <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Top Picks</span>
                         </h1>
-                        <p className="text-lg text-zinc-400 mb-8 leading-relaxed">
+                        <p className="text-base text-zinc-400 mb-0 leading-relaxed max-w-xl">
                             We analyze thousands of data points to find the <strong className="text-white">Perfect Confluence</strong>.
                             These assets are hitting key levels AND showing strong momentum.
                         </p>
@@ -76,8 +76,8 @@ export default function TopPicksPage() {
                     </div>
 
                     {isLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {[1, 2, 3].map(i => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {[1, 2, 3, 4].map(i => (
                                 <div key={i} className="h-64 rounded-2xl bg-zinc-900/50 animate-pulse border border-zinc-800" />
                             ))}
                         </div>
@@ -91,7 +91,7 @@ export default function TopPicksPage() {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {picks.map((pick, idx) => (
                                 <div
                                     key={pick.symbol}
@@ -167,7 +167,7 @@ export default function TopPicksPage() {
 
                                     {/* Bottom Gradient Bar */}
                                     <div className={`h-1.5 w-full bg-gradient-to-r ${idx === 0 ? 'from-indigo-500 via-purple-500 to-pink-500' :
-                                            'from-zinc-700 to-zinc-800 group-hover:from-indigo-900 group-hover:to-blue-900'
+                                        'from-zinc-700 to-zinc-800 group-hover:from-indigo-900 group-hover:to-blue-900'
                                         }`} />
                                 </div>
                             ))}
