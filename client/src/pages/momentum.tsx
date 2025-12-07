@@ -116,7 +116,7 @@ export default function MomentumPage() {
                                                     min="0"
                                                     value={tradeSize}
                                                     onChange={(e) => setTradeSize(Number(e.target.value))}
-                                                    className="w-32 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-7 pr-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700"
+                                                    className="w-32 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-7 pr-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
                                             </div>
                                             <p className="text-[10px] text-zinc-500 mt-1">Amount to invest per trade</p>
@@ -124,6 +124,7 @@ export default function MomentumPage() {
                                         <div>
                                             <label className="block text-xs font-medium text-zinc-400 mb-1.5">Max Risk (%)</label>
                                             <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">%</span>
                                                 <input
                                                     type="number"
                                                     min="0.1"
@@ -131,9 +132,8 @@ export default function MomentumPage() {
                                                     max="100"
                                                     value={riskMaxPct}
                                                     onChange={(e) => setRiskMaxPct(Number(e.target.value))}
-                                                    className="w-24 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all text-right"
+                                                    className="w-24 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-7 pr-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                 />
-                                                <span className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">%</span>
                                             </div>
                                             <p className="text-[10px] text-zinc-500 mt-1">Max % willing to lose</p>
                                         </div>
@@ -182,18 +182,17 @@ export default function MomentumPage() {
                                             </th>
                                             <th className="p-4 font-medium text-right">Risk %</th>
                                             <th className="p-4 font-medium text-right text-rose-400/80">Risk ($)</th>
-                                            <th className="p-4 font-medium text-right text-emerald-400/80">Qty</th>
                                             <th className="p-4 font-medium text-left">Signal</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
                                         {isLoading ? (
-                                            <tr><td colSpan={10} className="p-8 text-center text-zinc-500">Scanning for Momentum...</td></tr>
+                                            <tr><td colSpan={9} className="p-8 text-center text-zinc-500">Scanning for Momentum...</td></tr>
                                         ) : !data?.length ? (
-                                            <tr><td colSpan={10} className="p-8 text-center text-zinc-500">No high-momentum setups found right now. Market might be chop.</td></tr>
+                                            <tr><td colSpan={9} className="p-8 text-center text-zinc-500">No high-momentum setups found right now. Market might be chop.</td></tr>
                                         ) : (
                                             data.map((coin) => {
-                                                const { riskDollars, qty } = getTradeMetrics(coin.price, coin.riskPct);
+                                                const { riskDollars } = getTradeMetrics(coin.price, coin.riskPct);
                                                 return (
                                                     <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                                                         <td className="p-4 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
@@ -224,9 +223,6 @@ export default function MomentumPage() {
                                                         </td>
                                                         <td className="p-4 text-right font-mono text-rose-300">
                                                             {riskDollars !== null ? '$' + Math.round(riskDollars).toLocaleString() : '-'}
-                                                        </td>
-                                                        <td className="p-4 text-right font-mono text-emerald-100/70">
-                                                            {qty ? (qty < 1000 ? qty.toFixed(1) : Math.floor(qty).toLocaleString()) : '-'}
                                                         </td>
                                                         <td className="p-4">
                                                             {getSignalBadge(coin.signal)}
