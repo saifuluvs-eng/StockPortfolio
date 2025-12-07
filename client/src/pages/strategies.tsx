@@ -320,9 +320,13 @@ export default function StrategiesPage() {
                                 <div>
                                     <dt className="text-sm font-medium text-zinc-300">Risk : Reward (R:R)</dt>
                                     <dd className="text-sm text-zinc-400 mt-1">
-                                        Potential Profit vs. Potential Loss. <strong>1:3+</strong> is ideal.
+                                        Ratio of <strong>Potential Loss</strong> (to Stop Loss) vs <strong>Potential Profit</strong> (to Target).
                                         <br />
-                                        <span className="text-xs text-zinc-500">Example: Risk $1 (Stop Loss below support) to make $3 (Target).</span>
+                                        <span className="text-xs text-zinc-500 leading-relaxed block mt-1">
+                                            <strong>Note:</strong> This is NOT "Return on Investment".
+                                            <br />
+                                            Example: 1:12 means if you risk losing <strong>$10</strong> (Stop Loss), you aim to win <strong>$120</strong>.
+                                        </span>
                                     </dd>
                                 </div>
                                 <div>
