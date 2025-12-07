@@ -1,8 +1,6 @@
-```
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Page, Card } from "@/components/layout/Layout";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Rocket, Activity, AlertTriangle, TrendingUp, Zap, Info } from "lucide-react";
 import { format } from "date-fns";
@@ -26,7 +24,7 @@ export default function MomentumPage() {
     const { data, isLoading, isRefetching, dataUpdatedAt } = useQuery<MomentumResult[]>({
         queryKey: ['momentum-scanner'],
         queryFn: async () => {
-            const res = await fetch(`/ api / market / strategies / momentum`);
+            const res = await fetch(`/api/market/strategies/momentum`);
             return res.json() as Promise<MomentumResult[]>;
         },
         refetchInterval: 30000,
@@ -110,7 +108,7 @@ export default function MomentumPage() {
                                                             </div>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
-                                                            <p>Structure stop based on recent pivot low<br/>(with safety buffer)</p>
+                                                            <p>Structure stop based on recent pivot low<br />(with safety buffer)</p>
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>
@@ -132,14 +130,14 @@ export default function MomentumPage() {
                                                     <td className="p-4 text-right font-mono font-bold text-emerald-400">+{coin.change24h.toFixed(2)}%</td>
                                                     <td className="p-4 text-center">
                                                         <div className="inline-flex flex-col items-center">
-                                                            <span className={`text - sm font - bold ${ coin.volumeFactor > 2 ? 'text-emerald-400' : 'text-zinc-300' } `}>
+                                                            <span className={`text-sm font-bold ${coin.volumeFactor > 2 ? 'text-emerald-400' : 'text-zinc-300'}`}>
                                                                 {coin.volumeFactor}x
                                                             </span>
                                                             <span className="text-[10px] text-zinc-500">{formatVolume(coin.volume)}</span>
                                                         </div>
                                                     </td>
                                                     <td className="p-4 text-center">
-                                                        <span className={`font - mono ${ coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-400' } `}>
+                                                        <span className={`font-mono ${coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
                                                             {coin.rsi}
                                                         </span>
                                                     </td>
@@ -148,7 +146,7 @@ export default function MomentumPage() {
                                                     </td>
                                                     <td className="p-4 text-right font-mono">
                                                         {coin.riskPct ? (
-                                                            <span className={`${ coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400' } `}>
+                                                            <span className={`${coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400'}`}>
                                                                 {coin.riskPct.toFixed(1)}%
                                                             </span>
                                                         ) : '-'}
