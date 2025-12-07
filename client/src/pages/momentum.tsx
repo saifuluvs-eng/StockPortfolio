@@ -89,9 +89,9 @@ export default function MomentumPage() {
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto max-h-[600px] overflow-y-auto custom-scrollbar relative">
                                 <table className="w-full">
-                                    <thead>
+                                    <thead className="sticky top-0 bg-zinc-900 z-10 shadow-sm shadow-zinc-800">
                                         <tr className="border-b border-zinc-800 text-left text-xs uppercase tracking-wider text-zinc-500">
                                             <th className="p-4 font-medium">Asset</th>
                                             <th className="p-4 font-medium text-right">Price</th>
