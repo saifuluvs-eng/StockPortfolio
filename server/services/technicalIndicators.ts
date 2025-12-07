@@ -1188,7 +1188,12 @@ class TechnicalIndicators {
   async scanSupportResistance(limit: number = 20, lookbackDays: number = 8, strategy: 'bounce' | 'breakout' = 'bounce'): Promise<any[]> {
     console.log(`[TechnicalIndicators] scanSupportResistance called. Strategy: ${strategy}, Lookback: ${lookbackDays}`);
     try {
-      const topPairs = await binanceService.getTopVolumePairs(75);
+      // Dynamic Pool Size:
+      // For short-term (Scalping/Swing), Top 75 Volume is enough (and faster).
+      // For long-term (Investing), we need to cast a wider net (Top 200) because high volume moves around.
+      const poolSize = lookbackDays > 30 ? 200 : 75;
+
+      const topPairs = await binanceService.getTopVolumePairs(poolSize);
       const results: any[] = [];
       const batchSize = 10; // slightly increased batch size
 
