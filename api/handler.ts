@@ -755,7 +755,7 @@ class TechnicalIndicators {
                 if (rsiVal < 40 && distance < 0.03) {
                   badges.push('Golden Setup');
                 }
-                if (tests >= 2) {
+                if (tests >= 3) {
                   badges.push('Strong Support');
                 }
                 // Risky logic removed
