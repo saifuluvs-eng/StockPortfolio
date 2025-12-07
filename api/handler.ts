@@ -1351,6 +1351,17 @@ async function volumeSpikeStrategy(req: any, res: any) {
   }
 }
 
+async function momentumStrategy(req: any, res: any) {
+  try {
+    const data = await technicalIndicators.scanMomentum();
+    return ok(res, data);
+  } catch (e: any) {
+    console.error("Momentum Error", e);
+    return bad(res, 500, e.message);
+  }
+}
+
+
 async function supportResistanceStrategy(req: any, res: any) {
   try {
     const limit = parseInt(String(req.query?.limit || "20"), 10);
