@@ -223,7 +223,7 @@ export default function StrategiesPage() {
                                                                 {coin.badges && coin.badges.length > 0 ? coin.badges.map(b => (
                                                                     <span key={b} className={`text-[10px] px-2 py-1 rounded-sm border font-medium text-center w-full ${b === 'Golden Setup' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
                                                                         b === 'Strong Support' || b === 'Strong Res' ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30' :
-                                                                            b === 'Weak Level' ? 'bg-amber-500/10 text-amber-300/80 border-amber-500/20' :
+                                                                            b === 'Weak Level' ? 'bg-rose-500/10 text-rose-300/80 border-rose-500/20' :
                                                                                 b === 'Risky' ? 'bg-rose-500/10 text-rose-300 border-rose-500/30' :
                                                                                     b === 'Overbought' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
                                                                                         b === 'Oversold' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
