@@ -32,7 +32,6 @@ export default function MomentumPage() {
 
     // State for Position Sizing
     const [tradeSize, setTradeSize] = useState<number>(1000);
-    const [riskMaxPct, setRiskMaxPct] = useState<number>(1.0);
 
     const formatPrice = (price: number) => {
         if (price < 0.00001) return price.toFixed(8);
@@ -84,9 +83,6 @@ export default function MomentumPage() {
 
     const lastUpdatedTime = dataUpdatedAt ? format(new Date(dataUpdatedAt), 'HH:mm:ss') : null;
 
-    // Max allowed loss for display purposes
-    const maxAllowedLoss = tradeSize * (riskMaxPct / 100);
-
     return (
         <Page>
             <div className="max-w-7xl mx-auto space-y-6">
@@ -101,52 +97,26 @@ export default function MomentumPage() {
                                         </div>
                                         <h1 className="text-2xl font-bold tracking-tight text-white/90">Momentum Scanner</h1>
                                     </div>
-                                    <p className="text-sm text-zinc-400 max-w-2xl mb-4">
+                                    <p className="text-sm text-zinc-400 max-w-2xl">
                                         Identifies coins with <strong>High Velocity</strong> and <strong>Surging Volume</strong>. Catch the move before it tops out.
                                     </p>
-
-                                    {/* Position Sizing Inputs */}
-                                    <div className="flex flex-wrap items-end gap-4 p-4 rounded-lg bg-zinc-900/50 border border-zinc-800">
-                                        <div>
-                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Trade Size ($)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    value={tradeSize}
-                                                    onChange={(e) => setTradeSize(Number(e.target.value))}
-                                                    className="w-32 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-7 pr-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                            </div>
-                                            <p className="text-[10px] text-zinc-500 mt-1">Amount to invest per trade</p>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Max Risk (%)</label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none">%</span>
-                                                <input
-                                                    type="number"
-                                                    min="0.1"
-                                                    step="0.1"
-                                                    max="100"
-                                                    value={riskMaxPct}
-                                                    onChange={(e) => setRiskMaxPct(Number(e.target.value))}
-                                                    className="w-24 bg-zinc-950 border border-zinc-800 rounded-md py-1.5 pl-7 pr-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                />
-                                            </div>
-                                            <p className="text-[10px] text-zinc-500 mt-1">Max % willing to lose</p>
-                                        </div>
-                                        <div className="h-full pb-3 flex items-center">
-                                            <span className="text-xs text-zinc-400">
-                                                Investing <strong>${tradeSize.toLocaleString()}</strong> per trade. <br />
-                                                Max loss tolerance: <strong className="text-rose-400">${maxAllowedLoss.toFixed(0)}</strong>
-                                            </span>
-                                        </div>
-                                    </div>
                                 </div>
 
-                                <div className="text-right w-full xl:w-auto">
+                                <div className="flex flex-col items-end gap-4 w-full xl:w-auto">
+                                    <div className="flex items-center gap-3 bg-zinc-900/50 p-2 rounded-lg border border-zinc-800">
+                                        <label className="text-xs font-medium text-zinc-400">Trade Size ($)</label>
+                                        <div className="relative">
+                                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs">$</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={tradeSize}
+                                                onChange={(e) => setTradeSize(Number(e.target.value))}
+                                                className="w-24 bg-zinc-950 border border-zinc-700 rounded py-1 pl-5 pr-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-zinc-700 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            />
+                                        </div>
+                                    </div>
+
                                     {lastUpdatedTime && (
                                         <span className="text-xs text-zinc-500 flex items-center justify-end gap-2">
                                             {isRefetching && <span className="block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
