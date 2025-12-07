@@ -26,6 +26,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
       "/high-potential": "High Potential",
       "/strategies": "Strategies",
       "/data": "Market Data",
+      "/momentum": "Momentum Scanner",
     };
 
     for (const [route, title] of Object.entries(titles)) {

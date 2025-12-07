@@ -642,6 +642,16 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get('/api/market/strategies/momentum', async (req: Request, res: Response) => {
+    try {
+      const data = await technicalIndicators.scanMomentum();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching momentum strategy:", error);
+      res.status(500).json({ message: "Failed to fetch momentum strategy" });
+    }
+  });
+
   app.get('/api/market/strategies/support-resistance', async (req: Request, res: Response) => {
     try {
       const limit = parseInt(String(req.query?.limit || "20"), 10);

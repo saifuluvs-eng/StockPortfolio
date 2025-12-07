@@ -24,6 +24,7 @@ import {
   Bell,
   PieChart,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import HoverTooltip from "../ui/HoverTooltip";
 import { useAuth } from "@/auth/AuthContext";
@@ -43,6 +44,7 @@ const items: NavItem[] = [
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
   { label: "Data", to: "/data", icon: <PieChart size={20} /> },
   { label: "Strategies", to: "/strategies", icon: <TrendingUp size={20} /> },
+  { label: "Momentum", to: "/momentum", icon: <Zap size={20} /> },
   { label: "News", to: "/news", icon: <Newspaper size={20} /> },
   // { label: "AI Insights", to: "/ai-insights", icon: <Brain size={20} /> },
   // { label: "Watchlist", to: "/watchlist", icon: <ListChecks size={20} />, visible: (user) => !!user },

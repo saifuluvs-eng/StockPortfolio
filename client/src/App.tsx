@@ -19,6 +19,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import LandingPage from "@/pages/LandingPage";
 import DataPage from "@/pages/data";
 import StrategiesPage from "@/pages/strategies";
+import MomentumPage from "@/pages/momentum";
 
 
 
@@ -111,6 +112,11 @@ export default function App() {
       <Route path="/strategies">
         <ShellLayout>
           <StrategiesPage />
+        </ShellLayout>
+      </Route>
+      <Route path="/momentum">
+        <ShellLayout>
+          <MomentumPage />
         </ShellLayout>
       </Route>
 

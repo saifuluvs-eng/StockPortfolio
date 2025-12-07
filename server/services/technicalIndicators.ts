@@ -1371,6 +1371,89 @@ class TechnicalIndicators {
     }
   }
 
-}
 
+  async scanMomentum(): Promise<any[]> {
+    console.log('[TechnicalIndicators] scanMomentum called');
+    try {
+      const topPairs = await binanceService.getTopVolumePairs(200);
+      const results: any[] = [];
+      const batchSize = 10;
+      const scanTimeframe = '4h';
+      const scanLimit = 100;
+
+      for (let i = 0; i < topPairs.length; i += batchSize) {
+        const batch = topPairs.slice(i, i + batchSize);
+        const promises = batch.map(async (pair) => {
+          try {
+            if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR', 'XUSD', 'BFUSD'].some(s => pair.symbol.startsWith(s))) return null;
+
+            const analysis = await this.analyzeSymbol(pair.symbol, scanTimeframe, scanLimit);
+            const candles = analysis.candles || [];
+
+            if (candles.length < 84) return null;
+
+            const currentPrice = analysis.price;
+            const currentVolume = parseFloat(pair.quoteVolume);
+
+            const priceChangePercent = parseFloat(pair.priceChangePercent);
+            if (priceChangePercent < 3.0) return null;
+
+            let sumVol14d = 0;
+            const period = 84;
+            for (let j = 1; j <= period; j++) {
+              sumVol14d += candles[candles.length - j].v * candles[candles.length - j].c;
+            }
+            const avgDailyVol = sumVol14d / 14;
+            const volumeFactor = currentVolume / avgDailyVol;
+            if (volumeFactor < 1.2) return null;
+
+            const rsi = analysis.indicators.rsi.value;
+            let signal = 'NEUTRAL';
+            let signalStrength = 0;
+
+            if (rsi > 85) {
+              signal = 'TOPPED';
+              signalStrength = 1;
+            } else if (priceChangePercent > 5 && volumeFactor > 2.0 && rsi < 75) {
+              signal = 'RIDE';
+              signalStrength = 3;
+            } else if (priceChangePercent > 3 && volumeFactor > 1.5) {
+              signal = 'MOMENTUM';
+              signalStrength = 2;
+            } else {
+              signal = 'CAUTION';
+              if (rsi > 75) signal = 'HEATED';
+            }
+
+            return {
+              symbol: pair.symbol,
+              price: currentPrice,
+              change24h: priceChangePercent,
+              volume: currentVolume,
+              volumeFactor: parseFloat(volumeFactor.toFixed(2)),
+              rsi: parseFloat(rsi.toFixed(2)),
+              signal,
+              signalStrength,
+              timestamp: new Date().toISOString()
+            };
+
+          } catch (err) { return null; }
+        });
+
+        const batchResults = await Promise.all(promises);
+        results.push(...batchResults.filter(Boolean));
+        await new Promise(r => setTimeout(r, 50));
+      }
+
+      return results.sort((a, b) => {
+        if (b.signalStrength !== a.signalStrength) return b.signalStrength - a.signalStrength;
+        return b.volumeFactor - a.volumeFactor;
+      });
+
+    } catch (error) {
+      console.error('Error scanning for Momentum:', error);
+      return [];
+    }
+  }
+}
 export const technicalIndicators = new TechnicalIndicators();
