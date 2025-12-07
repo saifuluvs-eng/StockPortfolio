@@ -931,7 +931,7 @@ class TechnicalIndicators {
 
             if (priceChangePercent < 3.0) return null;
 
-            // 1. Calculate Volume Factor (1h candles)
+            // 1. Calculate Volume Factor
             let sumVol14d = 0;
             const period = 336;
             for (let j = 1; j <= period; j++) {
@@ -942,24 +942,44 @@ class TechnicalIndicators {
 
             if (volumeFactor < 1.2) return null;
 
-            // 2. Find Recent Swing Low (Stop Loss)
-            const lookback = 30;
+            // 2. Stop Loss Logic (Retry Capable)
             let pivotLow = 0;
             const len = candles.length;
-            for (let i = len - 3; i >= len - lookback; i--) {
-              const c = candles[i];
-              const l = c.l;
-              if (l < candles[i - 1].l && l < candles[i - 2].l && l < candles[i + 1].l && l < candles[i + 2].l) {
-                pivotLow = l;
-                break;
+
+            const findPivot = (startIdx: number, endIdx: number) => {
+              for (let i = startIdx; i >= endIdx; i--) {
+                if (i < 2 || i >= len - 2) continue;
+                const c = candles[i];
+                const l = c.l;
+                if (l < candles[i - 1].l && l < candles[i - 2].l && l < candles[i + 1].l && l < candles[i + 2].l) {
+                  return l;
+                }
               }
+              return 0;
+            };
+
+            // Try first 30h
+            pivotLow = findPivot(len - 3, len - 30);
+
+            // Check validity
+            let stopLoss = pivotLow ? pivotLow * 0.996 : 0;
+
+            if (pivotLow && stopLoss >= currentPrice) {
+              // Invalid: Stop is above price. Search deeper (next 30h).
+              pivotLow = findPivot(len - 30, len - 60);
+              stopLoss = pivotLow ? pivotLow * 0.996 : 0;
             }
-            if (!pivotLow) {
-              const recentLows = candles.slice(-20).map(c => c.l);
-              pivotLow = Math.min(...recentLows);
+
+            // Final Validation
+            let riskPct: number | null = null;
+            let validStop = false;
+
+            if (pivotLow && stopLoss < currentPrice) {
+              riskPct = ((currentPrice - stopLoss) / currentPrice) * 100;
+              validStop = true;
+            } else {
+              stopLoss = 0; // Marker for "No Stop"
             }
-            const stopLoss = pivotLow * 0.996; // 0.4% buffer
-            const riskPct = ((currentPrice - stopLoss) / currentPrice) * 100;
 
             // 3. Signal Decision & Gating
             const rsi = analysis.indicators.rsi.value;
@@ -970,16 +990,17 @@ class TechnicalIndicators {
               signal = 'TOPPED';
               signalStrength = 1;
             } else if (priceChangePercent > 5 && volumeFactor > 2.0 && rsi < 75) {
-              if (riskPct <= 8.0) {
+              if (validStop && riskPct !== null && riskPct <= 8.0) {
                 signal = 'RIDE';
                 signalStrength = 3;
               } else {
-                signal = 'MOMENTUM'; // Downgrade
+                // Downgrade if Wide Stop OR No Stop
+                signal = 'MOMENTUM';
                 signalStrength = 2;
               }
             } else if (priceChangePercent > 3 && volumeFactor > 1.5) {
               signal = 'MOMENTUM';
-              if (rsi < 75 && riskPct > 10.0) signal = 'CAUTION';
+              if (rsi < 75 && validStop && riskPct !== null && riskPct > 10.0) signal = 'CAUTION';
               signalStrength = 2;
             } else {
               signal = 'CAUTION';
@@ -995,8 +1016,8 @@ class TechnicalIndicators {
               rsi: parseFloat(rsi.toFixed(2)),
               signal,
               signalStrength,
-              stopLoss,
-              riskPct: parseFloat(riskPct.toFixed(2)),
+              stopLoss: validStop ? stopLoss : null,
+              riskPct: validStop && riskPct ? parseFloat(riskPct.toFixed(2)) : null,
               timestamp: new Date().toISOString()
             };
 

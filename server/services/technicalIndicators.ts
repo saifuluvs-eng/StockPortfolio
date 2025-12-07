@@ -1391,7 +1391,6 @@ class TechnicalIndicators {
             const analysis = await this.analyzeSymbol(pair.symbol, '1h', 400);
             const candles = analysis.candles || [];
 
-            // Need 336 candles for 14d volume avg (14 * 24)
             if (candles.length < 350) return null;
 
             const currentPrice = analysis.price;
@@ -1400,9 +1399,9 @@ class TechnicalIndicators {
 
             if (priceChangePercent < 3.0) return null;
 
-            // 1. Calculate Volume Factor (1h candles)
+            // 1. Volume Factor
             let sumVol14d = 0;
-            const period = 336; // 14 days * 24h
+            const period = 336;
             for (let j = 1; j <= period; j++) {
               sumVol14d += candles[candles.length - j].v * candles[candles.length - j].c;
             }
@@ -1411,33 +1410,44 @@ class TechnicalIndicators {
 
             if (volumeFactor < 1.2) return null;
 
-            // 2. Find Recent Swing Low (Stop Loss)
-            // Look back 30 hours. Find a low that is lower than 2 candles before and 2 after.
-            // If none found, use absolute lowest of last 20.
-            const lookback = 30;
+            // 2. Stop Loss Logic (Retry Capable)
             let pivotLow = 0;
-
-            // We need at least index 2 to check i-2. 
-            // We check from latest-5 to latest-30 to allow "2 after" check.
             const len = candles.length;
-            for (let i = len - 3; i >= len - lookback; i--) {
-              const c = candles[i];
-              const l = c.l;
-              // Check locals
-              if (l < candles[i - 1].l && l < candles[i - 2].l && l < candles[i + 1].l && l < candles[i + 2].l) {
-                pivotLow = l;
-                break; // Found recent pivot
+
+            const findPivot = (startIdx: number, endIdx: number) => {
+              for (let i = startIdx; i >= endIdx; i--) {
+                if (i < 2 || i >= len - 2) continue;
+                const c = candles[i];
+                const l = c.l;
+                if (l < candles[i - 1].l && l < candles[i - 2].l && l < candles[i + 1].l && l < candles[i + 2].l) {
+                  return l;
+                }
               }
+              return 0;
+            };
+
+            // Try first 30h
+            pivotLow = findPivot(len - 3, len - 30);
+
+            // Check validity
+            let stopLoss = pivotLow ? pivotLow * 0.996 : 0;
+
+            if (pivotLow && stopLoss >= currentPrice) {
+              // Invalid: Stop is above price. Search deeper (next 30h).
+              pivotLow = findPivot(len - 30, len - 60);
+              stopLoss = pivotLow ? pivotLow * 0.996 : 0;
             }
 
-            // Fallback: Lowest low of last 20 candles
-            if (!pivotLow) {
-              const recentLows = candles.slice(-20).map(c => c.l);
-              pivotLow = Math.min(...recentLows);
-            }
+            // Final Validation
+            let riskPct: number | null = null;
+            let validStop = false;
 
-            const stopLoss = pivotLow * 0.996; // 0.4% buffer
-            const riskPct = ((currentPrice - stopLoss) / currentPrice) * 100;
+            if (pivotLow && stopLoss < currentPrice) {
+              riskPct = ((currentPrice - stopLoss) / currentPrice) * 100;
+              validStop = true;
+            } else {
+              stopLoss = 0; // Marker for "No Stop"
+            }
 
             // 3. Signal Decision & Gating
             const rsi = analysis.indicators.rsi.value;
@@ -1448,21 +1458,26 @@ class TechnicalIndicators {
               signal = 'TOPPED';
               signalStrength = 1;
             } else if (priceChangePercent > 5 && volumeFactor > 2.0 && rsi < 75) {
-              if (riskPct <= 8.0) {
+              if (validStop && riskPct !== null && riskPct <= 8.0) {
                 signal = 'RIDE';
                 signalStrength = 3;
               } else {
-                signal = 'MOMENTUM'; // Wide stop downgrade
+                // Downgrade if Wide Stop OR No Stop
+                signal = 'MOMENTUM';
                 signalStrength = 2;
               }
             } else if (priceChangePercent > 3 && volumeFactor > 1.5) {
               signal = 'MOMENTUM';
-              if (rsi < 75 && riskPct > 10.0) signal = 'CAUTION'; // Too wide for mid-tier
+              if (rsi < 75 && validStop && riskPct !== null && riskPct > 10.0) signal = 'CAUTION';
               signalStrength = 2;
             } else {
               signal = 'CAUTION';
               if (rsi > 75) signal = 'HEATED';
             }
+
+            // Downgrade any RIDE/MOMENTUM to mild caution if no stop exists? 
+            // User requirement: "Rows without a valid stop must not look like fully tradeable... Downgrade RIDE to GAINING SPEED"
+            // We handled that above: if (!validStop) we go to else block of 'RIDE'.
 
             return {
               symbol: pair.symbol,
@@ -1473,8 +1488,8 @@ class TechnicalIndicators {
               rsi: parseFloat(rsi.toFixed(2)),
               signal,
               signalStrength,
-              stopLoss,
-              riskPct: parseFloat(riskPct.toFixed(2)),
+              stopLoss: validStop ? stopLoss : null,
+              riskPct: validStop && riskPct ? parseFloat(riskPct.toFixed(2)) : null,
               timestamp: new Date().toISOString()
             };
 
