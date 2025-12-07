@@ -1,8 +1,10 @@
-
+```
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Page, Card } from "@/components/layout/Layout";
-import { Rocket, Activity, AlertTriangle, TrendingUp, Zap } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Rocket, Activity, AlertTriangle, TrendingUp, Zap, Info } from "lucide-react";
 import { format } from "date-fns";
 import { apiFetchLocal } from "@/lib/api";
 
@@ -24,7 +26,7 @@ export default function MomentumPage() {
     const { data, isLoading, isRefetching, dataUpdatedAt } = useQuery<MomentumResult[]>({
         queryKey: ['momentum-scanner'],
         queryFn: async () => {
-            const res = await fetch(`/api/market/strategies/momentum`);
+            const res = await fetch(`/ api / market / strategies / momentum`);
             return res.json() as Promise<MomentumResult[]>;
         },
         refetchInterval: 30000,
@@ -38,10 +40,10 @@ export default function MomentumPage() {
     };
 
     const formatVolume = (vol: number) => {
-        if (vol > 1000000000) return `$${(vol / 1000000000).toFixed(1)}B`;
-        if (vol > 1000000) return `$${(vol / 1000000).toFixed(1)}M`;
-        if (vol > 1000) return `$${(vol / 1000).toFixed(1)}K`;
-        return `$${vol.toFixed(0)}`;
+        if (vol > 1000000000) return `$${ (vol / 1000000000).toFixed(1) } B`;
+        if (vol > 1000000) return `$${ (vol / 1000000).toFixed(1) } M`;
+        if (vol > 1000) return `$${ (vol / 1000).toFixed(1) } K`;
+        return `$${ vol.toFixed(0) } `;
     };
 
     const getSignalBadge = (signal: string) => {
@@ -98,7 +100,21 @@ export default function MomentumPage() {
                                             <th className="p-4 font-medium text-right">24h Change</th>
                                             <th className="p-4 font-medium text-center">Volume Factor</th>
                                             <th className="p-4 font-medium text-center">RSI (14)</th>
-                                            <th className="p-4 font-medium text-right">Stop</th>
+                                            <th className="p-4 font-medium text-right">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <div className="flex items-center justify-end gap-1 cursor-help hover:text-zinc-300 transition-colors group">
+                                                                Stop
+                                                                <Info className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400" />
+                                                            </div>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Structure stop based on recent pivot low<br/>(with safety buffer)</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </th>
                                             <th className="p-4 font-medium text-right">Risk</th>
                                             <th className="p-4 font-medium text-left">Signal</th>
                                         </tr>
@@ -116,14 +132,14 @@ export default function MomentumPage() {
                                                     <td className="p-4 text-right font-mono font-bold text-emerald-400">+{coin.change24h.toFixed(2)}%</td>
                                                     <td className="p-4 text-center">
                                                         <div className="inline-flex flex-col items-center">
-                                                            <span className={`text-sm font-bold ${coin.volumeFactor > 2 ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                                                            <span className={`text - sm font - bold ${ coin.volumeFactor > 2 ? 'text-emerald-400' : 'text-zinc-300' } `}>
                                                                 {coin.volumeFactor}x
                                                             </span>
                                                             <span className="text-[10px] text-zinc-500">{formatVolume(coin.volume)}</span>
                                                         </div>
                                                     </td>
                                                     <td className="p-4 text-center">
-                                                        <span className={`font-mono ${coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                                                        <span className={`font - mono ${ coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-400' } `}>
                                                             {coin.rsi}
                                                         </span>
                                                     </td>
@@ -132,7 +148,7 @@ export default function MomentumPage() {
                                                     </td>
                                                     <td className="p-4 text-right font-mono">
                                                         {coin.riskPct ? (
-                                                            <span className={`${coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                                            <span className={`${ coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400' } `}>
                                                                 {coin.riskPct.toFixed(1)}%
                                                             </span>
                                                         ) : '-'}
