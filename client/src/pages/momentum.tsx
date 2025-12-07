@@ -15,6 +15,8 @@ interface MomentumResult {
     rsi: number;
     signal: 'RIDE' | 'MOMENTUM' | 'HEATED' | 'TOPPED' | 'CAUTION' | 'NEUTRAL';
     signalStrength: number;
+    stopLoss?: number;
+    riskPct?: number;
 }
 
 export default function MomentumPage() {
@@ -96,14 +98,16 @@ export default function MomentumPage() {
                                             <th className="p-4 font-medium text-right">24h Change</th>
                                             <th className="p-4 font-medium text-center">Volume Factor</th>
                                             <th className="p-4 font-medium text-center">RSI (14)</th>
+                                            <th className="p-4 font-medium text-right">Stop</th>
+                                            <th className="p-4 font-medium text-right">Risk</th>
                                             <th className="p-4 font-medium text-left">Signal</th>
                                         </tr>
                                     </thead>
                                     <tbody className="text-sm">
                                         {isLoading ? (
-                                            <tr><td colSpan={6} className="p-8 text-center text-zinc-500">Scanning for Momentum...</td></tr>
+                                            <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Scanning for Momentum...</td></tr>
                                         ) : !data?.length ? (
-                                            <tr><td colSpan={6} className="p-8 text-center text-zinc-500">No high-momentum setups found right now. Market might be chop.</td></tr>
+                                            <tr><td colSpan={8} className="p-8 text-center text-zinc-500">No high-momentum setups found right now. Market might be chop.</td></tr>
                                         ) : (
                                             data.map((coin) => (
                                                 <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
@@ -122,6 +126,16 @@ export default function MomentumPage() {
                                                         <span className={`font-mono ${coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
                                                             {coin.rsi}
                                                         </span>
+                                                    </td>
+                                                    <td className="p-4 text-right font-mono text-zinc-400">
+                                                        {coin.stopLoss ? '$' + formatPrice(coin.stopLoss) : '-'}
+                                                    </td>
+                                                    <td className="p-4 text-right font-mono">
+                                                        {coin.riskPct ? (
+                                                            <span className={`${coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                                                {coin.riskPct.toFixed(1)}%
+                                                            </span>
+                                                        ) : '-'}
                                                     </td>
                                                     <td className="p-4">
                                                         {getSignalBadge(coin.signal)}

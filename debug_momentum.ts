@@ -12,10 +12,12 @@ async function testMomentumScanner() {
             console.table(results.map(r => ({
                 Symbol: r.symbol,
                 Price: r.price,
-                Change24h: r.change24h + '%',
+                Change: r.change24h + '%',
                 VolFactor: r.volumeFactor + 'x',
                 RSI: r.rsi,
-                Signal: r.signal
+                Signal: r.signal,
+                Stop: r.stopLoss?.toFixed(4),
+                Risk: r.riskPct + '%'
             })));
         } else {
             console.log("No results found. Tuning thresholds might be needed.");

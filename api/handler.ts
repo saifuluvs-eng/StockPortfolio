@@ -909,8 +909,9 @@ class TechnicalIndicators {
       const topPairs = await binanceService.getTopVolumePairs(200);
       const results: any[] = [];
       const batchSize = 10;
-      const scanTimeframe = '4h';
-      const scanLimit = 100;
+
+      const scanTimeframe = '1h'; // 1h for better Stop-Loss resolution
+      const scanLimit = 400;
 
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
@@ -920,7 +921,9 @@ class TechnicalIndicators {
 
             const analysis = await this.analyzeSymbol(pair.symbol, scanTimeframe, scanLimit);
             const candles = analysis.candles || [];
-            if (candles.length < 84) return null;
+
+            // Need 336 candles for 14d volume avg (14 * 24)
+            if (candles.length < 350) return null;
 
             const currentPrice = analysis.price;
             const currentVolume = parseFloat(pair.quoteVolume);
@@ -928,8 +931,9 @@ class TechnicalIndicators {
 
             if (priceChangePercent < 3.0) return null;
 
+            // 1. Calculate Volume Factor (1h candles)
             let sumVol14d = 0;
-            const period = 84;
+            const period = 336;
             for (let j = 1; j <= period; j++) {
               sumVol14d += candles[candles.length - j].v * candles[candles.length - j].c;
             }
@@ -938,6 +942,26 @@ class TechnicalIndicators {
 
             if (volumeFactor < 1.2) return null;
 
+            // 2. Find Recent Swing Low (Stop Loss)
+            const lookback = 30;
+            let pivotLow = 0;
+            const len = candles.length;
+            for (let i = len - 3; i >= len - lookback; i--) {
+              const c = candles[i];
+              const l = c.l;
+              if (l < candles[i - 1].l && l < candles[i - 2].l && l < candles[i + 1].l && l < candles[i + 2].l) {
+                pivotLow = l;
+                break;
+              }
+            }
+            if (!pivotLow) {
+              const recentLows = candles.slice(-20).map(c => c.l);
+              pivotLow = Math.min(...recentLows);
+            }
+            const stopLoss = pivotLow * 0.996; // 0.4% buffer
+            const riskPct = ((currentPrice - stopLoss) / currentPrice) * 100;
+
+            // 3. Signal Decision & Gating
             const rsi = analysis.indicators.rsi.value;
             let signal = 'NEUTRAL';
             let signalStrength = 0;
@@ -946,10 +970,16 @@ class TechnicalIndicators {
               signal = 'TOPPED';
               signalStrength = 1;
             } else if (priceChangePercent > 5 && volumeFactor > 2.0 && rsi < 75) {
-              signal = 'RIDE';
-              signalStrength = 3;
+              if (riskPct <= 8.0) {
+                signal = 'RIDE';
+                signalStrength = 3;
+              } else {
+                signal = 'MOMENTUM'; // Downgrade
+                signalStrength = 2;
+              }
             } else if (priceChangePercent > 3 && volumeFactor > 1.5) {
               signal = 'MOMENTUM';
+              if (rsi < 75 && riskPct > 10.0) signal = 'CAUTION';
               signalStrength = 2;
             } else {
               signal = 'CAUTION';
@@ -965,6 +995,8 @@ class TechnicalIndicators {
               rsi: parseFloat(rsi.toFixed(2)),
               signal,
               signalStrength,
+              stopLoss,
+              riskPct: parseFloat(riskPct.toFixed(2)),
               timestamp: new Date().toISOString()
             };
 
