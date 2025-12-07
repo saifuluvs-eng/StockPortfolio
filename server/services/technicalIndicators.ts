@@ -1266,8 +1266,9 @@ class TechnicalIndicators {
 
               // 1. Bounce Checks (Support/Resistance) - Priority for 'bounce' strategy
               if (strategy === 'bounce') {
-                // Dynamic tolerance: 5% for 4h, 15% for 1d (Long-term levels are wider zones)
-                const tolerance = scanTimeframe === '1d' ? 0.15 : 0.05;
+                // Dynamic tolerance: 5% for 4h, 20% for 1d (Long-term levels are wider zones)
+                // Increased to 20% because 365d ranges are massive, and 10-15% is still "at the bottom" relatively.
+                const tolerance = scanTimeframe === '1d' ? 0.20 : 0.05;
 
                 const distToSupport = Math.abs((currentPrice - minLow) / minLow);
                 const distToResistance = Math.abs((maxHigh - currentPrice) / currentPrice);
