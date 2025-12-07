@@ -668,6 +668,17 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get('/api/market/strategies/top-picks', async (req: Request, res: Response) => {
+    try {
+      console.log("[API routes.ts] /top-picks called");
+      const data = await technicalIndicators.getTopPicks();
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching top picks:", error);
+      res.status(500).json({ message: "Failed to fetch top picks" });
+    }
+  });
+
   // Watchlist routes
   app.get('/api/watchlist', isAuthenticated, async (req: Request, res: Response) => {
     try {

@@ -1511,5 +1511,120 @@ class TechnicalIndicators {
       return [];
     }
   }
+  async getTopPicks(): Promise<any[]> {
+    console.log('[TechnicalIndicators] getTopPicks called');
+    try {
+      // 1. Run Scanners in Parallel
+      const [srBounce, srBreakout, momentum] = await Promise.all([
+        this.scanSupportResistance(100, 8, 'bounce'),
+        this.scanSupportResistance(100, 8, 'breakout'),
+        this.scanMomentum()
+      ]);
+
+      // 2. Create Map for quick lookup
+      const coinMap = new Map<string, any>();
+
+      // Base: Add all relevant coins
+      const addToMap = (list: any[], source: string) => {
+        list.forEach(item => {
+          if (!coinMap.has(item.symbol)) {
+            coinMap.set(item.symbol, {
+              symbol: item.symbol,
+              price: item.price,
+              score: 50, // Base Score
+              tags: [],
+              reasons: [],
+              sources: { sr: null, mom: null } // To track origin
+            });
+          }
+          const coin = coinMap.get(item.symbol);
+          if (source === 'sr') coin.sources.sr = item;
+          if (source === 'mom') coin.sources.mom = item;
+        });
+      };
+
+      addToMap(srBounce, 'sr');
+      addToMap(srBreakout, 'sr');
+      addToMap(momentum, 'mom');
+
+      // 3. Scoring & Analysis
+      const scoredCoins = Array.from(coinMap.values()).map(coin => {
+        const sr = coin.sources.sr;
+        const mom = coin.sources.mom;
+
+        // Discard if only in SR list with weak signal? 
+        // No, keep them but score them lower. Top Picks should be the cream.
+
+        // A. Momentum Scoring
+        if (mom) {
+          if (mom.signal === 'RIDE' || mom.signal === 'MOMENTUM') {
+            coin.score += 25;
+            coin.tags.push(mom.signal === 'RIDE' ? '🚀 Ride The Wave' : '⚡ Momentum');
+            coin.reasons.push(`Velocity: +${mom.change24h.toFixed(1)}% with ${mom.volumeFactor}x Volume`);
+          } else if (mom.signal === 'HEATED') {
+            coin.score -= 10;
+            coin.tags.push('🔥 Heated');
+          } else if (mom.signal === 'TOPPED') {
+            coin.score -= 30; // Punishment
+          }
+
+          coin.score += (mom.volumeFactor * 2); // Reward Volume
+        }
+
+        // B. SR Scoring
+        if (sr) {
+          if (sr.type === 'Support') {
+            coin.score += 15;
+            coin.tags.push('🛡️ At Support');
+            // Closer to level = Better
+            if (sr.distancePercent < 1.0) coin.score += 10;
+            // More tests = Better
+            if (sr.tests >= 3) coin.score += 10;
+
+            coin.reasons.push(`At $${sr.level} Support (${sr.tests} tests)`);
+          } else if (sr.type === 'Breakout') {
+            coin.score += 30; // Breakouts are high value
+            coin.tags.push('💥 Breakout');
+            coin.reasons.push(`Breaking out of $${sr.level}`);
+          } else if (sr.type === 'Resistance') {
+            coin.score -= 10; // At resistance is usually a sell/wait
+          }
+
+          // Badges
+          if (sr.badges && sr.badges.includes('Golden Setup')) {
+            coin.score += 20;
+            coin.tags.push('💎 Golden Setup');
+          }
+        }
+
+        // C. Confluence Bonus (The Holy Grail)
+        if (sr && mom) {
+          // Breakout + Momentum = HUGE
+          if (sr.type === 'Breakout' && (mom.signal === 'RIDE' || mom.signal === 'MOMENTUM')) {
+            coin.score += 40;
+            coin.tags.push('🌟 PERFECT BREAKOUT');
+          }
+          // Support + Momentum = HUGE (Bounce Confirmed)
+          if (sr.type === 'Support' && (mom.signal === 'RIDE' || mom.signal === 'MOMENTUM')) {
+            coin.score += 35;
+            coin.tags.push('✅ CONFIRMED BOUNCE');
+          }
+        }
+
+        return coin;
+      });
+
+      // 4. Filter & Sort
+      // Only return coins with good scores (e.g. > 70)
+      return scoredCoins
+        .filter(c => c.score >= 60)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 12); // Top 12 Cards
+
+    } catch (error) {
+      console.error('Error fetching Top Picks:', error);
+      return [];
+    }
+  }
 }
 export const technicalIndicators = new TechnicalIndicators();

@@ -20,6 +20,7 @@ import LandingPage from "@/pages/LandingPage";
 import DataPage from "@/pages/data";
 import StrategiesPage from "@/pages/strategies";
 import MomentumPage from "@/pages/momentum";
+import TopPicksPage from "@/pages/top-picks";
 
 
 
@@ -117,6 +118,11 @@ export default function App() {
       <Route path="/momentum">
         <ShellLayout>
           <MomentumPage />
+        </ShellLayout>
+      </Route>
+      <Route path="/top-picks">
+        <ShellLayout>
+          <TopPicksPage />
         </ShellLayout>
       </Route>
 
