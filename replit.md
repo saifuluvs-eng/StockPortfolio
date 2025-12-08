@@ -8,6 +8,30 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**December 8, 2025 - IMPROVED: Momentum Scanner Logic + Knowledge Base**:
+
+- **Momentum Scanner Logic Improvements**
+  - Volume factor now compares current volume to actual 24-hour average (not arbitrary $5M)
+  - Signal priority order fixed: RSI warnings always checked first (prevents missed overbought signals)
+  - New "LOW VOLUME" signal for moves with <1.2x average volume
+  - Signal logic now requires stop-loss for "RIDE" and "MOMENTUM" signals
+  - "GAINING SPEED" now specifically for early moves with no pivot low yet
+
+- **Momentum Signal Definitions**
+  - RIDE THE WAVE: +5% change, 2x+ volume, RSI <75, valid stop-loss (best signal)
+  - MOMENTUM: +3% change, 1.5x+ volume, RSI <75, valid stop-loss (good signal)
+  - GAINING SPEED: +5% change, 1.3x+ volume, no pivot low yet (early move)
+  - HEATED: RSI 75-85 (warning - pullback likely)
+  - TOPPED OUT: RSI >85 (danger - correction very likely)
+  - LOW VOLUME: <1.2x average volume (weak move - not confirmed)
+  - CAUTION: Mixed signals - not a high-conviction setup
+
+- **Knowledge Base Sections Added**
+  - Strategies page: Dynamic knowledge base that changes per tab
+  - Momentum page: Comprehensive knowledge base explaining all signals, table columns, and usage tips
+  - Each tag/signal clearly explained with visual examples
+  - Pro tips section for traders
+
 **December 8, 2025 - NEW: Strategy Scanner Tabbed Interface + Hot Setups**:
 
 - **Hot Setups Endpoint** (`/api/market/strategies/hot-setups`)

@@ -197,11 +197,11 @@ async function handleMomentum(res: VercelResponse) {
         const price = parseFloat(t.lastPrice);
         const change24h = parseFloat(t.priceChangePercent);
         const volume = parseFloat(t.quoteVolume);
-        const volumeFactor = Math.round((volume / 5_000_000) * 10) / 10;
         
         let stopLoss: number | null = null;
         let riskPct: number | null = null;
         let rsi = 50;
+        let avgVolume = volume;
         
         try {
           const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=50`);
@@ -209,6 +209,11 @@ async function handleMomentum(res: VercelResponse) {
             const klines = await klineResponse.json();
             const closes = klines.map((k: any[]) => parseFloat(k[4]));
             const lows = klines.map((k: any[]) => parseFloat(k[3]));
+            const volumes = klines.map((k: any[]) => parseFloat(k[7]));
+            
+            if (volumes.length >= 24) {
+              avgVolume = volumes.slice(-24).reduce((a, b) => a + b, 0);
+            }
             
             rsi = calculateRSI(closes);
             const pivotLow = findPivotLow(lows, closes, 20);
@@ -222,24 +227,29 @@ async function handleMomentum(res: VercelResponse) {
           }
         } catch {}
         
+        const volumeFactor = avgVolume > 0 ? Math.round((volume / avgVolume) * 10) / 10 : 1;
+        
         let signal: string;
         let signalStrength: number;
         
-        if (stopLoss === null) {
-          signal = 'GAINING SPEED';
-          signalStrength = 60;
-        } else if (rsi > 85) {
+        if (rsi > 85) {
           signal = 'TOPPED';
           signalStrength = 20;
         } else if (rsi > 75) {
           signal = 'HEATED';
           signalStrength = 40;
-        } else if (volumeFactor > 2 && change24h > 5) {
+        } else if (stopLoss !== null && volumeFactor >= 2 && change24h >= 5) {
           signal = 'RIDE';
           signalStrength = 90;
-        } else if (volumeFactor > 1.5) {
+        } else if (stopLoss !== null && volumeFactor >= 1.5 && change24h >= 3) {
           signal = 'MOMENTUM';
-          signalStrength = 70;
+          signalStrength = 75;
+        } else if (stopLoss === null && change24h >= 5 && volumeFactor >= 1.3) {
+          signal = 'GAINING SPEED';
+          signalStrength = 65;
+        } else if (volumeFactor < 1.2) {
+          signal = 'LOW VOLUME';
+          signalStrength = 35;
         } else {
           signal = 'CAUTION';
           signalStrength = 50;

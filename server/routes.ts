@@ -558,11 +558,11 @@ export function registerRoutes(app: Express): Server {
           const price = parseFloat(t.lastPrice);
           const change24h = parseFloat(t.priceChangePercent);
           const volume = parseFloat(t.quoteVolume);
-          const volumeFactor = Math.round((volume / 5_000_000) * 10) / 10;
           
           let stopLoss: number | null = null;
           let riskPct: number | null = null;
           let rsi = 50;
+          let avgVolume = volume; // fallback
           
           try {
             const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=50`);
@@ -570,6 +570,12 @@ export function registerRoutes(app: Express): Server {
               const klines = await klineResponse.json();
               const closes = klines.map((k: any[]) => parseFloat(k[4]));
               const lows = klines.map((k: any[]) => parseFloat(k[3]));
+              const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume
+              
+              // Calculate average volume from last 24 candles (24 hours)
+              if (volumes.length >= 24) {
+                avgVolume = volumes.slice(-24).reduce((a, b) => a + b, 0);
+              }
               
               // RSI calculation
               if (closes.length >= 15) {
@@ -588,7 +594,7 @@ export function registerRoutes(app: Express): Server {
                 rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
               }
               
-              // Find pivot low
+              // Find pivot low - look for local minimum in recent price action
               const recentLows = lows.slice(-20);
               let pivotLow: number | null = null;
               for (let i = 2; i < recentLows.length - 2; i++) {
@@ -600,19 +606,51 @@ export function registerRoutes(app: Express): Server {
               }
               
               if (pivotLow !== null) {
-                stopLoss = pivotLow * 0.996;
+                stopLoss = pivotLow * 0.996; // 0.4% buffer below pivot
                 riskPct = Math.round(((price - stopLoss) / price) * 10000) / 100;
               }
             }
           } catch {}
           
+          // Calculate actual volume factor (current vs average)
+          const volumeFactor = avgVolume > 0 ? Math.round((volume / avgVolume) * 10) / 10 : 1;
+          
+          // Improved signal determination with clear priority order
           let signal: string, signalStrength: number;
-          if (stopLoss === null) { signal = 'GAINING SPEED'; signalStrength = 60; }
-          else if (rsi > 85) { signal = 'TOPPED'; signalStrength = 20; }
-          else if (rsi > 75) { signal = 'HEATED'; signalStrength = 40; }
-          else if (volumeFactor > 2 && change24h > 5) { signal = 'RIDE'; signalStrength = 90; }
-          else if (volumeFactor > 1.5) { signal = 'MOMENTUM'; signalStrength = 70; }
-          else { signal = 'CAUTION'; signalStrength = 50; }
+          
+          // Priority 1: RSI extremes (always check first - overheating warnings)
+          if (rsi > 85) { 
+            signal = 'TOPPED'; 
+            signalStrength = 20; 
+          } else if (rsi > 75) { 
+            signal = 'HEATED'; 
+            signalStrength = 40; 
+          }
+          // Priority 2: Strong momentum with good structure
+          else if (stopLoss !== null && volumeFactor >= 2 && change24h >= 5) { 
+            signal = 'RIDE'; 
+            signalStrength = 90; 
+          }
+          // Priority 3: Good momentum with volume confirmation
+          else if (stopLoss !== null && volumeFactor >= 1.5 && change24h >= 3) { 
+            signal = 'MOMENTUM'; 
+            signalStrength = 75; 
+          }
+          // Priority 4: Early momentum - no clear pivot yet but building
+          else if (stopLoss === null && change24h >= 5 && volumeFactor >= 1.3) { 
+            signal = 'GAINING SPEED'; 
+            signalStrength = 65; 
+          }
+          // Priority 5: Low volume - move may not sustain
+          else if (volumeFactor < 1.2) { 
+            signal = 'LOW VOLUME'; 
+            signalStrength = 35; 
+          }
+          // Priority 6: Catch-all for moves without strong conviction
+          else { 
+            signal = 'CAUTION'; 
+            signalStrength = 50; 
+          }
           
           return { symbol, price, change24h, volume, volumeFactor, rsi: Math.round(rsi), signal, signalStrength, stopLoss, riskPct };
         })
