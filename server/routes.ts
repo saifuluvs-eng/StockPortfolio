@@ -565,16 +565,30 @@ export function registerRoutes(app: Express): Server {
           let avgVolume = volume; // fallback
           
           try {
-            const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=50`);
+            // Get 7 days of hourly data (168 candles) for historical volume comparison
+            const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=168`);
             if (klineResponse.ok) {
               const klines = await klineResponse.json();
               const closes = klines.map((k: any[]) => parseFloat(k[4]));
               const lows = klines.map((k: any[]) => parseFloat(k[3]));
               const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume
               
-              // Calculate average volume from last 24 candles (24 hours)
-              if (volumes.length >= 24) {
-                avgVolume = volumes.slice(-24).reduce((a, b) => a + b, 0);
+              // Calculate average DAILY volume from previous days (not including today)
+              // Today = last 24 candles, Previous 6 days = candles before that
+              if (volumes.length >= 48) {
+                // Sum volumes for each of the previous days
+                const previousDaysVolumes = volumes.slice(0, -24); // exclude today
+                const daysCount = Math.floor(previousDaysVolumes.length / 24);
+                if (daysCount > 0) {
+                  let totalPreviousDaysVolume = 0;
+                  for (let day = 0; day < daysCount; day++) {
+                    const dayStart = day * 24;
+                    const dayEnd = dayStart + 24;
+                    const dayVolume = previousDaysVolumes.slice(dayStart, dayEnd).reduce((a, b) => a + b, 0);
+                    totalPreviousDaysVolume += dayVolume;
+                  }
+                  avgVolume = totalPreviousDaysVolume / daysCount; // average daily volume
+                }
               }
               
               // RSI calculation
