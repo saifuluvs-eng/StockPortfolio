@@ -943,7 +943,7 @@ class TechnicalIndicators {
       const pairs = allPairs.slice(0, limit);
       console.log(`[getMarketRSI] Processing top ${pairs.length} pairs: ${pairs.slice(0, 5).join(', ')}...`);
 
-      const results = [];
+      const results: Array<{symbol: string, rsi: number, price: number, change: number}> = [];
 
       // 2. Fetch data and calc RSI for each (in parallel batches to be nice to API)
       const batchSize = 10;
@@ -982,7 +982,7 @@ class TechnicalIndicators {
         });
 
         const batchResults = await Promise.all(promises);
-        const validResults = batchResults.filter(r => r !== null);
+        const validResults = batchResults.filter((r): r is NonNullable<typeof r> => r !== null);
         results.push(...validResults);
 
         // Small delay between batches
