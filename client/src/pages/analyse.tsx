@@ -25,7 +25,6 @@ import {
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
 import AiSummaryPanel, { type AiSummaryPanelRef } from "@/components/analyse/AiSummaryPanel";
-import ChartAnalysisPanel, { type ChartAnalysisPanelRef } from "@/components/analyse/ChartAnalysisPanel";
 import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
@@ -377,17 +376,6 @@ export default function Analyse() {
   const initialExplicitSymbolRef = useRef(Boolean(params?.symbol || querySymbol));
   const [activeTab, setActiveTab] = useState<"chart" | "technicals" | "ai">("chart");
   const aiPanelRef = useRef<AiSummaryPanelRef>(null);
-  const chartAnalysisPanelRef = useRef<ChartAnalysisPanelRef>(null);
-
-  const handleAnalyzeChart = useCallback(() => {
-    if (window.innerWidth < 1280) { // xl breakpoint
-      setActiveTab("ai");
-    }
-    // Small delay to allow tab switch to render the component if it was hidden
-    setTimeout(() => {
-      chartAnalysisPanelRef.current?.generate();
-    }, 100);
-  }, []);
 
   useEffect(() => {
     setIsScanning(false);
@@ -1342,15 +1330,6 @@ export default function Analyse() {
               <Card className="flex h-full flex-col border-border/70 bg-card/70">
                 <CardHeader className="hidden sm:flex pb-2 flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-lg font-semibold">Price Action</CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-2 text-xs"
-                    onClick={handleAnalyzeChart}
-                  >
-                    <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    Analyze Chart
-                  </Button>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="h-[560px] min-w-0 overflow-hidden rounded-xl border border-border bg-card md:h-[620px]">
@@ -1370,13 +1349,6 @@ export default function Analyse() {
             <section className={`min-w-0 overflow-hidden ${activeTab === "ai" ? "block" : "hidden xl:block"}`}>
               <AiSummaryPanel
                 ref={aiPanelRef}
-                symbol={selectedSymbol}
-                tf={timeframe}
-                technicals={scanResult?.indicators}
-                candles={scanResult?.candles as unknown[]}
-              />
-              <ChartAnalysisPanel
-                ref={chartAnalysisPanelRef}
                 symbol={selectedSymbol}
                 tf={timeframe}
                 technicals={scanResult?.indicators}
