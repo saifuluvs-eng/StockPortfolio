@@ -4,6 +4,7 @@ const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models
 
 // Import combined signal builder
 import { buildTechnicalJSON } from "./combinedSignals";
+import { runSummaryWithIndicators } from "../gemini_chart_analysis.js";
 
 /**
  * Helper function to call Gemini API with retry logic for rate limiting
@@ -414,9 +415,9 @@ Based on these four combined factors, provide trader-style analysis.`;
 
       console.log("[AI Summary] Indicators Override:", JSON.stringify(indicatorsOverride).slice(0, 200));
 
-      // Dynamically import gemini_tech_summary module
-      const gemimiModule = await import("../gemini_chart_analysis.js");
-      const { runSummaryWithIndicators } = gemimiModule;
+      // Use statically imported module
+      // const gemimiModule = await import("../gemini_chart_analysis.js");
+      // const { runSummaryWithIndicators } = gemimiModule;
 
       // Call new gemini_tech_summary module
       const result = await runSummaryWithIndicators({
