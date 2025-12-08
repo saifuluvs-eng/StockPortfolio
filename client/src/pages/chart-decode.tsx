@@ -55,7 +55,7 @@ export default function ChartDecodePage() {
             const res = await api("/api/scanner/scan", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ symbol: s, timeframe: "4h", userId: user?.id }),
+                body: JSON.stringify({ symbol: s, timeframe: "4h", userId: user?.id, filters: {} }),
             });
             if (res.ok) {
                 const data = await res.json();
@@ -107,7 +107,7 @@ export default function ChartDecodePage() {
     };
 
     return (
-        <Page title="Chart Decode">
+        <Page>
             <div className="flex flex-col gap-6 h-[calc(100vh-100px)]">
                 {/* Top Bar: Search */}
                 <div className="flex items-center justify-between gap-4">

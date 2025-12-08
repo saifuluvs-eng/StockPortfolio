@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer } from "ws";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated as replitIsAuthenticated } from "./replitAuth";
+
 import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
 import { aiService } from "./services/aiService";
@@ -333,16 +333,17 @@ export function registerRoutes(app: Express): Server {
       const { symbol } = req.params;
       const ticker = await binanceService.getTickerData(symbol);
       // Map lastPrice to price for consistent API response
-      res.json({
+      const tickerData = {
         symbol: ticker.symbol,
-        price: ticker.lastPrice,
-        priceChangePercent: ticker.priceChangePercent,
-        priceChange: ticker.priceChange,
-        highPrice: ticker.highPrice,
-        lowPrice: ticker.lowPrice,
-        volume: ticker.volume,
-        quoteVolume: ticker.quoteVolume
-      });
+        lastPrice: parseFloat(ticker.lastPrice),
+        priceChangePercent: parseFloat(ticker.priceChangePercent),
+        volume: parseFloat(ticker.quoteVolume),
+        highPrice: parseFloat(ticker.highPrice),
+        lowPrice: parseFloat(ticker.lowPrice),
+        priceChange: parseFloat(ticker.priceChange),
+        quoteVolume: parseFloat(ticker.quoteVolume)
+      };
+      res.json(tickerData);
     } catch (error) {
       console.error("Error fetching ticker:", error);
       res.status(500).json({ message: "Failed to fetch ticker data" });
@@ -389,11 +390,11 @@ export function registerRoutes(app: Express): Server {
         .filter((item: Partial<RawGainer>): item is RawGainer => typeof item?.symbol === "string")
         .map((item) => ({
           symbol: item.symbol,
-          price: toNumber(item.lastPrice ?? item.price),
-          changePct: toNumber(item.priceChangePercent ?? item.changePct),
-          volume: toNumber(item.quoteVolume ?? item.volume),
-          high: toNumber(item.highPrice ?? item.high),
-          low: toNumber(item.lowPrice ?? item.low),
+          price: toNumber(item.lastPrice),
+          changePct: toNumber(item.priceChangePercent),
+          volume: toNumber(item.quoteVolume),
+          high: toNumber(item.highPrice),
+          low: toNumber(item.lowPrice),
         }));
 
       res.json({ rows });
