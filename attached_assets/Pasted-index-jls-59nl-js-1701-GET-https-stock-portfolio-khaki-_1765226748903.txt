@@ -1,0 +1,136 @@
+index-jls_59nl.js:1701  GET https://stock-portfolio-khaki-nine.vercel.app/api/ai/market-overview 404 (Not Found)
+ka @ index-jls_59nl.js:1701
+(anonymous) @ index-jls_59nl.js:1701
+await in (anonymous)
+i @ index-jls_59nl.js:40
+x @ index-jls_59nl.js:40
+start @ index-jls_59nl.js:40
+fetch @ index-jls_59nl.js:40
+#d @ index-jls_59nl.js:40
+onSubscribe @ index-jls_59nl.js:40
+subscribe @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+bI @ index-jls_59nl.js:38
+lg @ index-jls_59nl.js:40
+Cc @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+T @ index-jls_59nl.js:25
+L @ index-jls_59nl.js:25
+_ @ inpage.js:166
+w @ inpage.js:166
+Y @ inpage.js:166
+postMessage
+h @ inpage.js:166
+b @ inpage.js:166
+F @ index-jls_59nl.js:25
+L @ index-jls_59nl.js:25
+_ @ inpage.js:166
+w @ inpage.js:166
+Y @ inpage.js:166
+postMessage
+h @ inpage.js:166
+b @ inpage.js:166
+F @ index-jls_59nl.js:25
+H @ index-jls_59nl.js:25
+SQ.e.unstable_scheduleCallback @ index-jls_59nl.js:25
+ER @ index-jls_59nl.js:40
+Ar @ index-jls_59nl.js:40
+Ii @ index-jls_59nl.js:40
+bg @ index-jls_59nl.js:40
+EQ.wg.render.Sw.render @ index-jls_59nl.js:40
+HFe @ index-jls_59nl.js:1852
+(anonymous) @ index-jls_59nl.js:1852Understand this error
+index-jls_59nl.js:1701  GET https://stock-portfolio-khaki-nine.vercel.app/api/health 500 (Internal Server Error)
+ka @ index-jls_59nl.js:1701
+yue @ index-jls_59nl.js:1701
+bue @ index-jls_59nl.js:1701
+xue @ index-jls_59nl.js:1701
+(anonymous) @ index-jls_59nl.js:1701
+lg @ index-jls_59nl.js:40
+Cc @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+T @ index-jls_59nl.js:25
+L @ index-jls_59nl.js:25
+_ @ inpage.js:166
+w @ inpage.js:166
+Y @ inpage.js:166
+postMessage
+h @ inpage.js:166
+b @ inpage.js:166
+F @ index-jls_59nl.js:25
+L @ index-jls_59nl.js:25
+_ @ inpage.js:166
+w @ inpage.js:166
+Y @ inpage.js:166
+postMessage
+h @ inpage.js:166
+b @ inpage.js:166
+F @ index-jls_59nl.js:25
+H @ index-jls_59nl.js:25
+SQ.e.unstable_scheduleCallback @ index-jls_59nl.js:25
+ER @ index-jls_59nl.js:40
+Ar @ index-jls_59nl.js:40
+Ii @ index-jls_59nl.js:40
+bg @ index-jls_59nl.js:40
+EQ.wg.render.Sw.render @ index-jls_59nl.js:40
+HFe @ index-jls_59nl.js:1852
+(anonymous) @ index-jls_59nl.js:1852Understand this error
+index-jls_59nl.js:1701  GET https://stock-portfolio-khaki-nine.vercel.app/api/ai/market-overview 404 (Not Found)
+ka @ index-jls_59nl.js:1701
+(anonymous) @ index-jls_59nl.js:1701
+await in (anonymous)
+i @ index-jls_59nl.js:40
+x @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+Promise.then
+(anonymous) @ index-jls_59nl.js:40
+Promise.catch
+x @ index-jls_59nl.js:40
+start @ index-jls_59nl.js:40
+fetch @ index-jls_59nl.js:40
+#d @ index-jls_59nl.js:40
+onSubscribe @ index-jls_59nl.js:40
+subscribe @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+bI @ index-jls_59nl.js:38
+lg @ index-jls_59nl.js:40
+Cc @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+T @ index-jls_59nl.js:25
+L @ index-jls_59nl.js:25
+_ @ inpage.js:166
+w @ inpage.js:166
+Y @ inpage.js:166
+postMessage
+h @ inpage.js:166
+b @ inpage.js:166
+F @ index-jls_59nl.js:25
+L @ index-jls_59nl.js:25
+_ @ inpage.js:166
+w @ inpage.js:166
+Y @ inpage.js:166
+postMessage
+h @ inpage.js:166
+b @ inpage.js:166
+F @ index-jls_59nl.js:25
+H @ index-jls_59nl.js:25
+SQ.e.unstable_scheduleCallback @ index-jls_59nl.js:25
+ER @ index-jls_59nl.js:40
+Ar @ index-jls_59nl.js:40
+Ii @ index-jls_59nl.js:40
+bg @ index-jls_59nl.js:40
+EQ.wg.render.Sw.render @ index-jls_59nl.js:40
+HFe @ index-jls_59nl.js:1852
+(anonymous) @ index-jls_59nl.js:1852Understand this error
+index-jls_59nl.js:1846 [Frontend] Received 21 coins for 8 days (bounce)
+index-jls_59nl.js:40 TypeError: Cannot read properties of undefined (reading 'toFixed')
+    at b (index-jls_59nl.js:1846:46867)
+    at index-jls_59nl.js:1846:53039
+    at Array.map (<anonymous>)
+    at yFe (index-jls_59nl.js:1846:50572)
+    at Bx (index-jls_59nl.js:38:17816)
+    at Xx (index-jls_59nl.js:40:3158)
+    at _R (index-jls_59nl.js:40:45510)
+    at bR (index-jls_59nl.js:40:40324)
+    at nQ (index-jls_59nl.js:40:40252)
+    at gg (index-jls_59nl.js:40:40105)

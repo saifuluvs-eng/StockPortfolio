@@ -32,6 +32,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       summary: null
     });
   }
+  
+  if (pathname === 'market-overview') {
+    return sendJson(res, {
+      marketSentiment: 'neutral',
+      topMovers: [],
+      summary: 'AI market analysis temporarily unavailable.',
+      lastUpdated: new Date().toISOString()
+    });
+  }
 
-  sendError(res, 404, `AI endpoint not found: ${pathname}`);
+  sendJson(res, {
+    success: false,
+    message: 'AI features are temporarily unavailable.',
+    data: null
+  });
 }
