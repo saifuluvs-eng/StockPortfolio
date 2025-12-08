@@ -90,7 +90,10 @@ const initializeServer = () => {
             server = registerRoutes(app);
         } catch (err) {
             console.error("CRITICAL: Failed to register routes:", err);
-            throw err; // Re-throw to fail startup if routes are broken
+            // Do NOT throw. Allow /api/health to work.
+            app.get('*', (req, res) => {
+                res.status(500).json({ error: 'Server Startup Failed', message: String(err) });
+            });
         }
 
         // Global error handler
