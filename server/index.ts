@@ -67,10 +67,23 @@ const initializeServer = () => {
         console.log(`GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? "Set" : "Missing"}`);
         console.log(`COINMARKETCAP_API_KEY: ${process.env.COINMARKETCAP_API_KEY ? "Set" : "Missing"}`);
 
-        // Add basic health check route if not already registered
-        app.get('/api/health', (req, res) => {
+        // Add basic health check route with Binance connectivity
+        app.get('/api/health', async (req, res) => {
             console.log(`[API] /api/health called from ${req.ip}`);
-            res.json({ status: 'ok', timestamp: new Date().toISOString() });
+            try {
+                // Determine environment status
+                const binanceStatus = await import("./services/binanceService").then(m => m.binanceService.checkHealth());
+
+                res.json({
+                    status: 'ok',
+                    timestamp: new Date().toISOString(),
+                    environment: process.env.VERCEL ? 'vercel' : 'local',
+                    binance: binanceStatus
+                });
+            } catch (e) {
+                console.error('[Health Check] Failed:', e);
+                res.status(500).json({ status: 'error', message: 'Health Check Failed' });
+            }
         });
 
         try {

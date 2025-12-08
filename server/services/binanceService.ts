@@ -230,6 +230,19 @@ class BinanceService {
       throw error;
     }
   }
+
+  async checkHealth(): Promise<{ status: 'ok' | 'error'; latency_ms?: number; message?: string }> {
+    const start = Date.now();
+    try {
+      const res = await fetch(`${this.baseUrl}/ping`);
+      if (res.ok) {
+        return { status: 'ok', latency_ms: Date.now() - start };
+      }
+      return { status: 'error', message: `Binance Ping Failed: ${res.status} ${res.statusText}` };
+    } catch (err: any) {
+      return { status: 'error', message: err.message || 'Connection Failed' };
+    }
+  }
 }
 
 export const binanceService = new BinanceService();

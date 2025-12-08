@@ -1191,18 +1191,19 @@ class TechnicalIndicators {
       // Dynamic Pool Size:
       // For short-term (Scalping/Swing), Top 75 Volume is enough (and faster).
       // For long-term (Investing), we need to cast a wider net (Top 200) because high volume moves around.
-      // VERCEL OPTIMIZATION: Strict 10s timeout means we must limit the pool size.
-      const isVercel = process.env.VERCEL === '1';
+      // VERCEL/PRODUCTION OPTIMIZATION: Strict 10s timeout means we must limit the pool size.
+      // If NODE_ENV is production, we force the limit to 25 to be safe, unless explicitly overridden by a "PERFORMANCE_MODE" env.
+      const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
       let poolSize = lookbackDays > 30 ? 200 : 75;
 
-      if (isVercel) {
-        console.log('[TechnicalIndicators] Vercel environment detected. Capping scan pool to 25 to prevent timeout.');
+      if (isProduction) {
+        console.log('[TechnicalIndicators] Production environment detected. Capping scan pool to 25 to prevent timeout.');
         poolSize = 25;
       }
 
       const topPairs = await binanceService.getTopVolumePairs(poolSize);
       const results: any[] = [];
-      const batchSize = isVercel ? 25 : 10; // On Vercel, do one big parallel batch (up to 25) to save time overhead of sequential batches
+      const batchSize = isProduction ? 25 : 10; // Parallelize in production
 
       // Calculate candles needed: (Days * 24h) / 4h timeframe = 6 candles per day
       const candlesNeeded = Math.ceil(lookbackDays * 6);
@@ -1518,7 +1519,7 @@ class TechnicalIndicators {
       return [];
     }
   }
-  async getTopPicks(): Promise<any[]> {
+  async getTopPicks(limit: number = 12): Promise<any[]> {
     console.log('[TechnicalIndicators] getTopPicks called');
     try {
       // 1. Run Scanners in Parallel
