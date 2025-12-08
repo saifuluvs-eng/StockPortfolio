@@ -1,0 +1,218 @@
+/api/high-potential:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/health:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/market/gainers:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/watchlist:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/market/fear-greed:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/ai/market-overview:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/market/gainers:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/watchlist:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/ai/market-overview:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+/api/market/fear-greed:1  Failed to load resource: the server responded with a status of 404 ()Understand this error
+index-DobJfIAR.js:1851  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/support-resistance?limit=75&days=8&strategy=bounce 404 (Not Found)
+queryFn @ index-DobJfIAR.js:1851
+i @ index-DobJfIAR.js:40
+x @ index-DobJfIAR.js:40
+start @ index-DobJfIAR.js:40
+fetch @ index-DobJfIAR.js:40
+#d @ index-DobJfIAR.js:40
+onSubscribe @ index-DobJfIAR.js:40
+subscribe @ index-DobJfIAR.js:40
+(anonymous) @ index-DobJfIAR.js:40
+bI @ index-DobJfIAR.js:38
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1851  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/support-resistance?limit=75&days=8&strategy=bounce 404 (Not Found)
+queryFn @ index-DobJfIAR.js:1851
+i @ index-DobJfIAR.js:40
+x @ index-DobJfIAR.js:40
+(anonymous) @ index-DobJfIAR.js:40
+Promise.then
+(anonymous) @ index-DobJfIAR.js:40
+Promise.catch
+x @ index-DobJfIAR.js:40
+start @ index-DobJfIAR.js:40
+fetch @ index-DobJfIAR.js:40
+#d @ index-DobJfIAR.js:40
+onSubscribe @ index-DobJfIAR.js:40
+subscribe @ index-DobJfIAR.js:40
+(anonymous) @ index-DobJfIAR.js:40
+bI @ index-DobJfIAR.js:38
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1851  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/momentum 404 (Not Found)
+queryFn @ index-DobJfIAR.js:1851
+i @ index-DobJfIAR.js:40
+x @ index-DobJfIAR.js:40
+start @ index-DobJfIAR.js:40
+fetch @ index-DobJfIAR.js:40
+#d @ index-DobJfIAR.js:40
+onSubscribe @ index-DobJfIAR.js:40
+subscribe @ index-DobJfIAR.js:40
+(anonymous) @ index-DobJfIAR.js:40
+bI @ index-DobJfIAR.js:38
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1851  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/momentum 404 (Not Found)
+queryFn @ index-DobJfIAR.js:1851
+i @ index-DobJfIAR.js:40
+x @ index-DobJfIAR.js:40
+(anonymous) @ index-DobJfIAR.js:40
+Promise.then
+(anonymous) @ index-DobJfIAR.js:40
+Promise.catch
+x @ index-DobJfIAR.js:40
+start @ index-DobJfIAR.js:40
+fetch @ index-DobJfIAR.js:40
+#d @ index-DobJfIAR.js:40
+onSubscribe @ index-DobJfIAR.js:40
+subscribe @ index-DobJfIAR.js:40
+(anonymous) @ index-DobJfIAR.js:40
+bI @ index-DobJfIAR.js:38
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1723  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/ticker/BTCUSDT 404 (Not Found)
+O @ index-DobJfIAR.js:1723
+gt @ index-DobJfIAR.js:1769
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1769 [Ticker] Backend fetch failed, trying WebSocket: Error: HTTP 404
+    at gt (index-DobJfIAR.js:1769:28912)
+gt @ index-DobJfIAR.js:1769
+await in gt
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this warning
+index-DobJfIAR.js:1723  POST https://stock-portfolio-khaki-nine.vercel.app/api/scanner/scan 404 (Not Found)
+O @ index-DobJfIAR.js:1723
+ho @ index-DobJfIAR.js:1706
+(anonymous) @ index-DobJfIAR.js:1769
+(anonymous) @ index-DobJfIAR.js:1769
+setTimeout
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1769 [Analyse] scan failed Error: Scan HTTP 404
+    at index-DobJfIAR.js:1769:31918
+(anonymous) @ index-DobJfIAR.js:1769
+await in (anonymous)
+(anonymous) @ index-DobJfIAR.js:1769
+setTimeout
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1769 [Analyse] Auto-run triggered: {symbolChanged: true, timeframeChanged: false, from: {…}, to: {…}}
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this warning
+index-DobJfIAR.js:1723  POST https://stock-portfolio-khaki-nine.vercel.app/api/scanner/scan 404 (Not Found)
+O @ index-DobJfIAR.js:1723
+ho @ index-DobJfIAR.js:1706
+(anonymous) @ index-DobJfIAR.js:1769
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1769 [Analyse] scan failed Error: Scan HTTP 404
+    at index-DobJfIAR.js:1769:31918
+(anonymous) @ index-DobJfIAR.js:1769
+await in (anonymous)
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1723  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/ticker/DASHUSDT 404 (Not Found)
+O @ index-DobJfIAR.js:1723
+gt @ index-DobJfIAR.js:1769
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1769 [Ticker] Backend fetch failed, trying WebSocket: Error: HTTP 404
+    at gt (index-DobJfIAR.js:1769:28912)
+gt @ index-DobJfIAR.js:1769
+await in gt
+(anonymous) @ index-DobJfIAR.js:1769
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this warning
+index-DobJfIAR.js:1851  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/rsi?limit=60&timeframe=4h&source=volume 404 (Not Found)
+queryFn @ index-DobJfIAR.js:1851
+i @ index-DobJfIAR.js:40
+x @ index-DobJfIAR.js:40
+start @ index-DobJfIAR.js:40
+fetch @ index-DobJfIAR.js:40
+#d @ index-DobJfIAR.js:40
+onSubscribe @ index-DobJfIAR.js:40
+subscribe @ index-DobJfIAR.js:40
+(anonymous) @ index-DobJfIAR.js:40
+bI @ index-DobJfIAR.js:38
+lg @ index-DobJfIAR.js:40
+Cc @ index-DobJfIAR.js:40
+oQ @ index-DobJfIAR.js:40
+il @ index-DobJfIAR.js:40
+gR @ index-DobJfIAR.js:40
+Mo @ index-DobJfIAR.js:38
+(anonymous) @ index-DobJfIAR.js:40Understand this error
+index-DobJfIAR.js:1851  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/rsi?limit=60&timeframe=4h&source=volume 404 (Not Found)
