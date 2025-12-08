@@ -3,8 +3,23 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
+
 // Force restart for strategies update V2
 const app = express();
+
+// Security Headers for TradingView
+app.use((req, res, next) => {
+    res.setHeader(
+        "Content-Security-Policy",
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://s3.tradingview.com https://*.tradingview.com; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "frame-src 'self' https://s3.tradingview.com https://*.tradingview.com; " +
+        "connect-src 'self' https://*.tradingview.com wss://*.tradingview.com wss://widgetdata.tradingview.com;"
+    );
+    next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
