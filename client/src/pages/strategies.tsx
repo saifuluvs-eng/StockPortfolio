@@ -495,6 +495,382 @@ export default function StrategiesPage() {
                         </Tabs>
                     </div>
                 </Card>
+
+                {/* Knowledge Base Section */}
+                <Card>
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 text-blue-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                            </div>
+                            <h2 className="text-lg font-bold text-white/90">How This Scanner Works</h2>
+                        </div>
+
+                        {/* Tab-specific explanations */}
+                        {activeTab === 'hot-setups' && (
+                            <div className="space-y-4">
+                                <div className="p-4 bg-orange-500/5 rounded-lg border border-orange-500/20">
+                                    <h3 className="font-semibold text-orange-400 mb-2">What is Hot Setups?</h3>
+                                    <p className="text-sm text-zinc-400 leading-relaxed">
+                                        Hot Setups finds coins that appear in <strong className="text-white">multiple scanners at once</strong>. 
+                                        When a coin shows up in 2 or more of our strategies (like Support + Momentum), 
+                                        it's a stronger signal because multiple factors are lining up in its favor.
+                                    </p>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">How Coins Are Selected</h3>
+                                    <ul className="text-sm text-zinc-400 space-y-2">
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-orange-400 mt-1">1.</span>
+                                            <span>We scan the <strong className="text-white">top 40 coins</strong> by trading volume (most actively traded)</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-orange-400 mt-1">2.</span>
+                                            <span>Each coin is checked against <strong className="text-white">4 different strategies</strong>: Support/Resistance, Trend Dip, Volume Spike, and Momentum</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-orange-400 mt-1">3.</span>
+                                            <span>Coins earn <strong className="text-white">points</strong> for each strategy they match, and coins with higher scores appear first</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">What the Tags Mean</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 text-xs font-medium">Strong Signal</span>
+                                            <span className="text-zinc-400">Appears in 2+ scanners - higher confidence</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-xs font-medium">At Support</span>
+                                            <span className="text-zinc-400">Price near a floor where it often bounces up</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-medium">Breakout</span>
+                                            <span className="text-zinc-400">Price breaking above previous highs</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-xs font-medium">Uptrend</span>
+                                            <span className="text-zinc-400">Long-term direction is up, short-term dip</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 text-xs font-medium">Volume Surge</span>
+                                            <span className="text-zinc-400">Much more trading activity than usual</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-xs font-medium">Strong Move</span>
+                                            <span className="text-zinc-400">Price gained 5-15% with room to continue</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">Scoring System</h3>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                        <div className="text-center p-2 bg-zinc-900 rounded">
+                                            <div className="text-emerald-400 font-bold">+15 pts</div>
+                                            <div className="text-zinc-500 text-xs">At Support</div>
+                                        </div>
+                                        <div className="text-center p-2 bg-zinc-900 rounded">
+                                            <div className="text-blue-400 font-bold">+30 pts</div>
+                                            <div className="text-zinc-500 text-xs">Breakout</div>
+                                        </div>
+                                        <div className="text-center p-2 bg-zinc-900 rounded">
+                                            <div className="text-emerald-400 font-bold">+20 pts</div>
+                                            <div className="text-zinc-500 text-xs">Trend Dip</div>
+                                        </div>
+                                        <div className="text-center p-2 bg-zinc-900 rounded">
+                                            <div className="text-purple-400 font-bold">+15 pts</div>
+                                            <div className="text-zinc-500 text-xs">Volume Spike</div>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-zinc-500 mt-2 text-center">
+                                        Coins appearing in 2+ scanners get a bonus +15 points
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'sr' && (
+                            <div className="space-y-4">
+                                <div className="p-4 bg-indigo-500/5 rounded-lg border border-indigo-500/20">
+                                    <h3 className="font-semibold text-indigo-400 mb-2">What is Support & Resistance?</h3>
+                                    <p className="text-sm text-zinc-400 leading-relaxed">
+                                        <strong className="text-white">Support</strong> is like a floor - a price level where buyers tend to step in and push the price back up. 
+                                        <strong className="text-white"> Resistance</strong> is like a ceiling - a price level where sellers often appear and push the price back down.
+                                        The more times a level is tested and holds, the stronger it becomes.
+                                    </p>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">How Coins Are Selected</h3>
+                                    <ul className="text-sm text-zinc-400 space-y-2">
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-indigo-400 mt-1">1.</span>
+                                            <span>We look at coins with at least <strong className="text-white">$2 million daily volume</strong></span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-indigo-400 mt-1">2.</span>
+                                            <span>We calculate the <strong className="text-white">24-hour price range</strong> (high to low)</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-indigo-400 mt-1">3.</span>
+                                            <span>Coins trading in the <strong className="text-white">bottom 20%</strong> of their range are "At Support"</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-indigo-400 mt-1">4.</span>
+                                            <span>Coins in the <strong className="text-white">top 10%</strong> of their range may be breaking out</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">Understanding the Table</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">Type</div>
+                                            <p className="text-zinc-500">Whether the coin is near Support (potential bounce up) or Resistance (potential rejection down)</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">Level</div>
+                                            <p className="text-zinc-500">The exact price of the support or resistance zone</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">Distance</div>
+                                            <p className="text-zinc-500">How far the current price is from the level (lower = closer to the level)</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">Tests</div>
+                                            <p className="text-zinc-500">How many times this level has been tested - more tests = stronger level</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">R:R (Risk:Reward)</div>
+                                            <p className="text-zinc-500">How much you could gain vs. how much you risk. 1:3 means potential 3x gain for 1x risk</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">What the Badges Mean</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-xs font-medium">Strong Support</span>
+                                            <span className="text-zinc-400">Level tested 3+ times - very reliable</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-zinc-700 text-zinc-400 text-xs font-medium">Weak Level</span>
+                                            <span className="text-zinc-400">Only tested once - less reliable</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-xs font-medium">Oversold</span>
+                                            <span className="text-zinc-400">Dropped 5%+ - may be due for a bounce</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-xs font-medium">Overbought</span>
+                                            <span className="text-zinc-400">Gained 5%+ - may be due for a pullback</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-medium">Approaching</span>
+                                            <span className="text-zinc-400">Within 2% of the level - watch closely</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'trend-dip' && (
+                            <div className="space-y-4">
+                                <div className="p-4 bg-emerald-500/5 rounded-lg border border-emerald-500/20">
+                                    <h3 className="font-semibold text-emerald-400 mb-2">What is Trend Dip?</h3>
+                                    <p className="text-sm text-zinc-400 leading-relaxed">
+                                        This scanner finds coins in a <strong className="text-white">long-term uptrend</strong> that have 
+                                        temporarily pulled back. The idea is to "buy the dip" in strong trends rather than trying to 
+                                        catch falling knives. When the overall trend is up, short-term dips often present good entry points.
+                                    </p>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">How Coins Are Selected</h3>
+                                    <ul className="text-sm text-zinc-400 space-y-2">
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-emerald-400 mt-1">1.</span>
+                                            <span>We scan the <strong className="text-white">top 30 coins</strong> by trading volume</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-emerald-400 mt-1">2.</span>
+                                            <span>We calculate the <strong className="text-white">EMA 200</strong> (200-period moving average) - a common long-term trend indicator</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-emerald-400 mt-1">3.</span>
+                                            <span>Only coins trading <strong className="text-white">above their EMA 200</strong> are shown (confirms uptrend)</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-emerald-400 mt-1">4.</span>
+                                            <span>We check <strong className="text-white">RSI across multiple timeframes</strong> to spot oversold conditions</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">Understanding the Table</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">EMA 200</div>
+                                            <p className="text-zinc-500">The 200-period moving average. Price above it = uptrend. The green color confirms bullish structure.</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">RSI 15m / 1h / 4h</div>
+                                            <p className="text-zinc-500">Relative Strength Index on different timeframes. Below 40 (green) = oversold dip. Above 70 (red) = overbought.</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">24h %</div>
+                                            <p className="text-zinc-500">How much the price changed in the last 24 hours</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                                    <h3 className="font-semibold text-emerald-400 mb-2">Pro Tip</h3>
+                                    <p className="text-sm text-zinc-400">
+                                        Look for coins where the <strong className="text-white">short-term RSI (15m, 1h) is green</strong> (oversold) 
+                                        while the <strong className="text-white">longer-term RSI (4h) is neutral or healthy</strong>. 
+                                        This suggests a temporary dip in an otherwise strong trend.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'volume-spike' && (
+                            <div className="space-y-4">
+                                <div className="p-4 bg-purple-500/5 rounded-lg border border-purple-500/20">
+                                    <h3 className="font-semibold text-purple-400 mb-2">What is Volume Spike?</h3>
+                                    <p className="text-sm text-zinc-400 leading-relaxed">
+                                        Volume is the amount of trading activity. When volume is <strong className="text-white">much higher than usual</strong>, 
+                                        it often signals that big players (institutions, whales) are entering positions. 
+                                        High volume on a price increase suggests strong buying interest.
+                                    </p>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">How Coins Are Selected</h3>
+                                    <ul className="text-sm text-zinc-400 space-y-2">
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-purple-400 mt-1">1.</span>
+                                            <span>We scan coins with at least <strong className="text-white">$5 million daily volume</strong></span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-purple-400 mt-1">2.</span>
+                                            <span>Only coins with <strong className="text-white">positive price change</strong> are shown (green candles)</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-purple-400 mt-1">3.</span>
+                                            <span>We compare current volume to the <strong className="text-white">average volume</strong></span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-purple-400 mt-1">4.</span>
+                                            <span>Coins with <strong className="text-white">1.5x or higher</strong> volume than average are shown</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">Understanding the Table</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">Volume</div>
+                                            <p className="text-zinc-500">Current 24-hour trading volume in dollars</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">Avg Volume</div>
+                                            <p className="text-zinc-500">The typical/average trading volume for comparison</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">Multiple</div>
+                                            <p className="text-zinc-500">How many times higher than average. 2.5x means 2.5 times the normal volume.</p>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-300 font-medium mb-1">24h %</div>
+                                            <p className="text-zinc-500">Price change - higher volume + positive change = strong signal</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                                    <h3 className="font-semibold text-purple-400 mb-2">What the Colors Mean</h3>
+                                    <div className="flex flex-wrap gap-4 text-sm mt-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-purple-400">3x+</span>
+                                            <span className="text-zinc-400">Extreme volume - major interest</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-purple-300">2x+</span>
+                                            <span className="text-zinc-400">High volume - notable activity</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-zinc-400">1.5x+</span>
+                                            <span className="text-zinc-400">Elevated volume - worth watching</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'momentum' && (
+                            <div className="space-y-4">
+                                <div className="p-4 bg-amber-500/5 rounded-lg border border-amber-500/20">
+                                    <h3 className="font-semibold text-amber-400 mb-2">What is Momentum?</h3>
+                                    <p className="text-sm text-zinc-400 leading-relaxed">
+                                        Momentum measures the <strong className="text-white">speed and strength</strong> of a price move. 
+                                        Coins with strong momentum are moving up quickly and may continue. The dedicated Momentum Scanner 
+                                        includes advanced features like pivot-based stop-loss calculations.
+                                    </p>
+                                </div>
+
+                                <div className="p-4 bg-zinc-800/50 rounded-lg">
+                                    <h3 className="font-semibold text-zinc-300 mb-3">Key Momentum Signals</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-xs font-bold">RIDE</span>
+                                            <span className="text-zinc-400">Strong momentum + high volume - ride the wave</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-bold">MOMENTUM</span>
+                                            <span className="text-zinc-400">Good volume backing the move</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-xs font-bold">GAINING SPEED</span>
+                                            <span className="text-zinc-400">Building momentum, no clear stop yet</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-orange-500/20 text-orange-400 text-xs font-bold">HEATED</span>
+                                            <span className="text-zinc-400">RSI above 75 - getting overbought</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-xs font-bold">TOPPED</span>
+                                            <span className="text-zinc-400">RSI above 85 - likely to pull back</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-zinc-700 text-zinc-400 text-xs font-bold">CAUTION</span>
+                                            <span className="text-zinc-400">Low volume - move may not be reliable</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* General disclaimer */}
+                        <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                            <p className="text-xs text-zinc-500 text-center">
+                                This scanner is for informational purposes only. Always do your own research before trading. 
+                                Past performance does not guarantee future results.
+                            </p>
+                        </div>
+                    </div>
+                </Card>
             </div>
         </Page>
     );
