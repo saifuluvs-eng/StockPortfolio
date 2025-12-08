@@ -5,7 +5,7 @@ import { storage } from "./storage";
 
 import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
-import { aiService } from "./services/aiService";
+// import { aiService } from "./services/aiService"; // REMOVED: Gemini disabled
 import { portfolioService } from "./services/portfolioService";
 import {
   insertPortfolioPositionSchema,
@@ -407,158 +407,8 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // AI Analysis endpoints
-  app.post('/api/ai/analyze/:symbol', async (req: Request, res: Response) => {
-    try {
-      const { symbol } = req.params;
-      const { analysisType = 'recommendation', timeframe = '4h' } = req.body;
-
-      // Get technical analysis for the symbol
-      const technicalAnalysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
-
-      // Get market data
-      const marketData = await binanceService.getTickerData(symbol);
-
-      // Generate AI insight
-      const aiInsight = await aiService.generateCryptoInsight(
-        symbol,
-        technicalAnalysis,
-        marketData
-      );
-
-      res.json(aiInsight);
-    } catch (error) {
-      console.error("Error generating AI analysis:", error);
-      res.status(500).json({ message: "Failed to generate AI analysis" });
-    }
-  });
-
-  app.get('/api/ai/market-overview', async (req: Request, res: Response) => {
-    try {
-      // Get top gainers and market data
-      const gainers = await binanceService.getTopGainers(20);
-
-      // Create market summary
-      const marketSummary = {
-        topGainers: gainers.slice(0, 5),
-        averageGain: gainers.reduce((sum, g) => sum + parseFloat(g.priceChangePercent), 0) / gainers.length,
-        highVolumeCount: gainers.filter(g => parseFloat(g.quoteVolume) > 10000000).length,
-        timestamp: new Date().toISOString(),
-      };
-
-      // Generate AI market overview
-      const overview = await aiService.generateMarketOverview(marketSummary);
-
-      res.json(overview);
-    } catch (error) {
-      console.error("Error generating market overview:", error);
-      res.status(500).json({ message: "Failed to generate market overview" });
-    }
-  });
-
-  app.get('/api/ai/sentiment/:symbol/:timeframe', async (req: Request, res: Response) => {
-    try {
-      const { symbol, timeframe = '4h' } = req.params;
-
-      // Get price data and technical analysis
-      const klines = await binanceService.getKlineData(symbol, timeframe as string, 50);
-      const priceData = klines.map(k => parseFloat(k.close));
-      const technicalData = await technicalIndicators.analyzeSymbol(symbol, timeframe);
-
-      // Generate sentiment analysis
-      const sentiment = await aiService.analyzeMarketSentiment(symbol, priceData, technicalData);
-
-      res.json(sentiment);
-    } catch (error) {
-      console.error("Error analyzing sentiment:", error);
-      res.status(500).json({ message: "Failed to analyze sentiment" });
-    }
-  });
-
-  app.post('/api/ai/summary', async (req: Request, res: Response) => {
-    try {
-      const { symbol, tf, technicals, focus } = req.body;
-      console.log(`[API] /api/ai/summary called. Symbol: ${symbol}, Focus: ${focus}`);
-      if (!symbol) {
-        return res.status(400).json({ error: "symbol is required" });
-      }
-      const timeframe = tf || '4h';
-
-      // Check if technical data is missing or empty
-      const isMissingData = !technicals ||
-        (typeof technicals === "object" && Object.keys(technicals).length === 0) ||
-        (Array.isArray(technicals) && technicals.length === 0);
-
-      if (isMissingData) {
-        console.warn(`No technical data received for ${symbol}`);
-        return res.json({
-          data: `Error: No technical data received.`,
-        });
-      }
-
-      // Use the provided technicals or fetch if not provided
-      let technicalAnalysis = technicals;
-      if (!technicalAnalysis) {
-        try {
-          technicalAnalysis = await technicalIndicators.analyzeSymbol(symbol, timeframe);
-        } catch (error) {
-          console.warn(`Could not fetch technical analysis for ${symbol}:`, error);
-          technicalAnalysis = {
-            symbol,
-            totalScore: 50,
-            recommendation: 'hold',
-            indicators: {}
-          };
-        }
-      }
-
-      // Generate AI summary using Gemini
-      try {
-        console.log("[AI Summary] Input technicalAnalysis:", JSON.stringify(technicalAnalysis).slice(0, 300));
-        const aiSummary = await aiService.generateCryptoInsight(
-          symbol,
-          technicalAnalysis,
-          { timeframe },
-          focus || 'institutional'
-        );
-        console.log("[AI Summary] Response:", aiSummary.reasoning.slice(0, 200));
-        res.json({ data: aiSummary.reasoning || "No summary available." });
-      } catch (aiError) {
-        const errorMsg = aiError instanceof Error ? aiError.message : String(aiError);
-        console.error("AI service error:", errorMsg);
-
-        // Check if it's a rate limiting issue
-        if (errorMsg.includes("429") || errorMsg.includes("rate") || errorMsg.includes("Resource exhausted")) {
-          return res.json({
-            data: "AI service is temporarily busy (rate limited). Try again in a few moments. Analysis still available from technical indicators."
-          });
-        }
-
-        // For other errors, return a helpful message
-        return res.json({
-          data: "AI analysis unavailable at the moment. Please try again shortly."
-        });
-      }
-    } catch (error) {
-      console.error("Error in /api/ai/summary:", error);
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      res.status(500).json({
-        error: "Failed to generate AI summary",
-        message: errorMsg
-      });
-    }
-  });
-
-  app.post('/api/ai/chart-decode', async (req: Request, res: Response) => {
-    try {
-      const { symbol, timeframe, technicals } = req.body;
-      const result = await aiService.generateChartDecodeAnalysis(symbol, timeframe || '4h', technicals);
-      res.json({ data: result });
-    } catch (error) {
-      console.error("Error in /api/ai/chart-decode:", error);
-      res.status(500).json({ error: "Failed to decode chart" });
-    }
-  });
+  // AI endpoints disabled - Gemini removed for stability
+  // To re-enable AI features in the future, restore these routes and the aiService
 
   // Scanner routes
   app.post('/api/scanner/scan', isAuthenticated, async (req: Request, res: Response) => {

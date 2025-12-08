@@ -24,7 +24,7 @@ import {
   BreakdownSection,
   type BreakdownRow,
 } from "@/features/analyse/Breakdown";
-import AiSummaryPanel, { type AiSummaryPanelRef } from "@/components/analyse/AiSummaryPanel";
+// import AiSummaryPanel, { type AiSummaryPanelRef } from "@/components/analyse/AiSummaryPanel"; // REMOVED: Gemini disabled
 import { type Recommendation } from "@/features/analyse/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useBackendHealth } from "@/hooks/use-backend-health";
@@ -375,7 +375,7 @@ export default function Analyse() {
   const isFirstRenderRef = useRef(true);
   const initialExplicitSymbolRef = useRef(Boolean(params?.symbol || querySymbol));
   const [activeTab, setActiveTab] = useState<"chart" | "technicals" | "ai">("chart");
-  const aiPanelRef = useRef<AiSummaryPanelRef>(null);
+  // const aiPanelRef = useRef<AiSummaryPanelRef>(null); // REMOVED: Gemini disabled
 
   useEffect(() => {
     setIsScanning(false);
@@ -1345,7 +1345,8 @@ export default function Analyse() {
               </Card>
             </section>
 
-            {/* AI Summary Section */}
+            {/* AI Summary Section - REMOVED: Gemini disabled */}
+            {/* 
             <section className={`min-w-0 overflow-hidden ${activeTab === "ai" ? "block" : "hidden xl:block"}`}>
               <AiSummaryPanel
                 ref={aiPanelRef}
@@ -1355,6 +1356,7 @@ export default function Analyse() {
                 candles={scanResult?.candles as unknown[]}
               />
             </section>
+            */}
           </div>
         </div>
       </div>
