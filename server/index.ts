@@ -82,3 +82,7 @@ app.use((req, res, next) => {
 })();
 
 export default app;
+// Export a ready promise for Vercel handler
+export const ready = (async () => {
+    return registerRoutes(app);
+})();
