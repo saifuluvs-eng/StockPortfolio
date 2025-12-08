@@ -25,6 +25,8 @@ import {
   Brain,
   Activity,
   Newspaper,
+  Zap,
+  Target,
 } from "lucide-react";
 
 import {
@@ -37,6 +39,8 @@ import {
   DragOverlay,
   defaultDropAnimationSideEffects,
   type DropAnimation,
+  type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -93,7 +97,6 @@ export default function Home() {
 
   const containerClass = "w-full max-w-full overflow-hidden px-2 sm:px-4 md:px-6 py-3 sm:py-4";
 
-  // ---------- Lower “Market Overview” (WebSockets) ----------
   // ---------- Lower “Market Overview” (WebSockets) ----------
   const { prices, setPrices } = usePrices();
 
@@ -259,7 +262,8 @@ export default function Home() {
     "top-gainers",
     "total-pnl",
     "fear-greed",
-    "ai-signals",
+    "strategies", // Replaced ai-signals
+    "momentum",   // Added
     "btc-dominance",
     "news",
   ];
@@ -292,17 +296,17 @@ export default function Home() {
     })
   );
 
-  const handleDragStart = (event: any) => {
-    setActiveId(event.active.id);
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
   };
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (active.id !== over?.id) {
+    if (over && active.id !== over.id) {
       setItems((items) => {
-        const oldIndex = items.indexOf(active.id);
-        const newIndex = items.indexOf(over.id);
+        const oldIndex = items.indexOf(active.id as string);
+        const newIndex = items.indexOf(over.id as string);
         const newOrder = arrayMove(items, oldIndex, newIndex);
         localStorage.setItem("dashboard_order", JSON.stringify(newOrder));
         return newOrder;
@@ -429,20 +433,40 @@ export default function Home() {
             </Card>
           </Wrapper>
         );
-      case "ai-signals":
+      case "strategies":
         return (
           <Wrapper {...props}>
-            <Link to="/ai-insights" className="block h-full">
-              <Card className="dashboard-card neon-hover bg-gradient-to-br from-violet-500/10 to-violet-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(270, 100%, 60%)" } as React.CSSProperties}>
+            <Link to="/strategies" className="block h-full">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/10 to-indigo-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(260, 100%, 60%)" } as React.CSSProperties}>
                 <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">AI Signals</h3>
-                      <p className="text-xs text-muted-foreground truncate">Market analysis</p>
-                      <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5" data-testid="text-ai-signals">{aiDisplay}</p>
-                      <p className="text-xs text-accent">Active insights</p>
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Strategies</h3>
+                      <p className="text-xs text-muted-foreground truncate">Automated setups</p>
+                      <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">Active</p>
+                      <p className="text-xs text-accent">View all</p>
                     </div>
-                    <Brain className="w-6 sm:w-8 h-6 sm:h-8 text-violet-500 flex-shrink-0" />
+                    <Target className="w-6 sm:w-8 h-6 sm:h-8 text-indigo-500 flex-shrink-0" />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </Wrapper>
+        );
+      case "momentum":
+        return (
+          <Wrapper {...props}>
+            <Link to="/momentum" className="block h-full">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-fuchsia-500/10 to-fuchsia-500/20 h-auto sm:h-full" style={{ "--neon-glow": "hsl(300, 100%, 60%)" } as React.CSSProperties}>
+                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Momentum</h3>
+                      <p className="text-xs text-muted-foreground truncate">Trend following</p>
+                      <p className="text-sm sm:text-lg font-bold text-foreground mt-0.5">Top Moves</p>
+                      <p className="text-xs text-accent">Analyze now</p>
+                    </div>
+                    <Zap className="w-6 sm:w-8 h-6 sm:h-8 text-fuchsia-500 flex-shrink-0" />
                   </div>
                 </CardContent>
               </Card>
@@ -552,52 +576,8 @@ export default function Home() {
             {activeId ? renderCard(activeId, true) : null}
           </DragOverlay>
         </DndContext>
-
-        {/* The 3 big boxes below */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
-
-
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="flex min-w-0 items-center space-x-2">
-                <Brain className="w-5 h-5 text-purple-500" />
-                <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">AI Trading Assistant</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 text-accent rounded-full"></div>
-                <span className="text-sm text-foreground">Market sentiment: Bullish</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-sm text-foreground">Technical signals detected</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                <span className="text-sm text-foreground">Risk level: Moderate</span>
-              </div>
-              <div className="bg-muted/50 rounded-lg p-3 mt-4">
-                <p className="text-sm text-muted-foreground italic">
-                  "Bitcoin showing strong support at $40k level. Consider DCA strategy for next 24h."
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">AI Insight • 2 min ago</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-border">
-            <CardHeader><CardTitle>Trading Features</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-accent rounded-full"></div><span className="text-sm text-foreground">Real-time market data from Binance</span></div>
-              <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-primary rounded-full"></div><span className="text-sm text-foreground">15+ Technical indicators</span></div>
-              <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-purple-500 rounded-full"></div><span className="text-sm text-foreground">AI-powered analysis</span></div>
-              <div className="flex items-center space-x-3"><div className="w-2 h-2 text-accent rounded-full"></div><span className="text-sm text-foreground">Smart alert system</span></div>
-              <div className="flex items-center space-x-3"><div className="w-2 h-2 bg-blue-500 rounded-full"></div><span className="text-sm text-foreground">Portfolio P&L tracking</span></div>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );
 }
+
