@@ -8,6 +8,27 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**December 8, 2025 - NEW: Strategy Scanner Tabbed Interface + Hot Setups**:
+
+- **Hot Setups Endpoint** (`/api/market/strategies/hot-setups`)
+  - Combines all 4 scanners (S/R, Trend Dip, Volume Spike, Momentum) into confluence view
+  - Scoring: S/R Support +15pts, Breakout +30pts, Trend Dip +20pts, Volume Spike +15pts
+  - Multi-scanner bonus: coins appearing in 2+ scanners get "Strong Signal" tag
+  - Returns sorted by score with sources, tags, and clear reasons
+
+- **Strategies Page - 5-Tab Interface** (`client/src/pages/strategies.tsx`)
+  - Hot Setups (confluence view showing best opportunities)
+  - Support/Resistance (key price levels)
+  - Trend Dip (uptrend pullbacks)
+  - Volume Spike (unusual volume activity)
+  - Momentum (high momentum coins)
+
+- **Backend Optimizations**
+  - Kline cache with 60s TTL reduces Binance API calls
+  - Pool size increased to 50 coins in production with caching
+  - Rate limiting delays (100ms between batches) prevent rate limits
+  - All scanners have fallback demo data for when Binance is blocked
+
 **December 8, 2025 - IMPROVED: TOP PICKS + MOMENTUM Scanners**:
 
 - **TOP PICKS Page - Smart Confluence Scoring**
