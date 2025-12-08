@@ -72,9 +72,13 @@ app.use((req, res, next) => {
         serveStatic(app);
     }
 
-    // Start server
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => {
-        log(`serving on port ${PORT}`);
-    });
+    // Start server only if run directly (not imported)
+    if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+        const PORT = process.env.PORT || 5000;
+        server.listen(PORT, () => {
+            log(`serving on port ${PORT}`);
+        });
+    }
 })();
+
+export default app;
