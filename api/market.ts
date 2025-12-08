@@ -150,32 +150,93 @@ async function handleTicker(req: VercelRequest, res: VercelResponse, symbol: str
   } catch { sendError(res, 500, 'Failed to fetch ticker data'); }
 }
 
+function findPivotLow(lows: number[], closes: number[], lookback: number = 20): number | null {
+  if (lows.length < lookback + 2) return null;
+  const recentLows = lows.slice(-lookback);
+  const currentPrice = closes[closes.length - 1];
+  
+  let pivotLow: number | null = null;
+  for (let i = 2; i < recentLows.length - 2; i++) {
+    const isLocalMin = recentLows[i] < recentLows[i - 1] && 
+                       recentLows[i] < recentLows[i - 2] &&
+                       recentLows[i] < recentLows[i + 1] && 
+                       recentLows[i] < recentLows[i + 2];
+    if (isLocalMin && recentLows[i] < currentPrice) {
+      if (pivotLow === null || recentLows[i] > pivotLow) {
+        pivotLow = recentLows[i];
+      }
+    }
+  }
+  return pivotLow;
+}
+
 async function handleMomentum(res: VercelResponse) {
   try {
     const response = await fetch(`${BINANCE_BASE}/ticker/24hr`);
     if (!response.ok) return sendError(res, 500, 'Failed to fetch market data');
     const tickers = await response.json();
-    const momentumCoins = tickers
+    
+    const candidates = tickers
       .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 3_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN') && parseFloat(t.priceChangePercent) > 3)
-      .map((t: any) => {
+      .sort((a: any, b: any) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
+      .slice(0, 25);
+    
+    const momentumCoins = await Promise.all(
+      candidates.map(async (t: any) => {
+        const symbol = t.symbol;
         const price = parseFloat(t.lastPrice);
         const change24h = parseFloat(t.priceChangePercent);
         const volume = parseFloat(t.quoteVolume);
         const volumeFactor = Math.round((volume / 5_000_000) * 10) / 10;
-        const rsi = Math.min(85, 50 + change24h * 2);
-        const stopLoss = price * 0.95;
-        const riskPct = 5;
+        
+        let stopLoss: number | null = null;
+        let riskPct: number | null = null;
+        let rsi = 50;
+        
+        try {
+          const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=50`);
+          if (klineResponse.ok) {
+            const klines = await klineResponse.json();
+            const closes = klines.map((k: any[]) => parseFloat(k[4]));
+            const lows = klines.map((k: any[]) => parseFloat(k[3]));
+            
+            rsi = calculateRSI(closes);
+            const pivotLow = findPivotLow(lows, closes, 20);
+            
+            if (pivotLow !== null && pivotLow < price) {
+              const buffer = 0.004;
+              stopLoss = pivotLow * (1 - buffer);
+              riskPct = ((price - stopLoss) / price) * 100;
+              riskPct = Math.round(riskPct * 100) / 100;
+            }
+          }
+        } catch {}
         
         let signal: string;
         let signalStrength: number;
-        if (rsi > 85) { signal = 'TOPPED'; signalStrength = 20; }
-        else if (rsi > 75) { signal = 'HEATED'; signalStrength = 40; }
-        else if (volumeFactor > 2 && change24h > 5) { signal = 'RIDE'; signalStrength = 90; }
-        else if (volumeFactor > 1.5) { signal = 'MOMENTUM'; signalStrength = 70; }
-        else { signal = 'CAUTION'; signalStrength = 50; }
+        
+        if (stopLoss === null) {
+          signal = 'GAINING SPEED';
+          signalStrength = 60;
+        } else if (rsi > 85) {
+          signal = 'TOPPED';
+          signalStrength = 20;
+        } else if (rsi > 75) {
+          signal = 'HEATED';
+          signalStrength = 40;
+        } else if (volumeFactor > 2 && change24h > 5) {
+          signal = 'RIDE';
+          signalStrength = 90;
+        } else if (volumeFactor > 1.5) {
+          signal = 'MOMENTUM';
+          signalStrength = 70;
+        } else {
+          signal = 'CAUTION';
+          signalStrength = 50;
+        }
         
         return {
-          symbol: t.symbol,
+          symbol,
           price,
           change24h,
           volume,
@@ -187,9 +248,9 @@ async function handleMomentum(res: VercelResponse) {
           riskPct
         };
       })
-      .sort((a: any, b: any) => b.change24h - a.change24h)
-      .slice(0, 20);
-    sendJson(res, momentumCoins);
+    );
+    
+    sendJson(res, momentumCoins.slice(0, 20));
   } catch { sendError(res, 500, 'Failed to fetch momentum data'); }
 }
 

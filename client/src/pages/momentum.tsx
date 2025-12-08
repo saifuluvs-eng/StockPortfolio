@@ -71,7 +71,9 @@ export default function MomentumPage() {
             case 'RIDE':
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 w-fit"><Rocket className="w-3 h-3" /> RIDE THE WAVE</span>;
             case 'MOMENTUM':
-                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1 w-fit"><Zap className="w-3 h-3" /> GAINING SPEED</span>;
+                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1 w-fit"><Zap className="w-3 h-3" /> MOMENTUM</span>;
+            case 'GAINING SPEED':
+                return <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center gap-1 w-fit"><Zap className="w-3 h-3" /> GAINING SPEED</span>;
             case 'HEATED':
                 return <span className="px-3 py-1 rounded-full text-xs font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center gap-1 w-fit"><Activity className="w-3 h-3" /> HEATED</span>;
             case 'TOPPED':
