@@ -348,12 +348,31 @@ async function handleVolumeSpike(res: VercelResponse) {
     const response = await fetch(`${BINANCE_BASE}/ticker/24hr`);
     if (!response.ok) return sendError(res, 500, 'Failed to fetch market data');
     const tickers = await response.json();
-    const volumeSpikes = tickers
-      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 2_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN'))
-      .map((t: any) => { const volume = parseFloat(t.quoteVolume), volumeRatio = volume / 4_000_000; return { symbol: t.symbol, price: parseFloat(t.lastPrice), changePct: parseFloat(t.priceChangePercent), volume, volumeRatio: Math.round(volumeRatio * 100) / 100, isSpike: volumeRatio > 2, spikeLevel: volumeRatio > 5 ? 'extreme' : volumeRatio > 3 ? 'high' : volumeRatio > 2 ? 'moderate' : 'normal' }; })
-      .filter((t: any) => t.volumeRatio > 1.5)
-      .sort((a: any, b: any) => b.volumeRatio - a.volumeRatio)
-      .slice(0, 20);
+    
+    const candidates = tickers
+      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 5_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN') && parseFloat(t.priceChangePercent) > 0)
+      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, 40);
+    
+    const volumeSpikes = candidates.map((t: any) => {
+      const volume = parseFloat(t.quoteVolume);
+      const avgVolume = 4_000_000;
+      const volumeMultiple = Math.round((volume / avgVolume) * 10) / 10;
+      
+      return {
+        symbol: t.symbol,
+        price: parseFloat(t.lastPrice),
+        volume,
+        avgVolume,
+        volumeMultiple,
+        priceChangePercent: parseFloat(t.priceChangePercent),
+        timestamp: new Date().toISOString()
+      };
+    })
+    .filter((t: any) => t.volumeMultiple >= 1.5)
+    .sort((a: any, b: any) => b.volumeMultiple - a.volumeMultiple)
+    .slice(0, 20);
+    
     sendJson(res, volumeSpikes);
   } catch { sendError(res, 500, 'Failed to fetch volume spike data'); }
 }
@@ -363,13 +382,170 @@ async function handleTrendDip(res: VercelResponse) {
     const response = await fetch(`${BINANCE_BASE}/ticker/24hr`);
     if (!response.ok) return sendError(res, 500, 'Failed to fetch market data');
     const tickers = await response.json();
-    const trendDips = tickers
-      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 2_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN') && parseFloat(t.priceChangePercent) < -2 && parseFloat(t.priceChangePercent) > -15)
-      .map((t: any) => { const changePct = parseFloat(t.priceChangePercent), price = parseFloat(t.lastPrice), high = parseFloat(t.highPrice), dipFromHigh = ((high - price) / high) * 100; return { symbol: t.symbol, price, changePct, volume: parseFloat(t.quoteVolume), dipFromHigh: Math.round(dipFromHigh * 100) / 100, dipLevel: dipFromHigh > 10 ? 'deep' : dipFromHigh > 5 ? 'moderate' : 'shallow', buyScore: Math.min(Math.abs(changePct) * 10, 100) }; })
-      .sort((a: any, b: any) => a.changePct - b.changePct)
+    
+    const candidates = tickers
+      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 5_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN'))
+      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, 30);
+    
+    const trendDips = await Promise.all(
+      candidates.map(async (t: any) => {
+        const symbol = t.symbol;
+        const price = parseFloat(t.lastPrice);
+        const priceChangePercent = parseFloat(t.priceChangePercent);
+        const volume = parseFloat(t.quoteVolume);
+        
+        let rsi = { m15: 50, h1: 50, h4: 50, d1: 50, w1: 50 };
+        let ema200 = price * 0.95;
+        
+        try {
+          const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=4h&limit=210`);
+          if (klineResponse.ok) {
+            const klines = await klineResponse.json();
+            const closes = klines.map((k: any[]) => parseFloat(k[4]));
+            const ema200Arr = calculateEMA(closes, 200);
+            ema200 = ema200Arr[ema200Arr.length - 1];
+            rsi.h4 = calculateRSI(closes);
+          }
+        } catch {}
+        
+        const isAboveEma = price > ema200;
+        
+        return {
+          symbol,
+          price,
+          rsi,
+          ema200,
+          volume,
+          priceChangePercent,
+          isAboveEma
+        };
+      })
+    );
+    
+    const filtered = trendDips
+      .filter(t => t.isAboveEma)
+      .sort((a, b) => b.priceChangePercent - a.priceChangePercent)
       .slice(0, 20);
-    sendJson(res, trendDips);
+    
+    sendJson(res, filtered);
   } catch { sendError(res, 500, 'Failed to fetch trend dip data'); }
+}
+
+async function handleHotSetups(res: VercelResponse) {
+  try {
+    const response = await fetch(`${BINANCE_BASE}/ticker/24hr`);
+    if (!response.ok) return sendError(res, 500, 'Failed to fetch market data');
+    const tickers = await response.json();
+    
+    const candidates = tickers
+      .filter((t: any) => 
+        t.symbol.endsWith('USDT') && 
+        parseFloat(t.quoteVolume) >= 5_000_000 && 
+        !t.symbol.includes('UP') && !t.symbol.includes('DOWN')
+      )
+      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, 40);
+    
+    const hotSetups = await Promise.all(
+      candidates.map(async (t: any) => {
+        const symbol = t.symbol;
+        const price = parseFloat(t.lastPrice);
+        const changePct = parseFloat(t.priceChangePercent);
+        const volume = parseFloat(t.quoteVolume);
+        const high24h = parseFloat(t.highPrice);
+        const low24h = parseFloat(t.lowPrice);
+        
+        let rsi = 50, ema20 = price, ema50 = price, volumeRatio = 1;
+        
+        try {
+          const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=60`);
+          if (klineResponse.ok) {
+            const klines = await klineResponse.json();
+            const closes = klines.map((k: any[]) => parseFloat(k[4]));
+            const volumes = klines.map((k: any[]) => parseFloat(k[5]));
+            
+            rsi = calculateRSI(closes);
+            const ema20Arr = calculateEMA(closes, 20);
+            const ema50Arr = calculateEMA(closes, 50);
+            ema20 = ema20Arr[ema20Arr.length - 1];
+            ema50 = ema50Arr[ema50Arr.length - 1];
+            
+            const avgVol = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+            volumeRatio = volumes[volumes.length - 1] / avgVol;
+          }
+        } catch {}
+        
+        let score = 0;
+        const sources: string[] = [];
+        const tags: string[] = [];
+        const reasons: string[] = [];
+        
+        // S/R Signal check
+        const range = high24h - low24h;
+        const positionInRange = range > 0 ? (price - low24h) / range : 0.5;
+        if (positionInRange < 0.2) {
+          score += 15;
+          sources.push('S/R');
+          tags.push('At Support');
+          reasons.push(`Near 24h low support zone`);
+        } else if (positionInRange > 0.9) {
+          score += 30;
+          sources.push('S/R');
+          tags.push('Breakout');
+          reasons.push(`Breaking above resistance`);
+        }
+        
+        // Trend Dip check
+        if (price > ema20 && ema20 > ema50 && rsi < 50 && rsi > 30) {
+          score += 20;
+          sources.push('TrendDip');
+          tags.push('Uptrend');
+          reasons.push('Healthy pullback in uptrend');
+        }
+        
+        // Volume Spike check
+        if (volumeRatio > 1.5 && changePct > 0) {
+          score += 15;
+          sources.push('VolSpike');
+          tags.push('Volume Surge');
+          reasons.push(`${volumeRatio.toFixed(1)}x average volume`);
+        }
+        
+        // Momentum check
+        if (changePct >= 5 && changePct <= 15 && rsi < 75) {
+          score += 20;
+          sources.push('Momentum');
+          tags.push('Strong Move');
+          reasons.push(`+${changePct.toFixed(1)}% with room to run`);
+        }
+        
+        // Multi-scanner confluence bonus
+        if (sources.length >= 2) {
+          score += 15;
+          tags.unshift('Strong Signal');
+        }
+        
+        return {
+          symbol,
+          price,
+          score,
+          sources,
+          tags,
+          reasons: reasons.length > 0 ? reasons : ['Monitoring for setup'],
+          rsi: Math.round(rsi),
+          volume
+        };
+      })
+    );
+    
+    const filtered = hotSetups
+      .filter(s => s.score >= 15)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 15);
+    
+    sendJson(res, filtered);
+  } catch { sendError(res, 500, 'Failed to fetch hot setups'); }
 }
 
 async function handleTopPicks(res: VercelResponse) {
@@ -547,6 +723,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (pathname === 'strategies/volume-spike') return handleVolumeSpike(res);
   if (pathname === 'strategies/trend-dip') return handleTrendDip(res);
   if (pathname === 'strategies/top-picks') return handleTopPicks(res);
+  if (pathname === 'strategies/hot-setups') return handleHotSetups(res);
 
   sendError(res, 404, `Market endpoint not found: ${pathname}`);
 }
