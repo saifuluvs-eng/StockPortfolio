@@ -881,16 +881,17 @@ async function sendToGemini(prompt) {
     };
 
     console.log("SENDING TO GEMINI. Prompt length:", prompt.length);
-    const resp = await fetch(url, {
+    const response = await fetch(GEMINI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
     });
-    if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(`Gemini API error: ${resp.status} ${txt}`);
+
+    if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(`Gemini API error: ${response.status} ${txt}`);
     }
-    const json = await resp.json();
+    const json = await response.json();
     // Attempt to extract candidate text robustly
     const candidate = json?.candidates?.[0]?.content?.parts?.[0]?.text || json?.candidates?.[0]?.output || JSON.stringify(json);
     return { raw: json, text: candidate };
