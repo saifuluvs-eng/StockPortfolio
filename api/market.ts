@@ -91,27 +91,52 @@ async function handleGainers(req: VercelRequest, res: VercelResponse) {
 
 async function handleRSI(req: VercelRequest, res: VercelResponse) {
   try {
-    const limit = Number(req.query?.limit) || 100;
+    const limit = Number(req.query?.limit) || 60;
+    const timeframeParam = req.query?.timeframe as string || '4h';
+    const timeframes = timeframeParam.split(',').filter(Boolean);
+    
     const tickerResponse = await fetch(`${BINANCE_BASE}/ticker/24hr`);
     if (!tickerResponse.ok) return sendError(res, 500, 'Failed to fetch market data');
     const tickers = await tickerResponse.json();
+    
+    const tickerMap = new Map<string, any>();
+    tickers.forEach((t: any) => tickerMap.set(t.symbol, t));
+    
     const topSymbols = tickers
-      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 1000000)
+      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) > 1000000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN'))
       .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
-      .slice(0, Math.min(limit, 30))
+      .slice(0, Math.min(limit, 60))
       .map((t: any) => t.symbol);
+    
     const results = await Promise.all(
-      topSymbols.slice(0, 10).map(async (symbol: string) => {
+      topSymbols.map(async (symbol: string) => {
         try {
-          const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=4h&limit=50`);
-          if (!klineResponse.ok) return null;
-          const klines = await klineResponse.json();
-          const closes = klines.map((k: any[]) => parseFloat(k[4]));
-          const rsi = calculateRSI(closes);
-          return { symbol, rsi: Math.round(rsi * 100) / 100, signal: rsi < 30 ? 'oversold' : rsi > 70 ? 'overbought' : 'neutral' };
+          const ticker = tickerMap.get(symbol);
+          const rsiByTimeframe: Record<string, number> = {};
+          
+          await Promise.all(
+            timeframes.map(async (tf) => {
+              try {
+                const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=${tf}&limit=50`);
+                if (klineResponse.ok) {
+                  const klines = await klineResponse.json();
+                  const closes = klines.map((k: any[]) => parseFloat(k[4]));
+                  rsiByTimeframe[tf] = Math.round(calculateRSI(closes));
+                }
+              } catch {}
+            })
+          );
+          
+          return {
+            symbol,
+            rsi: rsiByTimeframe,
+            price: parseFloat(ticker?.lastPrice || '0'),
+            change: parseFloat(ticker?.priceChangePercent || '0')
+          };
         } catch { return null; }
       })
     );
+    
     sendJson(res, results.filter(Boolean));
   } catch { sendError(res, 500, 'Failed to calculate RSI data'); }
 }
