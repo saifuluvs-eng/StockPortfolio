@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 // import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
+// import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 
 // Only create logger if needed (lazy)
@@ -21,6 +21,8 @@ export function log(message: string, source = "express") {
 }
 
 export async function setupVite(app: Express, server: Server) {
+  // Load Vite config and library dynamically
+  const { default: viteConfig } = await import("../vite.config");
   const { createServer: createViteServer, createLogger } = await import("vite");
   viteLogger = createLogger();
 
