@@ -30,9 +30,9 @@ app.use((req, res, next) => {
     let capturedJsonResponse: Record<string, unknown> | undefined;
 
     const originalResJson = res.json.bind(res);
-    res.json = function json(bodyJson: unknown, ...args: unknown[]) {
+    res.json = function json(bodyJson: unknown) {
         capturedJsonResponse = bodyJson as Record<string, unknown>;
-        return originalResJson(bodyJson, ...args);
+        return originalResJson(bodyJson);
     };
 
     res.on("finish", () => {

@@ -460,7 +460,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAiAnalysis(userId?: string, symbol?: string, analysisType?: string): Promise<AiAnalysis[]> {
-    const conditions: (typeof eq<any, any> | undefined)[] = [];
+    const conditions: any[] = [];
     
     if (userId) {
       conditions.push(eq(aiAnalysis.userId, userId));
@@ -479,7 +479,7 @@ export class DatabaseStorage implements IStorage {
       .limit(50);
       
     if (conditions.length > 0) {
-      return await query.where(and(...conditions.filter(Boolean)));
+      return await query.where(and(...conditions));
     }
     
     return await query;

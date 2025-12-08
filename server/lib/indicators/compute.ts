@@ -60,7 +60,8 @@ export function computeIndicators(
   if (e20 && e50 && e200) {
     if (e20 > e50 && e50 > e200) score += 15;
     if (e20 < e50 && e50 < e200) score -= 15;
-    score += Math.sign((ema20[ema20.length - 1] - ema20[ema20.length - 2]) ?? 0) * 5;
+    const emaDiff = ema20[ema20.length - 1] - (ema20[ema20.length - 2] || 0);
+    score += Math.sign(emaDiff) * 5;
   }
   const rsi = take(rsiArr);
   if (typeof rsi === "number") {
