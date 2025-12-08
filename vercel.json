@@ -28,6 +28,10 @@
       "destination": "/api/scanner"
     },
     {
+      "source": "/api/ohlcv",
+      "destination": "/api/ohlcv"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

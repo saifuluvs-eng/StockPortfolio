@@ -131,9 +131,38 @@ async function handleMomentum(res: VercelResponse) {
     if (!response.ok) return sendError(res, 500, 'Failed to fetch market data');
     const tickers = await response.json();
     const momentumCoins = tickers
-      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 3_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN') && Math.abs(parseFloat(t.priceChangePercent)) > 3)
-      .map((t: any) => ({ symbol: t.symbol, price: parseFloat(t.lastPrice), changePct: parseFloat(t.priceChangePercent), volume: parseFloat(t.quoteVolume), momentum: parseFloat(t.priceChangePercent) > 0 ? 'bullish' : 'bearish', strength: Math.min(Math.abs(parseFloat(t.priceChangePercent)) / 10, 1) }))
-      .sort((a: any, b: any) => Math.abs(b.changePct) - Math.abs(a.changePct))
+      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 3_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN') && parseFloat(t.priceChangePercent) > 3)
+      .map((t: any) => {
+        const price = parseFloat(t.lastPrice);
+        const change24h = parseFloat(t.priceChangePercent);
+        const volume = parseFloat(t.quoteVolume);
+        const volumeFactor = Math.round((volume / 5_000_000) * 10) / 10;
+        const rsi = Math.min(85, 50 + change24h * 2);
+        const stopLoss = price * 0.95;
+        const riskPct = 5;
+        
+        let signal: string;
+        let signalStrength: number;
+        if (rsi > 85) { signal = 'TOPPED'; signalStrength = 20; }
+        else if (rsi > 75) { signal = 'HEATED'; signalStrength = 40; }
+        else if (volumeFactor > 2 && change24h > 5) { signal = 'RIDE'; signalStrength = 90; }
+        else if (volumeFactor > 1.5) { signal = 'MOMENTUM'; signalStrength = 70; }
+        else { signal = 'CAUTION'; signalStrength = 50; }
+        
+        return {
+          symbol: t.symbol,
+          price,
+          change24h,
+          volume,
+          volumeFactor,
+          rsi: Math.round(rsi),
+          signal,
+          signalStrength,
+          stopLoss,
+          riskPct
+        };
+      })
+      .sort((a: any, b: any) => b.change24h - a.change24h)
       .slice(0, 20);
     sendJson(res, momentumCoins);
   } catch { sendError(res, 500, 'Failed to fetch momentum data'); }
@@ -253,10 +282,53 @@ async function handleTopPicks(res: VercelResponse) {
     if (!response.ok) return sendError(res, 500, 'Failed to fetch market data');
     const tickers = await response.json();
     const topPicks = tickers
-      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 5_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN'))
-      .map((t: any) => { const changePct = parseFloat(t.priceChangePercent), volume = parseFloat(t.quoteVolume); const volumeScore = Math.min(volume / 50_000_000, 1), momentumScore = Math.min(Math.abs(changePct) / 10, 1); return { symbol: t.symbol, price: parseFloat(t.lastPrice), changePct, volume, score: Math.round((volumeScore * 0.4 + momentumScore * 0.6) * 100), recommendation: changePct > 3 ? 'buy' : changePct < -3 ? 'sell' : 'hold', category: 'top_pick' }; })
+      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 5_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN') && parseFloat(t.priceChangePercent) > 2)
+      .map((t: any) => {
+        const price = parseFloat(t.lastPrice);
+        const changePct = parseFloat(t.priceChangePercent);
+        const volume = parseFloat(t.quoteVolume);
+        const high = parseFloat(t.highPrice);
+        const low = parseFloat(t.lowPrice);
+        
+        const volumeScore = Math.min(volume / 50_000_000, 1);
+        const momentumScore = Math.min(changePct / 10, 1);
+        const score = Math.round((volumeScore * 0.4 + momentumScore * 0.6) * 100);
+        
+        const tags: string[] = [];
+        const reasons: string[] = [];
+        
+        if (changePct > 5) {
+          tags.push('Ride the Wave');
+          reasons.push(`Strong momentum: +${changePct.toFixed(1)}% in 24h`);
+        }
+        if (volume > 20_000_000) {
+          tags.push('High Volume');
+          reasons.push(`Volume $${(volume / 1_000_000).toFixed(0)}M shows strong interest`);
+        }
+        if ((price - low) / (high - low) < 0.3) {
+          tags.push('Near Support');
+          reasons.push('Price near support level - good entry');
+        }
+        if (score > 70) {
+          tags.push('PERFECT Setup');
+          reasons.push('Multiple confluence factors aligned');
+        }
+        
+        if (reasons.length === 0) {
+          reasons.push('Solid momentum and volume profile');
+        }
+        
+        return {
+          symbol: t.symbol,
+          price,
+          score,
+          tags,
+          reasons,
+          sources: { sr: null, mom: null }
+        };
+      })
       .sort((a: any, b: any) => b.score - a.score)
-      .slice(0, 15);
+      .slice(0, 8);
     sendJson(res, topPicks);
   } catch { sendError(res, 500, 'Failed to fetch top picks'); }
 }
