@@ -4,7 +4,7 @@ const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models
 
 // Import combined signal builder
 import { buildTechnicalJSON } from "./combinedSignals";
-import { runSummaryWithIndicators } from "../gemini_chart_analysis.js";
+import { runSummaryWithIndicators } from "../gemini_chart_analysis";
 
 /**
  * Helper function to call Gemini API with retry logic for rate limiting

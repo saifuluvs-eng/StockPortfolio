@@ -1,0 +1,890 @@
+// Force reload timestamp: 1
+/**
+ * gemini_tech_summary.ts
+ *
+ * Complete single-file solution:
+ * - Calculates indicators from OHLCV arrays
+ * - Computes combined fields: trend_bias, momentum_state, volume_context, volatility_state
+ * - Builds final JSON and injects into prompt template
+ * - Sends request to Gemini generative API
+ */
+
+export interface Candle {
+    t?: number | string;
+    o: number;
+    h: number;
+    l: number;
+    c: number;
+    v: number;
+}
+
+export interface Indicators {
+    [key: string]: any;
+}
+
+/* ========== Minimal helper functions for indicators (no external deps) ========== */
+
+/**
+ * ema(data, period) - data is array of numbers (closing prices), returns array of EMA values (same length, first (period-1) entries null)
+ */
+export function ema(values: number[], period: number): (number | null)[] {
+    const res: (number | null)[] = Array(values.length).fill(null);
+    if (!values || values.length < period) return res;
+    const k = 2 / (period + 1);
+    // start with SMA for first EMA seed
+    let sum = 0;
+    for (let i = 0; i < period; i++) sum += values[i];
+    let prev = sum / period;
+    res[period - 1] = prev;
+    for (let i = period; i < values.length; i++) {
+        const v = values[i];
+        const cur = v * k + prev * (1 - k);
+        res[i] = cur;
+        prev = cur;
+    }
+    return res;
+}
+
+/**
+ * sma(values, period)
+ */
+export function sma(values: number[], period: number): (number | null)[] {
+    const res: (number | null)[] = Array(values.length).fill(null);
+    if (!values || values.length < period) return res;
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+        sum += values[i];
+        if (i >= period) sum -= values[i - period];
+        if (i >= period - 1) res[i] = sum / period;
+    }
+    return res;
+}
+
+/**
+ * rsi: returns array with RSI (14 default)
+ */
+export function rsi(values: number[], period: number = 14): (number | null)[] {
+    const res: (number | null)[] = Array(values.length).fill(null);
+    if (!values || values.length <= period) return res;
+    let gains = 0, losses = 0;
+    for (let i = 1; i <= period; i++) {
+        const d = values[i] - values[i - 1];
+        if (d > 0) gains += d;
+        else losses -= d;
+    }
+    let avgGain = gains / period;
+    let avgLoss = losses / period;
+    res[period] = 100 - (100 / (1 + avgGain / avgLoss));
+    for (let i = period + 1; i < values.length; i++) {
+        const d = values[i] - values[i - 1];
+        const g = d > 0 ? d : 0;
+        const l = d < 0 ? -d : 0;
+        avgGain = (avgGain * (period - 1) + g) / period;
+        avgLoss = (avgLoss * (period - 1) + l) / period;
+        const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+        res[i] = 100 - 100 / (1 + rs);
+    }
+    return res;
+}
+
+/**
+ * macd: returns object {macd, signal, hist} arrays
+ * uses defaults: fast=12, slow=26, signal=9
+ */
+export function macd(values: number[], fast: number = 12, slow: number = 26, signal: number = 9) {
+    const emaFast = ema(values, fast);
+    const emaSlow = ema(values, slow);
+    const macdLine = values.map((v, i) => (emaFast[i] != null && emaSlow[i] != null ? (emaFast[i] as number) - (emaSlow[i] as number) : null));
+    const signalLine = ema(macdLine.map(v => (v == null ? 0 : v)), signal); // treat null as 0 for smoothing but results earlier will be null
+    const hist = macdLine.map((v, i) => (v != null && signalLine[i] != null ? v - (signalLine[i] as number) : null));
+    return { macd: macdLine, signal: signalLine, hist };
+}
+
+/**
+ * atr: average true range, period default 14
+ * candles: array of {o,h,l,c,v}
+ */
+export function atr(candles: Candle[], period: number = 14): (number | null)[] {
+    const res: (number | null)[] = Array(candles.length).fill(null);
+    if (!candles || candles.length <= period) return res;
+    const tr: number[] = [];
+    for (let i = 0; i < candles.length; i++) {
+        if (i === 0) {
+            tr.push(candles[i].h - candles[i].l);
+        } else {
+            const cur = Math.max(
+                candles[i].h - candles[i].l,
+                Math.abs(candles[i].h - candles[i - 1].c),
+                Math.abs(candles[i].l - candles[i - 1].c)
+            );
+            tr.push(cur);
+        }
+    }
+    // sma of TR first then Wilder smoothing
+    let sum = 0;
+    for (let i = 0; i < period; i++) sum += tr[i];
+    res[period - 1] = sum / period;
+    for (let i = period; i < tr.length; i++) {
+        res[i] = ((res[i - 1] as number) * (period - 1) + tr[i]) / period;
+    }
+    return res;
+}
+
+/**
+ * bollingerBands: returns {lower, middle, upper, width} arrays
+ */
+export function bollingerBands(values: number[], period: number = 20, mult: number = 2) {
+    const middle = sma(values, period);
+    const lower: (number | null)[] = Array(values.length).fill(null);
+    const upper: (number | null)[] = Array(values.length).fill(null);
+    const width: (number | null)[] = Array(values.length).fill(null);
+    for (let i = period - 1; i < values.length; i++) {
+        let sumSq = 0;
+        for (let j = i - period + 1; j <= i; j++) {
+            const tempM = middle[i] as number;
+            const d = values[j] - tempM;
+            sumSq += d * d;
+        }
+        const sd = Math.sqrt(sumSq / period);
+        const tempM = middle[i] as number;
+        lower[i] = tempM - mult * sd;
+        upper[i] = tempM + mult * sd;
+        width[i] = ((upper[i] as number) - (lower[i] as number)) / tempM;
+    }
+    return { lower, middle, upper, width };
+}
+
+/**
+ * vwap: requires intraday ticks or candlestick with volume; simplified VWAP across array:
+ * compute cumulative (price*vol)/cumulative vol using close as price
+ */
+export function vwap(candles: Candle[]): (number | null)[] {
+    const res: (number | null)[] = Array(candles.length).fill(null);
+    let cumPV = 0, cumVol = 0;
+    for (let i = 0; i < candles.length; i++) {
+        const typical = (candles[i].h + candles[i].l + candles[i].c) / 3;
+        const pv = typical * candles[i].v;
+        cumPV += pv;
+        cumVol += candles[i].v;
+        res[i] = cumVol === 0 ? null : cumPV / cumVol;
+    }
+    return res;
+}
+
+/**
+ * obv: On-Balance Volume
+ */
+export function obv(candles: Candle[]): (number | null)[] {
+    const res: (number | null)[] = Array(candles.length).fill(null);
+    let running = 0;
+    res[0] = running;
+    for (let i = 1; i < candles.length; i++) {
+        if (candles[i].c > candles[i - 1].c) running += candles[i].v;
+        else if (candles[i].c < candles[i - 1].c) running -= candles[i].v;
+        res[i] = running;
+    }
+    return res;
+}
+
+/**
+ * stochastic %K and %D - returns {k, d}
+ * kPeriod default 14, dPeriod default 3
+ */
+export function stochastic(candles: Candle[], kPeriod: number = 14, dPeriod: number = 3) {
+    const k: (number | null)[] = Array(candles.length).fill(null);
+    const d: (number | null)[] = Array(candles.length).fill(null);
+    for (let i = kPeriod - 1; i < candles.length; i++) {
+        let highest = -Infinity;
+        let lowest = Infinity;
+        for (let j = i - kPeriod + 1; j <= i; j++) {
+            if (candles[j].h > highest) highest = candles[j].h;
+            if (candles[j].l < lowest) lowest = candles[j].l;
+        }
+        k[i] = ((candles[i].c - lowest) / (highest - lowest)) * 100;
+    }
+    const kValues = k.map(v => (v == null ? 0 : v));
+    const dArr = sma(kValues, dPeriod);
+    for (let i = 0; i < dArr.length; i++) d[i] = dArr[i];
+    return { k, d };
+}
+
+/**
+ * williamsR - %R = (HighestHigh - Close) / (HighestHigh - LowestLow) * -100
+ */
+export function williamsR(candles: Candle[], period: number = 14): (number | null)[] {
+    const res: (number | null)[] = Array(candles.length).fill(null);
+    for (let i = period - 1; i < candles.length; i++) {
+        let hh = -Infinity, ll = Infinity;
+        for (let j = i - period + 1; j <= i; j++) {
+            if (candles[j].h > hh) hh = candles[j].h;
+            if (candles[j].l < ll) ll = candles[j].l;
+        }
+        res[i] = ((hh - candles[i].c) / (hh - ll)) * -100;
+    }
+    return res;
+}
+
+/**
+ * simple PSAR (Parabolic SAR) implementation - returns array psar
+ * This is a light implementation and not bulletproof for edge cases.
+ */
+export function psar(candles: Candle[], step: number = 0.02, maxStep: number = 0.2): (number | null)[] {
+    const psar: (number | null)[] = Array(candles.length).fill(null);
+    if (candles.length === 0) return psar;
+    let up = true; // start with assumed trend up
+    let af = step;
+    let ep = candles[0].h; // extreme point
+    let sar = candles[0].l;
+    psar[0] = sar;
+    for (let i = 1; i < candles.length; i++) {
+        sar = sar + af * (ep - sar);
+        if (up) {
+            if (candles[i].l < sar) {
+                // switch to down
+                up = false;
+                sar = ep;
+                ep = candles[i].l;
+                af = step;
+            } else {
+                if (candles[i].h > ep) {
+                    ep = candles[i].h;
+                    af = Math.min(af + step, maxStep);
+                }
+            }
+        } else {
+            if (candles[i].h > sar) {
+                // switch to up
+                up = true;
+                sar = ep;
+                ep = candles[i].h;
+                af = step;
+            } else {
+                if (candles[i].l < ep) {
+                    ep = candles[i].l;
+                    af = Math.min(af + step, maxStep);
+                }
+            }
+        }
+        psar[i] = sar;
+    }
+    return psar;
+}
+
+/**
+ * ADX simplified - returns ADX array
+ * Uses DX = 100 * (|+DI - -DI| / (|+DI + -DI|)), then ADX is smoothed DX (Wilder)
+ * This is simplified for speed and readability.
+ */
+export function adx(candles: Candle[], period: number = 14): (number | null)[] {
+    const length = candles.length;
+    const tr = Array(length).fill(0);
+    const plusDM = Array(length).fill(0);
+    const minusDM = Array(length).fill(0);
+    for (let i = 1; i < length; i++) {
+        const upMove = candles[i].h - candles[i - 1].h;
+        const downMove = candles[i - 1].l - candles[i].l;
+        plusDM[i] = upMove > downMove && upMove > 0 ? upMove : 0;
+        minusDM[i] = downMove > upMove && downMove > 0 ? downMove : 0;
+        tr[i] = Math.max(candles[i].h - candles[i].l, Math.abs(candles[i].h - candles[i - 1].c), Math.abs(candles[i].l - candles[i - 1].c));
+    }
+    const atrArr = atr(candles, period);
+    const plusDI: (number | null)[] = Array(length).fill(null);
+    const minusDI: (number | null)[] = Array(length).fill(null);
+    for (let i = 0; i < length; i++) {
+        if (atrArr[i]) {
+            plusDI[i] = (100 * (plusDM[i] / (atrArr[i] as number)));
+            minusDI[i] = (100 * (minusDM[i] / (atrArr[i] as number)));
+        } else {
+            plusDI[i] = null;
+            minusDI[i] = null;
+        }
+    }
+    const dx: (number | null)[] = Array(length).fill(null);
+    for (let i = 0; i < length; i++) {
+        if (plusDI[i] != null && minusDI[i] != null && ((plusDI[i] as number) + (minusDI[i] as number)) !== 0) {
+            dx[i] = (100 * Math.abs((plusDI[i] as number) - (minusDI[i] as number)) / ((plusDI[i] as number) + (minusDI[i] as number)));
+        } else dx[i] = null;
+    }
+    const adxArr: (number | null)[] = Array(length).fill(null);
+    let sumDX = 0, startIdx = period;
+    for (let i = startIdx; i < startIdx * 2 && i < dx.length; i++) {
+        if (dx[i] != null) sumDX += (dx[i] as number);
+    }
+    if (dx[startIdx]) {
+        adxArr[startIdx] = sumDX / period;
+        for (let i = startIdx + 1; i < dx.length; i++) {
+            if (adxArr[i - 1] != null && dx[i] != null) {
+                adxArr[i] = ((adxArr[i - 1] as number) * (period - 1) + (dx[i] as number)) / period;
+            } else adxArr[i] = null;
+        }
+    }
+    return adxArr;
+}
+
+/* ========== Combined fields logic (rules) ========== */
+
+/**
+ * computeTrendBias
+ */
+export function computeTrendBiasFromValues(price: number, ema20Val: number | null, ema50Val: number | null, vwapVal: number | null) {
+    let bias = "neutral";
+    if (ema20Val != null && ema50Val != null) {
+        if (price < ema20Val && ema20Val < ema50Val) bias = "bearish";
+        else if (price > ema20Val && ema20Val > ema50Val) bias = "bullish";
+    }
+
+    // VWAP influence (should not override strong EMA structure)
+    if (vwapVal != null) {
+        if (price < vwapVal && bias !== "bullish") bias = "bearish";
+        if (price > vwapVal && bias !== "bearish") bias = "bullish";
+    }
+
+    // Contradictory checks
+    if (ema20Val != null && ema50Val != null) {
+        if ((price > ema20Val && ema20Val < ema50Val) || (price < ema20Val && ema20Val > ema50Val)) bias = "neutral";
+    }
+    return bias;
+}
+
+/**
+ * computeMomentumStateFromValues
+ */
+export function computeMomentumStateFromValues(rsiVal: number | null, macdVal: number | null) {
+    if (rsiVal == null && macdVal == null) return "neutral";
+    if (rsiVal != null) {
+        if (rsiVal < 30) return "oversold";
+        if (rsiVal > 70) return "overbought";
+    }
+    if (macdVal != null) {
+        if (macdVal > 0) {
+            if (rsiVal != null && rsiVal > 55) return "strong";
+            return "strong";
+        }
+        if (macdVal < 0) {
+            if (rsiVal != null && rsiVal < 45) return "weak";
+            return "weak";
+        }
+    }
+    if (rsiVal != null) {
+        if (rsiVal >= 45 && rsiVal <= 55) return "neutral";
+        if (rsiVal > 55) return "strong";
+        if (rsiVal < 45) return "weak";
+    }
+    return "neutral";
+}
+
+/**
+ * computeVolumeContextFromValues
+ * Input: obvSeries (array) optional OR avgVol and prevAvgVol
+ */
+export function computeVolumeContextFromValues(obvSeries: number[], avgVol: number | null, prevAvgVol: number | null) {
+    if (obvSeries && obvSeries.length >= 3) {
+        // check last trend: last value vs value N candles ago
+        const last = obvSeries[obvSeries.length - 1];
+        const prev = obvSeries[Math.max(0, obvSeries.length - 6)]; // check 5-candle back
+        if (last > prev) return "increasing";
+        if (last < prev) return "decreasing";
+    }
+    if (avgVol != null && prevAvgVol != null) {
+        if (avgVol > prevAvgVol) return "increasing";
+        if (avgVol < prevAvgVol) return "decreasing";
+    }
+    return "neutral";
+}
+
+/**
+ * computeVolatilityStateFromValues
+ */
+export function computeVolatilityStateFromValues(bbSqueezeFlag: number, atrVal: number | null) {
+    if (bbSqueezeFlag === 1) return "low";
+    if (atrVal != null) {
+        // thresholds are relative; you may tune these to asset volatility
+        if (atrVal < 0.5) return "low";
+        if (atrVal > 2.0) return "high";
+    }
+    return "normal";
+}
+
+/* =======================================================
+   SUPPORT / RESISTANCE ENGINE (Option D - Full Suite)
+   ======================================================= */
+
+function findSwingLevels(candles: Candle[], lookback: number = 60) {
+    const supports: number[] = [];
+    const resistances: number[] = [];
+    const n = candles.length;
+    const start = Math.max(2, n - lookback);
+
+    for (let i = start; i < n - 2; i++) {
+        const prev1 = candles[i - 1];
+        const prev2 = candles[i - 2];
+        const curr = candles[i];
+        const next1 = candles[i + 1];
+        const next2 = candles[i + 2];
+
+        // Local support (swing low)
+        if (
+            curr.l < prev1.l && curr.l < prev2.l &&
+            curr.l < next1.l && curr.l < next2.l
+        ) {
+            supports.push(curr.l);
+        }
+
+        // Local resistance (swing high)
+        if (
+            curr.h > prev1.h && curr.h > prev2.h &&
+            curr.h > next1.h && curr.h > next2.h
+        ) {
+            resistances.push(curr.h);
+        }
+    }
+
+    return {
+        supports: [...new Set(supports)].sort((a, b) => a - b),
+        resistances: [...new Set(resistances)].sort((a, b) => a - b),
+    };
+}
+
+function findLiquidityZones(candles: Candle[], thresholdPct: number = 0.003) {
+    const lows = candles.map(c => c.l).sort((a, b) => a - b);
+    const highs = candles.map(c => c.h).sort((a, b) => a - b);
+
+    const supportZones: number[] = [];
+    const resistanceZones: number[] = [];
+
+    // Cluster lows -> support zones
+    for (let i = 1; i < lows.length; i++) {
+        const diff = Math.abs((lows[i] - lows[i - 1]) / lows[i - 1]);
+        if (diff < thresholdPct) supportZones.push(lows[i]);
+    }
+
+    // Cluster highs -> resistance zones
+    for (let i = 1; i < highs.length; i++) {
+        const diff = Math.abs((highs[i] - highs[i - 1]) / highs[i - 1]);
+        if (diff < thresholdPct) resistanceZones.push(highs[i]);
+    }
+
+    return {
+        supportZones: [...new Set(supportZones)].sort((a, b) => a - b),
+        resistanceZones: [...new Set(resistanceZones)].sort((a, b) => a - b),
+    };
+}
+
+function findSoftZones(candles: Candle[], depth: number = 40) {
+    const sliced = candles.slice(-depth);
+    const lows = sliced.map(c => c.l);
+    const highs = sliced.map(c => c.h);
+
+    const softSupport = Math.min(...lows);
+    const softResistance = Math.max(...highs);
+
+    const midpoint = (softSupport + softResistance) / 2;
+
+    return {
+        softSupport,
+        softResistance,
+        midpoint
+    };
+}
+
+function computeUnifiedSupportResistance(candles: Candle[]) {
+    const swings = findSwingLevels(candles);
+    const liquidity = findLiquidityZones(candles);
+    const soft = findSoftZones(candles);
+
+    // Combine all into unified arrays
+    let support = [
+        ...swings.supports,
+        ...liquidity.supportZones,
+        soft.softSupport,
+        soft.midpoint
+    ];
+
+    let resistance = [
+        ...swings.resistances,
+        ...liquidity.resistanceZones,
+        soft.softResistance,
+        soft.midpoint
+    ];
+
+    // Remove duplicates + sort
+    support = [...new Set(support)].sort((a, b) => a - b).slice(0, 5);      // top 5 levels max
+    resistance = [...new Set(resistance)].sort((a, b) => a - b).slice(-5);  // top 5 levels max
+
+    return { support, resistance };
+}
+
+/* ========== Final JSON builder + Gemini prompt builder ========== */
+
+const institutionalPromptTemplate = `
+You are an institutional-grade crypto market analyst.  
+You will be given a JSON object with combined technical fields.  
+You must produce short, research-desk style analysis that sounds like a professional from Delphi, Nansen, GSR, or Binance Research.
+
+====================
+GLOBAL RULES
+====================
+
+1. NEVER mention indicators by name (no EMA, RSI, MACD, VWAP, ADX, CCI, Stoch, etc).
+2. NEVER mention indicator values.
+3. ONLY use these combined fields to reason:
+   - trend_bias
+   - momentum_state
+   - volume_context
+   - volatility_state
+   - support
+   - resistance
+
+4. ALWAYS produce institutional-grade insights by combining multiple signals into a single interpretation.
+5. ALWAYS use professional, trader-level vocabulary.
+
+====================
+ELITE UPGRADE LAYER
+====================
+
+Incorporate advanced institutional microstructure concepts.
+Use deeper analyst-grade language such as:
+
+FLOW DYNAMICS:
+- initiative flows (aggressive market orders), passive absorption (limit order defense), rotational flow bias, bid-side absorption / ask-side absorption, lack of initiative buyers / sellers, flow imbalance, thin liquidity pockets, failed displacement, displacement pressure building
+
+PRICE ACTION STRUCTURE:
+- wick rejections, high-timeframe overhang, structural compression, controlled drift, inefficiency fill potential, failed breakout structure, defended lows / defended highs, liquidity sweeps
+
+MOMENTUM REGIMES:
+- directional impulse strengthening, momentum decay, impulse fragmentation, follow-through failure, exhaustion signals
+
+VOLATILITY REGIMES:
+- compression regime (coiling), expansion regime (instability), volatility pockets, expansion spillover risk, volatility skew
+
+Use these concepts **only when supported by the combined fields**, never invent data.
+
+When describing market behavior, always connect:
+- trend_bias -> directional structure
+- momentum_state -> impulse quality
+- volume_context -> participation confidence
+- volatility_state -> regime + risk quality
+
+====================
+COLOR CODE SYSTEM
+====================
+
+BIAS COLORS:
+- Strong Bullish -> 🟢
+- Bullish -> 🟩
+- Bullish (Weak) -> 🟢🟨
+- Neutral (Leaning Bullish) -> 🟨
+- Neutral -> ⚪
+- Neutral (Leaning Bearish) -> 🟧
+- Bearish -> 🟥
+- Bearish (Weak) -> 🟥🟨
+- Strong Bearish -> 🔴
+
+RISK COLORS:
+- High risk -> 🔴
+- Medium risk -> 🟠
+- Low risk -> 🟢
+
+VOLATILITY COLORS:
+- Low volatility -> 🔵
+- Normal volatility -> ⚪
+- High volatility -> 🟣
+
+====================
+BIAS ENGINE (MANDATORY)
+====================
+
+Determine the final bias using this logic AND prepend the appropriate color code:
+
+IF trend_bias = "bullish":
+    ELSE: Bias = "Bullish"
+
+IF trend_bias = "bearish":
+    IF momentum_state = "strong": Bias = "Strong Bearish"
+    ELSE IF momentum_state = "weak": Bias = "Bearish (Weak)"
+    ELSE: Bias = "Bearish"
+
+IF trend_bias = "neutral":
+    IF momentum_state = "strong": Bias = "Neutral (Leaning Bullish)"
+    ELSE IF momentum_state = "weak": Bias = "Neutral (Leaning Bearish)"
+    ELSE: Bias = "Neutral"
+
+====================
+BIAS ENGINE x VOCABULARY FUSION MATRIX
+====================
+
+When generating the summary, apply this bias-to-language fusion matrix:
+
+Strong Bullish:
+- use terms like "strong directional impulse", "aggressive buyer flows", "trend integrity high"
+
+Bullish:
+- use "buyer-sided pressure", "constructive structure", "momentum follow-through supportive"
+
+Bullish (Weak):
+- use "fragile upside extension", "incomplete buyer commitment", "limited upside drive"
+
+Neutral (Leaning Bullish):
+- use "subtle bullish tilt", "mild bid-side presence", "buyers quietly absorbing"
+
+Neutral:
+- use "balanced flows", "non-directional structure", "range-bound drift"
+
+Neutral (Leaning Bearish):
+- use "subtle downside pressure", "rotational drift lower", "sellers maintaining mild overhang"
+
+Bearish:
+- use "downside pressure", "seller-driven flow", "momentum skewed lower"
+
+Bearish (Weak):
+- use "fragile downside continuation", "weak impulse lower", "limited seller follow-through"
+
+Strong Bearish:
+- use "heavy downside control", "aggressive seller flows", "momentum exhaustion on the bid side"
+
+====================
+OUTPUT FORMAT (MANDATORY)
+====================
+
+### AI Summary [DEBUG: {{FOCUS_DEBUG}}] -- {{symbol}} {{timeframe}}
+
+**Overall Bias:** {calculated final bias}
+
+**Why:**
+Provide 3-4 institutional-grade bullets that:
+- combine trend + momentum + volume + volatility
+- explain the interaction between signals
+- describe how market participants behave
+- describe the quality of the trend (integrity, exhaustion, pressure, defense)
+
+**What to Expect Next:**
+1-2 sentences describing directional lean and likelihood of continuation vs fade.
+PREMIUM INSIGHT RULES:
+- If volume_context = decreasing -> mention lack of commitment or weak participation.
+- If volume_context = increasing -> mention building flows or strengthening conviction.
+- If volatility_state = low -> mention compression or coiling behavior.
+- If volatility_state = high -> mention expansion or instability.
+- If momentum_state = weak -> mention fading impulses or exhaustion.
+- If momentum_state = strong -> mention follow-through or directional drive.
+
+**Levels to Watch:**
+- use support/resistance arrays from the JSON
+- NEVER invent new levels
+- if empty: "No levels provided."
+
+**Risk:**
+One short, trader-grade line describing:
+- trend fragility
+- volatility traps
+- exhaustion risk
+- breakout/fakeout probability
+
+====================
+JSON DATA:
+
+{{TECHNICALS_JSON}}
+`;
+
+const chartFocusPromptTemplate = `
+You are a professional technical analyst explaining a price chart to a trader.
+You will be given a JSON object with technical indicators and price data.
+Your goal is to "Explain the Chart" in a clear, educational, and actionable way.
+
+====================
+GOALS
+====================
+1. **Explain the Visuals**: Describe what the chart looks like (e.g., "The chart shows a clear uptrend," "Price is consolidating in a tight range," "We are seeing a rejection at resistance").
+2. **Mention Indicators**: Unlike the institutional summary, you SHOULD mention specific indicators (RSI, MACD, Bollinger Bands, EMAs) to explain *why* you see what you see.
+   - Example: "The RSI is currently at 75, indicating overbought conditions."
+   - Example: "Price has broken above the 20 EMA, confirming bullish momentum."
+   - Example: "The Bollinger Bands are squeezing, suggesting a big move is coming."
+3. **Identify Patterns**: Look for common patterns supported by the data (Double Top/Bottom, Bull/Bear Flag, Golden Cross, Death Cross, Divergences).
+4. **Be Conversational**: Use phrases like "Notice how...", "As you can see...", "The key thing to watch here is...".
+
+====================
+OUTPUT FORMAT
+====================
+
+### 📊 Chart Analysis [DEBUG: {{FOCUS_DEBUG}}] -- {{symbol}} {{timeframe}}
+
+**Visual Structure:**
+Describe the price action structure. Is it trending? Ranging? Volatile? Mention the relationship between price and key moving averages (EMA20, EMA50).
+
+**Key Indicators:**
+- **Momentum:** Mention RSI and MACD status. Are we overbought/oversold? Is there a crossover?
+- **Volatility:** Mention Bollinger Bands (wide vs narrow) and ATR.
+- **Volume:** Is volume confirming the move?
+
+**Signals & Patterns:**
+- Highlight any specific signals (e.g., "Bullish Divergence on RSI", "Golden Cross", "Rejection from VWAP").
+- If no strong patterns, say "No major chart patterns detected at this moment."
+
+**Verdict:**
+A single clear sentence summarizing the chart's message (e.g., "The chart suggests continuation of the uptrend but warns of short-term exhaustion.").
+
+====================
+JSON DATA:
+
+{{TECHNICALS_JSON}}
+`;
+
+export function buildFinalJSONAndPrompt({ symbol, timeframe, candles = [], indicatorsOverride = null, focus = 'institutional' }: { symbol: string, timeframe: string, candles?: Candle[], indicatorsOverride?: Indicators | null, focus?: string }) {
+    console.log(`[Gemini Module] buildFinalJSONAndPrompt called with focus: '${focus}'`);
+    // If indicatorsOverride provided, copy through, else compute from candles
+    let indicators: Indicators = {};
+    if (indicatorsOverride && Object.keys(indicatorsOverride).length > 0) {
+        indicators = indicatorsOverride;
+    } else {
+        if (!candles || candles.length < 20) {
+            throw new Error("Provide candles array with at least 20 elements OR precomputed indicators");
+        }
+        const closes = candles.map(c => c.c);
+        const highs = candles.map(c => c.h);
+        const lows = candles.map(c => c.l);
+        const vols = candles.map(c => c.v);
+        // compute indicators (last values)
+        const ema20Arr = ema(closes, 20);
+        const ema50Arr = ema(closes, 50);
+        const rsiArr = rsi(closes, 14);
+        const macdObj = macd(closes);
+        const atrArr = atr(candles, 14);
+        const bb = bollingerBands(closes, 20, 2);
+        const vwapArr = vwap(candles);
+        const obvArr = obv(candles);
+        const stochObj = stochastic(candles, 14, 3);
+        const willR = williamsR(candles, 14);
+        const psarArr = psar(candles);
+        const adxArr = adx(candles, 14);
+
+        const lastIdx = candles.length - 1;
+        indicators = {
+            price: closes[lastIdx],
+            open: candles[lastIdx].o,
+            high: highs[lastIdx],
+            low: lows[lastIdx],
+            close: closes[lastIdx],
+            volume: vols[lastIdx],
+            ema20: ema20Arr[lastIdx],
+            ema50: ema50Arr[lastIdx],
+            ema200: ema(closes, 200)[lastIdx] || null,
+            sma20: sma(closes, 20)[lastIdx],
+            sma50: sma(closes, 50)[lastIdx],
+            rsi: rsiArr[lastIdx],
+            macd: macdObj.macd[lastIdx],
+            macdSignal: macdObj.signal[lastIdx],
+            macdHist: macdObj.hist[lastIdx],
+            atr: atrArr[lastIdx],
+            bbLower: bb.lower[lastIdx],
+            bbMiddle: bb.middle[lastIdx],
+            bbUpper: bb.upper[lastIdx],
+            bbWidth: bb.width[lastIdx],
+            bbSqueeze: bb.width[lastIdx] != null && (bb.width[lastIdx] as number) < 0.02 ? 1 : 0, // threshold tweakable
+            vwap: vwapArr[lastIdx],
+            obv: obvArr[lastIdx],
+            obvSeries: obvArr.slice(-20),
+            stochK: stochObj.k[lastIdx],
+            stochD: stochObj.d[lastIdx],
+            williamsR: willR[lastIdx],
+            psar: psarArr[lastIdx],
+            adx: adxArr[lastIdx],
+            avgVol: (vols.slice(-10).reduce((a, b) => a + b, 0) / 10) || null,
+            prevAvgVol: (vols.slice(-20, -10).reduce((a, b) => a + b, 0) / 10) || null
+        };
+    }
+
+    // Compute combined fields
+    const trend_bias = computeTrendBiasFromValues(
+        indicators.price,
+        indicators.ema20,
+        indicators.ema50,
+        indicators.vwap
+    );
+    const momentum_state = computeMomentumStateFromValues(indicators.rsi, indicators.macd);
+    const volume_context = computeVolumeContextFromValues(indicators.obvSeries, indicators.avgVol, indicators.prevAvgVol);
+    const volatility_state = computeVolatilityStateFromValues(indicators.bbSqueeze, indicators.atr);
+
+    // Support/resistance detection
+    let support: number[] = [];
+    let resistance: number[] = [];
+    if (candles) {
+        const sr = computeUnifiedSupportResistance(candles);
+        support = sr.support;
+        resistance = sr.resistance;
+    }
+
+    const finalJson = {
+        symbol,
+        timeframe,
+        timestamp: new Date().toISOString(),
+        indicators,
+        trend_bias,
+        momentum_state,
+        volume_context,
+        volatility_state,
+        support,
+        resistance
+    };
+
+    // prompt assemble
+    const template = focus === 'chart' ? chartFocusPromptTemplate : institutionalPromptTemplate;
+    const prompt = template
+        .replace("{{symbol}}", symbol)
+        .replace("{{timeframe}}", timeframe)
+        .replace("{{FOCUS_DEBUG}}", focus)
+        .replace("{{TECHNICALS_JSON}}", JSON.stringify(finalJson, null, 2));
+
+    return { finalJson, prompt };
+}
+
+/* ========== Gemini API call ========== */
+
+export async function sendToGemini(prompt: string) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) throw new Error("GEMINI_API_KEY not set in environment variables");
+
+    const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
+    const body = {
+        // Use a single content part containing the prompt
+        "contents": [
+            { "parts": [{ "text": prompt }] }
+        ],
+        // Configuration must be nested in generationConfig
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 300
+        }
+    };
+
+    console.log("SENDING TO GEMINI. Prompt length:", prompt.length);
+    const response = await fetch(GEMINI_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+        const txt = await response.text();
+        throw new Error(`Gemini API error: ${response.status} ${txt}`);
+    }
+    const json: any = await response.json();
+    // Attempt to extract candidate text robustly
+    const candidate = json?.candidates?.[0]?.content?.parts?.[0]?.text || json?.candidates?.[0]?.output || JSON.stringify(json);
+    return { raw: json, text: candidate };
+}
+
+/* ========== Public runner functions ========== */
+
+export async function runSummary({ symbol, timeframe, candles, focus }: { symbol: string, timeframe: string, candles: Candle[], focus?: string }) {
+    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, candles, focus });
+    // debug log so you can inspect what is sent
+    console.log("FINAL JSON sent to Gemini (truncated):", JSON.stringify(finalJson, null, 2).slice(0, 2000));
+    const { raw, text } = await sendToGemini(prompt);
+    return { finalJson, geminiRaw: raw, geminiText: text };
+}
+
+export async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride, candles, focus }: { symbol: string, timeframe: string, indicatorsOverride?: Indicators, candles?: Candle[], focus?: string }) {
+    const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride, candles, focus });
+    console.log("FINAL JSON sent to Gemini (override):", JSON.stringify(finalJson, null, 2));
+    const { raw, text } = await sendToGemini(prompt);
+    return { finalJson, geminiRaw: raw, geminiText: text };
+}
