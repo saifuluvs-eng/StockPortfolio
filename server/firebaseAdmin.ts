@@ -32,9 +32,14 @@ function loadServiceAccount(): ServiceAccountLike | null {
   }
 
   if (serviceAccountPath) {
-    const resolvedPath = resolve(serviceAccountPath);
-    const fileContents = readFileSync(resolvedPath, 'utf-8');
-    return normalizeServiceAccount(JSON.parse(fileContents));
+    try {
+      const resolvedPath = resolve(serviceAccountPath);
+      const fileContents = readFileSync(resolvedPath, 'utf-8');
+      return normalizeServiceAccount(JSON.parse(fileContents));
+    } catch (err) {
+      console.warn(`[Firebase] Failed to load service account from path ${serviceAccountPath}:`, err);
+      // Fall through to other methods
+    }
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -50,38 +55,43 @@ function loadServiceAccount(): ServiceAccountLike | null {
 }
 
 function initializeFirebaseAdmin(): App | null {
-  const existingApp = getApps()[0];
-  if (existingApp) {
-    return existingApp;
-  }
+  try {
+    const existingApp = getApps()[0];
+    if (existingApp) {
+      return existingApp;
+    }
 
-  const serviceAccount = loadServiceAccount();
-  if (!serviceAccount) {
+    const serviceAccount = loadServiceAccount();
+    if (!serviceAccount) {
+      return null;
+    }
+
+    const projectId = process.env.FIREBASE_PROJECT_ID ?? serviceAccount.projectId;
+
+    const credentials: ServiceAccount = {
+      projectId: serviceAccount.projectId ?? projectId,
+      clientEmail: serviceAccount.clientEmail,
+      privateKey: serviceAccount.privateKey,
+    };
+
+    if (!credentials.clientEmail || !credentials.privateKey) {
+      console.warn('[Firebase] Missing client email or private key. Firebase auth disabled.');
+      return null;
+    }
+
+    if (!projectId) {
+      console.warn('[Firebase] Missing project ID. Firebase auth disabled.');
+      return null;
+    }
+
+    return initializeApp({
+      credential: cert(credentials),
+      projectId,
+    });
+  } catch (error) {
+    console.warn('[Firebase] Valid credentials present but initialization failed:', error);
     return null;
   }
-
-  const projectId = process.env.FIREBASE_PROJECT_ID ?? serviceAccount.projectId;
-
-  const credentials: ServiceAccount = {
-    projectId: serviceAccount.projectId ?? projectId,
-    clientEmail: serviceAccount.clientEmail,
-    privateKey: serviceAccount.privateKey,
-  };
-
-  if (!credentials.clientEmail || !credentials.privateKey) {
-    console.warn('[Firebase] Missing client email or private key. Firebase auth disabled.');
-    return null;
-  }
-
-  if (!projectId) {
-    console.warn('[Firebase] Missing project ID. Firebase auth disabled.');
-    return null;
-  }
-
-  return initializeApp({
-    credential: cert(credentials),
-    projectId,
-  });
 }
 
 export const firebaseApp = initializeFirebaseAdmin();
