@@ -125,7 +125,7 @@ export class AIService {
       const bollinger = technicalData.bollingerBands || {};
       const adx = technicalData.adx?.value || 25;
       
-      const signals = [];
+      const signals: string[] = [];
       let bullishCount = 0;
       let bearishCount = 0;
       
@@ -242,8 +242,8 @@ export class AIService {
       console.error("Error generating price prediction:", error);
       
       // Enhanced technical prediction fallback
-      const priceHistory = historicalData.priceHistory || [];
-      const volumeHistory = historicalData.volumeHistory || [];
+      const priceHistory: number[] = historicalData.priceHistory || [];
+      const volumeHistory: number[] = historicalData.volumeHistory || [];
       const currentPrice = historicalData.currentPrice || 0;
       
       if (priceHistory.length < 10) {
@@ -284,7 +284,7 @@ export class AIService {
         priceTarget = currentPrice * (1 + momentum * 2);
       }
       
-      const riskFactors = [];
+      const riskFactors: string[] = [];
       if (volatility > 0.1) riskFactors.push("High volatility environment");
       if (Math.abs(priceChange) > 15) riskFactors.push("Extreme price movement");
       if (volumeTrend < -0.2) riskFactors.push("Declining volume trend");
@@ -539,7 +539,7 @@ export class AIService {
   // Helper methods for technical calculations
   private calculateVolatility(prices: number[]): number {
     if (prices.length < 2) return 0;
-    const returns = [];
+    const returns: number[] = [];
     for (let i = 1; i < prices.length; i++) {
       returns.push((prices[i] - prices[i-1]) / prices[i-1]);
     }
