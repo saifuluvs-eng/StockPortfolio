@@ -1,0 +1,155 @@
+Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/market/fear-greed:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/health:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/watchlist:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/market/gainers:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/market/fear-greed:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/watchlist:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+/api/market/gainers:1  Failed to load resource: the server responded with a status of 500 ()Understand this error
+index-DRRiIGZF.js:1861  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/support-resistance?limit=75&days=8&strategy=bounce 500 (Internal Server Error)
+queryFn @ index-DRRiIGZF.js:1861
+i @ index-DRRiIGZF.js:40
+x @ index-DRRiIGZF.js:40
+start @ index-DRRiIGZF.js:40
+fetch @ index-DRRiIGZF.js:40
+#d @ index-DRRiIGZF.js:40
+onSubscribe @ index-DRRiIGZF.js:40
+subscribe @ index-DRRiIGZF.js:40
+(anonymous) @ index-DRRiIGZF.js:40
+xI @ index-DRRiIGZF.js:38
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this error
+index-DRRiIGZF.js:1861  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/support-resistance?limit=75&days=8&strategy=bounce 500 (Internal Server Error)
+queryFn @ index-DRRiIGZF.js:1861
+i @ index-DRRiIGZF.js:40
+x @ index-DRRiIGZF.js:40
+(anonymous) @ index-DRRiIGZF.js:40
+Promise.then
+(anonymous) @ index-DRRiIGZF.js:40
+Promise.catch
+x @ index-DRRiIGZF.js:40
+start @ index-DRRiIGZF.js:40
+fetch @ index-DRRiIGZF.js:40
+#d @ index-DRRiIGZF.js:40
+onSubscribe @ index-DRRiIGZF.js:40
+subscribe @ index-DRRiIGZF.js:40
+(anonymous) @ index-DRRiIGZF.js:40
+xI @ index-DRRiIGZF.js:38
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this error
+index-DRRiIGZF.js:1861  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/momentum 500 (Internal Server Error)
+queryFn @ index-DRRiIGZF.js:1861
+i @ index-DRRiIGZF.js:40
+x @ index-DRRiIGZF.js:40
+start @ index-DRRiIGZF.js:40
+fetch @ index-DRRiIGZF.js:40
+#d @ index-DRRiIGZF.js:40
+onSubscribe @ index-DRRiIGZF.js:40
+subscribe @ index-DRRiIGZF.js:40
+(anonymous) @ index-DRRiIGZF.js:40
+xI @ index-DRRiIGZF.js:38
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this error
+index-DRRiIGZF.js:1861  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/momentum 500 (Internal Server Error)
+queryFn @ index-DRRiIGZF.js:1861
+i @ index-DRRiIGZF.js:40
+x @ index-DRRiIGZF.js:40
+(anonymous) @ index-DRRiIGZF.js:40
+Promise.then
+(anonymous) @ index-DRRiIGZF.js:40
+Promise.catch
+x @ index-DRRiIGZF.js:40
+start @ index-DRRiIGZF.js:40
+fetch @ index-DRRiIGZF.js:40
+#d @ index-DRRiIGZF.js:40
+onSubscribe @ index-DRRiIGZF.js:40
+subscribe @ index-DRRiIGZF.js:40
+(anonymous) @ index-DRRiIGZF.js:40
+xI @ index-DRRiIGZF.js:38
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this error
+index-DRRiIGZF.js:1733  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/ticker/BTCUSDT 500 (Internal Server Error)
+O @ index-DRRiIGZF.js:1733
+bt @ index-DRRiIGZF.js:1779
+(anonymous) @ index-DRRiIGZF.js:1779
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this error
+index-DRRiIGZF.js:1779 [Ticker] Backend fetch failed, trying WebSocket: Error: HTTP 500
+    at bt (index-DRRiIGZF.js:1779:33233)
+bt @ index-DRRiIGZF.js:1779
+await in bt
+(anonymous) @ index-DRRiIGZF.js:1779
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this warning
+index-DRRiIGZF.js:1779 [DEBUG] Scan payload received: Yes
+index-DRRiIGZF.js:1779 [DEBUG] Payload keys: (9) ['symbol', 'price', 'timeframe', 'indicators', 'totalScore', 'recommendation', 'calculationTimestamp', 'latestDataTime', 'candles']
+index-DRRiIGZF.js:1779 [DEBUG] Payload has candles: 100
+index-DRRiIGZF.js:1779 [DEBUG] Extracted item candles: 100
+index-DRRiIGZF.js:1779 [Analyse] Run Analysis → BTCUSDT 4h
+index-DRRiIGZF.js:1779 [Analyse] Auto-run triggered: {symbolChanged: true, timeframeChanged: false, from: {…}, to: {…}}
+(anonymous) @ index-DRRiIGZF.js:1779
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this warning
+index-DRRiIGZF.js:1733  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/ticker/DASHUSDT 500 (Internal Server Error)
+O @ index-DRRiIGZF.js:1733
+bt @ index-DRRiIGZF.js:1779
+(anonymous) @ index-DRRiIGZF.js:1779
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this error
+index-DRRiIGZF.js:1779 [Ticker] Backend fetch failed, trying WebSocket: Error: HTTP 500
+    at bt (index-DRRiIGZF.js:1779:33233)
+bt @ index-DRRiIGZF.js:1779
+await in bt
+(anonymous) @ index-DRRiIGZF.js:1779
+cg @ index-DRRiIGZF.js:40
+jc @ index-DRRiIGZF.js:40
+lQ @ index-DRRiIGZF.js:40
+il @ index-DRRiIGZF.js:40
+yR @ index-DRRiIGZF.js:40
+Mo @ index-DRRiIGZF.js:38
+(anonymous) @ index-DRRiIGZF.js:40Understand this warning
+index-DRRiIGZF.js:1779 [DEBUG] Scan payload received: Yes
+index-DRRiIGZF.js:1779 [DEBUG] Payload keys: (9) ['symbol', 'price', 'timeframe', 'indicators', 'totalScore', 'recommendation', 'calculationTimestamp', 'latestDataTime', 'candles']
+index-DRRiIGZF.js:1779 [DEBUG] Payload has candles: 100
+index-DRRiIGZF.js:1779 [DEBUG] Extracted item candles: 100
+index-DRRiIGZF.js:1779 [Analyse] Run Analysis → DASHUSDT 4h
