@@ -207,18 +207,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') { cors(res); return res.status(200).end(); }
   cors(res);
 
-  const segments = req.query.segments as string[] | undefined;
-  const path = segments?.join('/') || '';
+  const url = new URL(req.url || '', 'http://localhost');
+  const pathname = url.pathname.replace('/api/market', '').replace(/^\//, '');
 
-  if (path === 'fear-greed' || path === '') return handleFearGreed(res);
-  if (path === 'gainers') return handleGainers(req, res);
-  if (path === 'rsi') return handleRSI(req, res);
-  if (path.startsWith('ticker/')) return handleTicker(req, res, path.replace('ticker/', ''));
-  if (path === 'strategies/momentum') return handleMomentum(res);
-  if (path === 'strategies/support-resistance') return handleSupportResistance(req, res);
-  if (path === 'strategies/volume-spike') return handleVolumeSpike(res);
-  if (path === 'strategies/trend-dip') return handleTrendDip(res);
-  if (path === 'strategies/top-picks') return handleTopPicks(res);
+  if (pathname === '' || pathname === 'fear-greed') return handleFearGreed(res);
+  if (pathname === 'gainers') return handleGainers(req, res);
+  if (pathname === 'rsi') return handleRSI(req, res);
+  if (pathname.startsWith('ticker/')) return handleTicker(req, res, pathname.replace('ticker/', ''));
+  if (pathname === 'strategies/momentum') return handleMomentum(res);
+  if (pathname === 'strategies/support-resistance') return handleSupportResistance(req, res);
+  if (pathname === 'strategies/volume-spike') return handleVolumeSpike(res);
+  if (pathname === 'strategies/trend-dip') return handleTrendDip(res);
+  if (pathname === 'strategies/top-picks') return handleTopPicks(res);
 
-  sendError(res, 404, `Market endpoint not found: /api/market/${path}`);
+  sendError(res, 404, `Market endpoint not found: ${pathname}`);
 }

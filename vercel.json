@@ -8,6 +8,26 @@
   ],
   "rewrites": [
     {
+      "source": "/api/market/:path*",
+      "destination": "/api/market"
+    },
+    {
+      "source": "/api/portfolio/:path*",
+      "destination": "/api/portfolio"
+    },
+    {
+      "source": "/api/watchlist/:path*",
+      "destination": "/api/watchlist"
+    },
+    {
+      "source": "/api/ai/:path*",
+      "destination": "/api/ai"
+    },
+    {
+      "source": "/api/scanner/:path*",
+      "destination": "/api/scanner"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
@@ -26,6 +46,14 @@
         {
           "key": "Access-Control-Allow-Origin",
           "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, X-Demo-User-Id"
         }
       ]
     }

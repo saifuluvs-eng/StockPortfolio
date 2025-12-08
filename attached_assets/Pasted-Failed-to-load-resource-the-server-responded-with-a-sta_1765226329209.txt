@@ -1,0 +1,94 @@
+Failed to load resource: the server responded with a status of 500 ()Understand this error
+index-jls_59nl.js:1846  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/support-resistance?limit=75&days=8&strategy=bounce 404 (Not Found)
+queryFn @ index-jls_59nl.js:1846
+i @ index-jls_59nl.js:40
+x @ index-jls_59nl.js:40
+start @ index-jls_59nl.js:40
+fetch @ index-jls_59nl.js:40
+#d @ index-jls_59nl.js:40
+onSubscribe @ index-jls_59nl.js:40
+subscribe @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+bI @ index-jls_59nl.js:38
+lg @ index-jls_59nl.js:40
+Cc @ index-jls_59nl.js:40
+iQ @ index-jls_59nl.js:40
+il @ index-jls_59nl.js:40
+gR @ index-jls_59nl.js:40
+Do @ index-jls_59nl.js:38
+(anonymous) @ index-jls_59nl.js:40Understand this error
+index-jls_59nl.js:1846  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/support-resistance?limit=75&days=8&strategy=bounce 404 (Not Found)
+queryFn @ index-jls_59nl.js:1846
+i @ index-jls_59nl.js:40
+x @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+Promise.then
+(anonymous) @ index-jls_59nl.js:40
+Promise.catch
+x @ index-jls_59nl.js:40
+start @ index-jls_59nl.js:40
+fetch @ index-jls_59nl.js:40
+#d @ index-jls_59nl.js:40
+onSubscribe @ index-jls_59nl.js:40
+subscribe @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+bI @ index-jls_59nl.js:38
+lg @ index-jls_59nl.js:40
+Cc @ index-jls_59nl.js:40
+iQ @ index-jls_59nl.js:40
+il @ index-jls_59nl.js:40
+gR @ index-jls_59nl.js:40
+Do @ index-jls_59nl.js:38
+(anonymous) @ index-jls_59nl.js:40Understand this error
+index-jls_59nl.js:1846  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/momentum 404 (Not Found)
+queryFn @ index-jls_59nl.js:1846
+i @ index-jls_59nl.js:40
+x @ index-jls_59nl.js:40
+start @ index-jls_59nl.js:40
+fetch @ index-jls_59nl.js:40
+#d @ index-jls_59nl.js:40
+onSubscribe @ index-jls_59nl.js:40
+subscribe @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+bI @ index-jls_59nl.js:38
+lg @ index-jls_59nl.js:40
+Cc @ index-jls_59nl.js:40
+iQ @ index-jls_59nl.js:40
+il @ index-jls_59nl.js:40
+gR @ index-jls_59nl.js:40
+Do @ index-jls_59nl.js:38
+(anonymous) @ index-jls_59nl.js:40Understand this error
+index-jls_59nl.js:1846  GET https://stock-portfolio-khaki-nine.vercel.app/api/market/strategies/momentum 404 (Not Found)
+queryFn @ index-jls_59nl.js:1846
+i @ index-jls_59nl.js:40
+x @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+Promise.then
+(anonymous) @ index-jls_59nl.js:40
+Promise.catch
+x @ index-jls_59nl.js:40
+start @ index-jls_59nl.js:40
+fetch @ index-jls_59nl.js:40
+#d @ index-jls_59nl.js:40
+onSubscribe @ index-jls_59nl.js:40
+subscribe @ index-jls_59nl.js:40
+(anonymous) @ index-jls_59nl.js:40
+bI @ index-jls_59nl.js:38
+lg @ index-jls_59nl.js:40
+Cc @ index-jls_59nl.js:40
+iQ @ index-jls_59nl.js:40
+il @ index-jls_59nl.js:40
+gR @ index-jls_59nl.js:40
+Do @ index-jls_59nl.js:38
+(anonymous) @ index-jls_59nl.js:40Understand this error
+index-jls_59nl.js:40 TypeError: e.map is not a function
+    at index-jls_59nl.js:1846:31752
+    at Object.CI [as useMemo] (index-jls_59nl.js:38:22223)
+    at ft.useMemo (index-jls_59nl.js:9:6299)
+    at Q$e (index-jls_59nl.js:1846:31738)
+    at Bx (index-jls_59nl.js:38:17816)
+    at Xx (index-jls_59nl.js:40:3158)
+    at _R (index-jls_59nl.js:40:45510)
+    at bR (index-jls_59nl.js:40:40324)
+    at nQ (index-jls_59nl.js:40:40252)
+    at gg (index-jls_59nl.js:40:40105)
