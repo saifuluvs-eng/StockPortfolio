@@ -21,6 +21,7 @@ import DataPage from "@/pages/data";
 import StrategiesPage from "@/pages/strategies";
 import MomentumPage from "@/pages/momentum";
 import TopPicksPage from "@/pages/top-picks";
+import ChartDecodePage from "@/pages/chart-decode";
 
 
 
@@ -123,6 +124,11 @@ export default function App() {
       <Route path="/top-picks">
         <ShellLayout>
           <TopPicksPage />
+        </ShellLayout>
+      </Route>
+      <Route path="/chart-decode/:symbol?">
+        <ShellLayout>
+          <ChartDecodePage />
         </ShellLayout>
       </Route>
 

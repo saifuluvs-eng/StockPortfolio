@@ -43,6 +43,7 @@ const items: NavItem[] = [
   { label: "Gainers", to: "/gainers", icon: <Activity size={20} /> },
   // { label: "High Potential", to: "/high-potential", icon: <Flame size={20} /> },
   { label: "Top Picks", to: "/top-picks", icon: <Target size={20} /> },
+  { label: "Chart Decode", to: "/chart-decode", icon: <Brain size={20} /> },
   { label: "Analyse", to: "/analyse", icon: <BarChart2 size={20} /> },
   { label: "Data", to: "/data", icon: <PieChart size={20} /> },
   { label: "Strategies", to: "/strategies", icon: <TrendingUp size={20} /> },
