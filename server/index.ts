@@ -65,15 +65,15 @@ app.use((req, res, next) => {
         throw err;
     });
 
-    // Setup Vite or static serving
-    if (app.get("env") === "development") {
-        await setupVite(app, server);
-    } else {
-        serveStatic(app);
-    }
-
-    // Start server only if run directly (not imported)
+    // Setup Vite or static serving only if NOT on Vercel (Vercel handles static files)
     if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+        if (app.get("env") === "development") {
+            await setupVite(app, server);
+        } else {
+            serveStatic(app);
+        }
+
+        // Start server
         const PORT = process.env.PORT || 5000;
         server.listen(PORT, () => {
             log(`serving on port ${PORT}`);
