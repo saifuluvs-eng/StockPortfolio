@@ -24,7 +24,7 @@ export default async (req: VercelRequest, res: VercelResponse) => {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         const prompt = `ROLE:
 You are an AI Portfolio Strategist. Your job is to provide calm, balanced, signal-based crypto guidance that helps manage positions with clarity and structure.

@@ -1,6 +1,6 @@
 // Gemini API configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GEMINI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
 
 // Import combined signal builder
 import { buildTechnicalJSON } from "./combinedSignals";
@@ -675,6 +675,51 @@ Respond with ONLY valid JSON in this exact format:
         actionableMove: "Check back later.",
         detailedAnalysis: "Failed to generate analysis due to an error."
       };
+    }
+  }
+  /**
+   * Specialist "Decode Chart" analysis for the new Chart Decode page
+   * Focuses exclusively on pattern recognition and chart structure
+   */
+  async generateChartDecodeAnalysis(
+    symbol: string,
+    timeframe: string,
+    technicalAnalysis: any
+  ): Promise<string> {
+    try {
+      const prompt = `You are an expert Chart Pattern Analyst. Your job is to "Decode" the chart for ${symbol} on the ${timeframe} timeframe.
+      
+      Technical Data: ${JSON.stringify(technicalAnalysis, null, 2)}
+      
+      Your goal is to identify CHART PATTERNS and STRUCTURAL SETUPS.
+      Do NOT give a generic "bullish/bearish" summary. Look for specific geometries.
+
+      Analyze for:
+      1. Classic Patterns: Bull/Bear Flags, Pennants, Triangles, Wedges, Head & Shoulders.
+      2. Candlestick Patterns: Engulfing, Doji, Morning/Evening Stars, Hammer/Shooting Star.
+      3. Structure: Higher Highs/Lows (Uptrend), Lower Highs/Lows (Downtrend), or Range.
+      4. Key Zones: Clear support/resistance flips or liquidity sweeps.
+
+      Output Format (Markdown):
+      
+      ### 🧩 Pattern Decode: [Name of dominant pattern or "No clear pattern"]
+      
+      **🔍 Evidence:**
+      - [Point 1: e.g., "Consolidating in a symmetrical triangle"]
+      - [Point 2: e.g., "Volume declining during consolidation"]
+      
+      **🎯 Projected Move:**
+      - [Scenario A (Breakout): Target X]
+      - [Scenario B (Breakdown): Target Y]
+      
+      **⚠️ Critical Level to Watch:** [Specific Price]
+      `;
+
+      const responseText = await callGemini(prompt);
+      return responseText;
+    } catch (error) {
+      console.error("Error generating chart decode analysis:", error);
+      throw error;
     }
   }
 }

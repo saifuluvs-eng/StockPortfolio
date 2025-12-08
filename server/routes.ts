@@ -545,6 +545,17 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post('/api/ai/chart-decode', async (req: Request, res: Response) => {
+    try {
+      const { symbol, timeframe, technicals } = req.body;
+      const result = await aiService.generateChartDecodeAnalysis(symbol, timeframe || '4h', technicals);
+      res.json({ data: result });
+    } catch (error) {
+      console.error("Error in /api/ai/chart-decode:", error);
+      res.status(500).json({ error: "Failed to decode chart" });
+    }
+  });
+
   // Scanner routes
   app.post('/api/scanner/scan', isAuthenticated, async (req: Request, res: Response) => {
     try {
