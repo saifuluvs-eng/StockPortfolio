@@ -54,35 +54,52 @@ app.use((req, res, next) => {
     next();
 });
 
-(async () => {
-    const server = registerRoutes(app);
+// Singleton initialization to prevent double-registration
+let server: any = null;
 
-    // Global error handler
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-        const status = err.status || err.statusCode || 500;
-        const message = err.message || "Internal Server Error";
-        res.status(status).json({ message });
-        throw err;
-    });
+const initializeServer = () => {
+    if (!server) {
+        server = registerRoutes(app);
 
-    // Setup Vite or static serving only if NOT on Vercel (Vercel handles static files)
-    if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+        // Add basic health check route if not already registered
+        app.get('/api/health', (req, res) => {
+            res.json({ status: 'ok', timestamp: new Date().toISOString() });
+        });
+
+        // Global error handler
+        app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+            const status = err.status || err.statusCode || 500;
+            const message = err.message || "Internal Server Error";
+            // Do not throw here, just log and respond
+            console.error('[Global Error Handler]', err);
+            if (!res.headersSent) {
+                res.status(status).json({ message });
+            }
+        });
+    }
+    return server;
+};
+
+// Dev server startup (if not Vercel)
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+    (async () => {
+        const srv = initializeServer();
         if (app.get("env") === "development") {
-            await setupVite(app, server);
+            await setupVite(app, srv);
         } else {
             serveStatic(app);
         }
 
         // Start server
         const PORT = process.env.PORT || 5000;
-        server.listen(PORT, () => {
+        srv.listen(PORT, () => {
             log(`serving on port ${PORT}`);
         });
-    }
-})();
+    })();
+}
 
 export default app;
 // Export a ready promise for Vercel handler
 export const ready = (async () => {
-    return registerRoutes(app);
+    return initializeServer();
 })();
