@@ -1196,13 +1196,13 @@ class TechnicalIndicators {
       let poolSize = lookbackDays > 30 ? 200 : 75;
 
       if (isVercel) {
-        console.log('[TechnicalIndicators] Vercel environment detected. Capping scan pool to 40 to prevent timeout.');
-        poolSize = 40;
+        console.log('[TechnicalIndicators] Vercel environment detected. Capping scan pool to 25 to prevent timeout.');
+        poolSize = 25;
       }
 
       const topPairs = await binanceService.getTopVolumePairs(poolSize);
       const results: any[] = [];
-      const batchSize = 10; // slightly increased batch size
+      const batchSize = isVercel ? 25 : 10; // On Vercel, do one big parallel batch (up to 25) to save time overhead of sequential batches
 
       // Calculate candles needed: (Days * 24h) / 4h timeframe = 6 candles per day
       const candlesNeeded = Math.ceil(lookbackDays * 6);
