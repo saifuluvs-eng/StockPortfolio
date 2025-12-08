@@ -1,6 +1,6 @@
 # Overview
 
-This project is a cryptocurrency trading analysis dashboard providing real-time market scanning, technical analysis, and portfolio management. It integrates with Binance for live market data and leverages Google Gemini for AI-powered trading insights. The application uses Supabase for authentication and PostgreSQL for data storage via Drizzle ORM, optimized for deployment on Vercel or locally on Replit. The business vision is to empower traders with comprehensive tools and AI-driven intelligence to make informed decisions in the volatile crypto market, offering a competitive edge through advanced analytics and streamlined portfolio management.
+This project is a cryptocurrency trading analysis dashboard providing real-time market scanning, technical analysis, and portfolio management. It integrates with Binance for live market data. AI features (Gemini) are temporarily disabled for stability. The application uses Supabase for authentication and PostgreSQL for data storage via Drizzle ORM. **Deployment**: Vercel serverless functions (production) + Express server (local development on Replit). The business vision is to empower traders with comprehensive tools and analytics to make informed decisions in the volatile crypto market.
 
 # User Preferences
 
@@ -8,16 +8,29 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-**December 8, 2025 - FIXED: AI Summary Indicator Name Filtering (Final Solution)**:
+**December 8, 2025 - MAJOR: Vercel Serverless Migration + AI Temporarily Disabled**:
 
-- **Root Cause Identified**: Filter was implemented in wrong file (`gemini_tech_summary.js`) instead of active module (`gemini_chart_analysis.ts`)
-- **Solution Applied**: Added `filterIndicatorNames()` function to `server/gemini_chart_analysis.ts`
-  - Removes entire bullet points mentioning indicators (EMA, MACD, RSI, VWAP, OBV, ADX, SAR, Williams %R, Bollinger, Stochastic, etc.)
-  - Removes complete sentences containing indicator names
-  - Cleans up orphaned spaces and formatting
-  - Applied to both `runSummary()` and `runSummaryWithIndicators()` functions
-- **Data Flow**: Indicators → Summary fields → Gemini → **Filtered clean output**
-- **Result**: AI Summary now returns trader-language analysis without any technical indicator names
+- **Removed Gemini AI Integration** - AI features temporarily disabled to restore application stability
+  - Removed all `/api/ai/*` routes from Express server
+  - Created stub handlers returning "temporarily unavailable" messages
+  - AI Summary panel commented out from frontend
+
+- **Created Native Vercel Serverless Functions** - Replaced Express-in-serverless approach
+  - All API routes now in `/api/` directory as individual Vercel serverless functions
+  - Created shared utilities in `/api/lib/serverless.ts` for CORS and error handling
+  - Market data: `/api/market/fear-greed.ts`, `/api/market/gainers.ts`, `/api/market/rsi.ts`
+  - Strategy scanners: `/api/market/strategies/momentum.ts`, `support-resistance.ts`, `volume-spike.ts`, `trend-dip.ts`, `top-picks.ts`
+  - Scanner: `/api/scanner/scan.ts` with technical indicator calculations
+  - Portfolio stubs: `/api/portfolio/*.ts` (placeholder until database integration)
+  - Watchlist stubs: `/api/watchlist.ts`, `/api/watchlist/[id].ts`
+  - AI stubs: `/api/ai/*.ts` returning graceful unavailable messages
+
+- **Updated Vercel Configuration** - Removed broken catch-all handler
+  - Individual routes now auto-routed by Vercel's file-based routing
+  - CORS headers configured at Vercel level
+  - Cache-Control headers for API responses
+
+- **Local Development** - Express server (`server/standalone.ts`) continues to work locally on Replit
 
 **November 25, 2025 - FIXED: AI Summary Button + Indicator Filtering**:
 
