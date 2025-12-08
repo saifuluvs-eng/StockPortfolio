@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import BtcDominanceCard from "@/components/dashboard/BtcDominanceCard";
 import TopGainersCard from "@/components/dashboard/TopGainersCard";
-import HighPotentialCard from "@/components/dashboard/HighPotentialCard";
 import { FearGreedGauge } from "@/components/dashboard/FearGreedGauge";
 import { getQueryFn } from "@/lib/queryClient";
 import { usePrices } from "@/lib/prices";
@@ -259,7 +258,6 @@ export default function Home() {
     "scanner",
     "top-gainers",
     "total-pnl",
-    "high-potential",
     "fear-greed",
     "ai-signals",
     "btc-dominance",
@@ -398,12 +396,6 @@ export default function Home() {
                 </CardContent>
               </Card>
             </Link>
-          </Wrapper>
-        );
-      case "high-potential":
-        return (
-          <Wrapper {...props}>
-            <HighPotentialCard />
           </Wrapper>
         );
       case "fear-greed":
