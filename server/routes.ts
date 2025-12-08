@@ -507,6 +507,18 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get('/api/market/strategies/hot-setups', async (req: Request, res: Response) => {
+    console.log("[API] /api/market/strategies/hot-setups called");
+    try {
+      const data = await technicalIndicators.scanHotSetups();
+      console.log(`[API] hot-setups success. Found ${data.length} items.`);
+      res.json(data);
+    } catch (error) {
+      console.error("Error fetching hot-setups:", error);
+      res.status(500).json({ message: "Failed to fetch hot setups" });
+    }
+  });
+
   app.get('/api/market/strategies/momentum', async (req: Request, res: Response) => {
     try {
       const BINANCE_BASE = 'https://api.binance.com/api/v3';

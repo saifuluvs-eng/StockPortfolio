@@ -1,18 +1,11 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Page, Card } from "@/components/layout/Layout";
-import { RefreshCw, Target, Info, HelpCircle, ArrowUpDown, Crosshair } from "lucide-react";
+import { RefreshCw, Target, Flame, TrendingUp, BarChart3, Zap, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue
-} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import { apiFetchLocal } from "@/lib/api";
 
 interface SupportResistanceResult {
     symbol: string;
@@ -29,56 +22,43 @@ interface SupportResistanceResult {
     timestamp: string;
 }
 
-type SortField = 'target' | 'tests' | 'riskReward' | 'type';
+interface HotSetup {
+    symbol: string;
+    price: number;
+    score: number;
+    sources: string[];
+    tags: string[];
+    reasons: string[];
+    rsi?: number;
+    volume?: number;
+}
+
+interface TrendDipResult {
+    symbol: string;
+    price: number;
+    rsi: { m15: number; h1: number; h4: number; d1: number; w1: number };
+    ema200: number;
+    volume: number;
+    priceChangePercent: number;
+}
+
+interface VolumeSpikeResult {
+    symbol: string;
+    price: number;
+    volume: number;
+    avgVolume: number;
+    volumeMultiple: number;
+    priceChangePercent: number;
+}
+
+type SortField = 'target' | 'tests' | 'riskReward' | 'type' | 'score';
 type SortDirection = 'asc' | 'desc';
 
 export default function StrategiesPage() {
+    const [activeTab, setActiveTab] = useState("hot-setups");
     const [sortField, setSortField] = useState<SortField | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [lookbackDays, setLookbackDays] = useState("8");
-    const [strategy, setStrategy] = useState<'bounce' | 'breakout'>('bounce');
-
-    // Auto-refresh every 30 seconds
-    const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, isRefetching: isRefetchingSR, dataUpdatedAt } = useQuery<SupportResistanceResult[]>({
-        queryKey: ['support-resistance', lookbackDays, strategy],
-        queryFn: async () => {
-            const res = await fetch(`/api/market/strategies/support-resistance?limit=75&days=${lookbackDays}&strategy=${strategy}`);
-            const data = await res.json();
-            console.log(`[Frontend] Received ${data.length} coins for ${lookbackDays} days (${strategy})`);
-            return data as Promise<SupportResistanceResult[]>;
-        },
-        refetchInterval: 30000,
-    });
-
-    const handleRefresh = () => {
-        setSortField(null);
-        refetchSR();
-    };
-
-    const handleSort = (field: SortField) => {
-        if (sortField === field) {
-            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortField(field);
-            setSortDirection('desc'); // Default to descending for numbers usually (highest profit, most tests)
-        }
-    };
-
-    const sortedData = useMemo(() => {
-        if (!srData) return [];
-        if (!sortField) return srData;
-
-        return [...srData].sort((a, b) => {
-            const aValue = a[sortField] || 0;
-            const bValue = b[sortField] || 0;
-
-            if (sortDirection === 'asc') {
-                return aValue > bValue ? 1 : -1;
-            } else {
-                return aValue < bValue ? 1 : -1;
-            }
-        });
-    }, [srData, sortField, sortDirection]);
 
     const formatPrice = (price: number) => {
         if (price < 0.00001) return price.toFixed(8);
@@ -87,289 +67,434 @@ export default function StrategiesPage() {
         return price.toFixed(2);
     };
 
-    const SortIcon = ({ field }: { field: SortField }) => {
-        if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 text-zinc-600 inline opacity-50" />;
-        return <ArrowUpDown className={`w-3 h-3 ml-1 inline ${sortDirection === 'asc' ? 'text-emerald-500' : 'text-rose-500'}`} />;
+    const formatVolume = (vol: number) => {
+        if (vol >= 1_000_000_000) return `$${(vol / 1_000_000_000).toFixed(1)}B`;
+        if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(0)}M`;
+        return `$${(vol / 1_000).toFixed(0)}K`;
     };
 
-    const lastUpdatedTime = dataUpdatedAt ? format(new Date(dataUpdatedAt), 'HH:mm:ss') : null;
+    const { data: hotSetups, isLoading: isLoadingHot, refetch: refetchHot, dataUpdatedAt: hotUpdatedAt } = useQuery<HotSetup[]>({
+        queryKey: ['hot-setups'],
+        queryFn: async () => {
+            const res = await fetch('/api/market/strategies/hot-setups');
+            return res.json();
+        },
+        refetchInterval: 60000,
+        enabled: activeTab === 'hot-setups',
+    });
+
+    const { data: srData, isLoading: isLoadingSR, refetch: refetchSR, dataUpdatedAt: srUpdatedAt } = useQuery<SupportResistanceResult[]>({
+        queryKey: ['support-resistance', lookbackDays],
+        queryFn: async () => {
+            const res = await fetch(`/api/market/strategies/support-resistance?limit=75&days=${lookbackDays}&strategy=bounce`);
+            return res.json();
+        },
+        refetchInterval: 60000,
+        enabled: activeTab === 'sr',
+    });
+
+    const { data: trendDip, isLoading: isLoadingTrend, refetch: refetchTrend, dataUpdatedAt: trendUpdatedAt } = useQuery<TrendDipResult[]>({
+        queryKey: ['trend-dip'],
+        queryFn: async () => {
+            const res = await fetch('/api/market/strategies/trend-dip');
+            return res.json();
+        },
+        refetchInterval: 60000,
+        enabled: activeTab === 'trend-dip',
+    });
+
+    const { data: volumeSpike, isLoading: isLoadingVolume, refetch: refetchVolume, dataUpdatedAt: volumeUpdatedAt } = useQuery<VolumeSpikeResult[]>({
+        queryKey: ['volume-spike'],
+        queryFn: async () => {
+            const res = await fetch('/api/market/strategies/volume-spike');
+            return res.json();
+        },
+        refetchInterval: 60000,
+        enabled: activeTab === 'volume-spike',
+    });
+
+    const handleRefresh = () => {
+        if (activeTab === 'hot-setups') refetchHot();
+        if (activeTab === 'sr') refetchSR();
+        if (activeTab === 'trend-dip') refetchTrend();
+        if (activeTab === 'volume-spike') refetchVolume();
+    };
+
+    const getLastUpdated = () => {
+        const timestamps: Record<string, number | undefined> = {
+            'hot-setups': hotUpdatedAt,
+            'sr': srUpdatedAt,
+            'trend-dip': trendUpdatedAt,
+            'volume-spike': volumeUpdatedAt,
+        };
+        const ts = timestamps[activeTab];
+        return ts ? format(new Date(ts), 'HH:mm:ss') : null;
+    };
+
+    const isLoading = activeTab === 'hot-setups' ? isLoadingHot :
+        activeTab === 'sr' ? isLoadingSR :
+        activeTab === 'trend-dip' ? isLoadingTrend :
+        activeTab === 'volume-spike' ? isLoadingVolume : false;
 
     return (
         <Page>
-            <div className="max-w-7xl mx-auto space-y-6">
-                <div className="space-y-6">
-                    <Card>
-                        <div className="space-y-6">
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <div>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400">
-                                            <Target className="h-6 w-6" />
-                                        </div>
-                                        <h1 className="text-2xl font-bold tracking-tight text-white/90">Support & Resistance Scanner</h1>
+            <div className="max-w-7xl mx-auto space-y-4">
+                <Card>
+                    <div className="space-y-4">
+                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-red-500/20 text-orange-400">
+                                        <Target className="h-6 w-6" />
                                     </div>
-                                    <p className="text-sm text-zinc-400 max-w-2xl">
-                                        Identifies coins near key levels (Support, Resistance) or breaking out (Breakout, Breakdown).
+                                    <h1 className="text-2xl font-bold tracking-tight text-white/90">Strategy Scanner</h1>
+                                </div>
+                                <p className="text-sm text-zinc-400">
+                                    Multi-strategy confluence scanner - coins appearing in multiple strategies are stronger signals.
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                {activeTab === 'sr' && (
+                                    <select
+                                        value={lookbackDays}
+                                        onChange={(e) => setLookbackDays(e.target.value)}
+                                        className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-md px-3 py-1.5"
+                                    >
+                                        <option value={8}>8 Days</option>
+                                        <option value={14}>14 Days</option>
+                                        <option value={30}>30 Days</option>
+                                    </select>
+                                )}
+                                <button
+                                    onClick={handleRefresh}
+                                    disabled={isLoading}
+                                    className="flex items-center gap-2 px-4 py-1.5 bg-transparent border border-zinc-700 text-zinc-300 rounded-full hover:bg-zinc-800 transition-colors text-sm font-medium disabled:opacity-50"
+                                >
+                                    <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+                                    Refresh
+                                </button>
+                                {getLastUpdated() && (
+                                    <span className="text-xs text-zinc-500 font-mono">
+                                        {getLastUpdated()}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="grid w-full grid-cols-5 bg-zinc-900/50">
+                                <TabsTrigger value="hot-setups" className="flex items-center gap-2 data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-400">
+                                    <Flame className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Hot Setups</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="sr" className="flex items-center gap-2 data-[state=active]:bg-indigo-500/20 data-[state=active]:text-indigo-400">
+                                    <Target className="h-4 w-4" />
+                                    <span className="hidden sm:inline">S/R Levels</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="trend-dip" className="flex items-center gap-2 data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">
+                                    <TrendingUp className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Trend Dip</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="volume-spike" className="flex items-center gap-2 data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
+                                    <BarChart3 className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Vol Spike</span>
+                                </TabsTrigger>
+                                <TabsTrigger value="momentum" className="flex items-center gap-2 data-[state=active]:bg-amber-500/20 data-[state=active]:text-amber-400">
+                                    <Zap className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Momentum</span>
+                                </TabsTrigger>
+                            </TabsList>
+
+                            <TabsContent value="hot-setups" className="mt-4">
+                                <div className="mb-3 p-3 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-lg border border-orange-500/20">
+                                    <p className="text-sm text-orange-300">
+                                        <strong>Hot Setups</strong> - Coins appearing in multiple scanners with confluence scoring. Higher scores = stronger signals.
                                     </p>
                                 </div>
-
-                                <div className="flex flex-col items-end gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <select
-                                            value={lookbackDays}
-                                            onChange={(e) => setLookbackDays(e.target.value)}
-                                            className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-600"
-                                        >
-                                            <option value={8}>8 Days</option>
-                                            <option value={14}>14 Days</option>
-                                            <option value={30}>30 Days</option>
-                                        </select>
-
-                                        <button
-                                            onClick={() => handleRefresh()}
-                                            disabled={isLoadingSR || isRefetchingSR}
-                                            className="flex items-center gap-2 px-4 py-1.5 bg-transparent border border-zinc-700 text-zinc-300 rounded-full hover:bg-zinc-800 transition-colors text-sm font-medium disabled:opacity-50"
-                                        >
-                                            <RefreshCw className={`h-3 w-3 ${isRefetchingSR ? 'animate-spin' : ''}`} />
-                                            Refresh
-                                        </button>
-                                    </div>
-                                    {lastUpdatedTime && (
-                                        <span className="text-xs text-zinc-500 font-mono">
-                                            Updated: {lastUpdatedTime}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="h-[65vh] overflow-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="sticky top-0 z-10 bg-zinc-900">
-                                        <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
-                                            <th className="p-4 font-medium text-center">Asset</th>
-                                            <th className="p-4 font-medium text-center">Price</th>
-                                            <th className="p-4 font-medium text-center">Range Position</th>
-                                            <th
-                                                className="p-4 font-medium text-center cursor-pointer hover:text-zinc-300 transition-colors select-none"
-                                                onClick={() => handleSort('type')}
-                                            >
-                                                Type <SortIcon field="type" />
-                                            </th>
-                                            <th className="p-4 font-medium text-center">Confluence</th>
-                                            <th className="p-4 font-medium text-center">{strategy === 'breakout' ? 'Break Level' : 'Level'}</th>
-                                            <th className="p-4 font-medium text-center">Distance</th>
-                                            <th
-                                                className="p-4 font-medium text-center cursor-pointer hover:text-zinc-300 transition-colors select-none"
-                                                onClick={() => handleSort('target')}
-                                            >
-                                                Target <SortIcon field="target" />
-                                            </th>
-                                            <th
-                                                className="p-4 font-medium text-center cursor-pointer hover:text-zinc-300 transition-colors select-none"
-                                                onClick={() => handleSort('tests')}
-                                            >
-                                                Strength <SortIcon field="tests" />
-                                            </th>
-                                            <th
-                                                className="p-4 font-medium text-center cursor-pointer hover:text-zinc-300 transition-colors select-none"
-                                                onClick={() => handleSort('riskReward')}
-                                            >
-                                                Risk:Reward <SortIcon field="riskReward" />
-                                            </th>
-                                            <th className="p-4 font-medium text-center">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="text-sm">
-                                        {isLoadingSR ? (
-                                            <tr><td colSpan={11} className="p-8 text-center text-zinc-500">Scanning...</td></tr>
-                                        ) : !sortedData?.length ? (
-                                            <tr><td colSpan={11} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
-                                        ) : (
-                                            sortedData.map((coin) => {
-                                                const min = Math.min(coin.level, coin.target || coin.level);
-                                                const max = Math.max(coin.level, coin.target || coin.level);
-                                                const range = max - min;
-                                                const position = range > 0 ? ((coin.price - min) / range) * 100 : 0;
-                                                const clampedPos = Math.max(0, Math.min(100, position));
-
-                                                return (
-                                                    <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-                                                        <td className="p-4 font-bold text-white text-center">{coin.symbol.replace('USDT', '')}</td>
-                                                        <td className="p-4 text-center font-mono text-zinc-300">${formatPrice(coin.price)}</td>
-                                                        <td className="p-4 w-[140px]">
-                                                            <div className="w-full h-1.5 bg-zinc-800 rounded-full relative overflow-hidden">
-                                                                {/* Range Bar Background gradient for context */}
-                                                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/40 via-zinc-800/20 to-rose-900/40 opacity-50"></div>
-
-                                                                {/* Position Dot */}
-                                                                <div
-                                                                    className={`absolute top-0 bottom-0 w-2 rounded-full transform -translate-x-1/2 ${clampedPos < 20 ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
-                                                                        clampedPos > 80 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]' :
-                                                                            'bg-amber-400'
-                                                                        }`}
-                                                                    style={{ left: `${clampedPos}%` }}
-                                                                />
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-4 text-center">
-                                                            <span className={`inline-block px-2 py-1 rounded font-bold font-mono text-xs border ${coin.type === 'Support' || coin.type === 'Breakout'
-                                                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                                                }`}>
-                                                                {coin.type}
+                                <div className="h-[60vh] overflow-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="sticky top-0 z-10 bg-zinc-900">
+                                            <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
+                                                <th className="p-3 font-medium">Asset</th>
+                                                <th className="p-3 font-medium text-center">Score</th>
+                                                <th className="p-3 font-medium text-center">Sources</th>
+                                                <th className="p-3 font-medium">Tags</th>
+                                                <th className="p-3 font-medium">Why</th>
+                                                <th className="p-3 font-medium text-center">Price</th>
+                                                <th className="p-3 font-medium text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-sm">
+                                            {isLoadingHot ? (
+                                                <tr><td colSpan={7} className="p-8 text-center text-zinc-500">Scanning all strategies...</td></tr>
+                                            ) : !hotSetups?.length ? (
+                                                <tr><td colSpan={7} className="p-8 text-center text-zinc-500">No hot setups found. Check back later.</td></tr>
+                                            ) : (
+                                                hotSetups.map((coin) => (
+                                                    <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                                                        <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${
+                                                                coin.score >= 80 ? 'bg-orange-500/20 text-orange-400' :
+                                                                coin.score >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
+                                                                'bg-zinc-700/50 text-zinc-300'
+                                                            }`}>
+                                                                {coin.score}
                                                             </span>
                                                         </td>
-                                                        <td className="p-4 text-center flex justify-center">
-                                                            <div className="flex flex-col gap-1.5 w-32">
-                                                                {coin.badges && coin.badges.length > 0 ? coin.badges.map(b => (
-                                                                    <span key={b} className={`text-[10px] px-2 py-1 rounded-sm border font-medium text-center w-full ${b === 'Golden Setup' ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' :
-                                                                        b === 'Strong Support' || b === 'Strong Res' ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/30' :
-                                                                            b === 'Weak Level' ? 'bg-rose-500/10 text-rose-300/80 border-rose-500/20' :
-                                                                                b === 'Risky' ? 'bg-rose-500/10 text-rose-300 border-rose-500/30' :
-                                                                                    b === 'Overbought' ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' :
-                                                                                        b === 'Oversold' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' :
-                                                                                            b === 'Approaching' ? 'bg-blue-500/10 text-blue-300 border-blue-500/30' :
-                                                                                                b === 'Confirmed' ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' :
-                                                                                                    'bg-zinc-800 text-zinc-400 border-zinc-700'
-                                                                        }`}>
-                                                                        {b === 'Golden Setup' && '💎 '}
-                                                                        {(b === 'Strong Support' || b === 'Strong Res') && '🛡️ '}
-                                                                        {(b === 'Risky' || b === 'Weak Level') && '⚠️ '}
-                                                                        {b}
+                                                        <td className="p-3 text-center">
+                                                            <div className="flex flex-wrap gap-1 justify-center">
+                                                                {coin.sources.map(s => (
+                                                                    <span key={s} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{s}</span>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {coin.tags.map(tag => (
+                                                                    <span key={tag} className={`text-[10px] px-2 py-0.5 rounded border ${
+                                                                        tag === 'HOT SETUP' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' :
+                                                                        tag.includes('Breakout') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                                                        tag.includes('Support') ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                                                                        tag.includes('Volume') ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                                                                        tag.includes('Uptrend') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                                                        'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                                    }`}>
+                                                                        {tag}
                                                                     </span>
-                                                                )) : <span className="text-zinc-700 text-xs">-</span>}
+                                                                ))}
                                                             </div>
                                                         </td>
-                                                        <td className="p-4 text-center font-mono text-zinc-500">${formatPrice(coin.level)}</td>
-                                                        <td className="p-4 text-center font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
-                                                        <td className="p-4 text-center font-mono text-zinc-400">
-                                                            {coin.target ? `$${formatPrice(coin.target)}` : '-'}
+                                                        <td className="p-3 text-xs text-zinc-400 max-w-[200px]">
+                                                            {coin.reasons.slice(0, 2).join(' | ')}
                                                         </td>
-                                                        <td className="p-4 text-center">
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full border ${coin.tests >= 2 ? "bg-amber-500/10 text-amber-400 border-amber-500/30" : "bg-zinc-800 text-zinc-400 border-zinc-700"}`}>
-                                                                {coin.tests} Tests
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-4 text-center">
-                                                            {coin.riskReward ? (
-                                                                <span className={`font-mono font-bold ${coin.riskReward >= 3 ? "text-emerald-400" : "text-zinc-400"}`}>
-                                                                    1:{coin.riskReward.toFixed(1)}
-                                                                </span>
-                                                            ) : (
-                                                                <span className="text-zinc-600">-</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="p-4 text-center">
+                                                        <td className="p-3 text-center font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                        <td className="p-3 text-center">
                                                             <Link href={`/analyse/${coin.symbol}`}>
-                                                                <Button size="sm" className="bg-purple-600 hover:bg-purple-500 h-8">Analyze</Button>
+                                                                <Button size="sm" className="bg-orange-600 hover:bg-orange-500 h-7 text-xs">Analyze</Button>
                                                             </Link>
                                                         </td>
                                                     </tr>
-                                                )
-                                            })
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </TabsContent>
 
+                            <TabsContent value="sr" className="mt-4">
+                                <div className="mb-3 p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                                    <p className="text-sm text-indigo-300">
+                                        <strong>Support & Resistance</strong> - Coins near key price levels. Support = potential bounce up, Resistance = potential rejection.
+                                    </p>
+                                </div>
+                                <div className="h-[60vh] overflow-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="sticky top-0 z-10 bg-zinc-900">
+                                            <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
+                                                <th className="p-3 font-medium">Asset</th>
+                                                <th className="p-3 font-medium text-center">Type</th>
+                                                <th className="p-3 font-medium text-center">Level</th>
+                                                <th className="p-3 font-medium text-center">Distance</th>
+                                                <th className="p-3 font-medium text-center">Tests</th>
+                                                <th className="p-3 font-medium text-center">R:R</th>
+                                                <th className="p-3 font-medium">Badges</th>
+                                                <th className="p-3 font-medium text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-sm">
+                                            {isLoadingSR ? (
+                                                <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Scanning S/R levels...</td></tr>
+                                            ) : !srData?.length ? (
+                                                <tr><td colSpan={8} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
+                                            ) : (
+                                                srData.slice(0, 30).map((coin) => (
+                                                    <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                                                        <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${
+                                                                coin.type === 'Support' || coin.type === 'Breakout'
+                                                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                                                    : 'bg-rose-500/20 text-rose-400'
+                                                            }`}>
+                                                                {coin.type}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-center font-mono text-zinc-400">${formatPrice(coin.level)}</td>
+                                                        <td className="p-3 text-center font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={`text-xs px-2 py-0.5 rounded ${coin.tests >= 3 ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                                                                {coin.tests}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-center font-mono">
+                                                            {coin.riskReward ? (
+                                                                <span className={coin.riskReward >= 3 ? 'text-emerald-400' : 'text-zinc-400'}>
+                                                                    1:{coin.riskReward.toFixed(1)}
+                                                                </span>
+                                                            ) : '-'}
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {coin.badges?.slice(0, 2).map(b => (
+                                                                    <span key={b} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{b}</span>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <Link href={`/analyse/${coin.symbol}`}>
+                                                                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 h-7 text-xs">Analyze</Button>
+                                                            </Link>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </TabsContent>
 
-                        </div>
-                    </Card>
+                            <TabsContent value="trend-dip" className="mt-4">
+                                <div className="mb-3 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                                    <p className="text-sm text-emerald-300">
+                                        <strong>Trend Dip</strong> - Coins in long-term uptrend (above EMA200) with short-term RSI dips. Buy the dip in strong trends.
+                                    </p>
+                                </div>
+                                <div className="h-[60vh] overflow-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="sticky top-0 z-10 bg-zinc-900">
+                                            <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
+                                                <th className="p-3 font-medium">Asset</th>
+                                                <th className="p-3 font-medium text-center">Price</th>
+                                                <th className="p-3 font-medium text-center">EMA 200</th>
+                                                <th className="p-3 font-medium text-center">RSI 15m</th>
+                                                <th className="p-3 font-medium text-center">RSI 1h</th>
+                                                <th className="p-3 font-medium text-center">RSI 4h</th>
+                                                <th className="p-3 font-medium text-center">24h %</th>
+                                                <th className="p-3 font-medium text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-sm">
+                                            {isLoadingTrend ? (
+                                                <tr><td colSpan={8} className="p-8 text-center text-zinc-500">Scanning uptrends...</td></tr>
+                                            ) : !trendDip?.length ? (
+                                                <tr><td colSpan={8} className="p-8 text-center text-zinc-500">No trend dips found.</td></tr>
+                                            ) : (
+                                                trendDip.slice(0, 25).map((coin) => (
+                                                    <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                                                        <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
+                                                        <td className="p-3 text-center font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                        <td className="p-3 text-center font-mono text-emerald-400">${formatPrice(coin.ema200)}</td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={`font-mono ${coin.rsi.m15 < 40 ? 'text-emerald-400' : coin.rsi.m15 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                                                                {Math.round(coin.rsi.m15)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={`font-mono ${coin.rsi.h1 < 40 ? 'text-emerald-400' : coin.rsi.h1 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                                                                {Math.round(coin.rsi.h1)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={`font-mono ${coin.rsi.h4 < 40 ? 'text-emerald-400' : coin.rsi.h4 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                                                                {Math.round(coin.rsi.h4)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={coin.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                                                {coin.priceChangePercent >= 0 ? '+' : ''}{coin.priceChangePercent.toFixed(1)}%
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <Link href={`/analyse/${coin.symbol}`}>
+                                                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 h-7 text-xs">Analyze</Button>
+                                                            </Link>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </TabsContent>
 
-                    <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <Info className="w-5 h-5 text-indigo-400" />
-                                Scanner Logic & Definitions
-                            </h4>
-                            <dl className="space-y-4">
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Strategy & Timeframes</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        We scan for <strong>Support/Resistance</strong> (Bounces) and <strong>Breakout/Breakdown</strong> events over <strong>8, 14, or 30 days</strong>.
-                                        <ul className="list-disc list-inside pl-1 text-xs mt-1 text-zinc-500">
-                                            <li><strong>8 Days:</strong> Quick scalps/swings.</li>
-                                            <li><strong>30 Days:</strong> Major structural levels.</li>
-                                        </ul>
-                                    </dd>
+                            <TabsContent value="volume-spike" className="mt-4">
+                                <div className="mb-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                                    <p className="text-sm text-purple-300">
+                                        <strong>Volume Spike</strong> - Coins with 1.5x+ average volume on green candles. Indicates institutional interest.
+                                    </p>
                                 </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Definitions</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1 space-y-2">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                            <div className="flex items-center gap-2"><span className="text-amber-400">💎 Golden Setup</span> <span>Oversold + Strong Level</span></div>
-                                            <div className="flex items-center gap-2"><span className="text-indigo-400">🛡️ Strong Level</span> <span>Tested 3+ times</span></div>
-                                            <div className="flex items-center gap-2"><span className="text-rose-400">⚠️ Weak Level</span> <span>Few tests (Unreliable)</span></div>
-                                            <div className="flex items-center gap-2"><span className="text-emerald-400">📉 Oversold</span> <span>RSI &lt; 30 (Buy signal)</span></div>
-                                            <div className="flex items-center gap-2"><span className="text-rose-400">📈 Overbought</span> <span>RSI &gt; 70 (Sell signal)</span></div>
-                                        </div>
-                                    </dd>
+                                <div className="h-[60vh] overflow-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead className="sticky top-0 z-10 bg-zinc-900">
+                                            <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
+                                                <th className="p-3 font-medium">Asset</th>
+                                                <th className="p-3 font-medium text-center">Price</th>
+                                                <th className="p-3 font-medium text-center">Volume</th>
+                                                <th className="p-3 font-medium text-center">Avg Volume</th>
+                                                <th className="p-3 font-medium text-center">Multiple</th>
+                                                <th className="p-3 font-medium text-center">24h %</th>
+                                                <th className="p-3 font-medium text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="text-sm">
+                                            {isLoadingVolume ? (
+                                                <tr><td colSpan={7} className="p-8 text-center text-zinc-500">Scanning volume spikes...</td></tr>
+                                            ) : !volumeSpike?.length ? (
+                                                <tr><td colSpan={7} className="p-8 text-center text-zinc-500">No volume spikes detected.</td></tr>
+                                            ) : (
+                                                volumeSpike.slice(0, 25).map((coin) => (
+                                                    <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                                                        <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
+                                                        <td className="p-3 text-center font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                        <td className="p-3 text-center font-mono text-purple-400">{formatVolume(coin.volume)}</td>
+                                                        <td className="p-3 text-center font-mono text-zinc-500">{formatVolume(coin.avgVolume)}</td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={`font-bold ${coin.volumeMultiple >= 3 ? 'text-purple-400' : coin.volumeMultiple >= 2 ? 'text-purple-300' : 'text-zinc-400'}`}>
+                                                                {coin.volumeMultiple.toFixed(1)}x
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <span className={coin.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                                                {coin.priceChangePercent >= 0 ? '+' : ''}{coin.priceChangePercent.toFixed(1)}%
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-center">
+                                                            <Link href={`/analyse/${coin.symbol}`}>
+                                                                <Button size="sm" className="bg-purple-600 hover:bg-purple-500 h-7 text-xs">Analyze</Button>
+                                                            </Link>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Target Price (Ceiling)</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        The calculated exit point based on the recent trading range. For Support plays, this is the next Resistance.
-                                    </dd>
-                                </div>
-                            </dl>
-                        </div>
+                            </TabsContent>
 
-                        <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
-                            <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                                <HelpCircle className="w-5 h-5 text-emerald-400" />
-                                Trading Tips
-                            </h4>
-                            <dl className="space-y-4">
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Risk : Reward (R:R)</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        Ratio of <strong>Potential Loss</strong> (to Stop Loss) vs <strong>Potential Profit</strong> (to Target).
-                                        <br />
-                                        <span className="text-xs text-zinc-500 leading-relaxed block mt-1">
-                                            <strong>Note:</strong> This is NOT "Return on Investment".
-                                            <br />
-                                            Example: 1:12 means if you risk losing <strong>$10</strong> (Stop Loss), you aim to win <strong>$120</strong>.
-                                        </span>
-                                    </dd>
+                            <TabsContent value="momentum" className="mt-4">
+                                <div className="mb-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                                    <p className="text-sm text-amber-300">
+                                        <strong>Momentum Scanner</strong> - For detailed momentum analysis with stop-loss calculations, visit the dedicated Momentum page.
+                                    </p>
                                 </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">How, Why & When?</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1 space-y-2">
-                                        <p><strong>How:</strong> The algorithm scans the <strong>Top 75 Coins</strong> by 24h Volume every minute.</p>
-                                        <p><strong>Why:</strong> A coin appears here ONLY if it is <strong>within 5%</strong> of a major Support or Resistance level.</p>
-                                        <p><strong>When:</strong> Real-time. If a coin moves 6% away, it vanishes. If it enters the 5% zone, it appears.</p>
-                                    </dd>
+                                <div className="flex flex-col items-center justify-center h-[40vh] gap-4">
+                                    <Zap className="h-16 w-16 text-amber-500/50" />
+                                    <p className="text-zinc-400 text-center max-w-md">
+                                        The Momentum Scanner includes advanced features like pivot-based stop-loss calculations and real-time signal detection.
+                                    </p>
+                                    <Link href="/momentum">
+                                        <Button className="bg-amber-600 hover:bg-amber-500">
+                                            <Zap className="h-4 w-4 mr-2" />
+                                            Go to Momentum Scanner
+                                        </Button>
+                                    </Link>
                                 </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Why this list? (Top 75)</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        The number of times price has touched this level and respected it.
-                                        <br />
-                                        <strong>Higher Tests = Stronger Level.</strong> A level tested 5 times is much more significant than one tested once.
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Strength (Tests)</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        The number of times price has touched this level and respected it.
-                                        <br />
-                                        <strong>Higher Tests = Stronger Level.</strong> A level tested 5 times is much more significant than one tested once.
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-sm font-medium text-zinc-300">Interpreting "Type"</dt>
-                                    <dd className="text-sm text-zinc-400 mt-1">
-                                        <ul className="grid grid-cols-2 gap-2 text-xs">
-                                            <li><strong className="text-emerald-400">Support:</strong> Price is at the floor. Look for buys.</li>
-                                            <li><strong className="text-rose-400">Resistance:</strong> Price is at the ceiling. Look for sells.</li>
-                                            <li><strong className="text-emerald-400">Breakout:</strong> Price smashed the ceiling. Bullish!</li>
-                                            <li><strong className="text-rose-400">Breakdown:</strong> Price smashed the floor. Bearish!</li>
-                                        </ul>
-                                    </dd>
-                                </div>
-                            </dl>
-                        </div>
+                            </TabsContent>
+                        </Tabs>
                     </div>
-                </div>
+                </Card>
             </div>
         </Page>
     );
