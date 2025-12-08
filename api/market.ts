@@ -45,6 +45,16 @@ function calculateRSI(closes: number[], period: number = 14): number {
   return 100 - (100 / (1 + avgGain / avgLoss));
 }
 
+function calculateEMA(data: number[], period: number): number[] {
+  const ema: number[] = [];
+  const k = 2 / (period + 1);
+  ema[0] = data[0];
+  for (let i = 1; i < data.length; i++) {
+    ema[i] = data[i] * k + ema[i - 1] * (1 - k);
+  }
+  return ema;
+}
+
 function generateFallbackFearGreed() {
   const value = Math.floor(Math.random() * 40) + 20;
   let classification = 'Fear';
@@ -367,54 +377,156 @@ async function handleTopPicks(res: VercelResponse) {
     const response = await fetch(`${BINANCE_BASE}/ticker/24hr`);
     if (!response.ok) return sendError(res, 500, 'Failed to fetch market data');
     const tickers = await response.json();
-    const topPicks = tickers
-      .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 5_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN') && parseFloat(t.priceChangePercent) > 2)
-      .map((t: any) => {
+    
+    // Pre-filter candidates: positive momentum, good volume, not leveraged
+    const candidates = tickers
+      .filter((t: any) => 
+        t.symbol.endsWith('USDT') && 
+        parseFloat(t.quoteVolume) >= 5_000_000 && 
+        !t.symbol.includes('UP') && !t.symbol.includes('DOWN') &&
+        parseFloat(t.priceChangePercent) > 1 && parseFloat(t.priceChangePercent) < 25
+      )
+      .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, 30);
+    
+    // Analyze each candidate with technical indicators
+    const analyzed = await Promise.all(
+      candidates.map(async (t: any) => {
+        const symbol = t.symbol;
         const price = parseFloat(t.lastPrice);
         const changePct = parseFloat(t.priceChangePercent);
         const volume = parseFloat(t.quoteVolume);
-        const high = parseFloat(t.highPrice);
-        const low = parseFloat(t.lowPrice);
+        const high24h = parseFloat(t.highPrice);
+        const low24h = parseFloat(t.lowPrice);
         
-        const volumeScore = Math.min(volume / 50_000_000, 1);
-        const momentumScore = Math.min(changePct / 10, 1);
-        const score = Math.round((volumeScore * 0.4 + momentumScore * 0.6) * 100);
+        let rsi = 50, ema20 = price, ema50 = price, volumeRatio = 1;
+        let trendBullish = false, rsiHealthy = false, hasRoom = false;
+        let stopLoss: number | null = null, riskPct: number | null = null;
         
+        try {
+          const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=60`);
+          if (klineResponse.ok) {
+            const klines = await klineResponse.json();
+            const closes = klines.map((k: any[]) => parseFloat(k[4]));
+            const lows = klines.map((k: any[]) => parseFloat(k[3]));
+            const volumes = klines.map((k: any[]) => parseFloat(k[5]));
+            
+            // Calculate RSI
+            rsi = calculateRSI(closes);
+            
+            // Calculate EMAs
+            const ema20Arr = calculateEMA(closes, 20);
+            const ema50Arr = calculateEMA(closes, 50);
+            ema20 = ema20Arr[ema20Arr.length - 1];
+            ema50 = ema50Arr[ema50Arr.length - 1];
+            
+            // Volume ratio
+            const avgVol = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+            const currentVol = volumes[volumes.length - 1];
+            volumeRatio = currentVol / avgVol;
+            
+            // Find pivot low for stop loss
+            const pivotLow = findPivotLow(lows, closes, 20);
+            if (pivotLow && pivotLow < price) {
+              stopLoss = pivotLow * 0.996;
+              riskPct = ((price - stopLoss) / price) * 100;
+            }
+            
+            // Technical conditions
+            trendBullish = price > ema20 && ema20 > ema50;
+            rsiHealthy = rsi >= 35 && rsi <= 68;
+            hasRoom = (price - low24h) / (high24h - low24h) < 0.85;
+          }
+        } catch {}
+        
+        // SCORING: Higher is better for buying
+        let score = 0;
         const tags: string[] = [];
         const reasons: string[] = [];
         
-        if (changePct > 5) {
-          tags.push('Ride the Wave');
-          reasons.push(`Strong momentum: +${changePct.toFixed(1)}% in 24h`);
+        // Trend alignment (+25 points max)
+        if (trendBullish) {
+          score += 25;
+          tags.push('Uptrend');
+          reasons.push('Price above key moving averages - bullish structure');
+        } else if (price > ema20) {
+          score += 10;
         }
-        if (volume > 20_000_000) {
-          tags.push('High Volume');
-          reasons.push(`Volume $${(volume / 1_000_000).toFixed(0)}M shows strong interest`);
+        
+        // RSI sweet spot (+25 points max)
+        if (rsiHealthy) {
+          score += 25;
+          if (rsi < 50) {
+            tags.push('RSI Dip');
+            reasons.push(`RSI at ${Math.round(rsi)} - room to run before overbought`);
+          }
+        } else if (rsi > 70) {
+          score -= 15; // Penalize overbought
         }
-        if ((price - low) / (high - low) < 0.3) {
-          tags.push('Near Support');
-          reasons.push('Price near support level - good entry');
+        
+        // Momentum (+20 points max)
+        if (changePct >= 3 && changePct <= 12) {
+          score += 20;
+          tags.push('Strong Momentum');
+          reasons.push(`+${changePct.toFixed(1)}% move with sustainable pace`);
+        } else if (changePct > 12) {
+          score += 5; // Good but risky - might be extended
         }
-        if (score > 70) {
-          tags.push('PERFECT Setup');
-          reasons.push('Multiple confluence factors aligned');
+        
+        // Volume confirmation (+15 points max)
+        if (volumeRatio > 1.5) {
+          score += 15;
+          tags.push('Volume Surge');
+          reasons.push(`${volumeRatio.toFixed(1)}x average volume - whale interest`);
+        } else if (volumeRatio > 1.2) {
+          score += 8;
+        }
+        
+        // Room to run (+10 points max)
+        if (hasRoom) {
+          score += 10;
+          reasons.push('Not at resistance - room for continuation');
+        }
+        
+        // Risk/Reward bonus (+5 points if good R:R)
+        if (riskPct && riskPct > 0 && riskPct < 6) {
+          score += 5;
+          tags.push('Tight Stop');
+          reasons.push(`Only ${riskPct.toFixed(1)}% risk to defined stop`);
+        }
+        
+        // PERFECT setup bonus
+        if (trendBullish && rsiHealthy && volumeRatio > 1.3 && hasRoom) {
+          score += 10;
+          tags.unshift('PERFECT Setup');
         }
         
         if (reasons.length === 0) {
-          reasons.push('Solid momentum and volume profile');
+          reasons.push('Positive momentum with decent volume');
         }
         
         return {
-          symbol: t.symbol,
+          symbol,
           price,
-          score,
+          score: Math.max(0, Math.min(100, score)),
           tags,
           reasons,
+          rsi: Math.round(rsi),
+          changePct,
+          volumeRatio: Math.round(volumeRatio * 10) / 10,
+          stopLoss,
+          riskPct: riskPct ? Math.round(riskPct * 100) / 100 : null,
           sources: { sr: null, mom: null }
         };
       })
-      .sort((a: any, b: any) => b.score - a.score)
+    );
+    
+    // Filter out poor setups and sort by score
+    const topPicks = analyzed
+      .filter(p => p.score >= 40) // Only show quality setups
+      .sort((a, b) => b.score - a.score)
       .slice(0, 8);
+    
     sendJson(res, topPicks);
   } catch { sendError(res, 500, 'Failed to fetch top picks'); }
 }

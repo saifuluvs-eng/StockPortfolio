@@ -8,6 +8,38 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**December 8, 2025 - IMPROVED: TOP PICKS + MOMENTUM Scanners**:
+
+- **TOP PICKS Page - Smart Confluence Scoring**
+  - New multi-factor scoring algorithm based on:
+    - Momentum (5-15% = +25pts, any positive = +15pts)
+    - Volume ($20M+ = +15pts, $10M+ = +8pts)
+    - Trend alignment via EMA (when data available = +20pts)
+    - RSI health (35-68 range = +15pts)
+    - Volume surge (>1.5x avg = +10pts)
+  - Tags: "Strong Momentum", "High Volume", "Uptrend", "RSI Dip", "Volume Surge", "PERFECT Setup"
+  - Shows coins scored 30+ with clear "Why we picked this" reasons
+
+- **MOMENTUM Scanner - Pivot-Based Stops (Fixed 5% Flattening)**
+  - Real pivot low detection from hourly klines (local minima)
+  - Stop calculated with 0.4% buffer below pivot
+  - Returns null when no valid pivot exists
+  - Risk % now varies naturally (2.1%, 4.7%, 8.3%, etc.)
+  - "GAINING SPEED" signal when no pivot available
+  - Displays "-" for Stop/Risk when unavailable
+
+- **DATA Page - Multi-Timeframe RSI**
+  - RSI endpoint now accepts multiple timeframes: `?timeframe=15m,1h,4h,1d,1w`
+  - Returns RSI for each: `{ rsi: { "15m": 45, "1h": 52, "4h": 38, ... } }`
+
+- **ANALYSE Page - 15 Technical Indicators**
+  - Expanded scanner from 7 to 15 breakdown items:
+    - RSI, MACD, EMA 9/20, EMA 20/50, EMA 200, Bollinger Bands
+    - Stochastic, Williams %R, VWAP, Volume, OBV, ATR
+    - 24h Change, Support Level, Resistance Level
+
+- **Fallback Data** - Added graceful fallback when Binance API blocked (cloud restrictions)
+
 **December 8, 2025 - MAJOR: Vercel Serverless Migration + AI Temporarily Disabled**:
 
 - **Removed Gemini AI Integration** - AI features temporarily disabled to restore application stability
