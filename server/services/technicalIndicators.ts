@@ -1191,7 +1191,14 @@ class TechnicalIndicators {
       // Dynamic Pool Size:
       // For short-term (Scalping/Swing), Top 75 Volume is enough (and faster).
       // For long-term (Investing), we need to cast a wider net (Top 200) because high volume moves around.
-      const poolSize = lookbackDays > 30 ? 200 : 75;
+      // VERCEL OPTIMIZATION: Strict 10s timeout means we must limit the pool size.
+      const isVercel = process.env.VERCEL === '1';
+      let poolSize = lookbackDays > 30 ? 200 : 75;
+
+      if (isVercel) {
+        console.log('[TechnicalIndicators] Vercel environment detected. Capping scan pool to 40 to prevent timeout.');
+        poolSize = 40;
+      }
 
       const topPairs = await binanceService.getTopVolumePairs(poolSize);
       const results: any[] = [];
@@ -1619,7 +1626,7 @@ class TechnicalIndicators {
       return scoredCoins
         .filter(c => c.score >= 60)
         .sort((a, b) => b.score - a.score)
-        .slice(0, 12); // Top 12 Cards
+        .slice(0, limit); // Respect requested limit
 
     } catch (error) {
       console.error('Error fetching Top Picks:', error);
