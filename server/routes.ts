@@ -43,24 +43,27 @@ const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {
 
 export function registerRoutes(app: Express): Server {
   const server = createServer(app);
-  const wss = new WebSocketServer({ noServer: true });
+  // No WebSockets on Vercel
+  if (!process.env.VERCEL) {
+    const wss = new WebSocketServer({ noServer: true });
 
-  wss.on("connection", (socket) => {
-    socket.on("message", (message) => {
-      socket.send(message.toString());
+    wss.on("connection", (socket) => {
+      socket.on("message", (message) => {
+        socket.send(message.toString());
+      });
     });
-  });
 
-  server.on("upgrade", (request, socket, head) => {
-    if (request.url !== "/ws") {
-      socket.destroy();
-      return;
-    }
+    server.on("upgrade", (request, socket, head) => {
+      if (request.url !== "/ws") {
+        socket.destroy();
+        return;
+      }
 
-    wss.handleUpgrade(request, socket, head, (websocket) => {
-      wss.emit("connection", websocket, request);
+      wss.handleUpgrade(request, socket, head, (websocket) => {
+        wss.emit("connection", websocket, request);
+      });
     });
-  });
+  }
   // Auth middleware
   // TODO: Uncomment this when you are ready to enable real authentication.
   //await setupAuth(app);
