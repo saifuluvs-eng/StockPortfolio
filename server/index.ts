@@ -59,12 +59,26 @@ let server: any = null;
 
 const initializeServer = () => {
     if (!server) {
-        server = registerRoutes(app);
+
+
+        // Log critical environment variables (masked)
+        console.log("Environment Check:");
+        console.log(`DATABASE_URL: ${process.env.DATABASE_URL ? "Set" : "Missing"}`);
+        console.log(`GEMINI_API_KEY: ${process.env.GEMINI_API_KEY ? "Set" : "Missing"}`);
+        console.log(`COINMARKETCAP_API_KEY: ${process.env.COINMARKETCAP_API_KEY ? "Set" : "Missing"}`);
 
         // Add basic health check route if not already registered
         app.get('/api/health', (req, res) => {
+            console.log(`[API] /api/health called from ${req.ip}`);
             res.json({ status: 'ok', timestamp: new Date().toISOString() });
         });
+
+        try {
+            server = registerRoutes(app);
+        } catch (err) {
+            console.error("CRITICAL: Failed to register routes:", err);
+            throw err; // Re-throw to fail startup if routes are broken
+        }
 
         // Global error handler
         app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
