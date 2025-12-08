@@ -8,6 +8,17 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**December 8, 2025 - FIXED: AI Summary Indicator Name Filtering (Final Solution)**:
+
+- **Root Cause Identified**: Filter was implemented in wrong file (`gemini_tech_summary.js`) instead of active module (`gemini_chart_analysis.ts`)
+- **Solution Applied**: Added `filterIndicatorNames()` function to `server/gemini_chart_analysis.ts`
+  - Removes entire bullet points mentioning indicators (EMA, MACD, RSI, VWAP, OBV, ADX, SAR, Williams %R, Bollinger, Stochastic, etc.)
+  - Removes complete sentences containing indicator names
+  - Cleans up orphaned spaces and formatting
+  - Applied to both `runSummary()` and `runSummaryWithIndicators()` functions
+- **Data Flow**: Indicators → Summary fields → Gemini → **Filtered clean output**
+- **Result**: AI Summary now returns trader-language analysis without any technical indicator names
+
 **November 25, 2025 - FIXED: AI Summary Button + Indicator Filtering**:
 
 - **Generate Button Loading State (`client/src/components/analyse/AiSummaryPanel.tsx`)**

@@ -872,19 +872,87 @@ export async function sendToGemini(prompt: string) {
     return { raw: json, text: candidate };
 }
 
+/* ========== Indicator Name Filter ========== */
+
+function filterIndicatorNames(text: string): string {
+    // Remove entire bullet points/lines that mention indicator names
+    const indicatorPatterns = [
+        /- .*?\bEMA\b.*?\n/gi,
+        /- .*?\bSMA\b.*?\n/gi,
+        /- .*?\bMoving [Aa]verage.*?\n/gi,
+        /- .*?\bRSI\b.*?\n/gi,
+        /- .*?\bRelative Strength.*?\n/gi,
+        /- .*?\bMACD\b.*?\n/gi,
+        /- .*?\bSignal Line.*?\n/gi,
+        /- .*?\bVWAP\b.*?\n/gi,
+        /- .*?\bVolume Weighted.*?\n/gi,
+        /- .*?\bATR\b.*?\n/gi,
+        /- .*?\bAverage True Range.*?\n/gi,
+        /- .*?\bBollinger.*?\n/gi,
+        /- .*?\bOBV\b.*?\n/gi,
+        /- .*?\bOn Balance Volume.*?\n/gi,
+        /- .*?\bvolume oscillator.*?\n/gi,
+        /- .*?\bADX\b.*?\n/gi,
+        /- .*?\bStochastic.*?\n/gi,
+        /- .*?\bWilliams %R.*?\n/gi,
+        /- .*?\bParabolic SAR.*?\n/gi,
+        /- .*?\bSAR\b.*?\n/gi,
+        /- .*?\bcrossover.*?\n/gi,
+        /- .*?\bcross-over.*?\n/gi,
+        /- .*?\bcrossing.*?\n/gi,
+        /- .*?\bHistogram.*?\n/gi,
+        /- .*?\bindicator.*?\n/gi,
+    ];
+    
+    let filtered = text;
+    for (const pattern of indicatorPatterns) {
+        filtered = filtered.replace(pattern, "");
+    }
+    
+    // Also remove any remaining sentences that mention these terms
+    const sentencePatterns = [
+        /[^.\n]*\bEMA\b[^.\n]*\.\s*/gi,
+        /[^.\n]*\bMACD\b[^.\n]*\.\s*/gi,
+        /[^.\n]*\bVWAP\b[^.\n]*\.\s*/gi,
+        /[^.\n]*\bRSI\b[^.\n]*\.\s*/gi,
+        /[^.\n]*\bADX\b[^.\n]*\.\s*/gi,
+        /[^.\n]*\bOBV\b[^.\n]*\.\s*/gi,
+        /[^.\n]*\bParabolic SAR\b[^.\n]*\.\s*/gi,
+        /[^.\n]*\bcrossover[^.\n]*\.\s*/gi,
+    ];
+    
+    for (const pattern of sentencePatterns) {
+        filtered = filtered.replace(pattern, "");
+    }
+    
+    // Clean up multiple spaces, newlines, and empty bullet points
+    filtered = filtered.replace(/  +/g, " ").replace(/\n\n+/g, "\n").trim();
+    filtered = filtered.replace(/^- \s*$/gm, "");
+    
+    return filtered;
+}
+
 /* ========== Public runner functions ========== */
 
 export async function runSummary({ symbol, timeframe, candles, focus }: { symbol: string, timeframe: string, candles: Candle[], focus?: string }) {
     const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, candles, focus });
     // debug log so you can inspect what is sent
     console.log("FINAL JSON sent to Gemini (truncated):", JSON.stringify(finalJson, null, 2).slice(0, 2000));
-    const { raw, text } = await sendToGemini(prompt);
+    let { raw, text } = await sendToGemini(prompt);
+    
+    // Filter out indicator names from Gemini response
+    text = filterIndicatorNames(text);
+    
     return { finalJson, geminiRaw: raw, geminiText: text };
 }
 
 export async function runSummaryWithIndicators({ symbol, timeframe, indicatorsOverride, candles, focus }: { symbol: string, timeframe: string, indicatorsOverride?: Indicators, candles?: Candle[], focus?: string }) {
     const { finalJson, prompt } = buildFinalJSONAndPrompt({ symbol, timeframe, indicatorsOverride, candles, focus });
     console.log("FINAL JSON sent to Gemini (override):", JSON.stringify(finalJson, null, 2));
-    const { raw, text } = await sendToGemini(prompt);
+    let { raw, text } = await sendToGemini(prompt);
+    
+    // Filter out indicator names from Gemini response
+    text = filterIndicatorNames(text);
+    
     return { finalJson, geminiRaw: raw, geminiText: text };
 }
