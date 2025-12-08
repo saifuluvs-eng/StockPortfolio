@@ -879,7 +879,7 @@ async function sendToGemini(prompt) {
     };
 
     console.log("SENDING TO GEMINI. Prompt length:", prompt.length);
-    const resp = await fetch(url, {
+    const resp = await fetch(GEMINI_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body)
