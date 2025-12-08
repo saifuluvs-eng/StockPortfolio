@@ -7,7 +7,7 @@
     "dev": "NODE_ENV=development tsx watch server/index.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
-    "build:server": "esbuild server/index.ts --platform=node --bundle --outfile=dist/index.js --format=esm --external:better-sqlite3 --external:@neondatabase/serverless",
+    "build:server": "esbuild server/index.ts --platform=node --bundle --outfile=dist/index.js --format=esm --packages=external",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
     "test": "vitest run",
