@@ -108,5 +108,5 @@ Preferred communication style: Simple, everyday language.
 
 - **Market Data**: Binance REST API (`api.binance.com/api/v3`) for real-time tickers and OHLC data.
 - **Market Sentiment**: CoinMarketCap API (`pro-api.coinmarketcap.com/v3`) for Fear & Greed index.
-- **AI Services**: Google Gemini API (`gemini-2.0-flash` model) for market analysis and AI Summary.
+- **AI Services**: Google Gemini API (`gemini-1.5-flash` model) for market analysis and AI Summary.
 - **Authentication**: Supabase Auth.
