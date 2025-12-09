@@ -1221,14 +1221,19 @@ class TechnicalIndicators {
         const promises = batch.map(async (pair) => {
           try {
             // Fetch 7 days of hourly data for proper volume comparison
-            const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${pair.symbol}&interval=1h&limit=168`);
-            if (!klineResponse.ok) return null;
+            // Use binanceService for consistent data parsing
+            let klines;
+            try {
+              klines = await binanceService.getKlineData(pair.symbol, '1h', 168);
+            } catch (e) {
+              return null;
+            }
 
-            const klines = await klineResponse.json();
-            if (klines.length < 48) return null;
+            if (!klines || klines.length < 48) return null;
 
-            const currentPrice = parseFloat(klines[klines.length - 1][4]);
-            const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume (USDT)
+            // Map consistent data structure from binanceService
+            const currentPrice = parseFloat(klines[klines.length - 1].close);
+            const volumes = klines.map(k => parseFloat(k.quoteVolume)); // quote volume (USDT)
 
             // Calculate today's 24h volume
             const todayVolumes = volumes.slice(-24);
@@ -1247,9 +1252,16 @@ class TechnicalIndicators {
               const dayVolume = previousDaysVolumes.slice(dayStart, dayEnd).reduce((a, b) => a + b, 0);
               totalPreviousDaysVolume += dayVolume;
             }
-            const avgDailyVolume = totalPreviousDaysVolume / daysCount;
+            let avgDailyVolume = totalPreviousDaysVolume / daysCount;
 
-            if (avgDailyVolume <= 0) return null;
+            // Sanity check: If avg volume is suspiciously low but today is high, 
+            // it's likely a data gap. Use today's volume as baseline to avoid 400x spikes.
+            if (avgDailyVolume < 5_000_000 && todayVolume > 50_000_000) {
+              avgDailyVolume = todayVolume * 0.8;
+            }
+
+            // Ensure we don't divide by zero
+            if (avgDailyVolume <= 0) avgDailyVolume = todayVolume || 1;
 
             const volumeMultiple = todayVolume / avgDailyVolume;
             const isSpike = volumeMultiple > 1.5;
