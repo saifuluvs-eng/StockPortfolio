@@ -184,7 +184,7 @@ export default function ChartDecodePage() {
                         size="lg"
                         onClick={handleDecode}
                         disabled={isDecoding || chartData.length === 0}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.3)] animate-pulse hover:animate-none"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.3)]"
                     >
                         {isDecoding ? (
                             <>
