@@ -379,12 +379,29 @@ async function handleVolumeSpike(res: VercelResponse) {
 
     // Limit concurrency to avoid timeouts
     const volumeSpikes: any[] = [];
-    const chunks = [];
+    const chunks: any[][] = [];
     const chunkSize = 5;
 
     for (let i = 0; i < candidates.length; i += chunkSize) {
       chunks.push(candidates.slice(i, i + chunkSize));
     }
+
+    for (const chunk of chunks) {
+      // ... (rest of volume spike logic is unchanged, just showing context for the chunks fix) ...
+      const results = await Promise.all(chunk.map(async (t: any) => {
+        // ...
+        return null; // Placeholder as we aren't changing the inner logic of volume spike here, but the tool requires context.
+        // Actually, since I can't skip lines easily inside a replace block without context matching, 
+        // I will target the TrendDip logic specifically for the RSI part, and the VolumeSpike chunks definition separately if needed.
+        // Wait, replace_file_content replaces a CONTIGUOUS block. I should make TWO edits.
+        // One for the chunks definition (Volume Spike).
+        // One for the Trend Dip fetching logic.
+      }));
+    }
+    // STOP. I cannot use comments to skip code in replacement content.
+    // I will split this into two tool calls or one multi_replace_file_content call.
+    // I will use multi_replace_file_content.
+
 
     for (const chunk of chunks) {
       const results = await Promise.all(chunk.map(async (t: any) => {
@@ -464,18 +481,40 @@ async function handleTrendDip(res: VercelResponse) {
         const priceChangePercent = parseFloat(t.priceChangePercent);
         const volume = parseFloat(t.quoteVolume);
 
-        let rsi = { m15: 50, h1: 50, h4: 50, d1: 50, w1: 50 };
+        let rsi = { m15: 50, h1: 50, h4: 50 };
         let ema200 = price * 0.95;
 
         try {
-          const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=4h&limit=210`);
-          if (klineResponse.ok) {
-            const klines = await klineResponse.json();
+          // Fetch data for multiple timeframes in parallel
+          const [k15mRes, k1hRes, k4hRes] = await Promise.all([
+            fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=15m&limit=50`),
+            fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=50`),
+            fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=4h&limit=210`)
+          ]);
+
+          // Calculate 4H EMA200 (Long term trend)
+          if (k4hRes.ok) {
+            const klines = await k4hRes.json();
             const closes = klines.map((k: any[]) => parseFloat(k[4]));
             const ema200Arr = calculateEMA(closes, 200);
             ema200 = ema200Arr[ema200Arr.length - 1];
-            rsi.h4 = calculateRSI(closes);
+            rsi.h4 = parseFloat(calculateRSI(closes).toFixed(1));
           }
+
+          // Calculate 1H RSI
+          if (k1hRes.ok) {
+            const klines = await k1hRes.json();
+            const closes = klines.map((k: any[]) => parseFloat(k[4]));
+            rsi.h1 = parseFloat(calculateRSI(closes).toFixed(1));
+          }
+
+          // Calculate 15m RSI
+          if (k15mRes.ok) {
+            const klines = await k15mRes.json();
+            const closes = klines.map((k: any[]) => parseFloat(k[4]));
+            rsi.m15 = parseFloat(calculateRSI(closes).toFixed(1));
+          }
+
         } catch { }
 
         const isAboveEma = price > ema200;
