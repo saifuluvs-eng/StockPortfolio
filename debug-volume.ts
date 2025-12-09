@@ -40,7 +40,17 @@ async function debugVolume() {
         totalPreviousDaysVolume += dayVolume;
     }
 
-    const avgDailyVolume = totalPreviousDaysVolume / daysCount;
+    let avgDailyVolume = totalPreviousDaysVolume / daysCount;
+
+    // SECURITY CLAMP: Prevent "4M" volume artifact
+    if (avgDailyVolume < 10_000_000 && todayVolume > 10_000_000) {
+        console.log(`[DEBUG] Triggering Security Clamp! Avg was ${avgDailyVolume}`);
+        const dampener = 0.7;
+        avgDailyVolume = todayVolume * dampener;
+    }
+
+    if (avgDailyVolume <= 0) avgDailyVolume = todayVolume || 10_000_000;
+
     console.log(`Avg Daily Volume: ${avgDailyVolume.toLocaleString()}`);
     console.log(`Avg Daily Volume (Formatted): $${(avgDailyVolume / 1_000_000).toFixed(1)}M`);
 
