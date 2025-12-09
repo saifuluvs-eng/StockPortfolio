@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Page, Card } from "@/components/layout/Layout";
-import { RefreshCw, Target, Flame, TrendingUp, BarChart3, Zap, ArrowUpDown } from "lucide-react";
+import { RefreshCw, Target, Flame, TrendingUp, BarChart3, Zap, ArrowUpDown, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format } from "date-fns";
@@ -36,10 +36,11 @@ interface HotSetup {
 interface TrendDipResult {
     symbol: string;
     price: number;
-    rsi: { m15: number; h1: number; h4: number; d1: number; w1: number };
+    rsi: { m15: number | null; h1: number | null; h4: number | null; d1: number | null; w1: number | null };
     ema200: number;
     volume: number;
     priceChangePercent: number;
+    isFallbackData?: boolean;
 }
 
 interface VolumeSpikeResult {
@@ -49,6 +50,7 @@ interface VolumeSpikeResult {
     avgVolume: number;
     volumeMultiple: number;
     priceChangePercent: number;
+    isFallbackData?: boolean;
 }
 
 type SortField = 'target' | 'tests' | 'riskReward' | 'type' | 'score';
@@ -135,6 +137,28 @@ export default function StrategiesPage() {
         activeTab === 'sr' ? isLoadingSR :
         activeTab === 'trend-dip' ? isLoadingTrend :
         activeTab === 'volume-spike' ? isLoadingVolume : false;
+    
+    // Check if any data is fallback/demo data
+    const isFallbackData = useMemo(() => {
+        if (activeTab === 'trend-dip' && trendDip?.some(item => item.isFallbackData)) return true;
+        if (activeTab === 'volume-spike' && volumeSpike?.some(item => item.isFallbackData)) return true;
+        return false;
+    }, [activeTab, trendDip, volumeSpike]);
+    
+    // Fallback warning component
+    const FallbackWarning = () => (
+        <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+                <p className="text-amber-300 font-semibold text-sm">Demo Data - Not Real-Time</p>
+                <p className="text-amber-200/70 text-xs mt-1">
+                    Live market data is currently unavailable (API restrictions on this server). 
+                    The data shown below is for demonstration purposes only. 
+                    <strong className="text-amber-200"> Publish the app</strong> to see real-time data.
+                </p>
+            </div>
+        </div>
+    );
 
     return (
         <Page>
@@ -356,6 +380,7 @@ export default function StrategiesPage() {
                             </TabsContent>
 
                             <TabsContent value="trend-dip" className="mt-4">
+                                {isFallbackData && <FallbackWarning />}
                                 <div className="mb-3 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                                     <p className="text-sm text-emerald-300">
                                         <strong>Trend Dip</strong> - Coins in long-term uptrend (above EMA200) with short-term RSI dips. Buy the dip in strong trends.
@@ -381,38 +406,49 @@ export default function StrategiesPage() {
                                             ) : !trendDip?.length ? (
                                                 <tr><td colSpan={8} className="p-8 text-center text-zinc-500">No trend dips found.</td></tr>
                                             ) : (
-                                                trendDip.slice(0, 25).map((coin) => (
-                                                    <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                                                        <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
-                                                        <td className="p-3 text-center font-mono text-zinc-300">${formatPrice(coin.price)}</td>
-                                                        <td className="p-3 text-center font-mono text-emerald-400">${formatPrice(coin.ema200)}</td>
-                                                        <td className="p-3 text-center">
-                                                            <span className={`font-mono ${coin.rsi.m15 < 40 ? 'text-emerald-400' : coin.rsi.m15 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
-                                                                {Math.round(coin.rsi.m15)}
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-3 text-center">
-                                                            <span className={`font-mono ${coin.rsi.h1 < 40 ? 'text-emerald-400' : coin.rsi.h1 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
-                                                                {Math.round(coin.rsi.h1)}
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-3 text-center">
-                                                            <span className={`font-mono ${coin.rsi.h4 < 40 ? 'text-emerald-400' : coin.rsi.h4 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
-                                                                {Math.round(coin.rsi.h4)}
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-3 text-center">
-                                                            <span className={coin.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-                                                                {coin.priceChangePercent >= 0 ? '+' : ''}{coin.priceChangePercent.toFixed(1)}%
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-3 text-center">
-                                                            <Link href={`/analyse/${coin.symbol}`}>
-                                                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 h-7 text-xs">Analyze</Button>
-                                                            </Link>
-                                                        </td>
-                                                    </tr>
-                                                ))
+                                                trendDip.slice(0, 25).map((coin) => {
+                                                    const rsiM15 = coin.rsi?.m15;
+                                                    const rsiH1 = coin.rsi?.h1;
+                                                    const rsiH4 = coin.rsi?.h4;
+                                                    return (
+                                                        <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                                                            <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
+                                                            <td className="p-3 text-center font-mono text-zinc-300">${formatPrice(coin.price)}</td>
+                                                            <td className="p-3 text-center font-mono text-emerald-400">${formatPrice(coin.ema200)}</td>
+                                                            <td className="p-3 text-center">
+                                                                {rsiM15 !== null && rsiM15 !== undefined ? (
+                                                                    <span className={`font-mono ${rsiM15 < 40 ? 'text-emerald-400' : rsiM15 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                                                                        {rsiM15}
+                                                                    </span>
+                                                                ) : <span className="text-zinc-600">-</span>}
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                                {rsiH1 !== null && rsiH1 !== undefined ? (
+                                                                    <span className={`font-mono ${rsiH1 < 40 ? 'text-emerald-400' : rsiH1 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                                                                        {rsiH1}
+                                                                    </span>
+                                                                ) : <span className="text-zinc-600">-</span>}
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                                {rsiH4 !== null && rsiH4 !== undefined ? (
+                                                                    <span className={`font-mono ${rsiH4 < 40 ? 'text-emerald-400' : rsiH4 > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
+                                                                        {rsiH4}
+                                                                    </span>
+                                                                ) : <span className="text-zinc-600">-</span>}
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                                <span className={coin.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+                                                                    {coin.priceChangePercent >= 0 ? '+' : ''}{coin.priceChangePercent.toFixed(1)}%
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                                <Link href={`/analyse/${coin.symbol}`}>
+                                                                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 h-7 text-xs">Analyze</Button>
+                                                                </Link>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
                                             )}
                                         </tbody>
                                     </table>
@@ -420,6 +456,7 @@ export default function StrategiesPage() {
                             </TabsContent>
 
                             <TabsContent value="volume-spike" className="mt-4">
+                                {isFallbackData && <FallbackWarning />}
                                 <div className="mb-3 p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
                                     <p className="text-sm text-purple-300">
                                         <strong>Volume Spike</strong> - Coins with 1.5x+ average volume on green candles. Indicates institutional interest.

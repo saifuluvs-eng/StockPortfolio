@@ -621,8 +621,15 @@ class TechnicalIndicators {
               ]);
 
               const extractRSI = (k: any[]) => {
-                if (!k || k.length < 15) return 50; // Default Neutral if missing
-                return this.calculateRSI(k.map(x => parseFloat(x.close)), 14);
+                if (!k || k.length < 15) return null; // Return null if data missing
+                // Handle both object format {close: "123"} and already parsed format {c: 123}
+                const closes = k.map(x => {
+                  if (typeof x.c === 'number') return x.c;
+                  if (x.close !== undefined) return parseFloat(x.close);
+                  return NaN;
+                });
+                if (closes.some(c => isNaN(c))) return null;
+                return Math.round(this.calculateRSI(closes, 14));
               };
 
               const rsiObj = {
@@ -659,12 +666,32 @@ class TechnicalIndicators {
       }
 
       console.log(`[TrendDip] Found ${results.length} uptrending coins.`);
+      
+      // If no results (likely Binance blocked), return fallback with flag
+      if (results.length === 0) {
+        return this.generateFallbackTrendDip();
+      }
+      
       // Sort by 1h RSI ascending (Standard "Dip" metric)
-      return results.sort((a, b) => a.rsi.h1 - b.rsi.h1);
+      return results.sort((a, b) => (a.rsi.h1 || 50) - (b.rsi.h1 || 50));
     } catch (error) {
       console.error('Error scanning for Trend+Dip:', error);
-      return [];
+      return this.generateFallbackTrendDip();
     }
+  }
+  
+  private generateFallbackTrendDip(): any[] {
+    const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT'];
+    return symbols.map((symbol, i) => ({
+      symbol,
+      price: symbol.includes('BTC') ? 98000 : symbol.includes('ETH') ? 3800 : 50 + i * 30,
+      rsi: { m15: 42 + i * 3, h1: 45 + i * 2, h4: 48 + i * 2, d1: 55 + i, w1: 58 + i },
+      ema200: symbol.includes('BTC') ? 85000 : symbol.includes('ETH') ? 3200 : 40 + i * 20,
+      volume: 50000000 + i * 10000000,
+      priceChangePercent: -2 + i * 0.5,
+      timestamp: new Date().toISOString(),
+      isFallbackData: true
+    }));
   }
 
   async scanHighPotential(filters: ScanFilters): Promise<TechnicalAnalysis[]> {
@@ -1183,29 +1210,54 @@ class TechnicalIndicators {
       const topPairs = await binanceService.getTopVolumePairs(50);
       const results: any[] = [];
       const batchSize = 5;
+      const BINANCE_BASE = 'https://api.binance.com/api/v3';
 
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
         const promises = batch.map(async (pair) => {
           try {
-            const analysis = await this.analyzeSymbol(pair.symbol, '1h');
-            const candles = analysis.candles || [];
-            if (candles.length < 25) return null;
-
-            const currentVol = candles[candles.length - 1].v;
-            const prevVols = candles.slice(candles.length - 21, candles.length - 1).map(c => c.v);
-            const avgVol = prevVols.reduce((a, b) => a + b, 0) / prevVols.length;
-
-            const isSpike = currentVol > (avgVol * 1.5);
-            const isGreen = candles[candles.length - 1].c > candles[candles.length - 1].o;
+            // Fetch 7 days of hourly data for proper volume comparison
+            const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${pair.symbol}&interval=1h&limit=168`);
+            if (!klineResponse.ok) return null;
+            
+            const klines = await klineResponse.json();
+            if (klines.length < 48) return null;
+            
+            const currentPrice = parseFloat(klines[klines.length - 1][4]);
+            const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume (USDT)
+            
+            // Calculate today's 24h volume
+            const todayVolumes = volumes.slice(-24);
+            const todayVolume = todayVolumes.reduce((a, b) => a + b, 0);
+            
+            // Calculate average daily volume from previous days
+            const previousDaysVolumes = volumes.slice(0, -24);
+            const daysCount = Math.floor(previousDaysVolumes.length / 24);
+            
+            if (daysCount === 0) return null;
+            
+            let totalPreviousDaysVolume = 0;
+            for (let day = 0; day < daysCount; day++) {
+              const dayStart = day * 24;
+              const dayEnd = dayStart + 24;
+              const dayVolume = previousDaysVolumes.slice(dayStart, dayEnd).reduce((a, b) => a + b, 0);
+              totalPreviousDaysVolume += dayVolume;
+            }
+            const avgDailyVolume = totalPreviousDaysVolume / daysCount;
+            
+            if (avgDailyVolume <= 0) return null;
+            
+            const volumeMultiple = todayVolume / avgDailyVolume;
+            const isSpike = volumeMultiple > 1.5;
+            const isGreen = parseFloat(pair.priceChangePercent) > 0;
 
             if (isSpike && isGreen) {
               return {
                 symbol: pair.symbol,
-                price: analysis.price,
-                volume: currentVol,
-                avgVolume: avgVol,
-                volumeMultiple: currentVol / avgVol,
+                price: currentPrice,
+                volume: todayVolume,
+                avgVolume: avgDailyVolume,
+                volumeMultiple: volumeMultiple,
                 priceChangePercent: parseFloat(pair.priceChangePercent),
                 timestamp: new Date().toISOString()
               };
@@ -1221,15 +1273,17 @@ class TechnicalIndicators {
         await new Promise(r => setTimeout(r, 100));
       }
 
-      // If no results (likely Binance blocked), return fallback demo data
+      // If no results (likely Binance blocked), return fallback demo data with flag
       if (results.length === 0) {
-        return this.generateFallbackVolumeSpikes();
+        const fallback = this.generateFallbackVolumeSpikes();
+        return fallback.map(item => ({ ...item, isFallbackData: true }));
       }
 
       return results.sort((a, b) => b.volumeMultiple - a.volumeMultiple).slice(0, limit);
     } catch (error) {
       console.error('Error scanning for VolumeSpike:', error);
-      return this.generateFallbackVolumeSpikes();
+      const fallback = this.generateFallbackVolumeSpikes();
+      return fallback.map(item => ({ ...item, isFallbackData: true }));
     }
   }
 
