@@ -71,8 +71,8 @@ export default function StrategiesPage() {
 
     const formatVolume = (vol: number) => {
         if (vol >= 1_000_000_000) return `$${(vol / 1_000_000_000).toFixed(1)}B`;
-        if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(0)}M`;
-        return `$${(vol / 1_000).toFixed(0)}K`;
+        if (vol >= 1_000_000) return `$${(vol / 1_000_000).toFixed(1)}M`;
+        return `$${(vol / 1_000).toFixed(1)}K`;
     };
 
     const { data: hotSetups, isLoading: isLoadingHot, refetch: refetchHot, dataUpdatedAt: hotUpdatedAt } = useQuery<HotSetup[]>({
@@ -135,16 +135,16 @@ export default function StrategiesPage() {
 
     const isLoading = activeTab === 'hot-setups' ? isLoadingHot :
         activeTab === 'sr' ? isLoadingSR :
-        activeTab === 'trend-dip' ? isLoadingTrend :
-        activeTab === 'volume-spike' ? isLoadingVolume : false;
-    
+            activeTab === 'trend-dip' ? isLoadingTrend :
+                activeTab === 'volume-spike' ? isLoadingVolume : false;
+
     // Check if any data is fallback/demo data
     const isFallbackData = useMemo(() => {
         if (activeTab === 'trend-dip' && trendDip?.some(item => item.isFallbackData)) return true;
         if (activeTab === 'volume-spike' && volumeSpike?.some(item => item.isFallbackData)) return true;
         return false;
     }, [activeTab, trendDip, volumeSpike]);
-    
+
     // Fallback warning component
     const FallbackWarning = () => (
         <div className="mb-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-start gap-3">
@@ -152,8 +152,8 @@ export default function StrategiesPage() {
             <div>
                 <p className="text-amber-300 font-semibold text-sm">Demo Data - Not Real-Time</p>
                 <p className="text-amber-200/70 text-xs mt-1">
-                    Live market data is currently unavailable (API restrictions on this server). 
-                    The data shown below is for demonstration purposes only. 
+                    Live market data is currently unavailable (API restrictions on this server).
+                    The data shown below is for demonstration purposes only.
                     <strong className="text-amber-200"> Publish the app</strong> to see real-time data.
                 </p>
             </div>
@@ -259,11 +259,10 @@ export default function StrategiesPage() {
                                                     <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
                                                         <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
                                                         <td className="p-3 text-center">
-                                                            <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${
-                                                                coin.score >= 80 ? 'bg-orange-500/20 text-orange-400' :
-                                                                coin.score >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
-                                                                'bg-zinc-700/50 text-zinc-300'
-                                                            }`}>
+                                                            <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${coin.score >= 80 ? 'bg-orange-500/20 text-orange-400' :
+                                                                    coin.score >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
+                                                                        'bg-zinc-700/50 text-zinc-300'
+                                                                }`}>
                                                                 {coin.score}
                                                             </span>
                                                         </td>
@@ -277,14 +276,13 @@ export default function StrategiesPage() {
                                                         <td className="p-3">
                                                             <div className="flex flex-wrap gap-1">
                                                                 {coin.tags.map(tag => (
-                                                                    <span key={tag} className={`text-[10px] px-2 py-0.5 rounded border ${
-                                                                        tag === 'HOT SETUP' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' :
-                                                                        tag.includes('Breakout') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                                                                        tag.includes('Support') ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                                                                        tag.includes('Volume') ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
-                                                                        tag.includes('Uptrend') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                                                                        'bg-zinc-800 text-zinc-400 border-zinc-700'
-                                                                    }`}>
+                                                                    <span key={tag} className={`text-[10px] px-2 py-0.5 rounded border ${tag === 'HOT SETUP' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' :
+                                                                            tag.includes('Breakout') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                                                                tag.includes('Support') ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                                                                                    tag.includes('Volume') ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                                                                                        tag.includes('Uptrend') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                                                                            'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                                        }`}>
                                                                         {tag}
                                                                     </span>
                                                                 ))}
@@ -337,11 +335,10 @@ export default function StrategiesPage() {
                                                     <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
                                                         <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
                                                         <td className="p-3 text-center">
-                                                            <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${
-                                                                coin.type === 'Support' || coin.type === 'Breakout'
+                                                            <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${coin.type === 'Support' || coin.type === 'Breakout'
                                                                     ? 'bg-emerald-500/20 text-emerald-400'
                                                                     : 'bg-rose-500/20 text-rose-400'
-                                                            }`}>
+                                                                }`}>
                                                                 {coin.type}
                                                             </span>
                                                         </td>
@@ -551,8 +548,8 @@ export default function StrategiesPage() {
                                 <div className="p-4 bg-orange-500/5 rounded-lg border border-orange-500/20">
                                     <h3 className="font-semibold text-orange-400 mb-2">What is Hot Setups?</h3>
                                     <p className="text-sm text-zinc-400 leading-relaxed">
-                                        Hot Setups finds coins that appear in <strong className="text-white">multiple scanners at once</strong>. 
-                                        When a coin shows up in 2 or more of our strategies (like Support + Momentum), 
+                                        Hot Setups finds coins that appear in <strong className="text-white">multiple scanners at once</strong>.
+                                        When a coin shows up in 2 or more of our strategies (like Support + Momentum),
                                         it's a stronger signal because multiple factors are lining up in its favor.
                                     </p>
                                 </div>
@@ -637,7 +634,7 @@ export default function StrategiesPage() {
                                 <div className="p-4 bg-indigo-500/5 rounded-lg border border-indigo-500/20">
                                     <h3 className="font-semibold text-indigo-400 mb-2">What is Support & Resistance?</h3>
                                     <p className="text-sm text-zinc-400 leading-relaxed">
-                                        <strong className="text-white">Support</strong> is like a floor - a price level where buyers tend to step in and push the price back up. 
+                                        <strong className="text-white">Support</strong> is like a floor - a price level where buyers tend to step in and push the price back up.
                                         <strong className="text-white"> Resistance</strong> is like a ceiling - a price level where sellers often appear and push the price back down.
                                         The more times a level is tested and holds, the stronger it becomes.
                                     </p>
@@ -724,8 +721,8 @@ export default function StrategiesPage() {
                                 <div className="p-4 bg-emerald-500/5 rounded-lg border border-emerald-500/20">
                                     <h3 className="font-semibold text-emerald-400 mb-2">What is Trend Dip?</h3>
                                     <p className="text-sm text-zinc-400 leading-relaxed">
-                                        This scanner finds coins in a <strong className="text-white">long-term uptrend</strong> that have 
-                                        temporarily pulled back. The idea is to "buy the dip" in strong trends rather than trying to 
+                                        This scanner finds coins in a <strong className="text-white">long-term uptrend</strong> that have
+                                        temporarily pulled back. The idea is to "buy the dip" in strong trends rather than trying to
                                         catch falling knives. When the overall trend is up, short-term dips often present good entry points.
                                     </p>
                                 </div>
@@ -773,8 +770,8 @@ export default function StrategiesPage() {
                                 <div className="p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                                     <h3 className="font-semibold text-emerald-400 mb-2">Pro Tip</h3>
                                     <p className="text-sm text-zinc-400">
-                                        Look for coins where the <strong className="text-white">short-term RSI (15m, 1h) is green</strong> (oversold) 
-                                        while the <strong className="text-white">longer-term RSI (4h) is neutral or healthy</strong>. 
+                                        Look for coins where the <strong className="text-white">short-term RSI (15m, 1h) is green</strong> (oversold)
+                                        while the <strong className="text-white">longer-term RSI (4h) is neutral or healthy</strong>.
                                         This suggests a temporary dip in an otherwise strong trend.
                                     </p>
                                 </div>
@@ -786,8 +783,8 @@ export default function StrategiesPage() {
                                 <div className="p-4 bg-purple-500/5 rounded-lg border border-purple-500/20">
                                     <h3 className="font-semibold text-purple-400 mb-2">What is Volume Spike?</h3>
                                     <p className="text-sm text-zinc-400 leading-relaxed">
-                                        Volume is the amount of trading activity. When volume is <strong className="text-white">much higher than usual</strong>, 
-                                        it often signals that big players (institutions, whales) are entering positions. 
+                                        Volume is the amount of trading activity. When volume is <strong className="text-white">much higher than usual</strong>,
+                                        it often signals that big players (institutions, whales) are entering positions.
                                         High volume on a price increase suggests strong buying interest.
                                     </p>
                                 </div>
@@ -861,8 +858,8 @@ export default function StrategiesPage() {
                                 <div className="p-4 bg-amber-500/5 rounded-lg border border-amber-500/20">
                                     <h3 className="font-semibold text-amber-400 mb-2">What is Momentum?</h3>
                                     <p className="text-sm text-zinc-400 leading-relaxed">
-                                        Momentum measures the <strong className="text-white">speed and strength</strong> of a price move. 
-                                        Coins with strong momentum are moving up quickly and may continue. The dedicated Momentum Scanner 
+                                        Momentum measures the <strong className="text-white">speed and strength</strong> of a price move.
+                                        Coins with strong momentum are moving up quickly and may continue. The dedicated Momentum Scanner
                                         includes advanced features like pivot-based stop-loss calculations.
                                     </p>
                                 </div>
@@ -902,7 +899,7 @@ export default function StrategiesPage() {
                         {/* General disclaimer */}
                         <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
                             <p className="text-xs text-zinc-500 text-center">
-                                This scanner is for informational purposes only. Always do your own research before trading. 
+                                This scanner is for informational purposes only. Always do your own research before trading.
                                 Past performance does not guarantee future results.
                             </p>
                         </div>

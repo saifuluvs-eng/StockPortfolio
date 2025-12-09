@@ -642,7 +642,7 @@ class TechnicalIndicators {
 
               // Mark as fallback if RSI data couldn't be fetched for most timeframes
               const isFallbackData = rsiObj.m15 === null && rsiObj.h1 === null && rsiObj.d1 === null;
-              
+
               return {
                 symbol: pair.symbol,
                 price: currentPrice,
@@ -670,12 +670,12 @@ class TechnicalIndicators {
       }
 
       console.log(`[TrendDip] Found ${results.length} uptrending coins.`);
-      
+
       // If no results (likely Binance blocked), return fallback with flag
       if (results.length === 0) {
         return this.generateFallbackTrendDip();
       }
-      
+
       // Sort by 1h RSI ascending (Standard "Dip" metric)
       return results.sort((a, b) => (a.rsi.h1 || 50) - (b.rsi.h1 || 50));
     } catch (error) {
@@ -683,7 +683,7 @@ class TechnicalIndicators {
       return this.generateFallbackTrendDip();
     }
   }
-  
+
   private generateFallbackTrendDip(): any[] {
     const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'BNBUSDT'];
     return symbols.map((symbol, i) => ({
@@ -1223,23 +1223,23 @@ class TechnicalIndicators {
             // Fetch 7 days of hourly data for proper volume comparison
             const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${pair.symbol}&interval=1h&limit=168`);
             if (!klineResponse.ok) return null;
-            
+
             const klines = await klineResponse.json();
             if (klines.length < 48) return null;
-            
+
             const currentPrice = parseFloat(klines[klines.length - 1][4]);
             const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume (USDT)
-            
+
             // Calculate today's 24h volume
             const todayVolumes = volumes.slice(-24);
             const todayVolume = todayVolumes.reduce((a, b) => a + b, 0);
-            
+
             // Calculate average daily volume from previous days
             const previousDaysVolumes = volumes.slice(0, -24);
             const daysCount = Math.floor(previousDaysVolumes.length / 24);
-            
+
             if (daysCount === 0) return null;
-            
+
             let totalPreviousDaysVolume = 0;
             for (let day = 0; day < daysCount; day++) {
               const dayStart = day * 24;
@@ -1248,9 +1248,9 @@ class TechnicalIndicators {
               totalPreviousDaysVolume += dayVolume;
             }
             const avgDailyVolume = totalPreviousDaysVolume / daysCount;
-            
+
             if (avgDailyVolume <= 0) return null;
-            
+
             const volumeMultiple = todayVolume / avgDailyVolume;
             const isSpike = volumeMultiple > 1.5;
             const isGreen = parseFloat(pair.priceChangePercent) > 0;
@@ -1272,7 +1272,7 @@ class TechnicalIndicators {
 
         const batchResults = await Promise.all(promises);
         results.push(...batchResults.filter(Boolean));
-        
+
         // Rate limiting delay
         await new Promise(r => setTimeout(r, 100));
       }
@@ -1295,7 +1295,7 @@ class TechnicalIndicators {
     const symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT', 'LINKUSDT'];
     return symbols.slice(0, 5).map((symbol, i) => {
       const basePrice = symbol.includes('BTC') ? 68000 : symbol.includes('ETH') ? 3800 : 50 + Math.random() * 200;
-      const avgVol = 1000000 + Math.random() * 5000000;
+      const avgVol = 10_000_000 + Math.random() * 90_000_000;
       const volumeMultiple = 1.8 + Math.random() * 2.5; // 1.8x to 4.3x
       return {
         symbol,
@@ -1838,7 +1838,7 @@ class TechnicalIndicators {
 
         coin.score += 20;
         coin.tags.push('Uptrend');
-        
+
         // RSI dip bonus
         const h1Rsi = item.rsi?.h1 || 50;
         if (h1Rsi < 40) {
@@ -1871,7 +1871,7 @@ class TechnicalIndicators {
       // 5. Confluence Bonuses (coins appearing in multiple scanners)
       for (const coin of coinMap.values()) {
         const sourceCount = coin.sources.length;
-        
+
         if (sourceCount >= 3) {
           coin.score += 30;
           coin.tags.unshift('HOT SETUP');
