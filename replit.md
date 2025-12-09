@@ -8,6 +8,26 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
+**December 9, 2025 - IMPROVED: Top Picks + Volume Calculations Fixed**:
+
+- **Volume Calculation Bug Fixed (All Scanners)**
+  - Previous bug: comparing today's volume to today's volume = always 1x
+  - Now fetches 7 days of hourly data (168 candles)
+  - Compares today's 24h volume to average of previous 6 days
+  - Volume Factor/Ratio now shows meaningful values (1.5x, 2x, etc.)
+
+- **Top Picks Page - Knowledge Base Added**
+  - Explains what Confluence Scoring means
+  - Detailed breakdown of how scores are calculated (+25 for momentum, +20 for uptrend, etc.)
+  - All 6 tags explained (PERFECT Setup, Strong Momentum, Uptrend, High Volume, RSI Dip, Volume Surge)
+  - Score guide (80-100 exceptional, 60-79 strong, 40-59 moderate, 30-39 minimum)
+  - Filter explanation (what gets excluded and why)
+  - Pro tips for using the scanner
+
+- **Fixed Volume Index Bug**
+  - Changed from k[5] (base volume) to k[7] (quote volume in USDT)
+  - Consistent with Momentum scanner volume calculations
+
 **December 8, 2025 - IMPROVED: Momentum Scanner Logic + Knowledge Base**:
 
 - **Momentum Scanner Logic Improvements**

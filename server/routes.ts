@@ -748,11 +748,12 @@ export function registerRoutes(app: Express): Server {
           let trendBullish = false, rsiHealthy = false, hasRoom = false;
           
           try {
-            const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=50`);
+            // Get 7 days of hourly data for proper historical volume comparison
+            const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=168`);
             if (klineResponse.ok) {
               const klines = await klineResponse.json();
               const closes = klines.map((k: any[]) => parseFloat(k[4]));
-              const volumes = klines.map((k: any[]) => parseFloat(k[5]));
+              const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume (USDT)
               
               // RSI calculation
               if (closes.length >= 15) {
@@ -783,9 +784,22 @@ export function registerRoutes(app: Express): Server {
                 ema50[i] = closes[i] * (2/51) + ema50[i-1] * (49/51);
               }
               
-              // Volume ratio
-              const avgVol = volumes.slice(-20).reduce((a: number, b: number) => a + b, 0) / 20;
-              volumeRatio = volumes[volumes.length - 1] / avgVol;
+              // Volume ratio - compare today's volume to historical daily average
+              if (volumes.length >= 48) {
+                const previousDaysVolumes = volumes.slice(0, -24);
+                const daysCount = Math.floor(previousDaysVolumes.length / 24);
+                if (daysCount > 0) {
+                  let totalPreviousDaysVolume = 0;
+                  for (let day = 0; day < daysCount; day++) {
+                    const dayStart = day * 24;
+                    const dayEnd = dayStart + 24;
+                    const dayVolume = previousDaysVolumes.slice(dayStart, dayEnd).reduce((a, b) => a + b, 0);
+                    totalPreviousDaysVolume += dayVolume;
+                  }
+                  const avgDailyVolume = totalPreviousDaysVolume / daysCount;
+                  volumeRatio = avgDailyVolume > 0 ? volume / avgDailyVolume : 1;
+                }
+              }
               
               // Technical conditions
               trendBullish = price > ema20[ema20.length - 1] && ema20[ema20.length - 1] > ema50[ema50.length - 1];

@@ -603,12 +603,13 @@ async function handleTopPicks(res: VercelResponse) {
         let stopLoss: number | null = null, riskPct: number | null = null;
         
         try {
-          const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=60`);
+          // Get 7 days of hourly data for proper historical volume comparison
+          const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=168`);
           if (klineResponse.ok) {
             const klines = await klineResponse.json();
             const closes = klines.map((k: any[]) => parseFloat(k[4]));
             const lows = klines.map((k: any[]) => parseFloat(k[3]));
-            const volumes = klines.map((k: any[]) => parseFloat(k[5]));
+            const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume (USDT)
             
             // Calculate RSI
             rsi = calculateRSI(closes);
@@ -619,10 +620,22 @@ async function handleTopPicks(res: VercelResponse) {
             ema20 = ema20Arr[ema20Arr.length - 1];
             ema50 = ema50Arr[ema50Arr.length - 1];
             
-            // Volume ratio
-            const avgVol = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
-            const currentVol = volumes[volumes.length - 1];
-            volumeRatio = currentVol / avgVol;
+            // Volume ratio - compare today's volume to historical daily average
+            if (volumes.length >= 48) {
+              const previousDaysVolumes = volumes.slice(0, -24);
+              const daysCount = Math.floor(previousDaysVolumes.length / 24);
+              if (daysCount > 0) {
+                let totalPreviousDaysVolume = 0;
+                for (let day = 0; day < daysCount; day++) {
+                  const dayStart = day * 24;
+                  const dayEnd = dayStart + 24;
+                  const dayVolume = previousDaysVolumes.slice(dayStart, dayEnd).reduce((a, b) => a + b, 0);
+                  totalPreviousDaysVolume += dayVolume;
+                }
+                const avgDailyVolume = totalPreviousDaysVolume / daysCount;
+                volumeRatio = avgDailyVolume > 0 ? volume / avgDailyVolume : 1;
+              }
+            }
             
             // Find pivot low for stop loss
             const pivotLow = findPivotLow(lows, closes, 20);
