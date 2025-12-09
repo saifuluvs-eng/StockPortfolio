@@ -635,11 +635,14 @@ class TechnicalIndicators {
               const rsiObj = {
                 m15: extractRSI(k15m),
                 h1: extractRSI(k1h),
-                h4: rsi4h,
+                h4: typeof rsi4h === 'number' ? Math.round(rsi4h * 100) / 100 : null,
                 d1: extractRSI(k1d),
                 w1: extractRSI(k1w)
               };
 
+              // Mark as fallback if RSI data couldn't be fetched for most timeframes
+              const isFallbackData = rsiObj.m15 === null && rsiObj.h1 === null && rsiObj.d1 === null;
+              
               return {
                 symbol: pair.symbol,
                 price: currentPrice,
@@ -647,7 +650,8 @@ class TechnicalIndicators {
                 ema200: ema200,
                 volume: parseFloat(pair.quoteVolume),
                 priceChangePercent: parseFloat(pair.priceChangePercent),
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                isFallbackData
               };
             } else {
               // console.log(`[TrendDip] Skip ${pair.symbol}: Downtrend`);
