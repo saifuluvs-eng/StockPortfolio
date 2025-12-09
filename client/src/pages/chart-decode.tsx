@@ -38,34 +38,54 @@ export default function ChartDecodePage() {
         const fetchCandles = async () => {
             try {
                 const s = selectedSymbol.endsWith("USDT") ? selectedSymbol : `${selectedSymbol}USDT`;
-                const res = await api(`/api/ohlcv?symbol=${s}&tf=${timeframe}`);
+                const url = `/api/ohlcv?symbol=${s}&tf=${timeframe}`;
+                console.log("Fetching candles from:", url);
+
+                const res = await api(url);
+                console.log("Response status:", res.status);
+
                 if (res.ok) {
                     const json = await res.json();
+                    const candles = json.candles || [];
+                    console.log("Candles received:", candles.length);
+
+                    if (candles.length === 0) {
+                        console.warn("No candles in response", json);
+                        toast.error(`No chart data found for ${s}`);
+                        setChartData([]);
+                        return;
+                    }
+
                     // Map binance klines to lightweight-charts format
-                    const mappedData = (json.candles || []).map((k: any) => ({
+                    // Backend sends numbers, so no need to parseFloat if they are already numbers
+                    const mappedData = candles.map((k: any) => ({
                         time: k.openTime / 1000,
-                        open: parseFloat(k.open),
-                        high: parseFloat(k.high),
-                        low: parseFloat(k.low),
-                        close: parseFloat(k.close),
+                        open: Number(k.open),
+                        high: Number(k.high),
+                        low: Number(k.low),
+                        close: Number(k.close),
                     }));
+
+                    // Sort just in case
+                    mappedData.sort((a: any, b: any) => a.time - b.time);
+
+                    console.log("Mapped data length:", mappedData.length);
                     setChartData(mappedData);
                     setDecodeResult(null);
                 } else {
-                    console.error("API Error or no candles");
+                    console.error("API Error", res.status);
+                    toast.error("Failed to fetch chart data");
                     setChartData([]);
                 }
             } catch (e) {
                 console.error("Failed to fetch klines:", e);
-                toast.error("Failed to load chart data");
+                toast.error("Error loading chart");
                 setChartData([]);
             }
         };
 
         if (selectedSymbol) {
             fetchCandles();
-            const interval = setInterval(fetchCandles, 60000); // Poll every minute
-            return () => clearInterval(interval);
         }
     }, [selectedSymbol, timeframe]);
 
