@@ -1,29 +1,30 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { Page } from "@/components/layout/Layout";
-import { Card, CardContent, Button, Input } from "@/components/ui";
+import { Card, CardContent, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui";
 import { Search, Brain, Sparkles, Loader2 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/useAuth";
-import TradingViewChart from "@/components/charts/TradingViewChart";
+import LightweightChart, { ChartRef } from "@/components/charts/LightweightChart";
 import ReactMarkdown from "react-markdown";
 
 export default function ChartDecodePage() {
     const [match, params] = useRoute("/chart-decode/:symbol?");
     const [location, setLocation] = useLocation();
     const { toast } = useToast();
-    const { user } = useAuth();
 
     // Default symbol or from URL
     const initialSymbol = (params?.symbol || "BTCUSDT").toUpperCase();
     const [symbolInput, setSymbolInput] = useState(initialSymbol);
     const [selectedSymbol, setSelectedSymbol] = useState(initialSymbol);
-    const [technicals, setTechnicals] = useState<any>(null);
+    const [timeframe, setTimeframe] = useState("4h");
+    const [chartData, setChartData] = useState<any[]>([]);
 
     // AI State
     const [isDecoding, setIsDecoding] = useState(false);
     const [decodeResult, setDecodeResult] = useState<string | null>(null);
+
+    const chartRef = useRef<ChartRef>(null);
 
     // Sync URL with selection
     useEffect(() => {
@@ -32,39 +33,35 @@ export default function ChartDecodePage() {
         }
     }, [selectedSymbol, setLocation, params?.symbol]);
 
-    // Update input when URL changes
+    // Fetch Candle Data
     useEffect(() => {
-        if (params?.symbol) {
-            const s = params.symbol.toUpperCase();
-            setSymbolInput(s);
-            setSelectedSymbol(s);
-            setDecodeResult(null); // Clear previous result on change
-            fetchTechnicals(s);
-        } else {
-            // Ensure we have data for default if needed
-            fetchTechnicals(selectedSymbol);
-        }
-    }, [params?.symbol]);
-
-    // Fetch technicals silently to be ready for AI
-    const fetchTechnicals = async (symbol: string) => {
-        if (!symbol) return;
-        try {
-            const s = symbol.endsWith("USDT") ? symbol : `${symbol}USDT`;
-            // We reuse scanner scan to get fresh technicals
-            const res = await api("/api/scanner/scan", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ symbol: s, timeframe: "4h", userId: user?.id, filters: {} }),
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setTechnicals(data);
+        const fetchCandles = async () => {
+            try {
+                const s = selectedSymbol.endsWith("USDT") ? selectedSymbol : `${selectedSymbol}USDT`;
+                const res = await api(`/api/ohlcv?symbol=${s}&tf=${timeframe}`);
+                if (res.ok) {
+                    const json = await res.json();
+                    // Map binance klines to lightweight-charts format
+                    const mappedData = json.candles.map((k: any) => ({
+                        time: k.openTime / 1000,
+                        open: parseFloat(k.open),
+                        high: parseFloat(k.high),
+                        low: parseFloat(k.low),
+                        close: parseFloat(k.close),
+                    }));
+                    setChartData(mappedData);
+                    setDecodeResult(null);
+                }
+            } catch (e) {
+                console.error("Failed to fetch klines:", e);
+                toast.error("Failed to load chart data");
             }
-        } catch (e) {
-            console.error("Failed to fetch technicals for decode:", e);
+        };
+
+        if (selectedSymbol) {
+            fetchCandles();
         }
-    };
+    }, [selectedSymbol, timeframe]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
@@ -75,22 +72,17 @@ export default function ChartDecodePage() {
     };
 
     const handleDecode = async () => {
-        if (!technicals) {
-            toast.error("Still loading chart data... please wait.");
-            await fetchTechnicals(selectedSymbol); // Try one more time
-            return;
-        }
+        if (!chartRef.current) return;
 
         setIsDecoding(true);
         try {
-            const res = await api("/api/ai/chart-decode", {
+            const screenshot = chartRef.current.takeScreenshot();
+            if (!screenshot) throw new Error("Failed to capture chart");
+
+            const res = await api("/api/decode-chart", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    symbol: selectedSymbol,
-                    timeframe: "4h",
-                    technicals
-                })
+                body: JSON.stringify({ image: screenshot })
             });
 
             if (!res.ok) throw new Error("Decode failed");
@@ -109,9 +101,9 @@ export default function ChartDecodePage() {
     return (
         <Page>
             <div className="flex flex-col gap-6 h-[calc(100vh-100px)]">
-                {/* Top Bar: Search */}
-                <div className="flex items-center justify-between gap-4">
-                    <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md">
+                {/* Top Bar: Search & Controls */}
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md min-w-[300px]">
                         <div className="relative flex-1">
                             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -121,15 +113,26 @@ export default function ChartDecodePage() {
                                 className="pl-9 bg-card/50"
                             />
                         </div>
+                        <Select value={timeframe} onValueChange={setTimeframe}>
+                            <SelectTrigger className="w-[100px]">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="15m">15m</SelectItem>
+                                <SelectItem value="1h">1h</SelectItem>
+                                <SelectItem value="4h">4h</SelectItem>
+                                <SelectItem value="1d">1D</SelectItem>
+                            </SelectContent>
+                        </Select>
                         <Button type="submit" variant="secondary">
-                            Load Asset
+                            Load
                         </Button>
                     </form>
 
                     <Button
                         size="lg"
                         onClick={handleDecode}
-                        disabled={isDecoding}
+                        disabled={isDecoding || chartData.length === 0}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.3)]"
                     >
                         {isDecoding ? (
@@ -149,10 +152,24 @@ export default function ChartDecodePage() {
                 {/* Main Split View */}
                 <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
 
-                    {/* Left/Top: TradingView Chart */}
+                    {/* Left/Top: Chart Container */}
                     <Card className="flex-1 min-h-[500px] lg:min-h-0 overflow-hidden border-border bg-card/40 backdrop-blur-sm">
                         <CardContent className="p-0 h-full relative">
-                            <TradingViewChart symbol={selectedSymbol} />
+                            {chartData.length > 0 ? (
+                                <LightweightChart
+                                    ref={chartRef}
+                                    data={chartData}
+                                    colors={{
+                                        backgroundColor: '#09090b', // zinc-950
+                                        textColor: '#a1a1aa',
+                                    }}
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-muted-foreground">
+                                    <Loader2 className="h-8 w-8 animate-spin mr-2" />
+                                    Loading Chart Data...
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

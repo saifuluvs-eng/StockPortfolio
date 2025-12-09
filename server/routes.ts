@@ -5,7 +5,7 @@ import { storage } from "./storage";
 
 import { binanceService } from "./services/binanceService";
 import { technicalIndicators } from "./services/technicalIndicators";
-// import { aiService } from "./services/aiService"; // REMOVED: Gemini disabled
+import { aiService } from "./services/aiService"; // Enabled Gemini
 import { portfolioService } from "./services/portfolioService";
 import {
   insertPortfolioPositionSchema,
@@ -523,7 +523,7 @@ export function registerRoutes(app: Express): Server {
     try {
       const BINANCE_BASE = 'https://api.binance.com/api/v3';
       let tickers: any[] = [];
-      
+
       try {
         const response = await fetch(`${BINANCE_BASE}/ticker/24hr`);
         if (response.ok) {
@@ -532,8 +532,8 @@ export function registerRoutes(app: Express): Server {
             tickers = data;
           }
         }
-      } catch {}
-      
+      } catch { }
+
       // Use fallback data if Binance is blocked
       if (tickers.length === 0) {
         const symbols = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC', 'SHIB', 'UNI', 'ATOM', 'LTC', 'FIL'];
@@ -546,24 +546,24 @@ export function registerRoutes(app: Express): Server {
           lowPrice: String(50 + Math.random() * 500)
         }));
       }
-      
+
       const candidates = tickers
         .filter((t: any) => t.symbol.endsWith('USDT') && parseFloat(t.quoteVolume) >= 3_000_000 && !t.symbol.includes('UP') && !t.symbol.includes('DOWN') && parseFloat(t.priceChangePercent) > 3)
         .sort((a: any, b: any) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
         .slice(0, 25);
-      
+
       const momentumCoins = await Promise.all(
         candidates.map(async (t: any) => {
           const symbol = t.symbol;
           const price = parseFloat(t.lastPrice);
           const change24h = parseFloat(t.priceChangePercent);
           const volume = parseFloat(t.quoteVolume);
-          
+
           let stopLoss: number | null = null;
           let riskPct: number | null = null;
           let rsi = 50;
           let avgVolume = volume; // fallback
-          
+
           try {
             // Get 7 days of hourly data (168 candles) for historical volume comparison
             const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=168`);
@@ -572,7 +572,7 @@ export function registerRoutes(app: Express): Server {
               const closes = klines.map((k: any[]) => parseFloat(k[4]));
               const lows = klines.map((k: any[]) => parseFloat(k[3]));
               const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume
-              
+
               // Calculate average DAILY volume from previous days (not including today)
               // Today = last 24 candles, Previous 6 days = candles before that
               if (volumes.length >= 48) {
@@ -590,7 +590,7 @@ export function registerRoutes(app: Express): Server {
                   avgVolume = totalPreviousDaysVolume / daysCount; // average daily volume
                 }
               }
-              
+
               // RSI calculation
               if (closes.length >= 15) {
                 let gains = 0, losses = 0;
@@ -607,69 +607,69 @@ export function registerRoutes(app: Express): Server {
                 }
                 rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
               }
-              
+
               // Find pivot low - look for local minimum in recent price action
               const recentLows = lows.slice(-20);
               let pivotLow: number | null = null;
               for (let i = 2; i < recentLows.length - 2; i++) {
-                if (recentLows[i] < recentLows[i-1] && recentLows[i] < recentLows[i-2] && 
-                    recentLows[i] < recentLows[i+1] && recentLows[i] < recentLows[i+2] && 
-                    recentLows[i] < price) {
+                if (recentLows[i] < recentLows[i - 1] && recentLows[i] < recentLows[i - 2] &&
+                  recentLows[i] < recentLows[i + 1] && recentLows[i] < recentLows[i + 2] &&
+                  recentLows[i] < price) {
                   if (pivotLow === null || recentLows[i] > pivotLow) pivotLow = recentLows[i];
                 }
               }
-              
+
               if (pivotLow !== null) {
                 stopLoss = pivotLow * 0.996; // 0.4% buffer below pivot
                 riskPct = Math.round(((price - stopLoss) / price) * 10000) / 100;
               }
             }
-          } catch {}
-          
+          } catch { }
+
           // Calculate actual volume factor (current vs average)
           const volumeFactor = avgVolume > 0 ? Math.round((volume / avgVolume) * 10) / 10 : 1;
-          
+
           // Improved signal determination with clear priority order
           let signal: string, signalStrength: number;
-          
+
           // Priority 1: RSI extremes (always check first - overheating warnings)
-          if (rsi > 85) { 
-            signal = 'TOPPED'; 
-            signalStrength = 20; 
-          } else if (rsi > 75) { 
-            signal = 'HEATED'; 
-            signalStrength = 40; 
+          if (rsi > 85) {
+            signal = 'TOPPED';
+            signalStrength = 20;
+          } else if (rsi > 75) {
+            signal = 'HEATED';
+            signalStrength = 40;
           }
           // Priority 2: Strong momentum with good structure
-          else if (stopLoss !== null && volumeFactor >= 2 && change24h >= 5) { 
-            signal = 'RIDE'; 
-            signalStrength = 90; 
+          else if (stopLoss !== null && volumeFactor >= 2 && change24h >= 5) {
+            signal = 'RIDE';
+            signalStrength = 90;
           }
           // Priority 3: Good momentum with volume confirmation
-          else if (stopLoss !== null && volumeFactor >= 1.5 && change24h >= 3) { 
-            signal = 'MOMENTUM'; 
-            signalStrength = 75; 
+          else if (stopLoss !== null && volumeFactor >= 1.5 && change24h >= 3) {
+            signal = 'MOMENTUM';
+            signalStrength = 75;
           }
           // Priority 4: Early momentum - no clear pivot yet but building
-          else if (stopLoss === null && change24h >= 5 && volumeFactor >= 1.3) { 
-            signal = 'GAINING SPEED'; 
-            signalStrength = 65; 
+          else if (stopLoss === null && change24h >= 5 && volumeFactor >= 1.3) {
+            signal = 'GAINING SPEED';
+            signalStrength = 65;
           }
           // Priority 5: Low volume - move may not sustain
-          else if (volumeFactor < 1.2) { 
-            signal = 'LOW VOLUME'; 
-            signalStrength = 35; 
+          else if (volumeFactor < 1.2) {
+            signal = 'LOW VOLUME';
+            signalStrength = 35;
           }
           // Priority 6: Catch-all for moves without strong conviction
-          else { 
-            signal = 'CAUTION'; 
-            signalStrength = 50; 
+          else {
+            signal = 'CAUTION';
+            signalStrength = 50;
           }
-          
+
           return { symbol, price, change24h, volume, volumeFactor, rsi: Math.round(rsi), signal, signalStrength, stopLoss, riskPct };
         })
       );
-      
+
       res.json(momentumCoins.slice(0, 20));
     } catch (error) {
       console.error("Error fetching momentum strategy:", error);
@@ -696,10 +696,10 @@ export function registerRoutes(app: Express): Server {
   app.get('/api/market/strategies/top-picks', async (req: Request, res: Response) => {
     try {
       console.log("[API routes.ts] /top-picks called");
-      
+
       const BINANCE_BASE = 'https://api.binance.com/api/v3';
       let tickers: any[] = [];
-      
+
       try {
         const response = await fetch(`${BINANCE_BASE}/ticker/24hr`);
         if (response.ok) {
@@ -708,8 +708,8 @@ export function registerRoutes(app: Express): Server {
             tickers = data;
           }
         }
-      } catch {}
-      
+      } catch { }
+
       // Use fallback data if Binance is blocked
       if (tickers.length === 0) {
         const symbols = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'ADA', 'AVAX', 'DOT', 'LINK', 'MATIC', 'SHIB', 'UNI', 'ATOM', 'LTC', 'FIL'];
@@ -722,18 +722,18 @@ export function registerRoutes(app: Express): Server {
           lowPrice: String(50 + Math.random() * 500)
         }));
       }
-      
+
       // Pre-filter candidates
       const candidates = tickers
-        .filter((t: any) => 
-          t.symbol.endsWith('USDT') && 
-          parseFloat(t.quoteVolume) >= 5_000_000 && 
+        .filter((t: any) =>
+          t.symbol.endsWith('USDT') &&
+          parseFloat(t.quoteVolume) >= 5_000_000 &&
           !t.symbol.includes('UP') && !t.symbol.includes('DOWN') &&
           parseFloat(t.priceChangePercent) > 1 && parseFloat(t.priceChangePercent) < 25
         )
         .sort((a: any, b: any) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
         .slice(0, 20);
-      
+
       // Analyze each candidate
       const analyzed = await Promise.all(
         candidates.map(async (t: any) => {
@@ -743,10 +743,10 @@ export function registerRoutes(app: Express): Server {
           const volume = parseFloat(t.quoteVolume);
           const high24h = parseFloat(t.highPrice);
           const low24h = parseFloat(t.lowPrice);
-          
+
           let rsi = 50, volumeRatio = 1;
           let trendBullish = false, rsiHealthy = false, hasRoom = false;
-          
+
           try {
             // Get 7 days of hourly data for proper historical volume comparison
             const klineResponse = await fetch(`${BINANCE_BASE}/klines?symbol=${symbol}&interval=1h&limit=168`);
@@ -754,7 +754,7 @@ export function registerRoutes(app: Express): Server {
               const klines = await klineResponse.json();
               const closes = klines.map((k: any[]) => parseFloat(k[4]));
               const volumes = klines.map((k: any[]) => parseFloat(k[7])); // quote volume (USDT)
-              
+
               // RSI calculation
               if (closes.length >= 15) {
                 let gains = 0, losses = 0;
@@ -776,14 +776,14 @@ export function registerRoutes(app: Express): Server {
                 }
                 rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
               }
-              
+
               // EMA calculation
               const ema20: number[] = [closes[0]], ema50: number[] = [closes[0]];
               for (let i = 1; i < closes.length; i++) {
-                ema20[i] = closes[i] * (2/21) + ema20[i-1] * (19/21);
-                ema50[i] = closes[i] * (2/51) + ema50[i-1] * (49/51);
+                ema20[i] = closes[i] * (2 / 21) + ema20[i - 1] * (19 / 21);
+                ema50[i] = closes[i] * (2 / 51) + ema50[i - 1] * (49 / 51);
               }
-              
+
               // Volume ratio - compare today's volume to historical daily average
               if (volumes.length >= 48) {
                 const previousDaysVolumes = volumes.slice(0, -24);
@@ -800,29 +800,29 @@ export function registerRoutes(app: Express): Server {
                   volumeRatio = avgDailyVolume > 0 ? volume / avgDailyVolume : 1;
                 }
               }
-              
+
               // Technical conditions
               trendBullish = price > ema20[ema20.length - 1] && ema20[ema20.length - 1] > ema50[ema50.length - 1];
               rsiHealthy = rsi >= 35 && rsi <= 68;
               hasRoom = (price - low24h) / (high24h - low24h) < 0.85;
             }
-          } catch {}
-          
+          } catch { }
+
           // Scoring - base score from momentum
           let score = 15; // Base score for passing filters
           const tags: string[] = [];
           const reasons: string[] = [];
-          
+
           // Momentum scoring (always applies)
-          if (changePct >= 5 && changePct <= 15) { 
-            score += 25; 
-            tags.push('Strong Momentum'); 
-            reasons.push(`+${changePct.toFixed(1)}% with sustainable pace`); 
-          } else if (changePct >= 2) { 
+          if (changePct >= 5 && changePct <= 15) {
+            score += 25;
+            tags.push('Strong Momentum');
+            reasons.push(`+${changePct.toFixed(1)}% with sustainable pace`);
+          } else if (changePct >= 2) {
             score += 15;
             reasons.push(`+${changePct.toFixed(1)}% positive momentum`);
           }
-          
+
           // Volume scoring (always applies)
           if (volume > 20_000_000) {
             score += 15;
@@ -831,25 +831,25 @@ export function registerRoutes(app: Express): Server {
           } else if (volume > 10_000_000) {
             score += 8;
           }
-          
+
           if (trendBullish) { score += 20; tags.push('Uptrend'); reasons.push('Price above key EMAs - bullish structure'); }
           else if (price > low24h * 1.02) { score += 5; }
-          
+
           if (rsiHealthy) { score += 15; if (rsi < 50) { tags.push('RSI Dip'); reasons.push(`RSI at ${Math.round(rsi)} - room to run`); } }
           else if (rsi > 70) { score -= 10; }
-          
+
           if (volumeRatio > 1.5) { score += 10; tags.push('Volume Surge'); }
-          
+
           if (hasRoom) { score += 5; }
-          
+
           if (trendBullish && rsiHealthy && volumeRatio > 1.3 && hasRoom) { tags.unshift('PERFECT Setup'); }
-          
+
           if (reasons.length === 0) reasons.push('Positive momentum and volume');
-          
+
           return { symbol, price, score: Math.max(0, Math.min(100, score)), tags, reasons, rsi: Math.round(rsi), changePct, volumeRatio: Math.round(volumeRatio * 10) / 10, sources: { sr: null, mom: null } };
         })
       );
-      
+
       const topPicks = analyzed.filter(p => p.score >= 30).sort((a, b) => b.score - a.score).slice(0, 8);
       res.json(topPicks);
     } catch (error) {
