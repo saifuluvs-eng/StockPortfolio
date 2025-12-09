@@ -46,25 +46,50 @@ export default function ChartDecodePage() {
 
                 if (res.ok) {
                     const json = await res.json();
-                    const candles = json.candles || [];
-                    console.log("Candles received:", candles.length);
+                    // Handle both Vercel API ({ data: [...] }) and Express API ({ candles: [...] })
+                    const rawData = json.candles || json.data || [];
+                    console.log("Items received:", rawData.length);
 
-                    if (candles.length === 0) {
-                        console.warn("No candles in response", json);
+                    if (rawData.length === 0) {
+                        console.warn("No data in response", json);
                         toast.error(`No chart data found for ${s}`);
                         setChartData([]);
                         return;
                     }
 
-                    // Map binance klines to lightweight-charts format
-                    // Backend sends numbers, so no need to parseFloat if they are already numbers
-                    const mappedData = candles.map((k: any) => ({
-                        time: k.openTime / 1000,
-                        open: Number(k.open),
-                        high: Number(k.high),
-                        low: Number(k.low),
-                        close: Number(k.close),
-                    }));
+                    // Map data to lightweight-charts format
+                    const mappedData = rawData.map((k: any) => {
+                        // Vercel API returns objects: { time, open, high, low, close }
+                        if (k.time && k.open) {
+                            return {
+                                time: k.time / 1000, // Vercel API sends ms, LWC needs seconds
+                                open: Number(k.open),
+                                high: Number(k.high),
+                                low: Number(k.low),
+                                close: Number(k.close),
+                            };
+                        }
+                        // Express/Binance raw returns arrays: [time, open, high, low, close, volume, ...]
+                        // OR Express API returns { openTime, open, ... } objects (as seen in server/routes/ohlcv.ts)
+                        // server/routes/ohlcv.ts returns objects with openTime.
+                        if (k.openTime) {
+                            return {
+                                time: k.openTime / 1000,
+                                open: Number(k.open),
+                                high: Number(k.high),
+                                low: Number(k.low),
+                                close: Number(k.close),
+                            };
+                        }
+                        // Fallback for raw arrays if any
+                        return {
+                            time: k[0] / 1000,
+                            open: Number(k[1]),
+                            high: Number(k[2]),
+                            low: Number(k[3]),
+                            close: Number(k[4]),
+                        };
+                    });
 
                     // Sort just in case
                     mappedData.sort((a: any, b: any) => a.time - b.time);
