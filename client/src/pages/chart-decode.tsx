@@ -42,7 +42,7 @@ export default function ChartDecodePage() {
                 if (res.ok) {
                     const json = await res.json();
                     // Map binance klines to lightweight-charts format
-                    const mappedData = json.candles.map((k: any) => ({
+                    const mappedData = (json.candles || []).map((k: any) => ({
                         time: k.openTime / 1000,
                         open: parseFloat(k.open),
                         high: parseFloat(k.high),
@@ -51,15 +51,21 @@ export default function ChartDecodePage() {
                     }));
                     setChartData(mappedData);
                     setDecodeResult(null);
+                } else {
+                    console.error("API Error or no candles");
+                    setChartData([]);
                 }
             } catch (e) {
                 console.error("Failed to fetch klines:", e);
                 toast.error("Failed to load chart data");
+                setChartData([]);
             }
         };
 
         if (selectedSymbol) {
             fetchCandles();
+            const interval = setInterval(fetchCandles, 60000); // Poll every minute
+            return () => clearInterval(interval);
         }
     }, [selectedSymbol, timeframe]);
 
@@ -133,7 +139,7 @@ export default function ChartDecodePage() {
                         size="lg"
                         onClick={handleDecode}
                         disabled={isDecoding || chartData.length === 0}
-                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.3)]"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-[0_0_20px_rgba(var(--primary),0.3)] animate-pulse hover:animate-none"
                     >
                         {isDecoding ? (
                             <>
@@ -149,11 +155,11 @@ export default function ChartDecodePage() {
                     </Button>
                 </div>
 
-                {/* Main Split View */}
+                {/* Main Split View - Fixed Layout */}
                 <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
 
-                    {/* Left/Top: Chart Container */}
-                    <Card className="flex-1 min-h-[500px] lg:min-h-0 overflow-hidden border-border bg-card/40 backdrop-blur-sm">
+                    {/* Left/Top: Chart Container - Takes 2/3 space */}
+                    <Card className="flex-[2] min-h-[500px] lg:min-h-0 overflow-hidden border-border bg-card/40 backdrop-blur-sm">
                         <CardContent className="p-0 h-full relative">
                             {chartData.length > 0 ? (
                                 <LightweightChart
@@ -173,21 +179,33 @@ export default function ChartDecodePage() {
                         </CardContent>
                     </Card>
 
-                    {/* Right/Bottom: AI Analysis Results */}
-                    {decodeResult && (
-                        <Card className="flex-1 lg:max-w-[500px] border-border bg-card/60 backdrop-blur-md animate-in slide-in-from-right-10 duration-500 overflow-hidden flex flex-col">
-                            <div className="p-4 border-b border-border bg-muted/20 flex items-center gap-2">
-                                <Sparkles className="h-5 w-5 text-yellow-400" />
-                                <h3 className="font-semibold text-lg">AI Pattern Breakdown</h3>
-                            </div>
-                            <div className="p-6 overflow-y-auto flex-1 prose prose-invert prose-sm max-w-none">
+                    {/* Right/Bottom: AI Analysis Results - Always Visible Placeholder - Takes 1/3 space */}
+                    <Card className="flex-1 lg:max-w-[400px] border-border bg-card/60 backdrop-blur-md flex flex-col h-full">
+                        <div className="p-4 border-b border-border bg-muted/20 flex items-center gap-2">
+                            <Sparkles className="h-5 w-5 text-yellow-400" />
+                            <h3 className="font-semibold text-lg">AI Analysis</h3>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex-1 prose prose-invert prose-sm max-w-none">
+                            {decodeResult ? (
                                 <ReactMarkdown>{decodeResult}</ReactMarkdown>
-                            </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50 space-y-4">
+                                    <Brain className="h-16 w-16" />
+                                    <p className="text-center">
+                                        Click "Decode Chart" to generate<br />
+                                        support/resistance and trend analysis.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {decodeResult && (
                             <div className="p-3 border-t border-border bg-muted/20 text-xs text-center text-muted-foreground">
                                 Analysis by Gemini 1.5 Flash • {new Date().toLocaleTimeString()}
                             </div>
-                        </Card>
-                    )}
+                        )}
+                    </Card>
                 </div>
             </div>
         </Page>

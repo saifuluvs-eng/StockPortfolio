@@ -13,16 +13,26 @@ export const aiService = {
       // Remove header if present (e.g., "data:image/png;base64,")
       const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, "");
 
-      const prompt = `You are a professional Crypto Technical Analyst. You are looking at a TradingView chart image provided by the user.
+      const prompt = `You are a professional Crypto Technical Analyst.
+      Analyze this chart image and provide a structured report using exactly these headers:
+      
+      **Asset & Timeframe**
+      [Identify Pair and Interval]
 
-Your Task:
-1. Identify the Asset: Look at the top left of the chart to identify the Pair (e.g., BTC/USDT) and Timeframe.
-2. Analyze Structure: Is the market trending (uptrend/downtrend) or ranging?
-3. Pattern Recognition: Identify any visible candlestick patterns (e.g., Double Bottom, Head & Shoulders, Bullish Engulfing).
-4. Key Levels: Estimate the Support and Resistance prices based on the visual axes.
-5. Verdict: Provide a concise summary: Bullish, Bearish, or Neutral.
+      **Market Structure**
+      [Uptrend/Downtrend/Ranging + Brief explanation]
 
-Formatting: Use Markdown (bolding, bullet points) for a clean UI display. Keep it under 200 words.`;
+      **Key Levels**
+      - Support: [Price]
+      - Resistance: [Price]
+
+      **Pattern Recognition**
+      [Identify patterns like Double Bottom, Flags, etc. or "None visible"]
+
+      **Verdict**
+      [Bullish / Bearish / Neutral] - [One sentence summary]
+
+      Keep it concise and professional.`;
 
       const result = await model.generateContent([
         prompt,
