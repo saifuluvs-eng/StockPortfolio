@@ -42,22 +42,26 @@ export default function TopPicksPage() {
                     <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
                         <Sparkles className="w-64 h-64 text-indigo-400" />
                     </div>
-                    <div className="relative z-10 max-w-2xl">
-                        <div className="flex items-center gap-3 mb-3">
-                            <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold uppercase tracking-wider">
-                                Artificial Intelligence
-                            </span>
-                            <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold uppercase tracking-wider">
-                                Beta
-                            </span>
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                        <div>
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold uppercase tracking-wider">
+                                    Artificial Intelligence
+                                </span>
+                                <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20 text-xs font-bold uppercase tracking-wider">
+                                    Beta
+                                </span>
+                            </div>
+                            <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">
+                                Market <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Top Picks</span>
+                            </h1>
                         </div>
-                        <h1 className="text-3xl md:text-4xl font-black text-white mb-4 leading-tight">
-                            Market <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Top Picks</span>
-                        </h1>
-                        <p className="text-base text-zinc-400 mb-0 leading-relaxed max-w-xl">
-                            We analyze thousands of data points to find the <strong className="text-white">Perfect Confluence</strong>.
-                            These assets are hitting key levels AND showing strong momentum.
-                        </p>
+                        <div className="md:max-w-md">
+                            <p className="text-sm md:text-base text-zinc-400 leading-relaxed md:text-right">
+                                We analyze thousands of data points to find the <strong className="text-white">Perfect Confluence</strong>.
+                                These assets are hitting key levels AND showing strong momentum.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -191,8 +195,8 @@ export default function TopPicksPage() {
                         <div className="p-4 bg-indigo-500/5 rounded-lg border border-indigo-500/20">
                             <h3 className="font-semibold text-indigo-400 mb-2">What is Confluence Scoring?</h3>
                             <p className="text-sm text-zinc-400 leading-relaxed">
-                                Confluence means <strong className="text-white">multiple signals agreeing</strong>. Instead of relying on one indicator, 
-                                we look for coins where momentum, volume, trend, and RSI all point in the same direction. 
+                                Confluence means <strong className="text-white">multiple signals agreeing</strong>. Instead of relying on one indicator,
+                                we look for coins where momentum, volume, trend, and RSI all point in the same direction.
                                 The more factors align, the higher the score - and the more confident the setup.
                             </p>
                         </div>
@@ -375,7 +379,7 @@ export default function TopPicksPage() {
                         {/* Disclaimer */}
                         <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
                             <p className="text-xs text-zinc-500 text-center">
-                                This scanner is for informational purposes only. Always do your own research before trading. 
+                                This scanner is for informational purposes only. Always do your own research before trading.
                                 Past performance does not guarantee future results.
                             </p>
                         </div>
