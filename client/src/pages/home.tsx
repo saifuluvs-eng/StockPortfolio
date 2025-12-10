@@ -415,9 +415,6 @@ export default function Home() {
                     </div>
                     <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
                     <div className="mt-3 pt-2 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground">
-                        ↻ Updates every 10 minutes
-                      </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Last updated: {new Date(lastFetchTime).toLocaleTimeString()}
                       </p>
