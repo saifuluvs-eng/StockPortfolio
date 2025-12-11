@@ -685,6 +685,10 @@ export default function StrategiesPage() {
                                         </li>
                                         <li className="flex items-start gap-2">
                                             <span className="text-indigo-400 mt-1">4.</span>
+                                            <span>We also check **4H and 1D Swing Levels** for major structural support/resistance.</span>
+                                        </li>
+                                        <li className="flex items-start gap-2">
+                                            <span className="text-indigo-400 mt-1">5.</span>
                                             <span>Coins in the <strong className="text-white">top 10%</strong> of their range may be breaking out</span>
                                         </li>
                                     </ul>
@@ -721,23 +725,23 @@ export default function StrategiesPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                                         <div className="flex items-center gap-2">
                                             <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-xs font-medium">Strong Support</span>
-                                            <span className="text-zinc-400">Level tested 3+ times - very reliable</span>
+                                            <span className="text-zinc-400">Tested 3+ times OR high volume confirmation</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <span className="px-2 py-0.5 rounded bg-zinc-700 text-zinc-400 text-xs font-medium">Weak Level</span>
                                             <span className="text-zinc-400">Only tested once - less reliable</span>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-xs font-medium">Oversold</span>
-                                            <span className="text-zinc-400">Dropped 5%+ - may be due for a bounce</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 text-xs font-medium">Overbought</span>
-                                            <span className="text-zinc-400">Gained 5%+ - may be due for a pullback</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
                                             <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-medium">Approaching</span>
-                                            <span className="text-zinc-400">Within 2% of the level - watch closely</span>
+                                            <span className="text-zinc-400">Near key level (Threshold adapts by Vol Rank: 1-2%)</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 text-xs font-medium">4H / 1D</span>
+                                            <span className="text-zinc-400">Level matches a major swing on Higher Timeframe</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-xs font-medium">Oversold</span>
+                                            <span className="text-zinc-400">RSI &lt; 30 - may be due for a bounce</span>
                                         </div>
                                     </div>
                                 </div>
