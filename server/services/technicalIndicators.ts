@@ -1461,20 +1461,46 @@ class TechnicalIndicators {
                 });
                 if (volumeConfirm) strength++;
 
-                if (!bestLevel || dist < bestLevel.distance) {
+                if (!bestLevel) {
                   bestLevel = { type, price: levelPrice, source, distance: dist, tests, strength };
+                } else {
+                  const isHTF = bestLevel.source.includes('4H') || bestLevel.source.includes('1D');
+                  const isNewLowQuality = source.includes('24h');
+
+                  // If we already have a valid HTF level, don't overwrite it with a generic 24h level
+                  // unless the 24h level is vastly closer (e.g. HTF is at limit of threshold, 24h is AT price)
+                  // But generally, we prefer the structure of HTF.
+                  if (isHTF && isNewLowQuality) return;
+
+                  if (dist < bestLevel.distance) {
+                    bestLevel = { type, price: levelPrice, source, distance: dist, tests, strength };
+                  }
                 }
               }
             };
 
             if (strategy === 'bounce') {
-              checkLevel(low24h, 'Support', '24h Range', candles4h);
-              if (swingsLow4h.length) checkLevel(swingsLow4h[swingsLow4h.length - 1], 'Support', '4H Support', candles4h);
+              // Check Higher Timeframes First (Priority: 1D > 4H > 24h)
               if (swingsLow1d.length) checkLevel(swingsLow1d[swingsLow1d.length - 1], 'Support', '1D Support', candles1d);
+              if (swingsLow4h.length) checkLevel(swingsLow4h[swingsLow4h.length - 1], 'Support', '4H Support', candles4h);
+              checkLevel(low24h, 'Support', '24h Range', candles4h);
 
-              checkLevel(high24h, 'Resistance', '24h Range', candles4h);
-              if (swingsHigh4h.length) checkLevel(swingsHigh4h[swingsHigh4h.length - 1], 'Resistance', '4H Resistance', candles4h);
               if (swingsHigh1d.length) checkLevel(swingsHigh1d[swingsHigh1d.length - 1], 'Resistance', '1D Resistance', candles1d);
+              if (swingsHigh4h.length) checkLevel(swingsHigh4h[swingsHigh4h.length - 1], 'Resistance', '4H Resistance', candles4h);
+              checkLevel(high24h, 'Resistance', '24h Range', candles4h);
+
+              // Confluence Upgrade: If best level is 24h, check if it's actually touching a HTF level
+              if (bestLevel && (bestLevel as BestLevel).source.includes('24h')) {
+                const bl = bestLevel as BestLevel;
+                const near1D = swingsLow1d.find(s => Math.abs(s - bl.price) / bl.price < 0.01)
+                  || swingsHigh1d.find(s => Math.abs(s - bl.price) / bl.price < 0.01);
+
+                const near4H = swingsLow4h.find(s => Math.abs(s - bl.price) / bl.price < 0.01)
+                  || swingsHigh4h.find(s => Math.abs(s - bl.price) / bl.price < 0.01);
+
+                if (near1D) bl.source += ' + 1D';
+                else if (near4H) bl.source += ' + 4H';
+              }
             }
 
             // Breakout logic integration
