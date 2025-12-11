@@ -20,6 +20,7 @@ interface SupportResistanceResult {
     rsi?: number;
     badges?: string[];
     timestamp: string;
+    source?: string;
 }
 
 interface HotSetup {
@@ -260,8 +261,8 @@ export default function StrategiesPage() {
                                                         <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
                                                         <td className="p-3 text-center">
                                                             <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${coin.score >= 80 ? 'bg-orange-500/20 text-orange-400' :
-                                                                    coin.score >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
-                                                                        'bg-zinc-700/50 text-zinc-300'
+                                                                coin.score >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
+                                                                    'bg-zinc-700/50 text-zinc-300'
                                                                 }`}>
                                                                 {coin.score}
                                                             </span>
@@ -277,11 +278,11 @@ export default function StrategiesPage() {
                                                             <div className="flex flex-wrap gap-1">
                                                                 {coin.tags.map(tag => (
                                                                     <span key={tag} className={`text-[10px] px-2 py-0.5 rounded border ${tag === 'HOT SETUP' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' :
-                                                                            tag.includes('Breakout') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                                                                                tag.includes('Support') ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                                                                                    tag.includes('Volume') ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
-                                                                                        tag.includes('Uptrend') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
-                                                                                            'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                                        tag.includes('Breakout') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                                                            tag.includes('Support') ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                                                                                tag.includes('Volume') ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                                                                                    tag.includes('Uptrend') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                                                                        'bg-zinc-800 text-zinc-400 border-zinc-700'
                                                                         }`}>
                                                                         {tag}
                                                                     </span>
@@ -318,9 +319,15 @@ export default function StrategiesPage() {
                                                 <th className="p-3 font-medium">Asset</th>
                                                 <th className="p-3 font-medium text-center">Type</th>
                                                 <th className="p-3 font-medium text-center">Level</th>
-                                                <th className="p-3 font-medium text-center">Distance</th>
-                                                <th className="p-3 font-medium text-center">Tests</th>
-                                                <th className="p-3 font-medium text-center">R:R</th>
+                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white" onClick={() => { setSortField('distancePercent'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
+                                                    Distance {sortField === 'distancePercent' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
+                                                </th>
+                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white" onClick={() => { setSortField('tests'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
+                                                    Tests {sortField === 'tests' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
+                                                </th>
+                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white" onClick={() => { setSortField('riskReward'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
+                                                    R:R {sortField === 'riskReward' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
+                                                </th>
                                                 <th className="p-3 font-medium">Badges</th>
                                                 <th className="p-3 font-medium text-center">Action</th>
                                             </tr>
@@ -331,45 +338,66 @@ export default function StrategiesPage() {
                                             ) : !srData?.length ? (
                                                 <tr><td colSpan={8} className="p-8 text-center text-zinc-500">No coins near key levels.</td></tr>
                                             ) : (
-                                                srData.slice(0, 30).map((coin) => (
-                                                    <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                                                        <td className="p-3 font-bold text-white">{coin.symbol.replace('USDT', '')}</td>
-                                                        <td className="p-3 text-center">
-                                                            <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${coin.type === 'Support' || coin.type === 'Breakout'
+                                                (() => {
+                                                    const sortedData = [...(srData || [])].sort((a, b) => {
+                                                        if (!sortField) return a.distancePercent - b.distancePercent; // Default
+
+                                                        const valA = a[sortField as keyof SupportResistanceResult] as number;
+                                                        const valB = b[sortField as keyof SupportResistanceResult] as number;
+
+                                                        return sortDirection === 'asc' ? valA - valB : valB - valA;
+                                                    });
+
+                                                    return sortedData.slice(0, 50).map((coin) => (
+                                                        <tr key={coin.symbol} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                                                            <td className="p-3 font-bold text-white">
+                                                                {coin.symbol.replace('USDT', '')}
+                                                                {coin.source?.includes('4H') && <span className="ml-2 text-[10px] bg-zinc-800 text-zinc-400 px-1 rounded">4H</span>}
+                                                                {coin.source?.includes('1D') && <span className="ml-2 text-[10px] bg-zinc-800 text-zinc-400 px-1 rounded">1D</span>}
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                                <span className={`inline-block px-2 py-1 rounded font-bold text-xs ${coin.type === 'Support' || coin.type === 'Breakout'
                                                                     ? 'bg-emerald-500/20 text-emerald-400'
                                                                     : 'bg-rose-500/20 text-rose-400'
-                                                                }`}>
-                                                                {coin.type}
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-3 text-center font-mono text-zinc-400">${formatPrice(coin.level)}</td>
-                                                        <td className="p-3 text-center font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
-                                                        <td className="p-3 text-center">
-                                                            <span className={`text-xs px-2 py-0.5 rounded ${coin.tests >= 3 ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
-                                                                {coin.tests}
-                                                            </span>
-                                                        </td>
-                                                        <td className="p-3 text-center font-mono">
-                                                            {coin.riskReward ? (
-                                                                <span className={coin.riskReward >= 3 ? 'text-emerald-400' : 'text-zinc-400'}>
-                                                                    1:{coin.riskReward.toFixed(1)}
+                                                                    }`}>
+                                                                    {coin.type}
                                                                 </span>
-                                                            ) : '-'}
-                                                        </td>
-                                                        <td className="p-3">
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {coin.badges?.slice(0, 2).map(b => (
-                                                                    <span key={b} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400">{b}</span>
-                                                                ))}
-                                                            </div>
-                                                        </td>
-                                                        <td className="p-3 text-center">
-                                                            <Link href={`/analyse/${coin.symbol}`}>
-                                                                <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 h-7 text-xs">Analyze</Button>
-                                                            </Link>
-                                                        </td>
-                                                    </tr>
-                                                ))
+                                                            </td>
+                                                            <td className="p-3 text-center font-mono text-zinc-400">${formatPrice(coin.level)}</td>
+                                                            <td className="p-3 text-center font-bold text-white">{coin.distancePercent.toFixed(2)}%</td>
+                                                            <td className="p-3 text-center">
+                                                                <span className={`text-xs px-2 py-0.5 rounded ${coin.tests >= 3 ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                                                                    {coin.tests}
+                                                                </span>
+                                                            </td>
+                                                            <td className="p-3 text-center font-mono">
+                                                                {coin.riskReward ? (
+                                                                    <span className={coin.riskReward >= 3 ? 'text-emerald-400' : 'text-zinc-400'}>
+                                                                        1:{coin.riskReward.toFixed(1)}
+                                                                    </span>
+                                                                ) : '-'}
+                                                            </td>
+                                                            <td className="p-3">
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {coin.badges?.map(b => {
+                                                                        let badgeClass = "bg-zinc-800 text-zinc-400";
+                                                                        if (b === 'Strong Level') badgeClass = "bg-amber-500/20 text-amber-400";
+                                                                        if (b === 'Approaching') badgeClass = "bg-blue-500/20 text-blue-400 animate-pulse";
+                                                                        if (b.includes('Support')) badgeClass = "bg-emerald-500/10 text-emerald-300";
+                                                                        if (b.includes('Res')) badgeClass = "bg-rose-500/10 text-rose-300";
+
+                                                                        return <span key={b} className={`text-[10px] px-1.5 py-0.5 rounded ${badgeClass}`}>{b}</span>;
+                                                                    })}
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-3 text-center">
+                                                                <Link href={`/analyse/${coin.symbol}`}>
+                                                                    <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 h-7 text-xs">Analyze</Button>
+                                                                </Link>
+                                                            </td>
+                                                        </tr>
+                                                    ));
+                                                })()
                                             )}
                                         </tbody>
                                     </table>
