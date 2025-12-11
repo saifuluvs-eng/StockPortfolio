@@ -1468,13 +1468,14 @@ class TechnicalIndicators {
             };
 
             if (strategy === 'bounce') {
-              checkLevel(low24h, 'Support', '24h Range', candles4h);
-              if (swingsLow4h.length) checkLevel(swingsLow4h[swingsLow4h.length - 1], 'Support', '4H Support', candles4h);
+              // Check Higher Timeframes First (Priority: 1D > 4H > 24h)
               if (swingsLow1d.length) checkLevel(swingsLow1d[swingsLow1d.length - 1], 'Support', '1D Support', candles1d);
+              if (swingsLow4h.length) checkLevel(swingsLow4h[swingsLow4h.length - 1], 'Support', '4H Support', candles4h);
+              checkLevel(low24h, 'Support', '24h Range', candles4h);
 
-              checkLevel(high24h, 'Resistance', '24h Range', candles4h);
-              if (swingsHigh4h.length) checkLevel(swingsHigh4h[swingsHigh4h.length - 1], 'Resistance', '4H Resistance', candles4h);
               if (swingsHigh1d.length) checkLevel(swingsHigh1d[swingsHigh1d.length - 1], 'Resistance', '1D Resistance', candles1d);
+              if (swingsHigh4h.length) checkLevel(swingsHigh4h[swingsHigh4h.length - 1], 'Resistance', '4H Resistance', candles4h);
+              checkLevel(high24h, 'Resistance', '24h Range', candles4h);
             }
 
             // Breakout logic integration

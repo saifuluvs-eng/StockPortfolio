@@ -319,14 +319,14 @@ export default function StrategiesPage() {
                                                 <th className="p-3 font-medium">Asset</th>
                                                 <th className="p-3 font-medium text-center">Type</th>
                                                 <th className="p-3 font-medium text-center">Level</th>
-                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white" onClick={() => { setSortField('distancePercent'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
-                                                    Distance {sortField === 'distancePercent' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
+                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white group" onClick={() => { setSortField('distancePercent'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
+                                                    Distance <ArrowUpDown className={`inline h-3 w-3 ml-1 transition-opacity ${sortField === 'distancePercent' ? 'opacity-100 text-indigo-400' : 'opacity-30 group-hover:opacity-100'}`} />
                                                 </th>
-                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white" onClick={() => { setSortField('tests'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
-                                                    Tests {sortField === 'tests' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
+                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white group" onClick={() => { setSortField('tests'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
+                                                    Tests <ArrowUpDown className={`inline h-3 w-3 ml-1 transition-opacity ${sortField === 'tests' ? 'opacity-100 text-indigo-400' : 'opacity-30 group-hover:opacity-100'}`} />
                                                 </th>
-                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white" onClick={() => { setSortField('riskReward'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
-                                                    R:R {sortField === 'riskReward' && <ArrowUpDown className="inline h-3 w-3 ml-1" />}
+                                                <th className="p-3 font-medium text-center cursor-pointer hover:text-white group" onClick={() => { setSortField('riskReward'); setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc'); }}>
+                                                    R:R <ArrowUpDown className={`inline h-3 w-3 ml-1 transition-opacity ${sortField === 'riskReward' ? 'opacity-100 text-indigo-400' : 'opacity-30 group-hover:opacity-100'}`} />
                                                 </th>
                                                 <th className="p-3 font-medium">Badges</th>
                                                 <th className="p-3 font-medium text-center">Action</th>
