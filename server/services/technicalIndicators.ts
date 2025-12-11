@@ -140,6 +140,52 @@ class TechnicalIndicators {
     return 100 - (100 / (1 + rs));
   }
 
+  // Helper to find swing points
+  private findSwingLows(candles: any[], period: number = 2): number[] {
+    const lows: number[] = [];
+    if (candles.length < period * 2 + 1) return lows;
+
+    for (let i = period; i < candles.length - period; i++) {
+      const currentLow = parseFloat(candles[i].low || candles[i].l);
+      let isSwingLow = true;
+
+      // Check neighbors
+      for (let j = 1; j <= period; j++) {
+        const prev = parseFloat(candles[i - j].low || candles[i - j].l);
+        const next = parseFloat(candles[i + j].low || candles[i + j].l);
+        if (currentLow >= prev || currentLow >= next) {
+          isSwingLow = false;
+          break;
+        }
+      }
+
+      if (isSwingLow) lows.push(currentLow);
+    }
+    return lows;
+  }
+
+  private findSwingHighs(candles: any[], period: number = 2): number[] {
+    const highs: number[] = [];
+    if (candles.length < period * 2 + 1) return highs;
+
+    for (let i = period; i < candles.length - period; i++) {
+      const currentHigh = parseFloat(candles[i].high || candles[i].h);
+      let isSwingHigh = true;
+
+      for (let j = 1; j <= period; j++) {
+        const prev = parseFloat(candles[i - j].high || candles[i - j].h);
+        const next = parseFloat(candles[i + j].high || candles[i + j].h);
+        if (currentHigh <= prev || currentHigh <= next) {
+          isSwingHigh = false;
+          break;
+        }
+      }
+
+      if (isSwingHigh) highs.push(currentHigh);
+    }
+    return highs;
+  }
+
   // MACD (Moving Average Convergence Divergence)
   private calculateMACD(prices: number[]): { macd: number; signal: number; histogram: number } {
     const ema12 = this.calculateEMA(prices, 12);
@@ -1329,170 +1375,148 @@ class TechnicalIndicators {
   async scanSupportResistance(limit: number = 20, lookbackDays: number = 8, strategy: 'bounce' | 'breakout' = 'bounce'): Promise<any[]> {
     console.log(`[TechnicalIndicators] scanSupportResistance called. Strategy: ${strategy}, Lookback: ${lookbackDays}`);
     try {
-      // Optimized pool size with caching - can safely scan more coins now
       const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
-      // With caching enabled, we can scan 50 coins in production (up from 25)
       let poolSize = isProduction ? 50 : (lookbackDays > 30 ? 100 : 75);
 
       const topPairs = await binanceService.getTopVolumePairs(poolSize);
       const results: any[] = [];
-      // Smaller batches with delay to avoid rate limits
-      const batchSize = isProduction ? 10 : 8;
-
-      // Calculate candles needed: (Days * 24h) / 4h timeframe = 6 candles per day
-      const candlesNeeded = Math.ceil(lookbackDays * 6);
+      const batchSize = isProduction ? 10 : 8; // Process in batches
 
       for (let i = 0; i < topPairs.length; i += batchSize) {
         const batch = topPairs.slice(i, i + batchSize);
-        const promises = batch.map(async (pair) => {
+
+        const promises = batch.map(async (pair, batchIndex) => {
           try {
-            // Filter Stablecoins
             if (['USDC', 'FDUSD', 'TUSD', 'USDP', 'USDE', 'DAI', 'BUSD', 'EUR', 'XUSD', 'BFUSD'].some(s => pair.symbol.startsWith(s))) return null;
 
-            // Determine Timeframe & Limit based on Lookback
-            let scanTimeframe = '4h';
-            let scanLimit = candlesNeeded;
+            const globalRank = i + batchIndex + 1; // 1-based rank based on volume sort
 
-            if (lookbackDays > 30) {
-              scanTimeframe = '1d';
-              // For 1D, 1 candle = 1 day. So we need lookbackDays + buffer
-              scanLimit = lookbackDays + 50;
+            // Adaptive Threshold Logic
+            let adaptiveThreshold = 0.02; // Default 2%
+            if (globalRank <= 50) adaptiveThreshold = 0.02;       // Large Cap
+            else if (globalRank <= 200) adaptiveThreshold = 0.015; // Mid Cap
+            else adaptiveThreshold = 0.01;                        // Small Cap
+
+            // 1. Fetch Data
+            const candlesNeeded4h = 100;
+            const candlesNeeded1d = 60;
+
+            // We'll use analyzeSymbol for 4h to get indicators + candles
+            const analysis4h = await this.analyzeSymbol(pair.symbol, '4h', candlesNeeded4h);
+            const analysis1d = await this.analyzeSymbol(pair.symbol, '1d', candlesNeeded1d);
+
+            const candles4h = analysis4h.candles || [];
+            const candles1d = analysis1d.candles || [];
+
+            if (candles4h.length < 50) return null; // Not enough data
+
+            const currentPrice = analysis4h.price;
+            const rsiVal = analysis4h.indicators.rsi.value;
+            const ema200_4h = (analysis4h.indicators.ema200?.value || this.calculateEMA(candles4h.map(c => c.c), 200));
+
+            // 2. Identify Levels
+
+            // 2a. 24h Range Levels
+            const last24hCandles = candles4h.slice(-6);
+            const low24h = Math.min(...last24hCandles.map(c => c.l));
+            const high24h = Math.max(...last24hCandles.map(c => c.h));
+
+            // 2b. Swing Levels
+            const swingsLow4h = this.findSwingLows(candles4h);
+            const swingsHigh4h = this.findSwingHighs(candles4h);
+            const swingsLow1d = this.findSwingLows(candles1d);
+            const swingsHigh1d = this.findSwingHighs(candles1d);
+
+            // 3. Selection Logic
+            interface BestLevel {
+              type: 'Support' | 'Resistance' | 'Breakout' | 'Breakdown';
+              price: number;
+              source: string;
+              distance: number;
+              tests: number;
+              strength: number;
             }
-            // console.log(`[TRACE] Analyzing ${pair.symbol} TF:${scanTimeframe} Limit:${scanLimit}`);
+            let bestLevel: BestLevel | null = null;
 
+            const checkLevel = (levelPrice: number, type: 'Support' | 'Resistance', source: string, timeframeCandles: any[]) => {
+              const dist = Math.abs((currentPrice - levelPrice) / levelPrice);
 
-            const analysis = await this.analyzeSymbol(pair.symbol, scanTimeframe, scanLimit);
-            const candles = analysis.candles || [];
+              if (dist <= adaptiveThreshold) {
+                let tests = 0;
+                timeframeCandles.forEach(c => {
+                  const l = parseFloat(c.l), h = parseFloat(c.h);
+                  if (type === 'Support' && Math.abs(l - levelPrice) / levelPrice < 0.005) tests++;
+                  if (type === 'Resistance' && Math.abs(h - levelPrice) / levelPrice < 0.005) tests++;
+                });
 
-            // Check if we have enough data
-            const requiredDataPoints = scanTimeframe === '1d' ? lookbackDays : candlesNeeded;
+                let strength = 0;
+                // Simple strength Logic
+                const distToEma = Math.abs((levelPrice - ema200_4h) / ema200_4h);
+                if (distToEma <= 0.03) strength++;
+                if (tests >= 3) strength++;
+                // Volume confirmation approximation
+                const volumeConfirm = timeframeCandles.some(c => {
+                  const isNear = Math.abs(parseFloat(c.c) - levelPrice) / levelPrice < 0.005;
+                  return isNear && parseFloat(c.v) > (parseFloat(pair.quoteVolume) / 24) * 1.2;
+                });
+                if (volumeConfirm) strength++;
 
-            // Allow Partial Data for 1D Timeframe (Best Effort for new coins)
-            // If we asked for 365 days but coin only has 200, we should still scan those 200.
-            if (scanTimeframe === '1d') {
-              if (candles.length < 30) return null; // Minimum 30 days required for meaningful daily analysis
-            } else {
-              // Strict check for shorter timeframes (4h) to ensure full pattern validity
-              if (candles.length < requiredDataPoints) return null;
-            }
-
-            const currentPrice = analysis.price;
-            // Analyze requested lookback period (or max available)
-            const sliceCount = Math.min(candles.length, requiredDataPoints);
-            const recent = candles.slice(-sliceCount);
-
-            // For Breakout: Look at Highs/Lows excluding the very last closed candle to see if we just broke it? 
-            // Or just generic High/Low of the period.
-            // Let's use the standard period High/Low.
-
-            const recentLows = recent.map(c => c.l);
-            const recentHighs = recent.map(c => c.h);
-            const minLow = Math.min(...recentLows);
-            const maxHigh = Math.max(...recentHighs);
-
-            let type = '';
-            let level = 0;
-            let distance = 0;
-            let tests = 0;
-            let riskReward: number | null = null;
-
-            const rsiVal = analysis.indicators.rsi.value;
-            const badges: string[] = [];
-
-            // Define Previous Candles for Breakout Calculations
-            const previousCandles = recent.slice(0, -1);
-            if (previousCandles.length > 5) {
-              const prevHigh = Math.max(...previousCandles.map(c => c.h));
-              const prevLow = Math.min(...previousCandles.map(c => c.l));
-
-              // Distance to levels (Positive = Past the level, Negative = Approaching)
-              const distAboveRes = (currentPrice - prevHigh) / prevHigh;
-              const distBelowSup = (prevLow - currentPrice) / prevLow;
-
-              // UNIFIED LOGIC: Check for both Bounce and Breakout
-
-              // 1. Bounce Checks (Support/Resistance) - Priority for 'bounce' strategy
-              if (strategy === 'bounce') {
-                // Dynamic tolerance: 5% for 4h, 20% for 1d (Long-term levels are wider zones)
-                // Increased to 20% because 365d ranges are massive, and 10-15% is still "at the bottom" relatively.
-                const tolerance = scanTimeframe === '1d' ? 0.20 : 0.05;
-
-                const distToSupport = Math.abs((currentPrice - minLow) / minLow);
-                const distToResistance = Math.abs((maxHigh - currentPrice) / currentPrice);
-
-                if (distToSupport < tolerance) {
-                  type = 'Support';
-                  level = minLow;
-                  distance = distToSupport;
-                  tests = recent.filter(c => Math.abs((c.l - minLow) / minLow) < 0.01).length;
-                  // ... (Add R:R and Badges logic here or refactor)
-                  // Copying logic for now to ensure safety
-                  const risk = distance;
-                  const reward = (maxHigh - currentPrice) / currentPrice;
-                  if (risk > 0.001) riskReward = parseFloat((reward / risk).toFixed(2)); else riskReward = 10;
-                  if (rsiVal < 40 && distance < 0.03) badges.push('Golden Setup');
-                  if (rsiVal < 30) badges.push('Oversold');
-                  if (tests >= 3) badges.push('Strong Support');
-                  if (tests < 2) badges.push('Weak Level');
-                } else if (distToResistance < tolerance) {
-                  type = 'Resistance';
-                  level = maxHigh;
-
-                  distance = distToResistance;
-                  tests = recent.filter(c => Math.abs((c.h - maxHigh) / maxHigh) < 0.01).length;
-                  if (rsiVal > 70) badges.push('Overbought');
-                  if (tests >= 3) badges.push('Strong Res');
+                if (!bestLevel || dist < bestLevel.distance) {
+                  bestLevel = { type, price: levelPrice, source, distance: dist, tests, strength };
                 }
               }
+            };
 
-              // 2. Breakout Checks - Priority for 'breakout' strategy OR if not found in bounce
-              if ((strategy === 'breakout') || (!type && strategy !== 'bounce')) {
-                // ... Breakout logic ...
-                // Refactor: We need to avoid code duplication if possible, but splitting by strategy is cleaner for 90d fix.
-                const distAboveRes = (currentPrice - prevHigh) / prevHigh;
-                const distBelowSup = (prevLow - currentPrice) / prevLow;
+            if (strategy === 'bounce') {
+              checkLevel(low24h, 'Support', '24h Range', candles4h);
+              if (swingsLow4h.length) checkLevel(swingsLow4h[swingsLow4h.length - 1], 'Support', '4H Support', candles4h);
+              if (swingsLow1d.length) checkLevel(swingsLow1d[swingsLow1d.length - 1], 'Support', '1D Support', candles1d);
 
-                if (distAboveRes > -0.02 && distAboveRes < 0.15) {
-                  type = 'Breakout';
-                  level = prevHigh;
-                  distance = distAboveRes;
-                  tests = previousCandles.filter(c => Math.abs((c.h - prevHigh) / prevHigh) < 0.01).length;
-                  if (distAboveRes < 0) badges.push('Approaching'); else badges.push('Confirmed');
-                  if (rsiVal > 50) badges.push('High Momentum');
-                  if (analysis.indicators.rsi.value > 75) badges.push('Overextended');
-                } else if (distBelowSup > -0.02 && distBelowSup < 0.15) {
-                  type = 'Breakdown';
-                  level = prevLow;
-                  distance = distBelowSup;
-                  tests = previousCandles.filter(c => Math.abs((c.l - prevLow) / prevLow) < 0.01).length;
-                  if (distBelowSup < 0) badges.push('Approaching'); else badges.push('Confirmed');
-                  if (rsiVal < 50) badges.push('Bearish Momentum');
-                  if (rsiVal < 25) badges.push('Oversold Dump');
-                }
-              }
+              checkLevel(high24h, 'Resistance', '24h Range', candles4h);
+              if (swingsHigh4h.length) checkLevel(swingsHigh4h[swingsHigh4h.length - 1], 'Resistance', '4H Resistance', candles4h);
+              if (swingsHigh1d.length) checkLevel(swingsHigh1d[swingsHigh1d.length - 1], 'Resistance', '1D Resistance', candles1d);
+            }
 
+            // Breakout logic integration
+            if ((strategy === 'breakout') || (!bestLevel && strategy !== 'bounce')) {
+              // ... (minimal breakout logic support for now if needed, or rely on bounce logic finding close levels)
+            }
 
-              // debug log
-              // console.log(`[DEBUG] ${pair.symbol} Mode:${strategy} Type:${type} Price:${currentPrice} Level:${level}`);
+            if (bestLevel) {
+              const levelData = bestLevel as BestLevel;
+              const badges: string[] = [];
 
-              if (type) {
-                return {
+              if (levelData.source.includes('4H')) badges.push(levelData.type === 'Support' ? '4H Support' : '4H Resistance');
+              if (levelData.source.includes('1D')) badges.push(levelData.type === 'Support' ? '1D Support' : '1D Resistance');
 
-                  symbol: pair.symbol,
-                  price: currentPrice,
-                  type,
-                  level,
-                  target: (type === 'Support' ? maxHigh : type === 'Resistance' ? minLow : type === 'Breakout' ? level * 1.2 : level * 0.8),
-                  distancePercent: distance * 100,
-                  tests,
-                  riskReward,
-                  rsi: rsiVal,
-                  badges,
-                  volume: parseFloat(pair.quoteVolume),
-                  timestamp: new Date().toISOString(),
-                  _version: 'v3'
-                };
-              }
+              const distRaw = Math.abs((currentPrice - levelData.price) / levelData.price);
+              if (distRaw <= adaptiveThreshold) badges.push('Approaching');
+
+              if (levelData.strength >= 2) badges.push('Strong Level');
+              else if (levelData.strength === 1) badges.push('Medium Level');
+              else badges.push('Weak Level');
+
+              if (rsiVal < 30) badges.push('Oversold');
+              if (rsiVal > 70) badges.push('Overbought');
+
+              const risk = levelData.distance;
+              const reward = Math.abs((levelData.type === 'Support' ? high24h : low24h) - currentPrice) / currentPrice;
+              const rr = risk > 0 ? reward / risk : 0;
+
+              return {
+                symbol: pair.symbol,
+                price: currentPrice,
+                type: levelData.type,
+                level: levelData.price,
+                distancePercent: levelData.distance * 100,
+                tests: levelData.tests,
+                riskReward: parseFloat(rr.toFixed(2)),
+                rsi: rsiVal,
+                badges,
+                volume: parseFloat(pair.quoteVolume),
+                timestamp: new Date().toISOString(),
+                source: levelData.source
+              };
             }
           } catch (err) { }
           return null;
@@ -1500,13 +1524,11 @@ class TechnicalIndicators {
 
         const batchResults = await Promise.all(promises);
         results.push(...batchResults.filter(Boolean));
-
-        // Rate limit
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 100)); // Rate limit
       }
 
-      // Sort by Closeness (Primary) but allow filtering by R:R on frontend
       return results.sort((a, b) => a.distancePercent - b.distancePercent);
+
     } catch (error) {
       console.error('Error scanning for SR:', error);
       return [];
