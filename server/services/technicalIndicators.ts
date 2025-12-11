@@ -1461,8 +1461,20 @@ class TechnicalIndicators {
                 });
                 if (volumeConfirm) strength++;
 
-                if (!bestLevel || dist < bestLevel.distance) {
+                if (!bestLevel) {
                   bestLevel = { type, price: levelPrice, source, distance: dist, tests, strength };
+                } else {
+                  const isHTF = bestLevel.source.includes('4H') || bestLevel.source.includes('1D');
+                  const isNewLowQuality = source.includes('24h');
+
+                  // If we already have a valid HTF level, don't overwrite it with a generic 24h level
+                  // unless the 24h level is vastly closer (e.g. HTF is at limit of threshold, 24h is AT price)
+                  // But generally, we prefer the structure of HTF.
+                  if (isHTF && isNewLowQuality) return;
+
+                  if (dist < bestLevel.distance) {
+                    bestLevel = { type, price: levelPrice, source, distance: dist, tests, strength };
+                  }
                 }
               }
             };
