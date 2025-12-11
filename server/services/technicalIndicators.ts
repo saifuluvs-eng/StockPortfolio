@@ -1488,6 +1488,19 @@ class TechnicalIndicators {
               if (swingsHigh1d.length) checkLevel(swingsHigh1d[swingsHigh1d.length - 1], 'Resistance', '1D Resistance', candles1d);
               if (swingsHigh4h.length) checkLevel(swingsHigh4h[swingsHigh4h.length - 1], 'Resistance', '4H Resistance', candles4h);
               checkLevel(high24h, 'Resistance', '24h Range', candles4h);
+
+              // Confluence Upgrade: If best level is 24h, check if it's actually touching a HTF level
+              if (bestLevel && (bestLevel as BestLevel).source.includes('24h')) {
+                const bl = bestLevel as BestLevel;
+                const near1D = swingsLow1d.find(s => Math.abs(s - bl.price) / bl.price < 0.01)
+                  || swingsHigh1d.find(s => Math.abs(s - bl.price) / bl.price < 0.01);
+
+                const near4H = swingsLow4h.find(s => Math.abs(s - bl.price) / bl.price < 0.01)
+                  || swingsHigh4h.find(s => Math.abs(s - bl.price) / bl.price < 0.01);
+
+                if (near1D) bl.source += ' + 1D';
+                else if (near4H) bl.source += ' + 4H';
+              }
             }
 
             // Breakout logic integration
