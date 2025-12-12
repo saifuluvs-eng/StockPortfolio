@@ -472,18 +472,18 @@ export default function Portfolio() {
         {/* Holdings table */}
         <div className={`${activeTab === "holdings" ? "block" : "hidden lg:block"}`}>
           <Card className="border-border">
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-6">
+            <CardHeader className="flex flex-row items-center justify-between gap-2 p-4 sm:p-6">
               <CardTitle>Holdings</CardTitle>
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
                 <Link href="/analyse/BTCUSDT">
-                  <Button variant="outline" size="sm" className="min-h-[40px] px-3">
-                    <Eye className="w-4 h-4 mr-1.5" />
+                  <Button variant="outline" size="sm" className="h-8 text-xs px-2 sm:h-9 sm:text-sm sm:px-4">
+                    <Eye className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5" />
                     <span>Scan</span>
                   </Button>
                 </Link>
-                <Button size="sm" onClick={openAdd} className="min-h-[40px] px-3">
-                  <PlusCircle className="w-4 h-4 mr-1.5" />
-                  <span>Add Position</span>
+                <Button size="sm" onClick={openAdd} className="h-8 text-xs px-2 sm:h-9 sm:text-sm sm:px-4">
+                  <PlusCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5" />
+                  <span>Add</span>
                 </Button>
               </div>
             </CardHeader>
@@ -523,7 +523,7 @@ export default function Portfolio() {
                             <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">P&L</div>
                             <div className={`font-medium ${pnlColor}`}>
                               {pnlValue >= 0 ? "+" : ""}${Math.abs(pnlValue).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                              <span className="ml-1 opacity-90">
+                              <span className="ml-1 opacity-90 text-[10px]">
                                 ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
                               </span>
                             </div>
