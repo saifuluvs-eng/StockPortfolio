@@ -567,7 +567,7 @@ export default function Home() {
           </div>
         )}
 
-        )}
+
 
         {/* Mobile Order Definition */}
         {(() => {
