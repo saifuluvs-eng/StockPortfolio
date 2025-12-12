@@ -221,6 +221,8 @@ export default function TVChart({
           widgetRef.current?.remove?.();
         } catch { }
 
+        const isMobile = window.innerWidth < 640;
+
         const widget = new window.TradingView.widget({
           container_id: containerIdRef.current,
           symbol: `BINANCE:${initialSymbol}`,
@@ -228,7 +230,7 @@ export default function TVChart({
           theme: "dark",
           autosize: true,
           timezone: "Etc/UTC",
-          hide_side_toolbar: false,
+          hide_side_toolbar: isMobile,
           hide_top_toolbar: false,
           withdateranges: true,
           details: false,
