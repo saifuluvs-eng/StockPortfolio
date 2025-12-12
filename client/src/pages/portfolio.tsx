@@ -355,14 +355,14 @@ export default function Portfolio() {
             <p className="text-sm sm:text-base text-muted-foreground mt-1">Positions, P&amp;L, and live performance.</p>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
             <Button variant="outline" size="sm" onClick={handleRefresh} className="min-h-[44px]">
-              <RefreshCw className={`w-4 h-4 sm:mr-2 ${fetchingPositions ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              <RefreshCw className={`w-4 h-4 mr-2 ${fetchingPositions ? "animate-spin" : ""}`} />
+              <span>Refresh</span>
             </Button>
             <Button size="sm" onClick={openAdd} className="min-h-[44px]">
-              <PlusCircle className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Add Position</span>
+              <PlusCircle className="w-4 h-4 mr-2" />
+              <span>Add Position</span>
             </Button>
           </div>
         </div>
@@ -476,14 +476,14 @@ export default function Portfolio() {
               <CardTitle>Holdings</CardTitle>
               <div className="flex items-center gap-2 flex-wrap">
                 <Link href="/analyse/BTCUSDT">
-                  <Button variant="outline" size="sm" className="min-h-[44px]">
-                    <Eye className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Scan Market</span>
+                  <Button variant="outline" size="sm" className="min-h-[40px] px-3">
+                    <Eye className="w-4 h-4 mr-1.5" />
+                    <span>Scan</span>
                   </Button>
                 </Link>
-                <Button size="sm" onClick={openAdd} className="min-h-[44px]">
-                  <PlusCircle className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Add Position</span>
+                <Button size="sm" onClick={openAdd} className="min-h-[40px] px-3">
+                  <PlusCircle className="w-4 h-4 mr-1.5" />
+                  <span>Add Position</span>
                 </Button>
               </div>
             </CardHeader>
@@ -516,36 +516,56 @@ export default function Portfolio() {
 
                     return (
                       <div key={p.id} className="rounded-xl border border-border bg-card/50 p-4">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <div className="font-bold text-lg">{sym}</div>
-                            <div className="text-xs text-muted-foreground">{quantity} units</div>
-                          </div>
+                        {/* Header Row: Symbol & P&L */}
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="font-bold text-lg text-foreground">{sym}</div>
                           <div className="text-right">
-                            <div className="font-medium">${positionValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}</div>
-                            <div className={`text-xs font-medium ${pnlColor}`}>
-                              {pnlValue >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%
+                            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">P&L</div>
+                            <div className={`font-medium ${pnlColor}`}>
+                              {pnlValue >= 0 ? "+" : ""}${Math.abs(pnlValue).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              <span className="ml-1 opacity-90">
+                                ({pnlPct >= 0 ? "+" : ""}{pnlPct.toFixed(2)}%)
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div className="bg-muted/20 rounded p-2">
-                            <div className="text-[10px] text-muted-foreground uppercase">Avg Price</div>
-                            <div className="font-medium">${entryPrice.toLocaleString("en-US", { maximumFractionDigits: 6 })}</div>
+                        {/* Data Grid: QTY ENTRY CURRENT ORDER */}
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                          <div className="flex flex-col">
+                            <div className="text-[10px] text-muted-foreground uppercase mb-1">QTY</div>
+                            <div className="text-sm font-medium text-foreground">{quantity}</div>
                           </div>
-                          <div className="bg-muted/20 rounded p-2">
-                            <div className="text-[10px] text-muted-foreground uppercase">Current</div>
-                            <div className="font-medium">${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}</div>
+                          <div className="flex flex-col text-center">
+                            <div className="text-[10px] text-muted-foreground uppercase mb-1">Entry</div>
+                            <div className="text-sm font-medium text-foreground">${entryPrice.toLocaleString("en-US", { maximumFractionDigits: 6 })}</div>
+                          </div>
+                          <div className="flex flex-col text-center">
+                            <div className="text-[10px] text-muted-foreground uppercase mb-1">Current</div>
+                            <div className="text-sm font-medium text-foreground">${current.toLocaleString("en-US", { maximumFractionDigits: 6 })}</div>
+                          </div>
+                          <div className="flex flex-col text-right">
+                            <div className="text-[10px] text-muted-foreground uppercase mb-1">Order</div>
+                            <div className="text-sm font-medium text-foreground">${orderValue.toLocaleString("en-US", { maximumFractionDigits: 2 })}</div>
                           </div>
                         </div>
 
-                        <div className="flex gap-2 mt-3">
-                          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => goScan(sym)}>
-                            <Search className="w-3 h-3 mr-1.5" /> Analysis
+                        {/* Actions */}
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="outline" className="flex-1 h-8 text-xs bg-background/50 hover:bg-background" onClick={() => goScan(sym)}>
+                            <Search className="w-3 h-3 mr-1.5" /> Scan
                           </Button>
                           {sessionUser && (
-                            <Button size="sm" variant="outline" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(p)}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this position?")) {
+                                  handleDelete(p);
+                                }
+                              }}
+                            >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           )}
