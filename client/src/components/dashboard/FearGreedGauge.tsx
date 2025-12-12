@@ -8,14 +8,14 @@ interface FearGreedGaugeProps {
 export const FearGreedGauge: React.FC<FearGreedGaugeProps> = ({ value, classification }) => {
   // Clamp value between 0-100
   const clampedValue = Math.max(0, Math.min(100, value));
-  
+
   // Calculate rotation: -90deg (0 fear) to 90deg (100 greed)
   const rotation = -90 + (clampedValue / 100) * 180;
-  
+
   // Determine color based on value
   let needleColor = "#ef4444"; // red for extreme fear
   let gaugeSectionColor = "#ef4444";
-  
+
   if (clampedValue < 25) {
     needleColor = "#ef4444"; // red - extreme fear
     gaugeSectionColor = "#dc2626";
@@ -36,7 +36,7 @@ export const FearGreedGauge: React.FC<FearGreedGaugeProps> = ({ value, classific
   return (
     <div className="flex flex-col items-center justify-center w-full">
       {/* SVG Gauge */}
-      <svg width="140" height="85" viewBox="0 0 200 120" className="mb-2">
+      <svg width="100" height="60" viewBox="0 0 200 120" className="mb-0">
         {/* Background gauge arc */}
         <defs>
           <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
