@@ -8,7 +8,7 @@ interface SortableCardProps {
     className?: string;
 }
 
-export function SortableCard({ id, children, className }: SortableCardProps) {
+export function SortableCard({ id, children, className, disabled }: SortableCardProps & { disabled?: boolean }) {
     const {
         attributes,
         listeners,
@@ -16,7 +16,7 @@ export function SortableCard({ id, children, className }: SortableCardProps) {
         transform,
         transition,
         isDragging,
-    } = useSortable({ id });
+    } = useSortable({ id, disabled });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -27,7 +27,7 @@ export function SortableCard({ id, children, className }: SortableCardProps) {
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={className}>
+        <div ref={setNodeRef} style={style} {...attributes} {...(disabled ? {} : listeners)} className={className}>
             {children}
         </div>
     );

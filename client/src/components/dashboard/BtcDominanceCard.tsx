@@ -31,8 +31,8 @@ export default function BtcDominanceCard() {
   const subtitle = isError ? "Unavailable" : "Share of total crypto market cap";
 
   return (
-    <Card className="dashboard-card neon-hover bg-gradient-to-br from-amber-500/10 to-amber-500/20 flex flex-col h-auto sm:h-full min-h-[260px]" style={cardStyle}>
-      <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+    <Card className="dashboard-card neon-hover bg-gradient-to-br from-amber-500/10 to-amber-500/20 flex flex-col h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={cardStyle}>
+      <CardContent className="p-3 sm:p-4 lg:p-6 flex flex-col justify-start">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">BTC Dominance</h3>

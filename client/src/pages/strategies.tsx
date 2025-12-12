@@ -237,7 +237,7 @@ export default function StrategiesPage() {
                                         <strong>Hot Setups</strong> - Coins appearing in multiple scanners with confluence scoring. Higher scores = stronger signals.
                                     </p>
                                 </div>
-                                <div className="h-[60vh] overflow-auto">
+                                <div className="h-[60vh] overflow-auto hidden md:block">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="sticky top-0 z-10 bg-zinc-900">
                                             <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
@@ -304,6 +304,57 @@ export default function StrategiesPage() {
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {/* Mobile Card View for Hot Setups */}
+                                <div className="space-y-3 block md:hidden max-h-[70vh] overflow-y-auto pb-10">
+                                    {isLoadingHot ? (
+                                        <div className="p-8 text-center text-zinc-500">Scanning all strategies...</div>
+                                    ) : !hotSetups?.length ? (
+                                        <div className="p-8 text-center text-zinc-500">No hot setups found. Check back later.</div>
+                                    ) : (
+                                        hotSetups.map((coin) => (
+                                            <div key={coin.symbol} className="bg-card border border-border/50 rounded-xl p-3 flex flex-col gap-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-lg text-white">{coin.symbol.replace('USDT', '')}</span>
+                                                            <span className={`text-xs px-2 py-0.5 rounded font-bold ${coin.score >= 80 ? 'bg-orange-500/20 text-orange-400' :
+                                                                coin.score >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
+                                                                    'bg-zinc-700/50 text-zinc-300'
+                                                                }`}>
+                                                                Score: {coin.score}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-sm text-zinc-400 mt-1 font-mono">${formatPrice(coin.price)}</div>
+                                                    </div>
+                                                    <Link href={`/analyse/${coin.symbol}`}>
+                                                        <Button size="sm" className="bg-orange-600 hover:bg-orange-500 h-8 text-xs">Analyze</Button>
+                                                    </Link>
+                                                </div>
+
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {coin.tags.map(tag => (
+                                                        <span key={tag} className={`text-[10px] px-2 py-0.5 rounded border ${tag === 'HOT SETUP' ? 'bg-orange-500/20 text-orange-300 border-orange-500/30' :
+                                                            tag.includes('Breakout') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                                                tag.includes('Support') ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
+                                                                    tag.includes('Volume') ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                                                                        tag.includes('Uptrend') ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                                                            'bg-zinc-800 text-zinc-400 border-zinc-700'
+                                                            }`}>
+                                                            {tag}
+                                                        </span>
+                                                    ))}
+                                                </div>
+
+                                                {coin.reasons.length > 0 && (
+                                                    <div className="text-xs text-zinc-500 bg-zinc-900/50 p-2 rounded">
+                                                        {coin.reasons.slice(0, 2).join(' • ')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
                             </TabsContent>
 
                             <TabsContent value="sr" className="mt-4">
@@ -312,7 +363,7 @@ export default function StrategiesPage() {
                                         <strong>Support & Resistance</strong> - Coins near key price levels. Support = potential bounce up, Resistance = potential rejection.
                                     </p>
                                 </div>
-                                <div className="h-[60vh] overflow-auto">
+                                <div className="h-[60vh] overflow-auto hidden md:block">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="sticky top-0 z-10 bg-zinc-900">
                                             <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
@@ -402,6 +453,77 @@ export default function StrategiesPage() {
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {/* Mobile Card View for S/R */}
+                                <div className="space-y-3 block md:hidden max-h-[75vh] overflow-y-auto pb-10">
+                                    {isLoadingSR ? (
+                                        <div className="p-8 text-center text-zinc-500">Scanning S/R levels...</div>
+                                    ) : !srData?.length ? (
+                                        <div className="p-8 text-center text-zinc-500">No coins near key levels.</div>
+                                    ) : (
+                                        (() => {
+                                            const sortedData = [...(srData || [])].sort((a, b) => {
+                                                if (!sortField) return a.distancePercent - b.distancePercent; // Default
+                                                const valA = a[sortField as keyof SupportResistanceResult] as number;
+                                                const valB = b[sortField as keyof SupportResistanceResult] as number;
+                                                return sortDirection === 'asc' ? valA - valB : valB - valA;
+                                            });
+
+                                            return sortedData.slice(0, 50).map((coin) => (
+                                                <div key={coin.symbol} className="bg-card border border-border/50 rounded-xl p-3 flex flex-col gap-3">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-lg text-white">{coin.symbol.replace('USDT', '')}</span>
+                                                                {coin.source?.includes('4H') && <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1 rounded">4H</span>}
+                                                                {coin.source?.includes('1D') && <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1 rounded">1D</span>}
+                                                            </div>
+                                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mt-1 ${coin.type === 'Support' || coin.type === 'Breakout' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'
+                                                                }`}>
+                                                                {coin.type}
+                                                            </span>
+                                                        </div>
+                                                        <Link href={`/analyse/${coin.symbol}`}>
+                                                            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-500 h-8 text-xs">Analyze</Button>
+                                                        </Link>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-4 gap-2 text-xs border-y border-zinc-800 py-2">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-zinc-500">Level</span>
+                                                            <span className="font-mono text-zinc-300">{formatPrice(coin.level)}</span>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-zinc-500">Dist</span>
+                                                            <span className="font-bold text-white">{coin.distancePercent.toFixed(2)}%</span>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-zinc-500">Tests</span>
+                                                            <span className="font-bold text-amber-400">{coin.tests}</span>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-zinc-500">R:R</span>
+                                                            <span className={coin.riskReward && coin.riskReward >= 3 ? 'text-emerald-400' : 'text-zinc-400'}>
+                                                                {coin.riskReward ? `1:${coin.riskReward.toFixed(1)}` : '-'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {coin.badges?.map(b => {
+                                                            let badgeClass = "bg-zinc-800 text-zinc-400";
+                                                            if (b === 'Strong Level') badgeClass = "bg-amber-500/20 text-amber-400";
+                                                            if (b === 'Approaching') badgeClass = "bg-blue-500/20 text-blue-400 animate-pulse";
+                                                            if (b.includes('Support')) badgeClass = "bg-emerald-500/10 text-emerald-300";
+                                                            if (b.includes('Res')) badgeClass = "bg-rose-500/10 text-rose-300";
+                                                            return <span key={b} className={`text-[10px] px-1.5 py-0.5 rounded ${badgeClass}`}>{b}</span>;
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            ));
+                                        })()
+                                    )}
+                                </div>
                             </TabsContent>
 
                             <TabsContent value="trend-dip" className="mt-4">
@@ -411,7 +533,7 @@ export default function StrategiesPage() {
                                         <strong>Trend Dip</strong> - Coins in long-term uptrend (above EMA200) with short-term RSI dips. Buy the dip in strong trends.
                                     </p>
                                 </div>
-                                <div className="h-[60vh] overflow-auto">
+                                <div className="h-[60vh] overflow-auto hidden md:block">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="sticky top-0 z-10 bg-zinc-900">
                                             <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
@@ -478,6 +600,64 @@ export default function StrategiesPage() {
                                         </tbody>
                                     </table>
                                 </div>
+
+                                {/* Mobile Card View for Trend Dip */}
+                                <div className="space-y-3 block md:hidden max-h-[75vh] overflow-y-auto pb-10">
+                                    {isLoadingTrend ? (
+                                        <div className="p-8 text-center text-zinc-500">Scanning uptrends...</div>
+                                    ) : !trendDip?.length ? (
+                                        <div className="p-8 text-center text-zinc-500">No trend dips found.</div>
+                                    ) : (
+                                        trendDip.slice(0, 25).map((coin) => {
+                                            const rsiM15 = coin.rsi?.m15;
+                                            const rsiH1 = coin.rsi?.h1;
+                                            const rsiH4 = coin.rsi?.h4;
+                                            return (
+                                                <div key={coin.symbol} className="bg-card border border-border/50 rounded-xl p-3 flex flex-col gap-3">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <span className="font-bold text-lg text-white">{coin.symbol.replace('USDT', '')}</span>
+                                                            <div className="text-sm text-zinc-400 font-mono">${formatPrice(coin.price)}</div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className={`font-bold block ${coin.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                                {coin.priceChangePercent >= 0 ? '+' : ''}{coin.priceChangePercent.toFixed(1)}%
+                                                            </span>
+                                                            <Link href={`/analyse/${coin.symbol}`}>
+                                                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 h-7 text-xs mt-1">Analyze</Button>
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-4 gap-2 text-xs border-t border-zinc-800 pt-2">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-zinc-500">EMA200</span>
+                                                            <span className="text-emerald-400 font-mono">${formatPrice(coin.ema200)}</span>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-zinc-500">RSI 15m</span>
+                                                            {rsiM15 ? (
+                                                                <span className={rsiM15 < 40 ? 'text-emerald-400 font-bold' : 'text-zinc-300'}>{rsiM15}</span>
+                                                            ) : '-'}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-zinc-500">RSI 1h</span>
+                                                            {rsiH1 ? (
+                                                                <span className={rsiH1 < 40 ? 'text-emerald-400 font-bold' : 'text-zinc-300'}>{rsiH1}</span>
+                                                            ) : '-'}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-zinc-500">RSI 4h</span>
+                                                            {rsiH4 ? (
+                                                                <span className={rsiH4 < 40 ? 'text-emerald-400 font-bold' : 'text-zinc-300'}>{rsiH4}</span>
+                                                            ) : '-'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
                             </TabsContent>
 
                             <TabsContent value="volume-spike" className="mt-4">
@@ -487,7 +667,7 @@ export default function StrategiesPage() {
                                         <strong>Volume Spike</strong> - Coins with 1.5x+ average volume on green candles. Indicates institutional interest.
                                     </p>
                                 </div>
-                                <div className="h-[60vh] overflow-auto">
+                                <div className="h-[60vh] overflow-auto hidden md:block">
                                     <table className="w-full text-left border-collapse">
                                         <thead className="sticky top-0 z-10 bg-zinc-900">
                                             <tr className="border-b border-zinc-800 text-xs text-zinc-500 uppercase tracking-wider">
@@ -532,6 +712,51 @@ export default function StrategiesPage() {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+
+                                {/* Mobile Card View for Volume Spike */}
+                                <div className="space-y-3 block md:hidden max-h-[75vh] overflow-y-auto pb-10">
+                                    {isLoadingVolume ? (
+                                        <div className="p-8 text-center text-zinc-500">Scanning volume spikes...</div>
+                                    ) : !volumeSpike?.length ? (
+                                        <div className="p-8 text-center text-zinc-500">No volume spikes detected.</div>
+                                    ) : (
+                                        volumeSpike.slice(0, 25).map((coin) => (
+                                            <div key={coin.symbol} className="bg-card border border-border/50 rounded-xl p-3 flex flex-col gap-3">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <span className="font-bold text-lg text-white">{coin.symbol.replace('USDT', '')}</span>
+                                                        <div className="text-sm text-zinc-400 font-mono">${formatPrice(coin.price)}</div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className={`font-bold block ${coin.priceChangePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                            {coin.priceChangePercent >= 0 ? '+' : ''}{coin.priceChangePercent.toFixed(1)}%
+                                                        </span>
+                                                        <Link href={`/analyse/${coin.symbol}`}>
+                                                            <Button size="sm" className="bg-purple-600 hover:bg-purple-500 h-7 text-xs mt-1">Analyze</Button>
+                                                        </Link>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-2 text-xs border-t border-zinc-800 pt-2">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-zinc-500">Volume</span>
+                                                        <span className="text-purple-400 font-mono">{formatVolume(coin.volume)}</span>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-zinc-500">Avg Vol</span>
+                                                        <span className="text-zinc-400 font-mono">{formatVolume(coin.avgVolume)}</span>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-zinc-500">Multiple</span>
+                                                        <span className={`font-bold ${coin.volumeMultiple >= 3 ? 'text-purple-400' : coin.volumeMultiple >= 2 ? 'text-purple-300' : 'text-zinc-400'}`}>
+                                                            {coin.volumeMultiple.toFixed(1)}x
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </TabsContent>
 
