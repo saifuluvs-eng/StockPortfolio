@@ -420,12 +420,12 @@ export default function Home() {
                 {fearGreed ? (
                   <>
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-semibold text-foreground text-xs sm:text-sm">Mkt Fear & Greed</h3>
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm">Fear and Greed</h3>
                       <Gauge className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 flex-shrink-0" />
                     </div>
                     <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
-                    <div className="mt-3 pt-2 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground mt-1">
+                    <div className="mt-1 pt-1 border-t border-border/50">
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
                         Updated: {new Date(lastFetchTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
