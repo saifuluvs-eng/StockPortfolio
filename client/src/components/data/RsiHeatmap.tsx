@@ -109,66 +109,71 @@ export function RsiHeatmap({ data, isLoading }: RsiHeatmapProps) {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="h-[600px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart
-                            data={processedData}
-                            margin={{ top: 20, right: 20, bottom: 60, left: 20 }}
-                        >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                            <XAxis
-                                dataKey="symbol"
-                                angle={-90}
-                                textAnchor="end"
-                                interval={0}
-                                tick={{ fill: '#666', fontSize: 10 }}
-                                height={60}
-                            />
-                            <YAxis
-                                domain={[0, 100]}
-                                ticks={[0, 30, 40, 50, 60, 70, 100]}
-                                tick={{ fill: '#888' }}
-                            />
-                            <Tooltip content={<CustomTooltip />} />
-
-                            {/* Zones Backgrounds */}
-                            <ReferenceArea y1={70} y2={100} fill="#ef4444" fillOpacity={0.1} label={{ value: "OVERBOUGHT", position: 'insideTopRight', fill: '#ef4444', fontSize: 12 }} />
-                            <ReferenceArea y1={60} y2={70} fill="#f87171" fillOpacity={0.05} label={{ value: "STRONG", position: 'insideRight', fill: '#f87171', fontSize: 12 }} />
-                            <ReferenceArea y1={40} y2={60} fill="#71717a" fillOpacity={0.05} label={{ value: "NEUTRAL", position: 'insideRight', fill: '#71717a', fontSize: 12 }} />
-                            <ReferenceArea y1={30} y2={40} fill="#34d399" fillOpacity={0.05} label={{ value: "WEAK", position: 'insideRight', fill: '#34d399', fontSize: 12 }} />
-                            <ReferenceArea y1={0} y2={30} fill="#10b981" fillOpacity={0.1} label={{ value: "OVERSOLD", position: 'insideBottomRight', fill: '#10b981', fontSize: 12 }} />
-
-                            {/* Stems (Lollipop stick) - goes up to the highest RSI value */}
-                            <Bar dataKey="maxRsi" barSize={2} fill="#3f3f46" isAnimationActive={false} />
-
-                            {/* Data Points (Lollipop heads) - One for each timeframe */}
-                            {timeframeKeys.map((tf) => (
-                                <Line
-                                    key={tf}
-                                    dataKey={`rsi.${tf}`}
-                                    stroke="none"
-                                    isAnimationActive={false}
-                                    dot={(props: any) => {
-                                        const { cx, cy, payload } = props;
-                                        const val = payload.rsi?.[tf];
-                                        if (val === undefined) return <></>; // Skip if no data for this TF
-
-                                        let color = '#9ca3af'; // neutral
-                                        if (val >= 70) color = '#ef4444';
-                                        else if (val >= 60) color = '#f87171';
-                                        else if (val <= 30) color = '#10b981';
-                                        else if (val <= 40) color = '#34d399';
-
-                                        // Make dots slightly transparent if multiple to see overlaps better? 
-                                        // Or just solid. Solid is usually clearer.
-                                        return (
-                                            <circle cx={cx} cy={cy} r={4} fill={color} stroke="white" strokeWidth={1} />
-                                        );
-                                    }}
+                <div className="md:hidden text-center text-xs text-zinc-500 mb-2 animate-pulse">
+                    ← Scroll to view all coins →
+                </div>
+                <div className="w-full overflow-x-auto pb-4">
+                    <div className="h-[600px] w-full min-w-[1000px] md:min-w-0">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart
+                                data={processedData}
+                                margin={{ top: 20, right: 20, bottom: 60, left: 20 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                                <XAxis
+                                    dataKey="symbol"
+                                    angle={-90}
+                                    textAnchor="end"
+                                    interval={0}
+                                    tick={{ fill: '#666', fontSize: 10 }}
+                                    height={60}
                                 />
-                            ))}
-                        </ComposedChart>
-                    </ResponsiveContainer>
+                                <YAxis
+                                    domain={[0, 100]}
+                                    ticks={[0, 30, 40, 50, 60, 70, 100]}
+                                    tick={{ fill: '#888' }}
+                                />
+                                <Tooltip content={<CustomTooltip />} />
+
+                                {/* Zones Backgrounds */}
+                                <ReferenceArea y1={70} y2={100} fill="#ef4444" fillOpacity={0.1} label={{ value: "OVERBOUGHT", position: 'insideTopRight', fill: '#ef4444', fontSize: 12 }} />
+                                <ReferenceArea y1={60} y2={70} fill="#f87171" fillOpacity={0.05} label={{ value: "STRONG", position: 'insideRight', fill: '#f87171', fontSize: 12 }} />
+                                <ReferenceArea y1={40} y2={60} fill="#71717a" fillOpacity={0.05} label={{ value: "NEUTRAL", position: 'insideRight', fill: '#71717a', fontSize: 12 }} />
+                                <ReferenceArea y1={30} y2={40} fill="#34d399" fillOpacity={0.05} label={{ value: "WEAK", position: 'insideRight', fill: '#34d399', fontSize: 12 }} />
+                                <ReferenceArea y1={0} y2={30} fill="#10b981" fillOpacity={0.1} label={{ value: "OVERSOLD", position: 'insideBottomRight', fill: '#10b981', fontSize: 12 }} />
+
+                                {/* Stems (Lollipop stick) - goes up to the highest RSI value */}
+                                <Bar dataKey="maxRsi" barSize={2} fill="#3f3f46" isAnimationActive={false} />
+
+                                {/* Data Points (Lollipop heads) - One for each timeframe */}
+                                {timeframeKeys.map((tf) => (
+                                    <Line
+                                        key={tf}
+                                        dataKey={`rsi.${tf}`}
+                                        stroke="none"
+                                        isAnimationActive={false}
+                                        dot={(props: any) => {
+                                            const { cx, cy, payload } = props;
+                                            const val = payload.rsi?.[tf];
+                                            if (val === undefined) return <></>; // Skip if no data for this TF
+
+                                            let color = '#9ca3af'; // neutral
+                                            if (val >= 70) color = '#ef4444';
+                                            else if (val >= 60) color = '#f87171';
+                                            else if (val <= 30) color = '#10b981';
+                                            else if (val <= 40) color = '#34d399';
+
+                                            // Make dots slightly transparent if multiple to see overlaps better? 
+                                            // Or just solid. Solid is usually clearer.
+                                            return (
+                                                <circle cx={cx} cy={cy} r={4} fill={color} stroke="white" strokeWidth={1} />
+                                            );
+                                        }}
+                                    />
+                                ))}
+                            </ComposedChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
             </CardContent>
         </Card>
