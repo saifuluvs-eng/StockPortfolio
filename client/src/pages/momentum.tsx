@@ -95,7 +95,7 @@ export default function MomentumPage() {
                 <div className="space-y-6">
                     <Card>
                         <div className="space-y-6">
-                            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                                 <div>
                                     <div className="flex items-center gap-3 mb-2">
                                         <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
@@ -108,8 +108,8 @@ export default function MomentumPage() {
                                     </p>
                                 </div>
 
-                                <div className="flex flex-col items-end gap-4 w-full xl:w-auto">
-                                    <div className="flex items-center gap-3 bg-zinc-900/50 p-2 rounded-lg border border-zinc-800">
+                                <div className="flex flex-col items-end gap-4 w-full md:w-auto">
+                                    <div className="flex items-center gap-3 bg-zinc-900/50 p-2 rounded-lg border border-zinc-800 w-full md:w-auto justify-between md:justify-start">
                                         <label className="text-xs font-medium text-zinc-400">Trade Size ($)</label>
                                         <div className="relative">
                                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs">$</span>
@@ -132,7 +132,91 @@ export default function MomentumPage() {
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto max-h-[600px] overflow-y-auto custom-scrollbar relative">
+                            {/* Mobile Card View (< md) */}
+                            <div className="md:hidden space-y-4">
+                                {isLoading ? (
+                                    <div className="p-8 text-center text-zinc-500 bg-zinc-900/50 rounded-lg border border-zinc-800">
+                                        Scanning for Momentum...
+                                    </div>
+                                ) : !data?.length ? (
+                                    <div className="p-8 text-center text-zinc-500 bg-zinc-900/50 rounded-lg border border-zinc-800">
+                                        No high-momentum setups found right now. Market might be chop.
+                                    </div>
+                                ) : (
+                                    data.map((coin) => {
+                                        const { riskDollars } = getTradeMetrics(coin.price, coin.riskPct);
+                                        return (
+                                            <div key={coin.symbol} className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 space-y-4">
+                                                {/* Card Header */}
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-lg font-bold text-white">{coin.symbol.replace('USDT', '')}</span>
+                                                            <span className="text-xs text-zinc-500">USDT</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="font-mono text-zinc-300">${formatPrice(coin.price)}</span>
+                                                            <span className="font-mono text-xs font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                                                                +{coin.change24h.toFixed(2)}%
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col items-end gap-2">
+                                                        {getSignalBadge(coin.signal)}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">RSI (14) :</span>
+                                                            <span className={`font-mono font-bold text-sm ${coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-200'}`}>
+                                                                {coin.rsi}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Metrics Grid */}
+                                                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-zinc-800/50 text-center">
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="text-[10px] uppercase text-zinc-500 font-medium mb-1">Vol Factor</div>
+                                                        <div className="flex flex-col items-center">
+                                                            <span className={`text-sm font-bold ${coin.volumeFactor > 2 ? 'text-emerald-400' : 'text-zinc-300'}`}>
+                                                                {coin.volumeFactor}x
+                                                            </span>
+                                                            <span className="text-[10px] text-zinc-500">
+                                                                {formatVolume(coin.volume)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex flex-col items-center border-l border-zinc-800/50 border-r">
+                                                        <div className="text-[10px] uppercase text-zinc-500 font-medium mb-1">Stop Loss</div>
+                                                        <span className="font-mono text-sm text-zinc-300">
+                                                            {coin.stopLoss ? '$' + formatPrice(coin.stopLoss) : '-'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="text-[10px] uppercase text-zinc-500 font-medium mb-1">Risk</div>
+                                                        <div className="flex flex-col items-center">
+                                                            {coin.riskPct ? (
+                                                                <span className={`font-mono text-sm ${coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                                                    {coin.riskPct.toFixed(1)}%
+                                                                </span>
+                                                            ) : <span className="text-zinc-500">-</span>}
+                                                            {riskDollars !== null && (
+                                                                <span className="text-[10px] font-mono text-rose-300">
+                                                                    -${Math.round(riskDollars).toLocaleString()}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+
+                            {/* Desktop Table View (>= md) */}
+                            <div className="hidden md:block overflow-x-auto max-h-[600px] overflow-y-auto custom-scrollbar relative">
                                 <table className="w-full">
                                     <thead className="sticky top-0 bg-zinc-900 z-10 shadow-sm shadow-zinc-800">
                                         <tr className="border-b border-zinc-800 text-left text-xs uppercase tracking-wider text-zinc-500">
@@ -229,9 +313,9 @@ export default function MomentumPage() {
                             <div className="p-4 bg-emerald-500/5 rounded-lg border border-emerald-500/20">
                                 <h3 className="font-semibold text-emerald-400 mb-2">What is Momentum?</h3>
                                 <p className="text-sm text-zinc-400 leading-relaxed">
-                                    Momentum measures the <strong className="text-white">speed and strength</strong> of a price move. 
-                                    Coins with strong momentum are moving up quickly and may continue. This scanner finds coins that are 
-                                    <strong className="text-white"> already in motion</strong> with the volume to back it up - the goal is to 
+                                    Momentum measures the <strong className="text-white">speed and strength</strong> of a price move.
+                                    Coins with strong momentum are moving up quickly and may continue. This scanner finds coins that are
+                                    <strong className="text-white"> already in motion</strong> with the volume to back it up - the goal is to
                                     catch the wave, not predict it.
                                 </p>
                             </div>
@@ -303,7 +387,7 @@ export default function MomentumPage() {
                                             <Rocket className="w-4 h-4" /> RIDE THE WAVE
                                         </div>
                                         <div className="text-sm text-zinc-400">
-                                            <strong className="text-emerald-300">Best Signal.</strong> Price up 5%+, volume 2x+ average, RSI under 75, and we found a valid stop-loss level. 
+                                            <strong className="text-emerald-300">Best Signal.</strong> Price up 5%+, volume 2x+ average, RSI under 75, and we found a valid stop-loss level.
                                             This coin has strong momentum with room to continue.
                                         </div>
                                     </div>
@@ -312,7 +396,7 @@ export default function MomentumPage() {
                                             <Zap className="w-4 h-4" /> MOMENTUM
                                         </div>
                                         <div className="text-sm text-zinc-400">
-                                            <strong className="text-blue-300">Good Signal.</strong> Solid volume (1.5x+), healthy RSI, and a valid stop-loss. 
+                                            <strong className="text-blue-300">Good Signal.</strong> Solid volume (1.5x+), healthy RSI, and a valid stop-loss.
                                             May not be as explosive as "Ride" but still a quality setup.
                                         </div>
                                     </div>
@@ -321,7 +405,7 @@ export default function MomentumPage() {
                                             <TrendingUp className="w-4 h-4" /> GAINING SPEED
                                         </div>
                                         <div className="text-sm text-zinc-400">
-                                            <strong className="text-cyan-300">Early Move.</strong> Strong price action (5%+) with decent volume (1.3x+), but no clear pivot low yet. 
+                                            <strong className="text-cyan-300">Early Move.</strong> Strong price action (5%+) with decent volume (1.3x+), but no clear pivot low yet.
                                             The move is new - watch for a pullback to establish a proper stop.
                                         </div>
                                     </div>
@@ -330,7 +414,7 @@ export default function MomentumPage() {
                                             <Activity className="w-4 h-4" /> HEATED
                                         </div>
                                         <div className="text-sm text-zinc-400">
-                                            <strong className="text-orange-300">Warning.</strong> RSI is between 75-85. The coin has moved a lot and may be getting tired. 
+                                            <strong className="text-orange-300">Warning.</strong> RSI is between 75-85. The coin has moved a lot and may be getting tired.
                                             Higher risk of a pullback. Consider smaller position or wait for a dip.
                                         </div>
                                     </div>
@@ -339,7 +423,7 @@ export default function MomentumPage() {
                                             <AlertTriangle className="w-4 h-4" /> TOPPED OUT
                                         </div>
                                         <div className="text-sm text-zinc-400">
-                                            <strong className="text-rose-300">Danger Zone.</strong> RSI above 85 - extremely overbought. 
+                                            <strong className="text-rose-300">Danger Zone.</strong> RSI above 85 - extremely overbought.
                                             A correction is very likely. Avoid buying here. Consider taking profits if you're already in.
                                         </div>
                                     </div>
@@ -348,7 +432,7 @@ export default function MomentumPage() {
                                             <Activity className="w-4 h-4" /> LOW VOLUME
                                         </div>
                                         <div className="text-sm text-zinc-400">
-                                            <strong className="text-zinc-300">Weak Move.</strong> Volume is below 1.2x average. 
+                                            <strong className="text-zinc-300">Weak Move.</strong> Volume is below 1.2x average.
                                             The price move isn't backed by strong participation - it could reverse easily.
                                         </div>
                                     </div>
@@ -357,7 +441,7 @@ export default function MomentumPage() {
                                             <AlertTriangle className="w-4 h-4" /> CAUTION
                                         </div>
                                         <div className="text-sm text-zinc-400">
-                                            <strong className="text-yellow-300">Mixed Signals.</strong> The coin is moving up but doesn't clearly fit other categories. 
+                                            <strong className="text-yellow-300">Mixed Signals.</strong> The coin is moving up but doesn't clearly fit other categories.
                                             Proceed carefully - not a high-conviction setup.
                                         </div>
                                     </div>
@@ -429,7 +513,7 @@ export default function MomentumPage() {
                             {/* Disclaimer */}
                             <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
                                 <p className="text-xs text-zinc-500 text-center">
-                                    This scanner is for informational purposes only. Always do your own research before trading. 
+                                    This scanner is for informational purposes only. Always do your own research before trading.
                                     Past performance does not guarantee future results.
                                 </p>
                             </div>

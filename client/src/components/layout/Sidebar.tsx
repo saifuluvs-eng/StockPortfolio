@@ -77,8 +77,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       ? "whitespace-nowrap transition-all opacity-0 w-0 group-hover:opacity-100 group-hover:w-auto"
       : "whitespace-nowrap transition-all opacity-0 w-0";
 
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-
+  // Position calculation for the floating menu
   function positionAboveClamped() {
     const btn = sbBtnRef.current;
     const card = sbCardRef.current;
@@ -126,23 +125,30 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     };
   }, [sbOpen]);
 
+  // Determine width classes based on desktop collapse state
+  const desktopWidthClass = isCollapsed
+    ? (expandOnHover ? "md:w-14 hover:md:w-64" : "md:w-14")
+    : "md:w-64";
+
   return (
     <>
-      {isMobile && isOpen && (
-        <div
-          className="fixed inset-0 bg-muted/50 z-30 md:hidden"
-          onClick={onClose}
-        />
-      )}
+      {/* Mobile Backdrop */}
+      <div
+        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-30 transition-opacity duration-200 md:hidden ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
+        onClick={onClose}
+      />
+
+      {/* Sidebar */}
       <aside
         className={[
-          "group relative h-screen bg-sidebar border-r border-sidebar-border transition-all duration-200 flex flex-col overflow-hidden",
-          isMobile && !isOpen ? "hidden" : "",
-          isMobile && isOpen ? "fixed left-0 top-0 z-[60] w-60" : "",
-          !isMobile ? "block" : "",
-          !isMobile && isCollapsed ? "w-14" : "",
-          !isMobile && !isCollapsed ? "w-60" : "",
-          !isMobile && expandOnHover && isCollapsed ? "hover:w-60" : "",
+          "fixed inset-y-0 left-0 z-[60] bg-sidebar border-r border-sidebar-border shadow-2xl md:shadow-none transition-all duration-300 ease-in-out flex flex-col overflow-hidden",
+          // Mobile: Toggle transform
+          "w-52",
+          isOpen ? "translate-x-0" : "-translate-x-full",
+          // Desktop: Always visible, relative positioning, variable width
+          "md:relative md:translate-x-0 md:h-screen",
+          desktopWidthClass
         ].join(" ")}
       >
         {/* Brand */}
@@ -154,7 +160,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
           >
             {showStrictCollapsed ? "" : "CryptoTrader Pro"}
           </Link>
-          {isMobile && isOpen && (
+          {isOpen && (
             <button
               onClick={onClose}
               className="md:hidden text-white/60 hover:text-white"
@@ -174,7 +180,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 ? currentPath.startsWith("/analyse")
                 : currentPath === item.to;
               const handleClick = () => {
-                if (isMobile && isOpen) {
+                if (window.innerWidth < 768 && isOpen) {
                   onClose?.();
                 }
               };
