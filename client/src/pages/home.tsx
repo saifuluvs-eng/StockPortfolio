@@ -424,8 +424,8 @@ export default function Home() {
                       <Gauge className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 flex-shrink-0" />
                     </div>
                     <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
-                    <div className="mt-1 pt-1 border-t border-border/50">
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                    <div className="mt-0 pt-0.5 border-t border-border/50">
+                      <p className="text-[10px] text-muted-foreground">
                         Updated: {new Date(lastFetchTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
