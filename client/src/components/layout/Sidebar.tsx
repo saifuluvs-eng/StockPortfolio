@@ -144,7 +144,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         className={[
           "fixed inset-y-0 left-0 z-[60] bg-sidebar border-r border-sidebar-border shadow-2xl md:shadow-none transition-all duration-300 ease-in-out flex flex-col overflow-hidden",
           // Mobile: Toggle transform
-          "w-64",
+          "w-52",
           isOpen ? "translate-x-0" : "-translate-x-full",
           // Desktop: Always visible, relative positioning, variable width
           "md:relative md:translate-x-0 md:h-screen",
