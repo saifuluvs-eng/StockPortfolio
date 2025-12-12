@@ -1134,7 +1134,7 @@ export default function Analyse() {
         {/* HEADER */}
         <div className="rounded-xl border border-border bg-card p-2 sm:p-3">
           <div className="flex flex-row items-center gap-2">
-            <div className="relative flex-1 min-w-0">
+            <div className="relative w-32 sm:flex-1 min-w-0">
               <Input
                 placeholder="Coin..."
                 value={symbolInput}
@@ -1166,7 +1166,7 @@ export default function Analyse() {
               type="button"
               onClick={onRunAnalysis}
               disabled={isScanning}
-              className="h-9 sm:h-10 rounded-lg bg-primary text-primary-foreground px-3 sm:px-4 text-xs sm:text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors whitespace-nowrap flex-none"
+              className="h-9 sm:h-10 rounded-lg bg-primary text-primary-foreground px-3 sm:px-4 text-xs sm:text-sm font-medium hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60 transition-colors whitespace-nowrap flex-1 sm:flex-none"
               data-testid="button-scan"
             >
               <span className="sm:hidden">{isScanning ? "..." : "Run"}</span>
@@ -1174,10 +1174,10 @@ export default function Analyse() {
             </button>
           </div>
 
-          <div className="mt-2 sm:mt-3 grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
-            <div className="col-span-2 sm:col-span-1">
+          <div className="mt-2 sm:mt-3 flex flex-nowrap items-center gap-2 sm:gap-3 md:gap-4 overflow-x-auto no-scrollbar">
+            <div className="flex-none">
               <MiniStat
-                label="Current Price"
+                label="Price"
                 value={
                   showLoadingState
                     ? loadingMessage
@@ -1187,45 +1187,49 @@ export default function Analyse() {
                 compact
               />
             </div>
-            <MiniStat
-              label="24h Change"
-              value={
-                showLoadingState
-                  ? loadingMessage
-                  : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
-              }
-              tone={
-                showLoadingState
-                  ? "default"
-                  : priceChange > 0
-                    ? "up"
-                    : priceChange < 0
-                      ? "down"
-                      : "default"
-              }
-              icon={
-                showLoadingState ? (
-                  <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-300" />
-                ) : isPositive ? (
-                  <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-300" />
-                ) : priceChange < 0 ? (
-                  <TrendingDown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-300" />
-                ) : (
-                  <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-300" />
-                )
-              }
-              compact
-            />
-            <MiniStat
-              label="24h Volume"
-              value={
-                showLoadingState
-                  ? loadingMessage
-                  : formatVolume(latestPrice?.quoteVolume)
-              }
-              icon={<Target className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-sky-300" />}
-              compact
-            />
+            <div className="flex-none">
+              <MiniStat
+                label="24h"
+                value={
+                  showLoadingState
+                    ? loadingMessage
+                    : `${priceChange > 0 ? "+" : ""}${priceChange.toFixed(2)}%`
+                }
+                tone={
+                  showLoadingState
+                    ? "default"
+                    : priceChange > 0
+                      ? "up"
+                      : priceChange < 0
+                        ? "down"
+                        : "default"
+                }
+                icon={
+                  showLoadingState ? (
+                    <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-300" />
+                  ) : isPositive ? (
+                    <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-emerald-300" />
+                  ) : priceChange < 0 ? (
+                    <TrendingDown className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-rose-300" />
+                  ) : (
+                    <TrendingUp className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-slate-300" />
+                  )
+                }
+                compact
+              />
+            </div>
+            <div className="flex-none">
+              <MiniStat
+                label="24h VOL"
+                value={
+                  showLoadingState
+                    ? loadingMessage
+                    : formatVolume(latestPrice?.quoteVolume)
+                }
+                icon={<Target className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-sky-300" />}
+                compact
+              />
+            </div>
             <div className="hidden sm:flex">
               <MiniStat
                 label="Today's Range"
