@@ -239,6 +239,16 @@ export default function Home() {
     enabled: networkEnabled,
   });
 
+  // ---------- Local State for Mobile Detection ----------
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile(); // Initial check
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   // ---------- Displays ----------
   const portfolioValueDisplay = `$${nf2.format(safeTotalValue)}`;
   const portfolioPctDisplay = `${safeTotalPnlPercent >= 0 ? "+" : ""}${nf2.format(safeTotalPnlPercent)}%`;
@@ -328,15 +338,15 @@ export default function Home() {
   // ---------- Card Renderers ----------
   const renderCard = (id: string, isOverlay = false) => {
     const Wrapper = (isOverlay ? "div" : SortableCard) as any;
-    const props = isOverlay ? { className: "h-full" } : { id, className: "h-full" };
+    const props = isOverlay ? { className: "h-full" } : { id, className: "h-full", disabled: isMobile };
 
     switch (id) {
       case "portfolio":
         return (
           <Wrapper {...(props as any)}>
             <Link to="/portfolio" className="block h-full">
-              <Card className="dashboard-card neon-hover bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 h-auto sm:h-full min-h-[260px]" style={{ "--neon-glow": "hsl(190, 100%, 50%)" } as React.CSSProperties}>
-                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(190, 100%, 50%)" } as React.CSSProperties}>
+                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Portfolio</h3>
@@ -359,8 +369,8 @@ export default function Home() {
         return (
           <Wrapper {...props}>
             <Link to="/analyse/BTCUSDT" className="block h-full">
-              <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/10 to-blue-500/20 h-auto sm:h-full min-h-[260px]" style={{ "--neon-glow": "hsl(220, 100%, 50%)" } as React.CSSProperties}>
-                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/10 to-blue-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(220, 100%, 50%)" } as React.CSSProperties}>
+                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Scanner</h3>
@@ -385,8 +395,8 @@ export default function Home() {
         return (
           <Wrapper {...props}>
             <Link to="/portfolio" className="block h-full">
-              <Card className="dashboard-card neon-hover bg-gradient-to-br from-yellow-500/10 to-yellow-500/20 h-auto sm:h-full min-h-[260px]" style={{ "--neon-glow": "hsl(45, 100%, 50%)" } as React.CSSProperties}>
-                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-yellow-500/10 to-yellow-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(45, 100%, 50%)" } as React.CSSProperties}>
+                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Total P&L</h3>
@@ -405,18 +415,18 @@ export default function Home() {
       case "fear-greed":
         return (
           <Wrapper {...props}>
-            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/10 to-orange-500/20 h-auto sm:h-full min-h-[260px]" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
-              <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+            <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/10 to-orange-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
+              <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
                 {fearGreed ? (
                   <>
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-semibold text-foreground text-xs sm:text-sm">Market Fear & Greed</h3>
+                      <h3 className="font-semibold text-foreground text-xs sm:text-sm">Mkt Fear & Greed</h3>
                       <Gauge className="w-6 sm:w-8 h-6 sm:h-8 text-orange-500 flex-shrink-0" />
                     </div>
                     <FearGreedGauge value={fearGreed.value} classification={fearGreed.classification} />
                     <div className="mt-3 pt-2 border-t border-border/50">
                       <p className="text-xs text-muted-foreground mt-1">
-                        Last updated: {new Date(lastFetchTime).toLocaleTimeString()}
+                        Updated: {new Date(lastFetchTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   </>
@@ -434,8 +444,8 @@ export default function Home() {
         return (
           <Wrapper {...props}>
             <Link to="/strategies" className="block h-full">
-              <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/10 to-indigo-500/20 h-auto sm:h-full min-h-[260px]" style={{ "--neon-glow": "hsl(260, 100%, 60%)" } as React.CSSProperties}>
-                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/10 to-indigo-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(260, 100%, 60%)" } as React.CSSProperties}>
+                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Strategies</h3>
@@ -454,8 +464,8 @@ export default function Home() {
         return (
           <Wrapper {...props}>
             <Link to="/momentum" className="block h-full">
-              <Card className="dashboard-card neon-hover bg-gradient-to-br from-fuchsia-500/10 to-fuchsia-500/20 h-auto sm:h-full min-h-[260px]" style={{ "--neon-glow": "hsl(300, 100%, 60%)" } as React.CSSProperties}>
-                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-fuchsia-500/10 to-fuchsia-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(300, 100%, 60%)" } as React.CSSProperties}>
+                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Momentum</h3>
@@ -480,13 +490,13 @@ export default function Home() {
         return (
           <Wrapper {...props} className={`${props.className} xl:col-span-2`}>
             <Link to="/news" className="block h-full">
-              <Card className="dashboard-card neon-hover bg-gradient-to-br from-rose-500/10 to-rose-500/20 h-auto sm:h-full min-h-[260px]" style={{ "--neon-glow": "hsl(350, 100%, 60%)" } as React.CSSProperties}>
-                <CardContent className="p-2 sm:p-3 md:p-4 lg:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
+              <Card className="dashboard-card neon-hover bg-gradient-to-br from-rose-500/10 to-rose-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(350, 100%, 60%)" } as React.CSSProperties}>
+                <CardContent className="p-4 sm:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
                       <p className="text-sm text-muted-foreground">
-                        Curated market headlines and analyst takes to keep you ahead of the next move.
+                        Curated market headlines and analyst takes.
                       </p>
                     </div>
                     <Newspaper className="w-6 sm:w-8 h-6 sm:h-8 text-primary" />
@@ -537,7 +547,7 @@ export default function Home() {
 
         {/* Onboarding Tip */}
         {showTip && (
-          <div className="mb-6 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 flex items-start gap-3 relative animate-in fade-in slide-in-from-top-2">
+          <div className="hidden md:flex mb-6 rounded-lg border border-blue-500/20 bg-blue-500/10 p-4 items-start gap-3 relative animate-in fade-in slide-in-from-top-2">
             <div className="p-1 bg-blue-500/20 rounded-full">
               <Activity className="w-4 h-4 text-blue-400" />
             </div>
