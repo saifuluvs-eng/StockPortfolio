@@ -161,16 +161,22 @@ export default function MomentumPage() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div className="flex flex-col items-end gap-1">
+                                                    <div className="flex flex-col items-end gap-2">
                                                         {getSignalBadge(coin.signal)}
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">RSI (14) :</span>
+                                                            <span className={`font-mono font-bold text-sm ${coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-200'}`}>
+                                                                {coin.rsi}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
 
                                                 {/* Metrics Grid */}
-                                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-zinc-800/50">
-                                                    <div>
-                                                        <div className="text-[10px] uppercase text-zinc-500 font-medium mb-1">Volume Factor</div>
-                                                        <div className="flex items-baseline gap-1.5">
+                                                <div className="grid grid-cols-3 gap-2 pt-4 border-t border-zinc-800/50 text-center">
+                                                    <div className="flex flex-col items-center">
+                                                        <div className="text-[10px] uppercase text-zinc-500 font-medium mb-1">Vol Factor</div>
+                                                        <div className="flex flex-col items-center">
                                                             <span className={`text-sm font-bold ${coin.volumeFactor > 2 ? 'text-emerald-400' : 'text-zinc-300'}`}>
                                                                 {coin.volumeFactor}x
                                                             </span>
@@ -179,21 +185,17 @@ export default function MomentumPage() {
                                                             </span>
                                                         </div>
                                                     </div>
-                                                    <div>
-                                                        <div className="text-[10px] uppercase text-zinc-500 font-medium mb-1">RSI (14)</div>
-                                                        <span className={`font-mono text-sm ${coin.rsi > 70 ? 'text-rose-400' : 'text-zinc-400'}`}>
-                                                            {coin.rsi}
-                                                        </span>
-                                                    </div>
-                                                    <div>
+
+                                                    <div className="flex flex-col items-center border-l border-zinc-800/50 border-r">
                                                         <div className="text-[10px] uppercase text-zinc-500 font-medium mb-1">Stop Loss</div>
-                                                        <span className="font-mono text-sm text-zinc-400">
+                                                        <span className="font-mono text-sm text-zinc-300">
                                                             {coin.stopLoss ? '$' + formatPrice(coin.stopLoss) : '-'}
                                                         </span>
                                                     </div>
-                                                    <div>
+
+                                                    <div className="flex flex-col items-center">
                                                         <div className="text-[10px] uppercase text-zinc-500 font-medium mb-1">Risk</div>
-                                                        <div className="flex flex-col">
+                                                        <div className="flex flex-col items-center">
                                                             {coin.riskPct ? (
                                                                 <span className={`font-mono text-sm ${coin.riskPct < 5 ? 'text-emerald-400' : coin.riskPct < 8 ? 'text-amber-400' : 'text-rose-400'}`}>
                                                                     {coin.riskPct.toFixed(1)}%
