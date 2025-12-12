@@ -346,7 +346,7 @@ export default function Home() {
           <Wrapper {...(props as any)}>
             <Link to="/portfolio" className="block h-full">
               <Card className="dashboard-card neon-hover bg-gradient-to-br from-cyan-500/10 to-cyan-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(190, 100%, 50%)" } as React.CSSProperties}>
-                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
+                <CardContent className="p-3 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Portfolio</h3>
@@ -370,7 +370,7 @@ export default function Home() {
           <Wrapper {...props}>
             <Link to="/analyse/BTCUSDT" className="block h-full">
               <Card className="dashboard-card neon-hover bg-gradient-to-br from-blue-500/10 to-blue-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(220, 100%, 50%)" } as React.CSSProperties}>
-                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
+                <CardContent className="p-3 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Scanner</h3>
@@ -396,7 +396,7 @@ export default function Home() {
           <Wrapper {...props}>
             <Link to="/portfolio" className="block h-full">
               <Card className="dashboard-card neon-hover bg-gradient-to-br from-yellow-500/10 to-yellow-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(45, 100%, 50%)" } as React.CSSProperties}>
-                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
+                <CardContent className="p-3 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Total P&L</h3>
@@ -416,7 +416,7 @@ export default function Home() {
         return (
           <Wrapper {...props}>
             <Card className="dashboard-card neon-hover bg-gradient-to-br from-orange-500/10 to-orange-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" data-testid="card-fear-greed" style={{ "--neon-glow": "hsl(25, 100%, 55%)" } as React.CSSProperties}>
-              <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
+              <CardContent className="p-3 sm:p-6 flex flex-col justify-start">
                 {fearGreed ? (
                   <>
                     <div className="flex items-start justify-between gap-2 mb-2">
@@ -445,7 +445,7 @@ export default function Home() {
           <Wrapper {...props}>
             <Link to="/strategies" className="block h-full">
               <Card className="dashboard-card neon-hover bg-gradient-to-br from-indigo-500/10 to-indigo-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(260, 100%, 60%)" } as React.CSSProperties}>
-                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
+                <CardContent className="p-3 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Strategies</h3>
@@ -465,7 +465,7 @@ export default function Home() {
           <Wrapper {...props}>
             <Link to="/momentum" className="block h-full">
               <Card className="dashboard-card neon-hover bg-gradient-to-br from-fuchsia-500/10 to-fuchsia-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(300, 100%, 60%)" } as React.CSSProperties}>
-                <CardContent className="p-4 sm:p-6 flex flex-col justify-start">
+                <CardContent className="p-3 sm:p-6 flex flex-col justify-start">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground text-xs sm:text-sm mb-0.5">Momentum</h3>
@@ -488,10 +488,10 @@ export default function Home() {
         );
       case "news":
         return (
-          <Wrapper {...props} className={`${props.className} xl:col-span-2`}>
+          <Wrapper {...props} className={`${props.className} col-span-2 xl:col-span-2`}>
             <Link to="/news" className="block h-full">
               <Card className="dashboard-card neon-hover bg-gradient-to-br from-rose-500/10 to-rose-500/20 h-auto sm:h-full min-h-[160px] sm:min-h-[260px]" style={{ "--neon-glow": "hsl(350, 100%, 60%)" } as React.CSSProperties}>
-                <CardContent className="p-4 sm:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
+                <CardContent className="p-3 sm:p-6 flex flex-col justify-start space-y-1 sm:space-y-2 md:space-y-4">
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold text-foreground mb-1">News &amp; Insights</h3>
@@ -567,22 +567,37 @@ export default function Home() {
           </div>
         )}
 
-        {/* Draggable Grid */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={items} strategy={rectSortingStrategy}>
-            <div className="grid items-stretch grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 md:mb-8">
-              {items.map((id) => renderCard(id))}
-            </div>
-          </SortableContext>
-          <DragOverlay dropAnimation={dropAnimation}>
-            {activeId ? renderCard(activeId, true) : null}
-          </DragOverlay>
-        </DndContext>
+        )}
+
+        {/* Mobile Order Definition */}
+        {(() => {
+          const MOBILE_ORDER = [
+            "top-gainers", "fear-greed",
+            "portfolio", "total-pnl",
+            "scanner", "btc-dominance",
+            "strategies", "momentum",
+            "news"
+          ];
+          const displayItems = isMobile ? MOBILE_ORDER : items;
+
+          return (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={displayItems} strategy={rectSortingStrategy}>
+                <div className="grid items-stretch grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6 md:mb-8">
+                  {displayItems.map((id) => renderCard(id))}
+                </div>
+              </SortableContext>
+              <DragOverlay dropAnimation={dropAnimation}>
+                {activeId ? renderCard(activeId, true) : null}
+              </DragOverlay>
+            </DndContext>
+          );
+        })()}
       </div>
     </div>
   );
